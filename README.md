@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.23-blue.svg" alt="Go"></a>
-  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/Postgres-16-blue.svg" alt="Postgres"></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/Postgres-18-blue.svg" alt="Postgres"></a>
   <a href="https://www.rabbitmq.com/"><img src="https://img.shields.io/badge/RabbitMQ-4-orange.svg" alt="RabbitMQ"></a>
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="LICENSE-AGPL"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
@@ -30,13 +30,13 @@ Von supports Development, Staging, and Production environments, allowing you to 
 
 ## Contributing
 
-Von is open source and licensed under Apache 2.0. You can help by:
+Von is open source. You can help by:
 
 - Contributing to the source code
 - Reporting issues and suggesting features
 - Improving documentation
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
@@ -44,5 +44,3 @@ Von uses dual licensing:
 
 - **SDK packages** ([pkg/von](pkg/von), [web/packages](web)) - MIT License
 - **Server components** ([cmd](cmd), [internal](internal), [web/apps](web/apps)) - AGPL-3.0 License
-
-See [LICENSE](LICENSE) for details.
