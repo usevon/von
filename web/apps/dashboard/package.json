@@ -10,17 +10,31 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.136.1",
+    "@tanstack/react-start": "^1.136.1",
     "@usevon/react": "workspace:*",
     "@usevon/sdk": "workspace:*",
     "@usevon/ui": "workspace:*",
+    "better-auth": "^1.3.34",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
+    "postgres": "^3.4.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.3.34",
+    "@tailwindcss/vite": "^4.1.17",
+    "@tanstack/router-plugin": "^1.136.1",
+    "@tanstack/start-vite-plugin": "^1.91.1",
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.1",
+    "drizzle-kit": "^0.31.7",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
