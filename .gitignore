@@ -5,7 +5,6 @@
 *.so
 *.dylib
 bin/
-dist/
 
 # Go
 *.test
