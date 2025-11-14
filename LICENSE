@@ -1,0 +1,18 @@
+Dual License
+
+This project is dual-licensed under the MIT License and the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+You may use, distribute, and modify this software under the terms of either license, depending on the component:
+
+MIT License Components:
+- pkg/von/ (Go SDK)
+- web/packages/ (TypeScript SDK, React packages, UI components)
+
+See LICENSE-MIT for the full MIT License text.
+
+AGPL-3.0 License Components:
+- cmd/ (API server, Worker server, CLI binaries)
+- internal/ (Backend implementation code)
+- web/apps/ (Dashboard, Landing page)
+
+See LICENSE-AGPL for the full AGPL-3.0 License text.
