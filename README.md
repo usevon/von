@@ -30,19 +30,25 @@ Von supports Development, Staging, and Production environments, allowing you to 
 
 ## Contributing
 
-Von is open source. You can help by:
-
-- Contributing to the source code
-- Reporting issues and suggesting features
-- Improving documentation
+Von is open source and welcomes contributions, issues, and feedback.
 
 See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guidelines.
+
+## Security
+
+For security concerns, see our [Security Policy](.github/SECURITY.md).
 
 ## License
 
 Von uses dual licensing:
 
-- SDK packages (Go, TypeScript, React) are licensed under MIT
-- Server components (API, Worker, CLI) are licensed under AGPL-3.0
+**AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
+- `cmd/` - Server binaries (API, Worker, CLI)
+- `internal/` - Backend implementation
+- `web/apps/` - Web applications (Dashboard, Landing)
 
-See [LICENSING.md](LICENSING.md) for full details.
+**MIT License** ([LICENSE-MIT](LICENSE-MIT))
+- `pkg/von/` - Go SDK
+- `web/packages/sdk/` - TypeScript SDK
+- `web/packages/react/` - React hooks and components
+- `web/packages/ui/` - UI component library
