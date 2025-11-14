@@ -1,6 +1,11 @@
-# Von Go SDK
+# Von - Go SDK
 
-Go SDK for sending webhooks via Von.
+<p align="center">
+  <a href="../../LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.24+-blue.svg" alt="Go"></a>
+</p>
+
+Go client library for interacting with Von's webhooks infrastructure.
 
 ## Installation
 

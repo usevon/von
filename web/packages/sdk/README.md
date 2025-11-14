@@ -1,6 +1,11 @@
-# @usevon/sdk
+# Von - @usevon/sdk
 
-TypeScript SDK for Von webhooks.
+<p align="center">
+  <a href="../../../LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0+-blue.svg" alt="TypeScript"></a>
+</p>
+
+TypeScript client library for interacting with Von's webhooks infrastructure.
 
 ## Installation
 

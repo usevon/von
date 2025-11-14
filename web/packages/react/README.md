@@ -1,6 +1,11 @@
-# @usevon/react
+# Von - @usevon/react
 
-React hooks and context provider for Von webhooks.
+<p align="center">
+  <a href="../../../LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19+-blue.svg" alt="React"></a>
+</p>
+
+React hooks and context provider for Von.
 
 ## Installation
 

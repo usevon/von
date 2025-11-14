@@ -1,7 +1,7 @@
 # Von
 
 <p align="center">
-  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.23-blue.svg" alt="Go"></a>
+  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.24+-blue.svg" alt="Go"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/Postgres-18-blue.svg" alt="Postgres"></a>
   <a href="https://www.rabbitmq.com/"><img src="https://img.shields.io/badge/RabbitMQ-4-orange.svg" alt="RabbitMQ"></a>
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
@@ -42,5 +42,7 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guideli
 
 Von uses dual licensing:
 
-- **SDK packages** ([pkg/von](pkg/von), [web/packages](web)) - MIT License
-- **Server components** ([cmd](cmd), [internal](internal), [web/apps](web/apps)) - AGPL-3.0 License
+- SDK packages (Go, TypeScript, React) are licensed under MIT
+- Server components (API, Worker, CLI) are licensed under AGPL-3.0
+
+See [LICENSING.md](LICENSING.md) for full details.
