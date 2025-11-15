@@ -97,6 +97,8 @@ func BenchmarkConsumer(b *testing.B) {
 	}
 	defer consumer.Close()
 
+	time.Sleep(100 * time.Millisecond)
+
 	msg := types.QueueMessage{
 		DeliveryID:    "bench-delivery",
 		EventID:       "bench-event",
@@ -142,6 +144,8 @@ func BenchmarkEndToEnd(b *testing.B) {
 		b.Fatal(err)
 	}
 	defer consumer.Close()
+
+	time.Sleep(100 * time.Millisecond)
 
 	ctx := context.Background()
 

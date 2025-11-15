@@ -24,18 +24,18 @@ Von is the open-source webhooks infrastructure built with Go and RabbitMQ for au
 - **TypeScript** - [@usevon/sdk](web/packages/sdk)
 - **React** - [@usevon/react](web/packages/react)
 
+## Environments
+
+Von supports Development, Staging, and Production environments, allowing you to test webhooks before deploying to production.
+
 ## Benchmarks
 
 RabbitMQ queue throughput benchmarks are available in [tests/queue/benchmark_test.go](tests/queue/benchmark_test.go).
 
 Run benchmarks:
 ```bash
-go test ./tests/queue/... -bench=. -benchmem
+go test ./tests/queue/... -bench=. -run=^$ -benchmem
 ```
-
-## Environments
-
-Von supports Development, Staging, and Production environments, allowing you to test webhooks before deploying to production.
 
 ## Contributing
 
