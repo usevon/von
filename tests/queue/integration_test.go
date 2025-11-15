@@ -13,14 +13,10 @@ import (
 var testRabbitMQURL = util.GetRabbitMQURL()
 
 func TestQueueSetup(t *testing.T) {
-	q, err := queue.NewQueue(testRabbitMQURL)
-	if err != nil {
-		t.Fatalf("failed to create queue: %v", err)
-	}
-	defer q.Close()
+	q := util.SetupQueue(t)
 
 	received := make(chan types.QueueMessage, 1)
-	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
+	err := q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
 	})
@@ -30,19 +26,10 @@ func TestQueueSetup(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	testMsg := types.QueueMessage{
-		DeliveryID:    "setup-test",
-		EventID:       "event-1",
-		EndpointID:    "endpoint-1",
-		URL:           "https://example.com/webhook",
-		EventType:     "test.setup",
-		Payload:       map[string]interface{}{},
-		AttemptNumber: 1,
-		DeliveryMode:  types.DeliveryModeAsync,
-		MaxRetries:    3,
-		RetryStrategy: types.RetryStrategyExponential,
-		EnqueuedAt:    time.Now(),
-	}
+	testMsg := util.NewTestMessage(
+		util.WithDeliveryID("setup-test"),
+		util.WithEventType("test.setup"),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -61,14 +48,10 @@ func TestQueueSetup(t *testing.T) {
 }
 
 func TestPublishAndConsume(t *testing.T) {
-	q, err := queue.NewQueue(testRabbitMQURL)
-	if err != nil {
-		t.Fatalf("failed to create queue: %v", err)
-	}
-	defer q.Close()
+	q := util.SetupQueue(t)
 
 	received := make(chan types.QueueMessage, 1)
-	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
+	err := q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
 	})
@@ -78,21 +61,12 @@ func TestPublishAndConsume(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	testMsg := types.QueueMessage{
-		DeliveryID:    "test-delivery-123",
-		EventID:       "test-event-456",
-		EndpointID:    "test-endpoint-789",
-		URL:           "https://example.com/webhook",
-		EventType:     "user.created",
-		Payload:       map[string]interface{}{"user_id": "123"},
-		Headers:       map[string]string{"X-Custom": "value"},
-		Secret:        "secret123",
-		AttemptNumber: 1,
-		DeliveryMode:  types.DeliveryModeAsync,
-		MaxRetries:    5,
-		RetryStrategy: types.RetryStrategyExponential,
-		EnqueuedAt:    time.Now(),
-	}
+	testMsg := util.NewTestMessage(
+		util.WithDeliveryID("test-delivery-123"),
+		util.WithEventType("user.created"),
+		util.WithPayload(map[string]interface{}{"user_id": "123"}),
+		util.WithMaxRetries(5),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
