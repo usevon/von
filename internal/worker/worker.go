@@ -10,27 +10,30 @@ import (
 	"github.com/google/uuid"
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/internal/usage"
+	"github.com/usevon/von/internal/util"
 	"github.com/usevon/von/pkg/types"
 	"gorm.io/gorm"
 )
 
 // Worker processes webhook delivery messages from the queue.
 type Worker struct {
-	db           *gorm.DB
-	client       *Client
-	usageTracker *usage.Tracker
-	consumer     *queue.Consumer
-	publisher    *queue.Publisher
-	rabbitmqURL  string
+	db             *gorm.DB
+	client         *Client
+	usageTracker   *usage.Tracker
+	consumer       *queue.Consumer
+	publisher      *queue.Publisher
+	circuitBreaker *CircuitBreaker
+	rabbitmqURL    string
 }
 
 // NewWorker creates a new worker that processes webhook deliveries.
 func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker, error) {
 	w := &Worker{
-		db:           db,
-		client:       NewClient(timeout),
-		usageTracker: usage.NewTracker(db),
-		rabbitmqURL:  rabbitmqURL,
+		db:             db,
+		client:         NewClient(timeout),
+		usageTracker:   usage.NewTracker(db),
+		circuitBreaker: NewCircuitBreaker(),
+		rabbitmqURL:    rabbitmqURL,
 	}
 
 	// Create publisher for requeuing messages (reuse connection)
@@ -87,6 +90,24 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		return nil
 	}
 
+	if w.circuitBreaker.IsOpen(msg.EndpointID) {
+		log.Printf("circuit breaker open for endpoint %s, skipping delivery %s", endpoint.ID, delivery.ID)
+		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
+		nextAttempt := time.Now().Add(backoff)
+		delivery.NextAttemptAt = &nextAttempt
+		delivery.Status = types.DeliveryStatusQueued
+		if err := w.db.WithContext(ctx).Save(&delivery).Error; err != nil {
+			log.Printf("failed to update delivery: %v", err)
+		}
+		newMsg := msg
+		newMsg.AttemptNumber++
+		if err := w.requeueDelivery(ctx, newMsg, backoff, w.rabbitmqURL); err != nil {
+			log.Printf("failed to requeue delivery: %v", err)
+			return err
+		}
+		return nil
+	}
+
 	var event types.Event
 	if err := w.db.WithContext(ctx).Where("id = ?", msg.EventID).First(&event).Error; err != nil {
 		log.Printf("failed to load event %s: %v", msg.EventID, err)
@@ -98,37 +119,21 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 	result := w.client.DeliverWebhook(ctx, msg)
 
 	now := time.Now()
-	completedAt := now
 	payloadBytes, _ := json.Marshal(msg.Payload)
-
-	reqHeaders := make(types.JSONB)
-	for k, v := range msg.Headers {
-		reqHeaders[k] = v
-	}
-
-	respHeaders := make(types.JSONB)
-	for k, v := range result.ResponseHeaders {
-		respHeaders[k] = v
-	}
-
-	responseBody := result.ResponseBody
-	if len(responseBody) > 10000 {
-		responseBody = responseBody[:10000]
-	}
 
 	attempt := types.DeliveryAttempt{
 		ID:              uuid.New().String(),
 		DeliveryID:      delivery.ID,
 		AttemptNumber:   msg.AttemptNumber,
 		RequestURL:      msg.URL,
-		RequestHeaders:  reqHeaders,
+		RequestHeaders:  util.HeadersToJSONB(msg.Headers),
 		RequestBody:     string(payloadBytes),
 		StatusCode:      result.StatusCode,
-		ResponseHeaders: respHeaders,
-		ResponseBody:    responseBody,
+		ResponseHeaders: util.HeadersToJSONB(result.ResponseHeaders),
+		ResponseBody:    util.Truncate(result.ResponseBody, 10000),
 		LatencyMS:       result.LatencyMS,
 		StartedAt:       now.Add(-time.Duration(result.LatencyMS) * time.Millisecond),
-		CompletedAt:     &completedAt,
+		CompletedAt:     util.TimePtr(now),
 		Error:           result.Error,
 		ErrorCode:       result.ErrorCode,
 		Retryable:       result.Retryable,
@@ -140,32 +145,25 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		log.Printf("failed to save delivery attempt: %v", err)
 	}
 
-	lastAttemptAt := time.Now()
-	preview := result.ResponseBody
-	if len(preview) > 500 {
-		preview = preview[:500]
-	}
-
 	delivery.AttemptCount++
-	delivery.LastAttemptAt = &lastAttemptAt
-	delivery.LastStatusCode = &result.StatusCode
-	delivery.LastResponsePreview = preview
+	delivery.LastAttemptAt = util.TimePtr(time.Now())
+	delivery.LastStatusCode = util.IntPtr(result.StatusCode)
+	delivery.LastResponsePreview = util.Truncate(result.ResponseBody, 500)
 	delivery.LastError = result.Error
 	delivery.TotalLatencyMS += result.LatencyMS
 
-	successful := result.StatusCode >= 200 && result.StatusCode < 300 && result.Error == ""
-
-	if successful {
-		deliveredAt := time.Now()
+	if result.IsSuccessful() {
 		delivery.Status = types.DeliveryStatusDelivered
-		delivery.DeliveredAt = &deliveredAt
+		delivery.DeliveredAt = util.TimePtr(time.Now())
 		w.updateEndpointHealth(ctx, &endpoint, true)
+		w.circuitBreaker.RecordSuccess(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, true)
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
 		nextAttempt := time.Now().Add(backoff)
 		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
+		w.circuitBreaker.RecordFailure(msg.EndpointID)
 		w.usageTracker.TrackRetry(ctx, event.OrganizationID)
 
 		newMsg := msg
@@ -175,10 +173,10 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 			return err
 		}
 	} else {
-		failedAt := time.Now()
 		delivery.Status = types.DeliveryStatusFailed
-		delivery.FailedAt = &failedAt
+		delivery.FailedAt = util.TimePtr(time.Now())
 		w.updateEndpointHealth(ctx, &endpoint, false)
+		w.circuitBreaker.RecordFailure(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, false)
 	}
 
@@ -206,9 +204,8 @@ func (w *Worker) updateDeliveryStatus(ctx context.Context, delivery *types.Event
 
 // markDeliveryCancelled marks a delivery as cancelled.
 func (w *Worker) markDeliveryCancelled(ctx context.Context, delivery *types.EventDelivery) {
-	cancelledAt := time.Now()
 	delivery.Status = types.DeliveryStatusCancelled
-	delivery.CancelledAt = &cancelledAt
+	delivery.CancelledAt = util.TimePtr(time.Now())
 	if err := w.db.WithContext(ctx).Save(delivery).Error; err != nil {
 		log.Printf("failed to cancel delivery: %v", err)
 	}

@@ -35,6 +35,7 @@ func NewTestMessage(opts ...func(*types.QueueMessage)) types.QueueMessage {
 		EventType:     "test.event",
 		Payload:       map[string]interface{}{},
 		Headers:       map[string]string{},
+		Secret:        "test-secret",
 		AttemptNumber: 1,
 		DeliveryMode:  types.DeliveryModeAsync,
 		MaxRetries:    3,
@@ -74,5 +75,33 @@ func WithPayload(payload map[string]interface{}) func(*types.QueueMessage) {
 func WithMaxRetries(n int) func(*types.QueueMessage) {
 	return func(m *types.QueueMessage) {
 		m.MaxRetries = n
+	}
+}
+
+// WithMessageEventID sets the event ID for QueueMessage.
+func WithMessageEventID(id string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.EventID = id
+	}
+}
+
+// WithMessageEndpointID sets the endpoint ID for QueueMessage.
+func WithMessageEndpointID(id string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.EndpointID = id
+	}
+}
+
+// WithMessageURL sets the URL for QueueMessage.
+func WithMessageURL(url string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.URL = url
+	}
+}
+
+// WithMessageSecret sets the secret for QueueMessage.
+func WithMessageSecret(secret string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.Secret = secret
 	}
 }

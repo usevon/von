@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/usevon/von/internal/util"
 	"github.com/usevon/von/pkg/crypto"
 	"github.com/usevon/von/pkg/types"
 )
@@ -22,6 +23,17 @@ type DeliveryResult struct {
 	Error           string
 	ErrorCode       string
 	Retryable       bool
+}
+
+// IsSuccessful returns true if the delivery result indicates a successful delivery.
+// Success is defined as HTTP 2xx status code with no error.
+func (r DeliveryResult) IsSuccessful() bool {
+	return r.StatusCode >= 200 && r.StatusCode < 300 && r.Error == ""
+}
+
+// IsRetryable returns true if the delivery result indicates a retryable failure.
+func (r DeliveryResult) IsRetryableFailure() bool {
+	return r.Retryable && !r.IsSuccessful()
 }
 
 // Client handles HTTP requests for webhook deliveries.
@@ -111,16 +123,9 @@ func (c *Client) DeliverWebhook(ctx context.Context, msg types.QueueMessage) Del
 		}
 	}
 
-	headers := make(map[string]string)
-	for key, values := range resp.Header {
-		if len(values) > 0 {
-			headers[key] = values[0]
-		}
-	}
-
 	result := DeliveryResult{
 		StatusCode:      resp.StatusCode,
-		ResponseHeaders: headers,
+		ResponseHeaders: util.HTTPHeadersToMap(resp.Header),
 		ResponseBody:    string(body),
 		LatencyMS:       latencyMS,
 	}
