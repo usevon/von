@@ -11,11 +11,6 @@ import (
 )
 
 func BenchmarkPublisher(b *testing.B) {
-	err := queue.EnsureQueues(testRabbitMQURL)
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
 		b.Fatal(err)
@@ -48,11 +43,6 @@ func BenchmarkPublisher(b *testing.B) {
 }
 
 func BenchmarkPublisherParallel(b *testing.B) {
-	err := queue.EnsureQueues(testRabbitMQURL)
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
 		b.Fatal(err)
@@ -87,11 +77,6 @@ func BenchmarkPublisherParallel(b *testing.B) {
 }
 
 func BenchmarkConsumer(b *testing.B) {
-	err := queue.EnsureQueues(testRabbitMQURL)
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
 		b.Fatal(err)
@@ -140,11 +125,6 @@ func BenchmarkConsumer(b *testing.B) {
 }
 
 func BenchmarkEndToEnd(b *testing.B) {
-	err := queue.EnsureQueues(testRabbitMQURL)
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
 		b.Fatal(err)

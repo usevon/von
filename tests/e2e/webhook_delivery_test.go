@@ -13,11 +13,12 @@ import (
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
+	"github.com/usevon/von/tests/util"
 )
 
-const (
-	testPostgresURL  = "postgres://von:von_dev_password@localhost:5432/von_dev?sslmode=disable"
-	testRabbitMQURL  = "amqp://von:von_dev_password@localhost:5672/"
+var (
+	testPostgresURL = util.GetPostgresURL()
+	testRabbitMQURL = util.GetRabbitMQURL()
 )
 
 func TestEndToEndWebhookDelivery(t *testing.T) {

@@ -86,47 +86,69 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 
 	result := w.client.DeliverWebhook(ctx, msg)
 
+	now := time.Now()
+	completedAt := now
+	payloadBytes, _ := json.Marshal(msg.Payload)
+
+	reqHeaders := make(types.JSONB)
+	for k, v := range msg.Headers {
+		reqHeaders[k] = v
+	}
+
+	responseBody := result.ResponseBody
+	if len(responseBody) > 10000 {
+		responseBody = responseBody[:10000]
+	}
+
 	attempt := types.DeliveryAttempt{
 		ID:              uuid.New().String(),
 		DeliveryID:      delivery.ID,
 		AttemptNumber:   msg.AttemptNumber,
 		RequestURL:      msg.URL,
-		RequestHeaders:  convertToJSONB(msg.Headers),
-		RequestBody:     mustMarshal(msg.Payload),
+		RequestHeaders:  reqHeaders,
+		RequestBody:     string(payloadBytes),
 		StatusCode:      result.StatusCode,
 		ResponseHeaders: types.JSONB(result.ResponseHeaders),
-		ResponseBody:    truncate(result.ResponseBody, 10000),
+		ResponseBody:    responseBody,
 		LatencyMS:       result.LatencyMS,
-		StartedAt:       time.Now().Add(-time.Duration(result.LatencyMS) * time.Millisecond),
-		CompletedAt:     ptrTime(time.Now()),
+		StartedAt:       now.Add(-time.Duration(result.LatencyMS) * time.Millisecond),
+		CompletedAt:     &completedAt,
 		Error:           result.Error,
 		ErrorCode:       result.ErrorCode,
 		Retryable:       result.Retryable,
 		DeliveryMode:    msg.DeliveryMode,
-		CreatedAt:       time.Now(),
+		CreatedAt:       now,
 	}
 
 	if err := w.db.WithContext(ctx).Create(&attempt).Error; err != nil {
 		log.Printf("failed to save delivery attempt: %v", err)
 	}
 
+	lastAttemptAt := time.Now()
+	preview := result.ResponseBody
+	if len(preview) > 500 {
+		preview = preview[:500]
+	}
+
 	delivery.AttemptCount++
-	delivery.LastAttemptAt = ptrTime(time.Now())
+	delivery.LastAttemptAt = &lastAttemptAt
 	delivery.LastStatusCode = &result.StatusCode
-	delivery.LastResponsePreview = truncate(result.ResponseBody, 500)
+	delivery.LastResponsePreview = preview
 	delivery.LastError = result.Error
 	delivery.TotalLatencyMS += result.LatencyMS
 
 	successful := result.StatusCode >= 200 && result.StatusCode < 300 && result.Error == ""
 
 	if successful {
+		deliveredAt := time.Now()
 		delivery.Status = types.DeliveryStatusDelivered
-		delivery.DeliveredAt = ptrTime(time.Now())
+		delivery.DeliveredAt = &deliveredAt
 		w.updateEndpointHealth(ctx, &endpoint, true)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, true)
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
-		delivery.NextAttemptAt = ptrTime(time.Now().Add(backoff))
+		nextAttempt := time.Now().Add(backoff)
+		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
 		w.usageTracker.TrackRetry(ctx, event.OrganizationID)
 
@@ -137,8 +159,9 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 			return err
 		}
 	} else {
+		failedAt := time.Now()
 		delivery.Status = types.DeliveryStatusFailed
-		delivery.FailedAt = ptrTime(time.Now())
+		delivery.FailedAt = &failedAt
 		w.updateEndpointHealth(ctx, &endpoint, false)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, false)
 	}
@@ -173,8 +196,9 @@ func (w *Worker) updateDeliveryStatus(ctx context.Context, delivery *types.Event
 
 // markDeliveryCancelled marks a delivery as cancelled.
 func (w *Worker) markDeliveryCancelled(ctx context.Context, delivery *types.EventDelivery) {
+	cancelledAt := time.Now()
 	delivery.Status = types.DeliveryStatusCancelled
-	delivery.CancelledAt = ptrTime(time.Now())
+	delivery.CancelledAt = &cancelledAt
 	if err := w.db.WithContext(ctx).Save(delivery).Error; err != nil {
 		log.Printf("failed to cancel delivery: %v", err)
 	}
@@ -182,10 +206,16 @@ func (w *Worker) markDeliveryCancelled(ctx context.Context, delivery *types.Even
 
 // updateEndpointHealth updates the endpoint health metrics based on delivery success/failure.
 func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpoint, successful bool) {
+	now := time.Now()
+
 	if successful {
 		endpoint.ConsecutiveFails = 0
-		endpoint.HealthScore = min(100, endpoint.HealthScore+5)
-		endpoint.LastSuccessAt = ptrTime(time.Now())
+		if endpoint.HealthScore+5 > 100 {
+			endpoint.HealthScore = 100
+		} else {
+			endpoint.HealthScore += 5
+		}
+		endpoint.LastSuccessAt = &now
 		if endpoint.Status == types.EndpointStatusFailing || endpoint.Status == types.EndpointStatusDegraded {
 			endpoint.Status = types.EndpointStatusHealthy
 			endpoint.DisabledAt = nil
@@ -193,8 +223,12 @@ func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpo
 		}
 	} else {
 		endpoint.ConsecutiveFails++
-		endpoint.HealthScore = max(0, endpoint.HealthScore-10)
-		endpoint.LastFailureAt = ptrTime(time.Now())
+		if endpoint.HealthScore-10 < 0 {
+			endpoint.HealthScore = 0
+		} else {
+			endpoint.HealthScore -= 10
+		}
+		endpoint.LastFailureAt = &now
 
 		if endpoint.ConsecutiveFails >= 5 && endpoint.HealthScore < 20 {
 			endpoint.Status = types.EndpointStatusFailing
@@ -204,7 +238,7 @@ func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpo
 
 		if endpoint.ConsecutiveFails >= 10 {
 			endpoint.Status = types.EndpointStatusDisabled
-			endpoint.DisabledAt = ptrTime(time.Now())
+			endpoint.DisabledAt = &now
 			endpoint.DisabledReason = "Too many consecutive failures"
 		}
 	}
@@ -214,42 +248,3 @@ func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpo
 	}
 }
 
-// Helper functions
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen]
-}
-
-func mustMarshal(v interface{}) string {
-	b, _ := json.Marshal(v)
-	return string(b)
-}
-
-func convertToJSONB(m map[string]string) types.JSONB {
-	result := make(types.JSONB)
-	for k, v := range m {
-		result[k] = v
-	}
-	return result
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
