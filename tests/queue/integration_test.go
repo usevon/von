@@ -2,6 +2,7 @@ package queue_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -102,15 +103,11 @@ func TestPublishAndConsume(t *testing.T) {
 }
 
 func TestPublishMultipleMessages(t *testing.T) {
-	q, err := queue.NewQueue(testRabbitMQURL)
-	if err != nil {
-		t.Fatalf("failed to create queue: %v", err)
-	}
-	defer q.Close()
+	q := util.SetupQueue(t)
 
 	messageCount := 10
 	received := make(chan types.QueueMessage, messageCount)
-	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
+	err := q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
 	})
@@ -122,23 +119,59 @@ func TestPublishMultipleMessages(t *testing.T) {
 	defer cancel()
 
 	for i := 0; i < messageCount; i++ {
-		msg := types.QueueMessage{
-			DeliveryID:    "delivery-" + string(rune(i)),
-			EventID:       "event-" + string(rune(i)),
-			EndpointID:    "endpoint-123",
-			URL:           "https://example.com/webhook",
-			EventType:     "test.event",
-			Payload:       map[string]interface{}{"index": i},
-			AttemptNumber: 1,
-			DeliveryMode:  types.DeliveryModeAsync,
-			MaxRetries:    5,
-			RetryStrategy: types.RetryStrategyExponential,
-			EnqueuedAt:    time.Now(),
-		}
+		msg := util.NewTestMessage(
+			util.WithDeliveryID(fmt.Sprintf("delivery-%d", i)),
+			util.WithPayload(map[string]interface{}{"index": i}),
+		)
 		err := q.Enqueue(ctx, msg)
 		if err != nil {
 			t.Fatalf("failed to enqueue webhook: %v", err)
 		}
+	}
+
+	receivedCount := 0
+	timeout := time.After(5 * time.Second)
+	for receivedCount < messageCount {
+		select {
+		case <-received:
+			receivedCount++
+		case <-timeout:
+			t.Fatalf("timeout: only received %d/%d messages", receivedCount, messageCount)
+		}
+	}
+}
+
+func TestEnqueueBatch(t *testing.T) {
+	q := util.SetupQueue(t)
+
+	messageCount := 10
+	received := make(chan types.QueueMessage, messageCount)
+	err := q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
+		received <- msg
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to start worker: %v", err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	// Create batch of messages
+	messages := make([]types.QueueMessage, messageCount)
+	for i := 0; i < messageCount; i++ {
+		messages[i] = util.NewTestMessage(
+			util.WithDeliveryID(fmt.Sprintf("batch-delivery-%d", i)),
+			util.WithPayload(map[string]interface{}{"batch_index": i}),
+		)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Enqueue all at once
+	err = q.EnqueueBatch(ctx, messages)
+	if err != nil {
+		t.Fatalf("failed to enqueue batch: %v", err)
 	}
 
 	receivedCount := 0
