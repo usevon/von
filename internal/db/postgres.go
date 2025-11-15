@@ -45,6 +45,7 @@ func (db *DB) AutoMigrate() error {
 		&types.EventSchema{},
 		&types.UsageMetrics{},
 		&types.TunnelSession{},
+		&types.IdempotencyKey{},
 	)
 }
 
