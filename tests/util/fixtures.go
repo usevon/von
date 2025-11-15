@@ -54,8 +54,10 @@ type EndpointOptions struct {
 	ApplicationID  string
 	UID            string
 	URL            string
+	Description    string
 	SigningAlgo    types.SignatureAlgo
 	Secrets        types.JSONB
+	EventFilters   types.JSONB
 	Status         types.EndpointStatus
 	HealthScore    int
 	RetryStrategy  types.RetryStrategy
@@ -91,8 +93,10 @@ func NewTestEndpoint(opts ...func(*EndpointOptions)) types.Endpoint {
 		ApplicationID:  options.ApplicationID,
 		UID:            options.UID,
 		URL:            options.URL,
+		Description:    options.Description,
 		SigningAlgo:    options.SigningAlgo,
 		Secrets:        options.Secrets,
+		EventFilters:   options.EventFilters,
 		Status:         options.Status,
 		HealthScore:    options.HealthScore,
 		RetryStrategy:  options.RetryStrategy,

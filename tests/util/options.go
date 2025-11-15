@@ -125,6 +125,27 @@ func WithTimeoutSeconds(timeout int) func(*EndpointOptions) {
 	}
 }
 
+// WithFilterMode sets the endpoint filter mode
+func WithFilterMode(mode types.FilterMode) func(*EndpointOptions) {
+	return func(opts *EndpointOptions) {
+		opts.FilterMode = mode
+	}
+}
+
+// WithDescription sets the endpoint description
+func WithDescription(desc string) func(*EndpointOptions) {
+	return func(opts *EndpointOptions) {
+		opts.Description = desc
+	}
+}
+
+// WithEventFilters sets the event filters for the endpoint
+func WithEventFilters(filters types.JSONB) func(*EndpointOptions) {
+	return func(opts *EndpointOptions) {
+		opts.EventFilters = filters
+	}
+}
+
 // Event option functions
 
 // WithEventID sets the event ID

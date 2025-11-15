@@ -7,23 +7,25 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/pkg/types"
 	"gorm.io/gorm"
 )
 
+// EventsHandler serves HTTP requests for webhook event creation and management.
 type EventsHandler struct {
 	db        *gorm.DB
-	publisher *queue.Publisher
+	publisher WebhookPublisher
 }
 
-func NewEventsHandler(db *gorm.DB, publisher *queue.Publisher) *EventsHandler {
+// NewEventsHandler returns a new events handler with the given database and publisher.
+func NewEventsHandler(db *gorm.DB, publisher WebhookPublisher) *EventsHandler {
 	return &EventsHandler{
 		db:        db,
 		publisher: publisher,
 	}
 }
 
+// CreateEventRequest contains the parameters for creating a new webhook event.
 type CreateEventRequest struct {
 	ApplicationID string                 `json:"application_id"`
 	EventType     string                 `json:"event_type"`
@@ -32,6 +34,7 @@ type CreateEventRequest struct {
 	DeliveryMode  string                 `json:"delivery_mode,omitempty"`
 }
 
+// CreateEventResponse contains the result of creating a webhook event.
 type CreateEventResponse struct {
 	EventID      string   `json:"event_id"`
 	DeliveryIDs  []string `json:"delivery_ids"`
@@ -39,6 +42,7 @@ type CreateEventResponse struct {
 	QueuedAt     int64    `json:"queued_at"`
 }
 
+// CreateEvent creates a new webhook event and queues deliveries to matching endpoints.
 func (h *EventsHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req CreateEventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -53,6 +57,11 @@ func (h *EventsHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	if req.EventType == "" {
 		BadRequest(w, "event_type is required")
+		return
+	}
+
+	if req.Payload == nil || len(req.Payload) == 0 {
+		BadRequest(w, "payload is required")
 		return
 	}
 
@@ -166,6 +175,7 @@ func (h *EventsHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// eventMatchesEndpoint reports whether the event matches the endpoint's filter configuration.
 func (h *EventsHandler) eventMatchesEndpoint(event *types.Event, endpoint *types.Endpoint) bool {
 	if len(endpoint.EventFilters) == 0 {
 		return endpoint.FilterMode == types.FilterModeAllow

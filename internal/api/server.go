@@ -1,24 +1,33 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/usevon/von/internal/queue"
+	"github.com/usevon/von/pkg/types"
 	vonmiddleware "github.com/usevon/von/internal/middleware"
 	"gorm.io/gorm"
 )
 
+// WebhookPublisher publishes webhook messages to the queue.
+type WebhookPublisher interface {
+	PublishWebhook(ctx context.Context, msg types.QueueMessage) error
+	Close()
+}
+
+// Server serves the webhook HTTP API.
 type Server struct {
 	db        *gorm.DB
-	publisher *queue.Publisher
+	publisher WebhookPublisher
 	router    *chi.Mux
 }
 
-func NewServer(db *gorm.DB, publisher *queue.Publisher) *Server {
+// NewServer returns a new API server with the given database and publisher.
+func NewServer(db *gorm.DB, publisher WebhookPublisher) *Server {
 	s := &Server{
 		db:        db,
 		publisher: publisher,
@@ -29,6 +38,7 @@ func NewServer(db *gorm.DB, publisher *queue.Publisher) *Server {
 	return s
 }
 
+// setupRoutes registers all API routes and middleware.
 func (s *Server) setupRoutes() {
 	s.router.Use(middleware.RequestID)
 	s.router.Use(middleware.RealIP)
@@ -71,11 +81,13 @@ func (s *Server) setupRoutes() {
 	})
 }
 
+// Start starts the HTTP server on the specified address.
 func (s *Server) Start(addr string) error {
 	log.Printf("API server starting on %s", addr)
 	return http.ListenAndServe(addr, s.router)
 }
 
+// Handler returns the HTTP handler for the server.
 func (s *Server) Handler() http.Handler {
 	return s.router
 }

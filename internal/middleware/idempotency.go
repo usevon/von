@@ -47,7 +47,9 @@ func IdempotencyMiddleware(db *gorm.DB) func(http.Handler) http.Handler {
 			err := db.Where("key = ? AND expires_at > ?", idempotencyKey, time.Now()).First(&existing).Error
 
 			if err == nil {
-				w.WriteHeader(existing.StatusCode)
+				// Return 200 OK for cached responses instead of the original status code
+				// to indicate this is a duplicate request
+				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(existing.ResponseBody))
 				return
 			}

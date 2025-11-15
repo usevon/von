@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -11,14 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// EndpointsHandler serves HTTP requests for webhook endpoint management.
 type EndpointsHandler struct {
 	db *gorm.DB
 }
 
+// NewEndpointsHandler returns a new endpoints handler with the given database.
 func NewEndpointsHandler(db *gorm.DB) *EndpointsHandler {
 	return &EndpointsHandler{db: db}
 }
 
+// CreateEndpointRequest contains the parameters for creating a new webhook endpoint.
 type CreateEndpointRequest struct {
 	ApplicationID  string              `json:"application_id"`
 	URL            string              `json:"url"`
@@ -32,6 +36,7 @@ type CreateEndpointRequest struct {
 	MaxRetries     int                 `json:"max_retries,omitempty"`
 }
 
+// UpdateEndpointRequest contains the parameters for updating an existing webhook endpoint.
 type UpdateEndpointRequest struct {
 	URL            *string             `json:"url,omitempty"`
 	Description    *string             `json:"description,omitempty"`
@@ -43,6 +48,7 @@ type UpdateEndpointRequest struct {
 	Status         *string             `json:"status,omitempty"`
 }
 
+// CreateEndpoint creates a new webhook endpoint.
 func (h *EndpointsHandler) CreateEndpoint(w http.ResponseWriter, r *http.Request) {
 	var req CreateEndpointRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -57,6 +63,13 @@ func (h *EndpointsHandler) CreateEndpoint(w http.ResponseWriter, r *http.Request
 
 	if req.URL == "" {
 		BadRequest(w, "url is required")
+		return
+	}
+
+	// Validate URL format
+	parsedURL, err := url.ParseRequestURI(req.URL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		BadRequest(w, "invalid url format")
 		return
 	}
 
@@ -141,6 +154,7 @@ func (h *EndpointsHandler) CreateEndpoint(w http.ResponseWriter, r *http.Request
 	Created(w, endpoint)
 }
 
+// ListEndpoints lists all endpoints for an application.
 func (h *EndpointsHandler) ListEndpoints(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("application_id")
 	if appID == "" {
@@ -154,15 +168,18 @@ func (h *EndpointsHandler) ListEndpoints(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	Success(w, endpoints)
+	Success(w, map[string]interface{}{
+		"endpoints": endpoints,
+	})
 }
 
+// GetEndpoint retrieves a single endpoint by ID.
 func (h *EndpointsHandler) GetEndpoint(w http.ResponseWriter, r *http.Request) {
 	endpointID := chi.URLParam(r, "id")
 
 	var endpoint types.Endpoint
 	if err := h.db.Where("id = ?", endpointID).First(&endpoint).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == gorm.ErrRecordNotFound || isInvalidUUIDError(err) {
 			NotFound(w, "Endpoint not found")
 		} else {
 			InternalError(w, "Failed to fetch endpoint")
@@ -173,6 +190,7 @@ func (h *EndpointsHandler) GetEndpoint(w http.ResponseWriter, r *http.Request) {
 	Success(w, endpoint)
 }
 
+// UpdateEndpoint updates an existing endpoint.
 func (h *EndpointsHandler) UpdateEndpoint(w http.ResponseWriter, r *http.Request) {
 	endpointID := chi.URLParam(r, "id")
 
@@ -246,12 +264,17 @@ func (h *EndpointsHandler) UpdateEndpoint(w http.ResponseWriter, r *http.Request
 	Success(w, endpoint)
 }
 
+// DeleteEndpoint deletes an endpoint.
 func (h *EndpointsHandler) DeleteEndpoint(w http.ResponseWriter, r *http.Request) {
 	endpointID := chi.URLParam(r, "id")
 
 	result := h.db.Where("id = ?", endpointID).Delete(&types.Endpoint{})
 	if result.Error != nil {
-		InternalError(w, "Failed to delete endpoint")
+		if isInvalidUUIDError(result.Error) {
+			NotFound(w, "Endpoint not found")
+		} else {
+			InternalError(w, "Failed to delete endpoint")
+		}
 		return
 	}
 
@@ -260,5 +283,7 @@ func (h *EndpointsHandler) DeleteEndpoint(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	Success(w, map[string]interface{}{
+		"message": "Endpoint deleted successfully",
+	})
 }

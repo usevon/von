@@ -6,23 +6,25 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/pkg/types"
 	"gorm.io/gorm"
 )
 
+// DeliveriesHandler serves HTTP requests for webhook delivery management.
 type DeliveriesHandler struct {
 	db        *gorm.DB
-	publisher *queue.Publisher
+	publisher WebhookPublisher
 }
 
-func NewDeliveriesHandler(db *gorm.DB, publisher *queue.Publisher) *DeliveriesHandler {
+// NewDeliveriesHandler returns a new deliveries handler with the given database and publisher.
+func NewDeliveriesHandler(db *gorm.DB, publisher WebhookPublisher) *DeliveriesHandler {
 	return &DeliveriesHandler{
 		db:        db,
 		publisher: publisher,
 	}
 }
 
+// ListDeliveries lists deliveries with optional filters.
 func (h *DeliveriesHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 	eventID := r.URL.Query().Get("event_id")
 	endpointID := r.URL.Query().Get("endpoint_id")
@@ -46,15 +48,18 @@ func (h *DeliveriesHandler) ListDeliveries(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	Success(w, deliveries)
+	Success(w, map[string]interface{}{
+		"deliveries": deliveries,
+	})
 }
 
+// GetDelivery handles GET /v1/deliveries/{id} - retrieves a single delivery by ID.
 func (h *DeliveriesHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
 	var delivery types.EventDelivery
 	if err := h.db.Where("id = ?", deliveryID).First(&delivery).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == gorm.ErrRecordNotFound || isInvalidUUIDError(err) {
 			NotFound(w, "Delivery not found")
 		} else {
 			InternalError(w, "Failed to fetch delivery")
@@ -65,6 +70,7 @@ func (h *DeliveriesHandler) GetDelivery(w http.ResponseWriter, r *http.Request) 
 	Success(w, delivery)
 }
 
+// GetDeliveryAttempts lists all attempts for a delivery.
 func (h *DeliveriesHandler) GetDeliveryAttempts(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
@@ -74,15 +80,18 @@ func (h *DeliveriesHandler) GetDeliveryAttempts(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	Success(w, attempts)
+	Success(w, map[string]interface{}{
+		"attempts": attempts,
+	})
 }
 
+// RetryDelivery manually retries a failed delivery.
 func (h *DeliveriesHandler) RetryDelivery(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
 	var delivery types.EventDelivery
 	if err := h.db.Where("id = ?", deliveryID).First(&delivery).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == gorm.ErrRecordNotFound || isInvalidUUIDError(err) {
 			NotFound(w, "Delivery not found")
 		} else {
 			InternalError(w, "Failed to fetch delivery")
