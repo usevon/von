@@ -1,29 +1,57 @@
 package db
 
 import (
-	"database/sql"
-	_ "github.com/lib/pq"
+	"fmt"
+
+	"github.com/usevon/von/pkg/types"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type DB struct {
-	conn *sql.DB
+	*gorm.DB
 }
 
 func New(connString string) (*DB, error) {
-	conn, err := sql.Open("postgres", connString)
+	db, err := gorm.Open(postgres.Open(connString), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	if err := conn.Ping(); err != nil {
-		return nil, err
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database instance: %w", err)
 	}
 
-	return &DB{conn: conn}, nil
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	return &DB{DB: db}, nil
+}
+
+func (db *DB) AutoMigrate() error {
+	// Only migrate core webhook tables
+	// Auth tables (user, organization, member, apikey) are managed by the dashboard via Drizzle
+	return db.DB.AutoMigrate(
+		&types.Application{},
+		&types.Endpoint{},
+		&types.Event{},
+		&types.EventDelivery{},
+		&types.DeliveryAttempt{},
+		&types.EventSchema{},
+		&types.UsageMetrics{},
+		&types.TunnelSession{},
+	)
 }
 
 func (db *DB) Close() error {
-	return db.conn.Close()
+	sqlDB, err := db.DB.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }
-
-// TODO: Add methods for webhook_logs, webhook_events, webhook_attempts
