@@ -13,21 +13,20 @@ import (
 var testRabbitMQURL = util.GetRabbitMQURL()
 
 func TestQueueSetup(t *testing.T) {
-	publisher, err := queue.NewPublisher(testRabbitMQURL)
+	q, err := queue.NewQueue(testRabbitMQURL)
 	if err != nil {
-		t.Fatalf("failed to create publisher: %v", err)
+		t.Fatalf("failed to create queue: %v", err)
 	}
-	defer publisher.Close()
+	defer q.Close()
 
 	received := make(chan types.QueueMessage, 1)
-	consumer, err := queue.NewConsumer(testRabbitMQURL, func(ctx context.Context, msg types.QueueMessage) error {
+	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("failed to create consumer: %v", err)
+		t.Fatalf("failed to start worker: %v", err)
 	}
-	defer consumer.Close()
 
 	time.Sleep(1 * time.Second)
 
@@ -48,9 +47,9 @@ func TestQueueSetup(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = publisher.PublishWebhook(ctx, testMsg)
+	err = q.Enqueue(ctx, testMsg)
 	if err != nil {
-		t.Fatalf("failed to publish test message: %v", err)
+		t.Fatalf("failed to enqueue message: %v", err)
 	}
 
 	select {
@@ -62,23 +61,20 @@ func TestQueueSetup(t *testing.T) {
 }
 
 func TestPublishAndConsume(t *testing.T) {
-	publisher, err := queue.NewPublisher(testRabbitMQURL)
+	q, err := queue.NewQueue(testRabbitMQURL)
 	if err != nil {
-		t.Fatalf("failed to create publisher: %v", err)
+		t.Fatalf("failed to create queue: %v", err)
 	}
-	defer publisher.Close()
+	defer q.Close()
 
 	received := make(chan types.QueueMessage, 1)
-	handler := func(ctx context.Context, msg types.QueueMessage) error {
+	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
-	}
-
-	consumer, err := queue.NewConsumer(testRabbitMQURL, handler)
+	})
 	if err != nil {
-		t.Fatalf("failed to create consumer: %v", err)
+		t.Fatalf("failed to start worker: %v", err)
 	}
-	defer consumer.Close()
 
 	time.Sleep(1 * time.Second)
 
@@ -101,9 +97,9 @@ func TestPublishAndConsume(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = publisher.PublishWebhook(ctx, testMsg)
+	err = q.Enqueue(ctx, testMsg)
 	if err != nil {
-		t.Fatalf("failed to publish webhook: %v", err)
+		t.Fatalf("failed to enqueue webhook: %v", err)
 	}
 
 	select {
@@ -132,24 +128,21 @@ func TestPublishAndConsume(t *testing.T) {
 }
 
 func TestPublishMultipleMessages(t *testing.T) {
-	publisher, err := queue.NewPublisher(testRabbitMQURL)
+	q, err := queue.NewQueue(testRabbitMQURL)
 	if err != nil {
-		t.Fatalf("failed to create publisher: %v", err)
+		t.Fatalf("failed to create queue: %v", err)
 	}
-	defer publisher.Close()
+	defer q.Close()
 
 	messageCount := 10
 	received := make(chan types.QueueMessage, messageCount)
-	handler := func(ctx context.Context, msg types.QueueMessage) error {
+	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		received <- msg
 		return nil
-	}
-
-	consumer, err := queue.NewConsumer(testRabbitMQURL, handler)
+	})
 	if err != nil {
-		t.Fatalf("failed to create consumer: %v", err)
+		t.Fatalf("failed to start worker: %v", err)
 	}
-	defer consumer.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -168,9 +161,9 @@ func TestPublishMultipleMessages(t *testing.T) {
 			RetryStrategy: types.RetryStrategyExponential,
 			EnqueuedAt:    time.Now(),
 		}
-		err := publisher.PublishWebhook(ctx, msg)
+		err := q.Enqueue(ctx, msg)
 		if err != nil {
-			t.Fatalf("failed to publish webhook: %v", err)
+			t.Fatalf("failed to enqueue webhook: %v", err)
 		}
 	}
 
@@ -188,26 +181,23 @@ func TestPublishMultipleMessages(t *testing.T) {
 
 func TestConsumerRetry(t *testing.T) {
 	t.Skip("Skipping retry test - flaky due to message leakage between tests")
-	publisher, err := queue.NewPublisher(testRabbitMQURL)
+	q, err := queue.NewQueue(testRabbitMQURL)
 	if err != nil {
-		t.Fatalf("failed to create publisher: %v", err)
+		t.Fatalf("failed to create queue: %v", err)
 	}
-	defer publisher.Close()
+	defer q.Close()
 
 	attempts := 0
-	handler := func(ctx context.Context, msg types.QueueMessage) error {
+	err = q.StartWorker(func(ctx context.Context, msg types.QueueMessage) error {
 		attempts++
 		if attempts < 3 {
 			return &testError{msg: "simulated failure"}
 		}
 		return nil
-	}
-
-	consumer, err := queue.NewConsumer(testRabbitMQURL, handler)
+	})
 	if err != nil {
-		t.Fatalf("failed to create consumer: %v", err)
+		t.Fatalf("failed to start worker: %v", err)
 	}
-	defer consumer.Close()
 
 	testMsg := types.QueueMessage{
 		DeliveryID:    "retry-test-delivery",
@@ -226,9 +216,9 @@ func TestConsumerRetry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err = publisher.PublishWebhook(ctx, testMsg)
+	err = q.Enqueue(ctx, testMsg)
 	if err != nil {
-		t.Fatalf("failed to publish webhook: %v", err)
+		t.Fatalf("failed to enqueue webhook: %v", err)
 	}
 
 	time.Sleep(2 * time.Second)
