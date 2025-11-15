@@ -91,6 +91,62 @@ func NewConsumerWithConfig(config Config, handler MessageHandler) (*Consumer, er
 	}, nil
 }
 
+// NewDLXConsumer creates a consumer for the dead letter exchange queue.
+func NewDLXConsumer(url string, handler MessageHandler) (*Consumer, error) {
+	config := DefaultConfig(url)
+
+	conn, err := rabbitmq.NewConn(
+		config.RabbitMQURL,
+		rabbitmq.WithConnectionOptionsReconnectInterval(config.ReconnectInterval),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to RabbitMQ at %s: %w", config.RabbitMQURL, err)
+	}
+
+	consumer, err := rabbitmq.NewConsumer(
+		conn,
+		WebhookDLXQueue,
+		rabbitmq.WithConsumerOptionsQueueDurable,
+		rabbitmq.WithConsumerOptionsExchangeName(WebhookDLXExchange),
+		rabbitmq.WithConsumerOptionsExchangeKind("topic"),
+		rabbitmq.WithConsumerOptionsExchangeDurable,
+		rabbitmq.WithConsumerOptionsRoutingKey("#"),
+		rabbitmq.WithConsumerOptionsConcurrency(config.Concurrency),
+		rabbitmq.WithConsumerOptionsConsumerName("von-dlx-monitor"),
+	)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to create DLX consumer: %w", err)
+	}
+
+	go func() {
+		err := consumer.Run(func(d rabbitmq.Delivery) rabbitmq.Action {
+			var msg types.QueueMessage
+			if err := json.Unmarshal(d.Body, &msg); err != nil {
+				log.Printf("[DLX] failed to unmarshal message: %v, body: %s", err, string(d.Body))
+				return rabbitmq.Ack
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			if err := handler(ctx, msg); err != nil {
+				log.Printf("[DLX] handler failed for message %s: %v", msg.DeliveryID, err)
+			}
+
+			return rabbitmq.Ack
+		})
+		if err != nil {
+			log.Printf("[DLX] consumer run error: %v", err)
+		}
+	}()
+
+	return &Consumer{
+		conn:     conn,
+		consumer: consumer,
+	}, nil
+}
+
 func (c *Consumer) Close() {
 	c.consumer.Close()
 	c.conn.Close()

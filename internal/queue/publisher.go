@@ -79,6 +79,29 @@ func (p *Publisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) 
 	return nil
 }
 
+// PublishWebhookToDLX publishes a message directly to the dead letter exchange (for testing).
+func (p *Publisher) PublishWebhookToDLX(ctx context.Context, msg types.QueueMessage) error {
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	err = p.publisher.PublishWithContext(
+		ctx,
+		payload,
+		[]string{"#"},
+		rabbitmq.WithPublishOptionsContentType("application/json"),
+		rabbitmq.WithPublishOptionsMandatory,
+		rabbitmq.WithPublishOptionsPersistentDelivery,
+		rabbitmq.WithPublishOptionsExchange(WebhookDLXExchange),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to publish message to DLX: %w", err)
+	}
+
+	return nil
+}
+
 // Close closes the publisher and its connection.
 func (p *Publisher) Close() {
 	p.publisher.Close()
