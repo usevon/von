@@ -57,76 +57,48 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 
 	orgID := uuid.New().String()
 	appID := uuid.New().String()
-	endpointID := uuid.New().String()
-	eventID := uuid.New().String()
-	deliveryID := uuid.New().String()
 
-	app := types.Application{
-		ID:             appID,
-		OrganizationID: orgID,
-		Name:           "Test App",
-		UID:            "app_test",
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
+	app := util.NewTestApplication(
+		util.WithAppID(appID),
+		util.WithOrganizationID(orgID),
+		util.WithAppName("Test App"),
+	)
 
 	if err := database.DB.Create(&app).Error; err != nil {
 		t.Fatalf("failed to create application: %v", err)
 	}
 
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: appID,
-		UID:           "ep_test",
-		URL:           server.URL,
-		SigningAlgo:   types.SignatureAlgoSHA256,
-		Secrets: types.JSONB{
-			"current": "test-secret-key",
-		},
-		Status:         types.EndpointStatusHealthy,
-		HealthScore:    100,
-		RetryStrategy:  types.RetryStrategyExponential,
-		MaxRetries:     3,
-		TimeoutSeconds: 30,
-		FilterMode:     types.FilterModeAllow,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(appID),
+		util.WithURL(server.URL),
+		util.WithSecret("test-secret-key"),
+		util.WithEndpointMaxRetries(3),
+	)
 
 	if err := database.DB.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	event := types.Event{
-		ID:             eventID,
-		ApplicationID:  appID,
-		OrganizationID: orgID,
-		EventType:      "user.created",
-		EventVersion:   "1",
-		Payload: types.JSONB{
+	event := util.NewTestEvent(
+		util.WithEventApplicationID(appID),
+		util.WithEventOrganizationID(orgID),
+		util.WithEventTypeForEvent("user.created"),
+		util.WithEventPayload(types.JSONB{
 			"user_id":  "12345",
 			"username": "testuser",
 			"email":    "test@example.com",
-		},
-		PayloadSize:  100,
-		DeliveryMode: types.DeliveryModeAsync,
-		CreatedAt:    time.Now(),
-	}
+		}),
+	)
 
 	if err := database.DB.Create(&event).Error; err != nil {
 		t.Fatalf("failed to create event: %v", err)
 	}
 
-	delivery := types.EventDelivery{
-		ID:          deliveryID,
-		EventID:     eventID,
-		EndpointID:  endpointID,
-		Status:      types.DeliveryStatusQueued,
-		AttemptCount: 0,
-		MaxAttempts: 3,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
+	delivery := util.NewTestDelivery(
+		util.WithEventIDForDelivery(event.ID),
+		util.WithEndpointIDForDelivery(endpoint.ID),
+		util.WithMaxAttempts(3),
+	)
 
 	if err := database.DB.Create(&delivery).Error; err != nil {
 		t.Fatalf("failed to create delivery: %v", err)
@@ -138,21 +110,16 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	}
 	defer publisher.Close()
 
-	msg := types.QueueMessage{
-		DeliveryID:    deliveryID,
-		EventID:       eventID,
-		EndpointID:    endpointID,
-		URL:           server.URL,
-		EventType:     "user.created",
-		Payload:       event.Payload,
-		Headers:       map[string]string{},
-		Secret:        "test-secret-key",
-		AttemptNumber: 1,
-		DeliveryMode:  types.DeliveryModeAsync,
-		MaxRetries:    3,
-		RetryStrategy: types.RetryStrategyExponential,
-		EnqueuedAt:    time.Now(),
-	}
+	msg := util.NewTestMessage(
+		util.WithDeliveryID(delivery.ID),
+		util.WithMessageEventID(event.ID),
+		util.WithMessageEndpointID(endpoint.ID),
+		util.WithMessageURL(server.URL),
+		util.WithEventType("user.created"),
+		util.WithPayload(event.Payload),
+		util.WithMessageSecret("test-secret-key"),
+		util.WithMaxRetries(3),
+	)
 
 	ctx := context.Background()
 	if err := publisher.PublishWebhook(ctx, msg); err != nil {
@@ -180,7 +147,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	var updatedDelivery types.EventDelivery
-	if err := database.DB.Where("id = ?", deliveryID).First(&updatedDelivery).Error; err != nil {
+	if err := database.DB.Where("id = ?", delivery.ID).First(&updatedDelivery).Error; err != nil {
 		t.Fatalf("failed to fetch updated delivery: %v", err)
 	}
 
@@ -225,63 +192,37 @@ func TestWebhookRetry(t *testing.T) {
 
 	orgID := uuid.New().String()
 	appID := uuid.New().String()
-	endpointID := uuid.New().String()
-	eventID := uuid.New().String()
-	deliveryID := uuid.New().String()
 
-	app := types.Application{
-		ID:             appID,
-		OrganizationID: orgID,
-		Name:           "Test App",
-		UID:            "app_retry",
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
+	app := util.NewTestApplication(
+		util.WithAppID(appID),
+		util.WithOrganizationID(orgID),
+		util.WithAppName("Test App"),
+		util.WithAppUID("app_retry"),
+	)
 	database.DB.Create(&app)
 
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: appID,
-		UID:           "ep_retry",
-		URL:           server.URL,
-		SigningAlgo:   types.SignatureAlgoSHA256,
-		Secrets: types.JSONB{
-			"current": "test-secret",
-		},
-		Status:         types.EndpointStatusHealthy,
-		HealthScore:    100,
-		RetryStrategy:  types.RetryStrategyExponential,
-		MaxRetries:     5,
-		TimeoutSeconds: 30,
-		FilterMode:     types.FilterModeAllow,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(appID),
+		util.WithURL(server.URL),
+		util.WithEndpointUID("ep_retry"),
+		util.WithSecret("test-secret"),
+		util.WithEndpointMaxRetries(5),
+	)
 	database.DB.Create(&endpoint)
 
-	event := types.Event{
-		ID:             eventID,
-		ApplicationID:  appID,
-		OrganizationID: orgID,
-		EventType:      "test.retry",
-		EventVersion:   "1",
-		Payload:        types.JSONB{"test": "data"},
-		PayloadSize:    50,
-		DeliveryMode:   types.DeliveryModeAsync,
-		CreatedAt:      time.Now(),
-	}
+	event := util.NewTestEvent(
+		util.WithEventApplicationID(appID),
+		util.WithEventOrganizationID(orgID),
+		util.WithEventTypeForEvent("test.retry"),
+		util.WithEventPayload(types.JSONB{"test": "data"}),
+	)
 	database.DB.Create(&event)
 
-	delivery := types.EventDelivery{
-		ID:          deliveryID,
-		EventID:     eventID,
-		EndpointID:  endpointID,
-		Status:      types.DeliveryStatusQueued,
-		AttemptCount: 0,
-		MaxAttempts: 5,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
+	delivery := util.NewTestDelivery(
+		util.WithEventIDForDelivery(event.ID),
+		util.WithEndpointIDForDelivery(endpoint.ID),
+		util.WithMaxAttempts(5),
+	)
 	database.DB.Create(&delivery)
 
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
@@ -290,21 +231,16 @@ func TestWebhookRetry(t *testing.T) {
 	}
 	defer publisher.Close()
 
-	msg := types.QueueMessage{
-		DeliveryID:    deliveryID,
-		EventID:       eventID,
-		EndpointID:    endpointID,
-		URL:           server.URL,
-		EventType:     "test.retry",
-		Payload:       event.Payload,
-		Headers:       map[string]string{},
-		Secret:        "test-secret",
-		AttemptNumber: 1,
-		DeliveryMode:  types.DeliveryModeAsync,
-		MaxRetries:    5,
-		RetryStrategy: types.RetryStrategyExponential,
-		EnqueuedAt:    time.Now(),
-	}
+	msg := util.NewTestMessage(
+		util.WithDeliveryID(delivery.ID),
+		util.WithMessageEventID(event.ID),
+		util.WithMessageEndpointID(endpoint.ID),
+		util.WithMessageURL(server.URL),
+		util.WithEventType("test.retry"),
+		util.WithPayload(event.Payload),
+		util.WithMessageSecret("test-secret"),
+		util.WithMaxRetries(5),
+	)
 
 	ctx := context.Background()
 	if err := publisher.PublishWebhook(ctx, msg); err != nil {
@@ -324,7 +260,7 @@ func TestWebhookRetry(t *testing.T) {
 	}
 
 	var updatedDelivery types.EventDelivery
-	database.DB.Where("id = ?", deliveryID).First(&updatedDelivery)
+	database.DB.Where("id = ?", delivery.ID).First(&updatedDelivery)
 
 	if updatedDelivery.Status != types.DeliveryStatusDelivered {
 		t.Errorf("expected status delivered after retries, got %s", updatedDelivery.Status)
