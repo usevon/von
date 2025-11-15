@@ -2,6 +2,8 @@ package types
 
 import "time"
 
+// Application represents a top-level container for webhook endpoints within an organization.
+// Each application has its own UID, rate limits, and metadata.
 type Application struct {
 	ID             string    `gorm:"type:uuid;primaryKey"`
 	OrganizationID string    `gorm:"type:uuid;index;not null"`
@@ -17,10 +19,13 @@ type Application struct {
 	Endpoints []Endpoint `gorm:"foreignKey:ApplicationID"`
 }
 
+// TableName returns the database table name for Application.
 func (Application) TableName() string {
 	return "application"
 }
 
+// Endpoint represents a webhook destination URL with circuit breaking, secrets, and event filtering.
+// Each endpoint belongs to an application and tracks health metrics to auto-disable failing destinations.
 type Endpoint struct {
 	ID            string    `gorm:"type:uuid;primaryKey"`
 	ApplicationID string    `gorm:"type:uuid;index;not null"`
@@ -62,10 +67,13 @@ type Endpoint struct {
 	Application Application `gorm:"foreignKey:ApplicationID;constraint:OnDelete:CASCADE"`
 }
 
+// TableName returns the database table name for Endpoint.
 func (Endpoint) TableName() string {
 	return "endpoint"
 }
 
+// Event represents a webhook message with idempotency support and delivery tracking.
+// Events can be delivered synchronously or asynchronously based on the delivery mode.
 type Event struct {
 	ID             string     `gorm:"type:uuid;primaryKey"`
 	ApplicationID  string     `gorm:"type:uuid;index;not null"`
@@ -93,10 +101,13 @@ type Event struct {
 	Deliveries []EventDelivery `gorm:"foreignKey:EventID"`
 }
 
+// TableName returns the database table name for Event.
 func (Event) TableName() string {
 	return "event"
 }
 
+// EventDelivery represents a scheduled delivery of an event to a specific endpoint.
+// Tracks retry scheduling, status transitions, and latency metrics for each delivery.
 type EventDelivery struct {
 	ID         string     `gorm:"type:uuid;primaryKey"`
 	EventID    string     `gorm:"type:uuid;index;not null"`
@@ -125,10 +136,13 @@ type EventDelivery struct {
 	Attempts []DeliveryAttempt `gorm:"foreignKey:DeliveryID"`
 }
 
+// TableName returns the database table name for EventDelivery.
 func (EventDelivery) TableName() string {
 	return "event_delivery"
 }
 
+// DeliveryAttempt represents a single HTTP request attempt for a webhook delivery.
+// Stores complete request/response details including headers, body, signatures, and timing.
 type DeliveryAttempt struct {
 	ID         string     `gorm:"type:uuid;primaryKey"`
 	DeliveryID string     `gorm:"type:uuid;index;not null"`
@@ -157,10 +171,13 @@ type DeliveryAttempt struct {
 	CreatedAt    time.Time
 }
 
+// TableName returns the database table name for DeliveryAttempt.
 func (DeliveryAttempt) TableName() string {
 	return "delivery_attempt"
 }
 
+// EventSchema represents a versioned JSON schema definition for validating webhook event payloads.
+// Provides schema registry functionality with examples and deprecation support.
 type EventSchema struct {
 	ID            string    `gorm:"type:uuid;primaryKey"`
 	ApplicationID string    `gorm:"type:uuid;index;not null"`
@@ -176,6 +193,7 @@ type EventSchema struct {
 	Application Application `gorm:"foreignKey:ApplicationID;constraint:OnDelete:CASCADE"`
 }
 
+// TableName returns the database table name for EventSchema.
 func (EventSchema) TableName() string {
 	return "event_schema"
 }

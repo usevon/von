@@ -2,6 +2,7 @@ package types
 
 import "time"
 
+// QueueMessage represents a webhook delivery job in RabbitMQ.
 type QueueMessage struct {
 	DeliveryID    string                 `json:"delivery_id"`
 	EventID       string                 `json:"event_id"`
