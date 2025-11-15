@@ -28,14 +28,12 @@ func NewConsumer(url string, handler MessageHandler) (*Consumer, error) {
 	consumer, err := rabbitmq.NewConsumer(
 		conn,
 		WebhookQueue,
-		rabbitmq.WithConsumerOptionsRoutingKey(WebhookRoutingKey),
-		rabbitmq.WithConsumerOptionsExchangeName(WebhookExchange),
 		rabbitmq.WithConsumerOptionsQueueDurable,
-		rabbitmq.WithConsumerOptionsQueueArgs(rabbitmq.Table{
-			"x-queue-type":           "quorum",
-			"x-dead-letter-exchange": WebhookDLXExchange,
-			"x-delivery-limit":       5,
-		}),
+		rabbitmq.WithConsumerOptionsExchangeName(WebhookExchange),
+		rabbitmq.WithConsumerOptionsExchangeKind("topic"),
+		rabbitmq.WithConsumerOptionsExchangeDurable,
+		rabbitmq.WithConsumerOptionsExchangeDeclare,
+		rabbitmq.WithConsumerOptionsRoutingKey(WebhookRoutingKey),
 		rabbitmq.WithConsumerOptionsConcurrency(10),
 		rabbitmq.WithConsumerOptionsConsumerName("von-worker"),
 	)
@@ -44,29 +42,29 @@ func NewConsumer(url string, handler MessageHandler) (*Consumer, error) {
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
-	err = consumer.Run(func(d rabbitmq.Delivery) rabbitmq.Action {
-		var msg types.QueueMessage
-		if err := json.Unmarshal(d.Body, &msg); err != nil {
-			log.Printf("Failed to unmarshal message: %v", err)
-			return rabbitmq.NackDiscard
-		}
-
-		ctx := context.Background()
-		if err := handler(ctx, msg); err != nil {
-			log.Printf("Handler failed for delivery %s: %v", msg.DeliveryID, err)
-
-			if msg.AttemptNumber < msg.MaxRetries {
-				return rabbitmq.NackRequeue
+	go func() {
+		err := consumer.Run(func(d rabbitmq.Delivery) rabbitmq.Action {
+			var msg types.QueueMessage
+			if err := json.Unmarshal(d.Body, &msg); err != nil {
+				log.Printf("failed to unmarshal message: %v", err)
+				return rabbitmq.NackDiscard
 			}
-			return rabbitmq.NackDiscard
-		}
 
-		return rabbitmq.Ack
-	})
-	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to start consumer: %w", err)
-	}
+			ctx := context.Background()
+			if err := handler(ctx, msg); err != nil {
+				log.Printf("handler failed for delivery %s: %v", msg.DeliveryID, err)
+				if msg.AttemptNumber < msg.MaxRetries {
+					return rabbitmq.NackRequeue
+				}
+				return rabbitmq.NackDiscard
+			}
+
+			return rabbitmq.Ack
+		})
+		if err != nil {
+			log.Printf("consumer error: %v", err)
+		}
+	}()
 
 	return &Consumer{
 		conn:     conn,

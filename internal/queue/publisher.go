@@ -55,12 +55,14 @@ func (p *Publisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) 
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	err = p.publisher.Publish(
+	err = p.publisher.PublishWithContext(
+		ctx,
 		payload,
 		[]string{WebhookRoutingKey},
 		rabbitmq.WithPublishOptionsContentType("application/json"),
 		rabbitmq.WithPublishOptionsMandatory,
 		rabbitmq.WithPublishOptionsPersistentDelivery,
+		rabbitmq.WithPublishOptionsExchange(WebhookExchange),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to publish message: %w", err)
