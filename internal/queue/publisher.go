@@ -79,6 +79,16 @@ func (p *Publisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) 
 	return nil
 }
 
+// PublishBatch publishes multiple webhook delivery messages in a batch.
+func (p *Publisher) PublishBatch(ctx context.Context, messages []types.QueueMessage) error {
+	for _, msg := range messages {
+		if err := p.PublishWebhook(ctx, msg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // PublishWebhookToDLX publishes a message directly to the dead letter exchange (for testing).
 func (p *Publisher) PublishWebhookToDLX(ctx context.Context, msg types.QueueMessage) error {
 	payload, err := json.Marshal(msg)
