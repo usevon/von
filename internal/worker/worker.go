@@ -20,6 +20,7 @@ type Worker struct {
 	client       *Client
 	usageTracker *usage.Tracker
 	consumer     *queue.Consumer
+	publisher    *queue.Publisher
 	rabbitmqURL  string
 }
 
@@ -32,8 +33,16 @@ func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker,
 		rabbitmqURL:  rabbitmqURL,
 	}
 
+	// Create publisher for requeuing messages (reuse connection)
+	publisher, err := queue.NewPublisher(rabbitmqURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create publisher: %w", err)
+	}
+	w.publisher = publisher
+
 	consumer, err := queue.NewConsumer(rabbitmqURL, w.handleMessage)
 	if err != nil {
+		publisher.Close()
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 	w.consumer = consumer
@@ -50,7 +59,9 @@ func (w *Worker) Start() error {
 // Stop gracefully shuts down the worker.
 func (w *Worker) Stop() error {
 	log.Println("worker stopping")
-	return w.consumer.Close()
+	w.consumer.Close()
+	w.publisher.Close()
+	return nil
 }
 
 // handleMessage processes a single webhook delivery message from the queue.
@@ -95,6 +106,11 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		reqHeaders[k] = v
 	}
 
+	respHeaders := make(types.JSONB)
+	for k, v := range result.ResponseHeaders {
+		respHeaders[k] = v
+	}
+
 	responseBody := result.ResponseBody
 	if len(responseBody) > 10000 {
 		responseBody = responseBody[:10000]
@@ -108,7 +124,7 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		RequestHeaders:  reqHeaders,
 		RequestBody:     string(payloadBytes),
 		StatusCode:      result.StatusCode,
-		ResponseHeaders: types.JSONB(result.ResponseHeaders),
+		ResponseHeaders: respHeaders,
 		ResponseBody:    responseBody,
 		LatencyMS:       result.LatencyMS,
 		StartedAt:       now.Add(-time.Duration(result.LatencyMS) * time.Millisecond),
@@ -176,14 +192,8 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 
 // requeueDelivery schedules a retry after a delay.
 func (w *Worker) requeueDelivery(ctx context.Context, msg types.QueueMessage, delay time.Duration, rabbitmqURL string) error {
-	publisher, err := queue.NewPublisher(rabbitmqURL)
-	if err != nil {
-		return err
-	}
-	defer publisher.Close()
-
 	time.Sleep(delay)
-	return publisher.PublishWebhook(ctx, msg)
+	return w.publisher.PublishWebhook(ctx, msg)
 }
 
 // updateDeliveryStatus updates the delivery status in the database.
