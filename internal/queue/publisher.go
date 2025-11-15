@@ -23,12 +23,12 @@ type Publisher struct {
 	publisher *rabbitmq.Publisher
 }
 
-// NewPublisher creates a new Publisher connected to RabbitMQ.
+// NewPublisher returns a new publisher connected to RabbitMQ.
 func NewPublisher(url string) (*Publisher, error) {
 	return NewPublisherWithConfig(DefaultConfig(url))
 }
 
-// NewPublisherWithConfig creates a new Publisher with custom configuration.
+// NewPublisherWithConfig returns a new publisher with custom configuration.
 func NewPublisherWithConfig(config Config) (*Publisher, error) {
 	conn, err := rabbitmq.NewConn(
 		config.RabbitMQURL,

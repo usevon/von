@@ -11,15 +11,17 @@ import (
 	rabbitmq "github.com/wagslane/go-rabbitmq"
 )
 
+// Consumer consumes webhook delivery messages from RabbitMQ.
 type Consumer struct {
 	conn     *rabbitmq.Conn
 	consumer *rabbitmq.Consumer
 }
 
+// MessageHandler processes a single webhook delivery message.
+// Returning an error triggers a retry if attempts remain.
 type MessageHandler func(ctx context.Context, msg types.QueueMessage) error
 
-// NewConsumer creates a consumer that processes webhook delivery messages from RabbitMQ.
-// The handler is called for each message and should return an error to trigger a retry.
+// NewConsumer returns a new consumer that processes webhook delivery messages from RabbitMQ.
 func NewConsumer(url string, handler MessageHandler) (*Consumer, error) {
 	return NewConsumerWithConfig(DefaultConfig(url), handler)
 }
@@ -147,6 +149,7 @@ func NewDLXConsumer(url string, handler MessageHandler) (*Consumer, error) {
 	}, nil
 }
 
+// Close closes the consumer and its connection.
 func (c *Consumer) Close() {
 	c.consumer.Close()
 	c.conn.Close()
