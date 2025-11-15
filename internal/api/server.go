@@ -1,61 +1,81 @@
 package api
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/usevon/von/internal/queue"
+	vonmiddleware "github.com/usevon/von/internal/middleware"
+	"gorm.io/gorm"
 )
 
 type Server struct {
-	mux *http.ServeMux
+	db        *gorm.DB
+	publisher *queue.Publisher
+	router    *chi.Mux
 }
 
-func NewServer() *Server {
+func NewServer(db *gorm.DB, publisher *queue.Publisher) *Server {
 	s := &Server{
-		mux: http.NewServeMux(),
+		db:        db,
+		publisher: publisher,
+		router:    chi.NewRouter(),
 	}
 
-	s.registerRoutes()
+	s.setupRoutes()
 	return s
 }
 
-func (s *Server) registerRoutes() {
-	s.mux.HandleFunc("/health", s.handleHealth)
-	s.mux.HandleFunc("/api/webhooks/send", s.handleSend)
-	s.mux.HandleFunc("/api/webhooks/receive", s.handleReceive)
-}
+func (s *Server) setupRoutes() {
+	s.router.Use(middleware.RequestID)
+	s.router.Use(middleware.RealIP)
+	s.router.Use(middleware.Logger)
+	s.router.Use(middleware.Recoverer)
+	s.router.Use(middleware.Timeout(60 * time.Second))
+	s.router.Use(vonmiddleware.IdempotencyMiddleware(s.db))
 
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
+	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		Success(w, map[string]string{"status": "ok"})
+	})
 
-func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	eventsHandler := NewEventsHandler(s.db, s.publisher)
+	endpointsHandler := NewEndpointsHandler(s.db)
+	deliveriesHandler := NewDeliveriesHandler(s.db, s.publisher)
 
-	// TODO: Parse request, validate, publish to RabbitMQ
-	log.Println("Webhook send request received")
+	s.router.Route("/v1", func(r chi.Router) {
+		r.Post("/events", eventsHandler.CreateEvent)
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "queued",
-		"id":     "webhook-123",
+		r.Route("/endpoints", func(r chi.Router) {
+			r.Get("/", endpointsHandler.ListEndpoints)
+			r.Post("/", endpointsHandler.CreateEndpoint)
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", endpointsHandler.GetEndpoint)
+				r.Put("/", endpointsHandler.UpdateEndpoint)
+				r.Delete("/", endpointsHandler.DeleteEndpoint)
+			})
+		})
+
+		r.Route("/deliveries", func(r chi.Router) {
+			r.Get("/", deliveriesHandler.ListDeliveries)
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", deliveriesHandler.GetDelivery)
+				r.Get("/attempts", deliveriesHandler.GetDeliveryAttempts)
+				r.Post("/retry", deliveriesHandler.RetryDelivery)
+			})
+		})
 	})
 }
 
-func (s *Server) handleReceive(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// TODO: Verify signature, validate, process webhook
-	log.Println("Webhook receive request received")
-
-	w.WriteHeader(http.StatusOK)
+func (s *Server) Start(addr string) error {
+	log.Printf("API server starting on %s", addr)
+	return http.ListenAndServe(addr, s.router)
 }
 
-func (s *Server) Start(addr string) error {
-	return http.ListenAndServe(addr, s.mux)
+func (s *Server) Handler() http.Handler {
+	return s.router
 }
