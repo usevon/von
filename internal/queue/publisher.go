@@ -25,7 +25,15 @@ type Publisher struct {
 
 // NewPublisher creates a new Publisher connected to RabbitMQ.
 func NewPublisher(url string) (*Publisher, error) {
-	conn, err := rabbitmq.NewConn(url)
+	return NewPublisherWithConfig(DefaultConfig(url))
+}
+
+// NewPublisherWithConfig creates a new Publisher with custom configuration.
+func NewPublisherWithConfig(config Config) (*Publisher, error) {
+	conn, err := rabbitmq.NewConn(
+		config.RabbitMQURL,
+		rabbitmq.WithConnectionOptionsReconnectInterval(config.ReconnectInterval),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}

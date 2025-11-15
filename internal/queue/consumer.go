@@ -26,7 +26,10 @@ func NewConsumer(url string, handler MessageHandler) (*Consumer, error) {
 
 // NewConsumerWithConfig creates a consumer with custom configuration.
 func NewConsumerWithConfig(config Config, handler MessageHandler) (*Consumer, error) {
-	conn, err := rabbitmq.NewConn(config.RabbitMQURL)
+	conn, err := rabbitmq.NewConn(
+		config.RabbitMQURL,
+		rabbitmq.WithConnectionOptionsReconnectInterval(config.ReconnectInterval),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ at %s: %w", config.RabbitMQURL, err)
 	}
@@ -78,8 +81,7 @@ func NewConsumerWithConfig(config Config, handler MessageHandler) (*Consumer, er
 			return rabbitmq.Ack
 		})
 		if err != nil {
-			log.Printf("consumer error (will attempt reconnect): %v", err)
-			// TODO: Add exponential backoff reconnection logic
+			log.Printf("consumer run error: %v", err)
 		}
 	}()
 
