@@ -28,6 +28,32 @@ Von is the open-source webhooks infrastructure built with Go and RabbitMQ for au
 
 Von supports Development, Staging, and Production environments, allowing you to test webhooks before deploying to production.
 
+## Testing
+
+Von includes comprehensive integration tests and end-to-end tests.
+
+Run all tests:
+```bash
+go test ./tests/...
+```
+
+Run API integration tests:
+```bash
+go test ./tests/api/...
+```
+
+Run queue integration tests:
+```bash
+go test ./tests/queue/... -run Test
+```
+
+Run end-to-end tests:
+```bash
+go test ./tests/e2e/...
+```
+
+**Requirements:** Tests require PostgreSQL and RabbitMQ running locally. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup.
+
 ## Benchmarks
 
 Von benchmarks RabbitMQ publisher throughput across different payload sizes and publishing patterns, measuring queue performance without API or network overhead.

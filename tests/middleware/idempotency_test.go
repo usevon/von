@@ -1,4 +1,4 @@
-package middleware
+package middleware_test
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/usevon/von/internal/db"
+	"github.com/usevon/von/internal/middleware"
 	"github.com/usevon/von/pkg/types"
 )
 
@@ -31,7 +32,7 @@ func setupTestDB(t *testing.T) *db.DB {
 func TestIdempotencyMiddleware_NoKey(t *testing.T) {
 	database := setupTestDB(t)
 
-	handler := IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("success"))
 	}))
@@ -59,14 +60,14 @@ func TestIdempotencyMiddleware_NoKey(t *testing.T) {
 func TestIdempotencyMiddleware_FirstRequest(t *testing.T) {
 	database := setupTestDB(t)
 
-	handler := IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"id":"123"}`))
 	}))
 
 	idempotencyKey := uuid.New().String()
 	req := httptest.NewRequest("POST", "/api/events", bytes.NewBufferString(`{"event":"test"}`))
-	req.Header.Set(IdempotencyKeyHeader, idempotencyKey)
+	req.Header.Set(middleware.IdempotencyKeyHeader, idempotencyKey)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -98,7 +99,7 @@ func TestIdempotencyMiddleware_DuplicateRequest(t *testing.T) {
 	database := setupTestDB(t)
 
 	callCount := 0
-	handler := IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"id":"123"}`))
@@ -106,7 +107,7 @@ func TestIdempotencyMiddleware_DuplicateRequest(t *testing.T) {
 
 	idempotencyKey := uuid.New().String()
 	req1 := httptest.NewRequest("POST", "/api/events", bytes.NewBufferString(`{"event":"test"}`))
-	req1.Header.Set(IdempotencyKeyHeader, idempotencyKey)
+	req1.Header.Set(middleware.IdempotencyKeyHeader, idempotencyKey)
 	w1 := httptest.NewRecorder()
 
 	handler.ServeHTTP(w1, req1)
@@ -116,7 +117,7 @@ func TestIdempotencyMiddleware_DuplicateRequest(t *testing.T) {
 	}
 
 	req2 := httptest.NewRequest("POST", "/api/events", bytes.NewBufferString(`{"event":"test"}`))
-	req2.Header.Set(IdempotencyKeyHeader, idempotencyKey)
+	req2.Header.Set(middleware.IdempotencyKeyHeader, idempotencyKey)
 	w2 := httptest.NewRecorder()
 
 	handler.ServeHTTP(w2, req2)
@@ -153,14 +154,14 @@ func TestIdempotencyMiddleware_ExpiredKey(t *testing.T) {
 	database.DB.Create(&expiredRecord)
 
 	callCount := 0
-	handler := IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.IdempotencyMiddleware(database.DB)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(`{"id":"new"}`))
 	}))
 
 	req := httptest.NewRequest("POST", "/api/events", bytes.NewBufferString(`{"event":"test"}`))
-	req.Header.Set(IdempotencyKeyHeader, idempotencyKey)
+	req.Header.Set(middleware.IdempotencyKeyHeader, idempotencyKey)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -204,7 +205,7 @@ func TestCleanupExpiredKeys(t *testing.T) {
 	}
 	database.DB.Create(&validKey)
 
-	err := CleanupExpiredKeys(database.DB)
+	err := middleware.CleanupExpiredKeys(database.DB)
 	if err != nil {
 		t.Fatalf("cleanup failed: %v", err)
 	}

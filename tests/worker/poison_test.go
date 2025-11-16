@@ -1,4 +1,4 @@
-package worker
+package worker_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/usevon/von/internal/queue"
+	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
 )
 
@@ -22,7 +23,7 @@ func TestPoisonQueueMonitor_Basic(t *testing.T) {
 	}
 
 	receivedMessages := make(chan types.QueueMessage, 1)
-	monitor, err := NewPoisonQueueMonitor(rabbitmqURL, func(msg types.QueueMessage, reason string) {
+	monitor, err := worker.NewPoisonQueueMonitor(rabbitmqURL, func(msg types.QueueMessage, reason string) {
 		receivedMessages <- msg
 	})
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 
 // Worker processes webhook delivery messages from the queue.
 type Worker struct {
-	db             *gorm.DB
+	DB             *gorm.DB
 	client         *Client
 	usageTracker   *usage.Tracker
 	consumer       *queue.Consumer
@@ -29,7 +29,7 @@ type Worker struct {
 // NewWorker creates a new worker that processes webhook deliveries.
 func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker, error) {
 	w := &Worker{
-		db:             db,
+		DB:             db,
 		client:         NewClient(timeout),
 		usageTracker:   usage.NewTracker(db),
 		circuitBreaker: NewCircuitBreaker(),
@@ -73,20 +73,20 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 	defer cancel()
 
 	var delivery types.EventDelivery
-	if err := w.db.WithContext(ctx).Where("id = ?", msg.DeliveryID).First(&delivery).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Where("id = ?", msg.DeliveryID).First(&delivery).Error; err != nil {
 		log.Printf("failed to load delivery %s: %v", msg.DeliveryID, err)
 		return nil
 	}
 
 	var endpoint types.Endpoint
-	if err := w.db.WithContext(ctx).Where("id = ?", msg.EndpointID).First(&endpoint).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Where("id = ?", msg.EndpointID).First(&endpoint).Error; err != nil {
 		log.Printf("failed to load endpoint %s: %v", msg.EndpointID, err)
 		return nil
 	}
 
 	if endpoint.Status == types.EndpointStatusDisabled {
 		log.Printf("endpoint %s is disabled, skipping delivery %s", endpoint.ID, delivery.ID)
-		w.markDeliveryCancelled(ctx, &delivery)
+		w.MarkDeliveryCancelled(ctx, &delivery)
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		nextAttempt := time.Now().Add(backoff)
 		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
-		if err := w.db.WithContext(ctx).Save(&delivery).Error; err != nil {
+		if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
 			log.Printf("failed to update delivery: %v", err)
 		}
 		newMsg := msg
@@ -109,12 +109,12 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 	}
 
 	var event types.Event
-	if err := w.db.WithContext(ctx).Where("id = ?", msg.EventID).First(&event).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Where("id = ?", msg.EventID).First(&event).Error; err != nil {
 		log.Printf("failed to load event %s: %v", msg.EventID, err)
 		return nil
 	}
 
-	w.updateDeliveryStatus(ctx, &delivery, types.DeliveryStatusDelivering)
+	w.UpdateDeliveryStatus(ctx, &delivery, types.DeliveryStatusDelivering)
 
 	result := w.client.DeliverWebhook(ctx, msg)
 
@@ -141,7 +141,7 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 		CreatedAt:       now,
 	}
 
-	if err := w.db.WithContext(ctx).Create(&attempt).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Create(&attempt).Error; err != nil {
 		log.Printf("failed to save delivery attempt: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 	if result.IsSuccessful() {
 		delivery.Status = types.DeliveryStatusDelivered
 		delivery.DeliveredAt = util.TimePtr(time.Now())
-		w.updateEndpointHealth(ctx, &endpoint, true)
+		w.UpdateEndpointHealth(ctx, &endpoint, true)
 		w.circuitBreaker.RecordSuccess(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, true)
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
@@ -175,12 +175,12 @@ func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) erro
 	} else {
 		delivery.Status = types.DeliveryStatusFailed
 		delivery.FailedAt = util.TimePtr(time.Now())
-		w.updateEndpointHealth(ctx, &endpoint, false)
+		w.UpdateEndpointHealth(ctx, &endpoint, false)
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, false)
 	}
 
-	if err := w.db.WithContext(ctx).Save(&delivery).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
 		log.Printf("failed to update delivery: %v", err)
 		return err
 	}
@@ -194,25 +194,25 @@ func (w *Worker) requeueDelivery(ctx context.Context, msg types.QueueMessage, de
 	return w.publisher.PublishWebhook(ctx, msg)
 }
 
-// updateDeliveryStatus updates the delivery status in the database.
-func (w *Worker) updateDeliveryStatus(ctx context.Context, delivery *types.EventDelivery, status types.DeliveryStatus) {
+// UpdateDeliveryStatus updates the delivery status in the database.
+func (w *Worker) UpdateDeliveryStatus(ctx context.Context, delivery *types.EventDelivery, status types.DeliveryStatus) {
 	delivery.Status = status
-	if err := w.db.WithContext(ctx).Model(delivery).Update("status", status).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Model(delivery).Update("status", status).Error; err != nil {
 		log.Printf("failed to update delivery status: %v", err)
 	}
 }
 
-// markDeliveryCancelled marks a delivery as cancelled.
-func (w *Worker) markDeliveryCancelled(ctx context.Context, delivery *types.EventDelivery) {
+// MarkDeliveryCancelled marks a delivery as cancelled.
+func (w *Worker) MarkDeliveryCancelled(ctx context.Context, delivery *types.EventDelivery) {
 	delivery.Status = types.DeliveryStatusCancelled
 	delivery.CancelledAt = util.TimePtr(time.Now())
-	if err := w.db.WithContext(ctx).Save(delivery).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Save(delivery).Error; err != nil {
 		log.Printf("failed to cancel delivery: %v", err)
 	}
 }
 
-// updateEndpointHealth updates the endpoint health metrics based on delivery success/failure.
-func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpoint, successful bool) {
+// UpdateEndpointHealth updates the endpoint health metrics based on delivery success/failure.
+func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpoint *types.Endpoint, successful bool) {
 	now := time.Now()
 
 	if successful {
@@ -250,7 +250,7 @@ func (w *Worker) updateEndpointHealth(ctx context.Context, endpoint *types.Endpo
 		}
 	}
 
-	if err := w.db.WithContext(ctx).Save(endpoint).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Save(endpoint).Error; err != nil {
 		log.Printf("failed to update endpoint health: %v", err)
 	}
 }
