@@ -72,8 +72,9 @@ func BenchmarkCreateEventHandler(b *testing.B) {
 	}
 
 	eventPayload := map[string]interface{}{
-		"event_type": "test.event",
-		"data": map[string]interface{}{
+		"application_id": fixture.appID,
+		"event_type":     "test.event",
+		"payload": map[string]interface{}{
 			"user_id": "user_123",
 			"action":  "test_action",
 		},
@@ -83,7 +84,7 @@ func BenchmarkCreateEventHandler(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("POST", "/v1/apps/"+fixture.appID+"/events", bytes.NewReader(bodyBytes))
+		req := httptest.NewRequest("POST", "/v1/events", bytes.NewReader(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
@@ -110,15 +111,16 @@ func BenchmarkCreateEventHandlerMultipleEndpoints(b *testing.B) {
 	}
 
 	eventPayload := map[string]interface{}{
-		"event_type": "test.event",
-		"data":       map[string]interface{}{"test": "data"},
+		"application_id": fixture.appID,
+		"event_type":     "test.event",
+		"payload":        map[string]interface{}{"test": "data"},
 	}
 
 	bodyBytes, _ := json.Marshal(eventPayload)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("POST", "/v1/apps/"+fixture.appID+"/events", bytes.NewReader(bodyBytes))
+		req := httptest.NewRequest("POST", "/v1/events", bytes.NewReader(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
@@ -142,15 +144,16 @@ func BenchmarkCreateEventHandlerLargePayload(b *testing.B) {
 	}
 
 	eventPayload := map[string]interface{}{
-		"event_type": "test.event",
-		"data":       util.BenchmarkPayload(100), // 100KB payload
+		"application_id": fixture.appID,
+		"event_type":     "test.event",
+		"payload":        util.BenchmarkPayload(100), // 100KB payload
 	}
 
 	bodyBytes, _ := json.Marshal(eventPayload)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("POST", "/v1/apps/"+fixture.appID+"/events", bytes.NewReader(bodyBytes))
+		req := httptest.NewRequest("POST", "/v1/events", bytes.NewReader(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
@@ -191,7 +194,7 @@ func BenchmarkListDeliveriesHandler(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("GET", "/v1/apps/"+fixture.appID+"/deliveries", nil)
+		req := httptest.NewRequest("GET", "/v1/deliveries?endpoint_id="+endpoint.ID, nil)
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
 
@@ -206,16 +209,17 @@ func BenchmarkCreateEndpointHandler(b *testing.B) {
 	fixture := setupBenchmarkServer(b)
 
 	endpointPayload := map[string]interface{}{
-		"url":         "https://example.com/webhook",
-		"description": "Test endpoint",
-		"event_filters": []string{"test.*"},
+		"application_id": fixture.appID,
+		"url":            "https://example.com/webhook",
+		"description":    "Test endpoint",
+		"event_filters":  []string{"test.*"},
 	}
 
 	bodyBytes, _ := json.Marshal(endpointPayload)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("POST", "/v1/apps/"+fixture.appID+"/endpoints", bytes.NewReader(bodyBytes))
+		req := httptest.NewRequest("POST", "/v1/endpoints", bytes.NewReader(bodyBytes))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
@@ -240,7 +244,7 @@ func BenchmarkListEndpointsHandler(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest("GET", "/v1/apps/"+fixture.appID+"/endpoints", nil)
+		req := httptest.NewRequest("GET", "/v1/endpoints?application_id="+fixture.appID, nil)
 		rr := httptest.NewRecorder()
 		fixture.server.Handler().ServeHTTP(rr, req)
 
