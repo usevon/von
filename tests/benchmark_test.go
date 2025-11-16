@@ -24,6 +24,8 @@ func TestRunAllBenchmarks(t *testing.T) {
 		name string
 		path string
 	}{
+		{"End-to-End", "./tests/e2e/..."},
+		{"API Endpoints", "./tests/api/..."},
 		{"Queue Publishing", "./tests/queue/..."},
 		{"Worker HTTP Client", "./tests/worker/..."},
 		{"Circuit Breaker & Retry", "./internal/worker/..."},

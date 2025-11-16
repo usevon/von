@@ -15,6 +15,8 @@ import (
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // SetupBenchmarkPublisher creates a queue publisher for benchmarks.
@@ -40,14 +42,22 @@ func SetupBenchmarkPublisher(b *testing.B) *queue.Publisher {
 }
 
 // SetupBenchmarkDatabase creates a database connection for benchmarks.
-// Automatically runs migrations and handles cleanup.
+// Automatically runs migrations, silences logs, and handles cleanup.
 func SetupBenchmarkDatabase(b *testing.B) *db.DB {
 	b.Helper()
+
+	log.SetOutput(io.Discard)
+	b.Cleanup(func() {
+		log.SetOutput(os.Stderr)
+	})
 
 	database, err := db.New(GetPostgresURL())
 	if err != nil {
 		b.Fatalf("failed to connect to database: %v", err)
 	}
+
+	// Disable GORM logging
+	database.DB = database.DB.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 
 	if err := database.AutoMigrate(); err != nil {
 		b.Fatalf("failed to run migrations: %v", err)

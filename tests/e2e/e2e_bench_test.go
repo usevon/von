@@ -1,9 +1,7 @@
 package e2e_test
 
 import (
-	"net/http"
 	"testing"
-	"time"
 
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/pkg/types"
