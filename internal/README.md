@@ -1,42 +1,48 @@
 # Von - Internal Architecture
 
-Private implementation packages for Von webhooks infrastructure.
+<p align="center">
+  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.24+-blue.svg" alt="Go"></a>
+  <a href="../LICENSE-AGPL"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
+</p>
+
+Internal implementation packages for Von webhooks infrastructure.
 
 ## Packages
 
-### Core Services
-- `api/` - HTTP API handlers using Chi router
-- `worker/` - Webhook delivery worker with retry logic and fault tolerance
-- `queue/` - RabbitMQ publisher and consumer wrappers
+- `api/` - HTTP REST API server (Chi router, handlers, middleware)
+- `worker/` - Webhook delivery worker (RabbitMQ consumer, HTTP client)
+- `db/` - PostgreSQL database layer (GORM, migrations)
+- `queue/` - RabbitMQ publishers, consumers, and DLX handling
+- `usage/` - Usage tracking and metrics collection
+- `tunnel/` - Webhook tunneling for local development
+- `middleware/` - HTTP middleware (idempotency, rate limiting)
+- `util/` - Shared utilities and helpers
 
-### Infrastructure
-- `db/` - PostgreSQL connection and migrations using GORM
-- `middleware/` - HTTP middleware (idempotency, authentication)
-- `util/` - Shared helper functions
+## Webhook Lifecycle
 
-### Features
-- `tunnel/` - WebSocket tunnel for local webhook development
-- `usage/` - Usage tracking and rate limiting
+1. API validates incoming events and saves them to PostgreSQL
+2. System matches endpoints subscribed to the event type using filters
+3. Delivery jobs published to RabbitMQ for async processing
+4. Workers consume jobs and send signed HTTP POST requests
+5. Attempts tracked with status, latency, and full request/response details
+6. Failed deliveries retry automatically with exponential backoff and circuit breaker
 
-## Webhook Delivery Flow
+**Example:** When you post an event with type `order.created`:
 
-1. User posts event to API server
-2. API finds endpoints subscribed to event type based on filters
-3. API creates delivery records and publishes to RabbitMQ
-4. Worker consumes queue and makes HTTP POST to endpoint URL
-5. On failure, exponential backoff and requeue with delay
-6. Circuit breaker opens after 5 consecutive failures to prevent cascading issues
+1. Von looks at ALL endpoints to see which ones want this event
+2. An endpoint might have filters like:
+   - `order.created` (exact match)
+   - `order.*` (wildcard - matches order.created, order.updated, etc.)
+   - `*` (all events)
+3. For each endpoint that matches, Von creates one delivery job
 
-## Key Concepts
+So if you have:
+- Endpoint A with filter `order.*`
+- Endpoint B with filter `order.created`
+- Endpoint C with filter `user.*`
 
-- **Event** - Incoming webhook payload to fan out (e.g., "user.created")
-- **Endpoint** - Destination URL where webhooks are delivered with signing secret and filters
-- **Delivery** - Individual attempt to send event to endpoint (queued, processing, success, failed)
-- **Delivery Attempt** - Single HTTP request with full request/response details for debugging
+When `order.created` is posted, Von queues 2 delivery jobs (one for Endpoint A, one for Endpoint B). Endpoint C is ignored.
 
-## Fault Tolerance
+## License
 
-- **Circuit Breaker** - Per-endpoint state tracking to prevent cascading failures
-- **Idempotency** - Middleware with `Idempotency-Key` header and 24h TTL
-- **Poison Queue** - Dead Letter Exchange captures permanently failed messages
-- **Health Scoring** - Endpoint health score updates based on delivery success rate
+AGPL-3.0 - see [LICENSE-AGPL](../LICENSE-AGPL)
