@@ -30,55 +30,93 @@ Von supports Development, Staging, and Production environments, allowing you to 
 
 ## Testing
 
-Von includes comprehensive integration tests and end-to-end tests.
-
-Run all tests:
-```bash
-go test ./tests/...
-```
-
-Run API integration tests:
-```bash
-go test ./tests/api/...
-```
-
-Run queue integration tests:
-```bash
-go test ./tests/queue/... -run Test
-```
-
-Run end-to-end tests:
-```bash
-go test ./tests/e2e/...
-```
+Von includes unit tests, integration tests, and end-to-end tests covering the complete webhook delivery flow.
 
 **Requirements:** Tests require PostgreSQL and RabbitMQ running locally. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup.
 
+```bash
+# Run all tests
+go test ./...
+
+# Run specific tests
+go test ./tests/e2e/...           # End-to-end tests
+go test ./tests/api/...           # API integration tests
+go test ./tests/worker/...        # Worker integration tests
+go test ./tests/queue/...         # Queue integration tests
+go test ./tests/middleware/...    # Middleware integration tests
+go test ./internal/worker/...     # Unit tests
+```
+
 ## Benchmarks
 
-Von benchmarks RabbitMQ publisher throughput across different payload sizes and publishing patterns, measuring queue performance without API or network overhead.
+Von includes benchmarks for queue publishing, worker delivery, and unit performance.
 
-Run benchmarks:
 ```bash
-go test ./tests/queue/... -bench=. -run=^$ -benchmem
+# Run all benchmarks with formatted output
+go test -run=TestRunAllBenchmarks ./tests -v
+
+# Run all benchmarks directly
+go test ./... -bench=.
+
+# Run specific benchmarks
+go test ./tests/queue/... -bench=.      # Queue publishing benchmarks
+go test ./tests/worker/... -bench=.     # Worker HTTP client benchmarks
+go test ./internal/worker/... -bench=.  # Retry and circuit breaker benchmarks
 ```
 
-Tested on AMD Ryzen 7 3700X, 32GB RAM, Windows 11, RabbitMQ 4 (localhost).
+**Benchmark Environment:** AMD Ryzen 7 3700X, 32GB RAM, Windows 11, PostgreSQL 18, RabbitMQ 4 (localhost)
+
+Iterations show the number of times each operation ran, and latency measures nanoseconds per operation.
 
 ```
-Test                                Iterations    Latency        Throughput
-Publisher-16                             27991    40763 ns/op    ~24.5k msg/s
-PublisherParallel-16                     27243    42278 ns/op    ~23.7k msg/s
-Publisher1KB-16                          25611    46835 ns/op    ~21.4k msg/s
-Publisher10KB-16                         15520    82406 ns/op    ~12.1k msg/s
-Publisher100KB-16                         4539   237313 ns/op     ~4.2k msg/s
-Publisher1MB-16                            547  2074211 ns/op       482 msg/s
-PublisherBatch-16                          361  3104985 ns/op      ~32k msg/s (100 batches)
-PublisherFlatJSON-16                     26175    46515 ns/op    ~21.5k msg/s
-PublisherNestedJSON-16                   20463    54175 ns/op    ~18.5k msg/s
+---------------------------------------------------------------------------
+Queue Publishing                               Iterations   Latency (ns/op)
+---------------------------------------------------------------------------
+Publisher-16                                        33765             36662
+PublisherParallel-16                                33884             36281
+Publisher1KB-16                                     29968             39893
+Publisher10KB-16                                    16158             70539
+Publisher100KB-16                                    6295            206761
+Publisher1MB-16                                       796           2385016
+PublisherBatch-16                                     327           3687425
+PublisherFlatJSON-16                                27982             38564
+PublisherNestedJSON-16                              27504             45872
+---------------------------------------------------------------------------
+Worker HTTP Client                             Iterations   Latency (ns/op)
+---------------------------------------------------------------------------
+DeliverWebhook-16                                    5511            194544
+DeliverWebhookParallel-16                            7868            150564
+DeliverWebhookLargePayload-16                        1765            621465
+---------------------------------------------------------------------------
+Circuit Breaker & Retry                        Iterations   Latency (ns/op)
+---------------------------------------------------------------------------
+CBIsOpen-16                                      34403077             36.89
+CBRecordSuccess-16                               34718203             36.67
+CBRecordFailure-16                               20417398             57.73
+CBGetState-16                                    51637555             25.41
+CBReset-16                                       45209318             27.64
+CBConcurrentIsOpen-16                            10069461             120.8
+CBConcurrentRecordSuccess-16                      9330758             118.2
+CBConcurrentRecordFailure-16                      7237796             167.0
+CBConcurrentMixed-16                              7930742             163.0
+CBMultipleEndpoints-16                           27240532             37.25
+CBStateTransitions-16                             1488480             758.6
+CBConcurrentMultiEndpoints-16                     8977358             133.1
+CBHighContention-16                                 22366             48380
+CalculateBackoffExponential-16                    8380368             151.1
+CalculateBackoffLinear-16                        10790173             106.1
+CalculateBackoffConstant-16                      11956466             106.2
+ShouldRetry-16                                 1000000000            0.2572
+ExponentialBackoff-16                             7012044             175.1
+LinearBackoff-16                                 11183252             101.1
+ConstantBackoff-16                               11944790             100.1
+CalculateBackoffVariousAttempts/1-16             10967988             109.3
+CalculateBackoffVariousAttempts/3-16              6809062             161.6
+CalculateBackoffVariousAttempts/5-16              8220726             149.1
+CalculateBackoffVariousAttempts/:-16              8188778             151.1
+CalculateBackoffVariousAttempts/D-16              6484551             187.2
+---------------------------------------------------------------------------
 ```
-
-Iterations show statistical sample size, latency measures time per webhook queued to RabbitMQ, and throughput represents maximum webhooks queued per second.
 
 ## Contributing
 
