@@ -43,7 +43,7 @@ func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker,
 	}
 	w.publisher = publisher
 
-	consumer, err := queue.NewConsumer(rabbitmqURL, w.handleMessage)
+	consumer, err := queue.NewConsumer(rabbitmqURL, w.HandleMessage)
 	if err != nil {
 		publisher.Close()
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
@@ -67,8 +67,8 @@ func (w *Worker) Stop() error {
 	return nil
 }
 
-// handleMessage processes a single webhook delivery message from the queue.
-func (w *Worker) handleMessage(ctx context.Context, msg types.QueueMessage) error {
+// HandleMessage processes a single webhook delivery message from the queue.
+func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
