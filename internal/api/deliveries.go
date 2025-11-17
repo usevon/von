@@ -1,86 +1,77 @@
 package api
 
 import (
-	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/usevon/von/pkg/types"
-	"gorm.io/gorm"
+	"github.com/usevon/von/internal/service"
 )
 
 // DeliveriesHandler serves HTTP requests for webhook delivery management.
 type DeliveriesHandler struct {
-	db        *gorm.DB
-	publisher WebhookPublisher
+	deliveryService service.DeliveryService
 }
 
-// NewDeliveriesHandler returns a new deliveries handler with the given database and publisher.
-func NewDeliveriesHandler(db *gorm.DB, publisher WebhookPublisher) *DeliveriesHandler {
+// NewDeliveriesHandler returns a new deliveries handler.
+func NewDeliveriesHandler(deliveryService service.DeliveryService) *DeliveriesHandler {
 	return &DeliveriesHandler{
-		db:        db,
-		publisher: publisher,
+		deliveryService: deliveryService,
 	}
 }
 
 // ListDeliveries lists deliveries with optional filters.
 func (h *DeliveriesHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
-	eventID := r.URL.Query().Get("event_id")
-	endpointID := r.URL.Query().Get("endpoint_id")
-	status := r.URL.Query().Get("status")
-
-	query := h.db.Model(&types.EventDelivery{})
-
-	if eventID != "" {
-		query = query.Where("event_id = ?", eventID)
-	}
-	if endpointID != "" {
-		query = query.Where("endpoint_id = ?", endpointID)
-	}
-	if status != "" {
-		query = query.Where("status = ?", status)
+	filters := &service.DeliveryFilters{
+		EventID:    r.URL.Query().Get("event_id"),
+		EndpointID: r.URL.Query().Get("endpoint_id"),
+		Status:     r.URL.Query().Get("status"),
 	}
 
-	var deliveries []types.EventDelivery
-	if err := query.Order("created_at DESC").Limit(100).Find(&deliveries).Error; err != nil {
-		InternalError(w, "Failed to fetch deliveries")
+	deliveries, err := h.deliveryService.ListDeliveries(r.Context(), filters)
+	if err != nil {
+		http.Error(w, "Failed to fetch deliveries", http.StatusInternalServerError)
 		return
 	}
 
-	Success(w, map[string]interface{}{
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"deliveries": deliveries,
 	})
 }
 
-// GetDelivery handles GET /v1/deliveries/{id} - retrieves a single delivery by ID.
+// GetDelivery retrieves a single delivery by ID.
 func (h *DeliveriesHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
-	var delivery types.EventDelivery
-	if err := h.db.Where("id = ?", deliveryID).First(&delivery).Error; err != nil {
-		if err == gorm.ErrRecordNotFound || isInvalidUUIDError(err) {
-			NotFound(w, "Delivery not found")
+	delivery, err := h.deliveryService.GetDelivery(r.Context(), deliveryID)
+	if err != nil {
+		if errors.Is(err, service.ErrDeliveryNotFound) {
+			http.Error(w, "Delivery not found", http.StatusNotFound)
 		} else {
-			InternalError(w, "Failed to fetch delivery")
+			http.Error(w, "Failed to fetch delivery", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	Success(w, delivery)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(delivery)
 }
 
 // GetDeliveryAttempts lists all attempts for a delivery.
 func (h *DeliveriesHandler) GetDeliveryAttempts(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
-	var attempts []types.DeliveryAttempt
-	if err := h.db.Where("delivery_id = ?", deliveryID).Order("attempt_number ASC").Find(&attempts).Error; err != nil {
-		InternalError(w, "Failed to fetch delivery attempts")
+	attempts, err := h.deliveryService.GetDeliveryAttempts(r.Context(), deliveryID)
+	if err != nil {
+		http.Error(w, "Failed to fetch delivery attempts", http.StatusInternalServerError)
 		return
 	}
 
-	Success(w, map[string]interface{}{
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"attempts": attempts,
 	})
 }
@@ -89,59 +80,24 @@ func (h *DeliveriesHandler) GetDeliveryAttempts(w http.ResponseWriter, r *http.R
 func (h *DeliveriesHandler) RetryDelivery(w http.ResponseWriter, r *http.Request) {
 	deliveryID := chi.URLParam(r, "id")
 
-	var delivery types.EventDelivery
-	if err := h.db.Where("id = ?", deliveryID).First(&delivery).Error; err != nil {
-		if err == gorm.ErrRecordNotFound || isInvalidUUIDError(err) {
-			NotFound(w, "Delivery not found")
-		} else {
-			InternalError(w, "Failed to fetch delivery")
+	if err := h.deliveryService.RetryDelivery(r.Context(), deliveryID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrDeliveryNotFound):
+			http.Error(w, "Delivery not found", http.StatusNotFound)
+		case errors.Is(err, service.ErrCannotRetryDelivery):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, service.ErrEndpointDisabled):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, "Failed to queue retry", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	if delivery.Status.IsTerminal() && delivery.Status != types.DeliveryStatusFailed {
-		BadRequest(w, "Cannot retry delivery that is not failed")
-		return
-	}
-
-	var event types.Event
-	if err := h.db.Where("id = ?", delivery.EventID).First(&event).Error; err != nil {
-		InternalError(w, "Failed to fetch event")
-		return
-	}
-
-	var endpoint types.Endpoint
-	if err := h.db.Where("id = ?", delivery.EndpointID).First(&endpoint).Error; err != nil {
-		InternalError(w, "Failed to fetch endpoint")
-		return
-	}
-
-	if endpoint.Status == types.EndpointStatusDisabled {
-		BadRequest(w, "Cannot retry delivery to disabled endpoint")
-		return
-	}
-
-	delivery.Status = types.DeliveryStatusQueued
-	delivery.NextAttemptAt = nil
-	delivery.UpdatedAt = time.Now()
-
-	if err := h.db.Save(&delivery).Error; err != nil {
-		InternalError(w, "Failed to update delivery")
-		return
-	}
-
-	msg := types.NewQueueMessage(&event, &endpoint, &delivery)
-	msg.AttemptNumber = delivery.AttemptCount + 1
-
-	ctx := context.Background()
-	if err := h.publisher.PublishWebhook(ctx, msg); err != nil {
-		InternalError(w, "Failed to queue retry")
-		return
-	}
-
-	Success(w, map[string]interface{}{
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":     "Delivery queued for retry",
-		"delivery_id": delivery.ID,
+		"delivery_id": deliveryID,
 		"queued_at":   time.Now().Unix(),
 	})
 }

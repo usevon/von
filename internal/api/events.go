@@ -1,27 +1,22 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/usevon/von/pkg/types"
-	"gorm.io/gorm"
+	"github.com/usevon/von/internal/service"
 )
 
 // EventsHandler serves HTTP requests for webhook event creation and management.
 type EventsHandler struct {
-	db        *gorm.DB
-	publisher WebhookPublisher
+	eventService service.EventService
 }
 
-// NewEventsHandler returns a new events handler with the given database and publisher.
-func NewEventsHandler(db *gorm.DB, publisher WebhookPublisher) *EventsHandler {
+// NewEventsHandler returns a new events handler.
+func NewEventsHandler(eventService service.EventService) *EventsHandler {
 	return &EventsHandler{
-		db:        db,
-		publisher: publisher,
+		eventService: eventService,
 	}
 }
 
@@ -36,140 +31,45 @@ type CreateEventRequest struct {
 
 // CreateEventResponse contains the result of creating a webhook event.
 type CreateEventResponse struct {
-	EventID      string   `json:"event_id"`
-	DeliveryIDs  []string `json:"delivery_ids"`
-	EndpointCount int     `json:"endpoint_count"`
-	QueuedAt     int64    `json:"queued_at"`
+	EventID       string   `json:"event_id"`
+	DeliveryIDs   []string `json:"delivery_ids"`
+	EndpointCount int      `json:"endpoint_count"`
+	QueuedAt      int64    `json:"queued_at"`
 }
 
 // CreateEvent creates a new webhook event and queues deliveries to matching endpoints.
 func (h *EventsHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req CreateEventRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		BadRequest(w, "Invalid request body")
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if req.ApplicationID == "" {
-		BadRequest(w, "application_id is required")
-		return
-	}
-
-	if req.EventType == "" {
-		BadRequest(w, "event_type is required")
-		return
-	}
-
-	if req.Payload == nil || len(req.Payload) == 0 {
-		BadRequest(w, "payload is required")
-		return
-	}
-
-	var app types.Application
-	if err := h.db.Where("id = ?", req.ApplicationID).First(&app).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			NotFound(w, "Application not found")
-		} else {
-			InternalError(w, "Failed to fetch application")
-		}
-		return
-	}
-
-	deliveryMode := types.DeliveryModeAsync
-	if req.DeliveryMode == string(types.DeliveryModeSync) {
-		deliveryMode = types.DeliveryModeSync
-	}
-
-	event := types.Event{
-		ID:             uuid.New().String(),
-		ApplicationID:  req.ApplicationID,
-		OrganizationID: app.OrganizationID,
-		EventType:      req.EventType,
-		EventVersion:   req.EventVersion,
-		Payload:        req.Payload,
-		DeliveryMode:   deliveryMode,
-		CreatedAt:      time.Now(),
-	}
-
-	payloadBytes, _ := json.Marshal(req.Payload)
-	event.PayloadSize = len(payloadBytes)
-
-	if err := h.db.Create(&event).Error; err != nil {
-		InternalError(w, "Failed to create event")
-		return
-	}
-
-	var endpoints []types.Endpoint
-	query := h.db.Where("application_id = ? AND status != ?", req.ApplicationID, types.EndpointStatusDisabled)
-
-	if err := query.Find(&endpoints).Error; err != nil {
-		InternalError(w, "Failed to fetch endpoints")
-		return
-	}
-
-	matchingEndpoints := make([]types.Endpoint, 0)
-	for _, endpoint := range endpoints {
-		if h.eventMatchesEndpoint(&event, &endpoint) {
-			matchingEndpoints = append(matchingEndpoints, endpoint)
-		}
-	}
-
-	deliveryIDs := make([]string, 0, len(matchingEndpoints))
-	ctx := context.Background()
-
-	for _, endpoint := range matchingEndpoints {
-		delivery := types.EventDelivery{
-			ID:          uuid.New().String(),
-			EventID:     event.ID,
-			EndpointID:  endpoint.ID,
-			Status:      types.DeliveryStatusQueued,
-			MaxAttempts: endpoint.MaxRetries,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-		}
-
-		if err := h.db.Create(&delivery).Error; err != nil {
-			continue
-		}
-
-		deliveryIDs = append(deliveryIDs, delivery.ID)
-
-		msg := types.NewQueueMessage(&event, &endpoint, &delivery)
-
-		if err := h.publisher.PublishWebhook(ctx, msg); err != nil {
-			h.db.Model(&delivery).Update("status", types.DeliveryStatusFailed)
-		}
-	}
-
-	Created(w, CreateEventResponse{
-		EventID:       event.ID,
-		DeliveryIDs:   deliveryIDs,
-		EndpointCount: len(deliveryIDs),
-		QueuedAt:      time.Now().Unix(),
+	result, err := h.eventService.CreateEvent(r.Context(), &service.CreateEventRequest{
+		ApplicationID: req.ApplicationID,
+		EventType:     req.EventType,
+		EventVersion:  req.EventVersion,
+		Payload:       req.Payload,
+		DeliveryMode:  req.DeliveryMode,
 	})
-}
-
-// eventMatchesEndpoint reports whether the event matches the endpoint's filter configuration.
-func (h *EventsHandler) eventMatchesEndpoint(event *types.Event, endpoint *types.Endpoint) bool {
-	if len(endpoint.EventFilters) == 0 {
-		return endpoint.FilterMode == types.FilterModeAllow
-	}
-
-	filtersInterface, ok := endpoint.EventFilters["filters"]
-	if !ok {
-		return endpoint.FilterMode == types.FilterModeAllow
-	}
-
-	filters, ok := filtersInterface.([]interface{})
-	if !ok {
-		return endpoint.FilterMode == types.FilterModeAllow
-	}
-
-	for _, filter := range filters {
-		if filterStr, ok := filter.(string); ok && filterStr == event.EventType {
-			return endpoint.FilterMode == types.FilterModeAllow
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidRequest):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, service.ErrApplicationNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, "Failed to create event", http.StatusInternalServerError)
 		}
+		return
 	}
 
-	return endpoint.FilterMode == types.FilterModeBlock
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(CreateEventResponse{
+		EventID:       result.EventID,
+		DeliveryIDs:   result.DeliveryIDs,
+		EndpointCount: result.EndpointCount,
+		QueuedAt:      result.QueuedAt,
+	})
 }

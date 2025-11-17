@@ -343,7 +343,7 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	var updatedEndpoint types.Endpoint
-	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
+	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint))
 
 	if updatedEndpoint.HealthScore >= 100 {
 		t.Errorf("expected health score to decrease after failures, got %d", updatedEndpoint.HealthScore)
