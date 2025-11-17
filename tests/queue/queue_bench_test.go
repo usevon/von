@@ -13,7 +13,7 @@ func BenchmarkPublisher(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -28,7 +28,7 @@ func BenchmarkPublisherParallel(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			err := publisher.PublishWebhook(ctx, msg)
+			err := publisher.PublishWebhook(ctx, &msg)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -45,7 +45,7 @@ func BenchmarkPublisher1KB(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func BenchmarkPublisher10KB(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func BenchmarkPublisher100KB(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -93,7 +93,7 @@ func BenchmarkPublisher1MB(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -123,7 +123,7 @@ func BenchmarkPublisherFlatJSON(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -139,7 +139,7 @@ func BenchmarkPublisherNestedJSON(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := publisher.PublishWebhook(ctx, msg)
+		err := publisher.PublishWebhook(ctx, &msg)
 		if err != nil {
 			b.Fatal(err)
 		}

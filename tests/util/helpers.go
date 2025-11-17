@@ -485,3 +485,93 @@ func Must(t *testing.T, db *gorm.DB) {
 func must(t *testing.T, db *gorm.DB) {
 	Must(t, db)
 }
+
+// NewTestMessage creates a test QueueMessage with sensible defaults.
+func NewTestMessage(opts ...func(*types.QueueMessage)) types.QueueMessage {
+	msg := types.QueueMessage{
+		DeliveryID:    uuid.New().String(),
+		EventID:       uuid.New().String(),
+		EndpointID:    uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		EventType:     "test.event",
+		Payload:       types.JSONB{"test": "data"},
+		Headers:       map[string]string{},
+		Secret:        "test-secret",
+		AttemptNumber: 1,
+		DeliveryMode:  types.DeliveryModeAsync,
+		MaxRetries:    3,
+		RetryStrategy: types.RetryStrategyExponential,
+		EnqueuedAt:    time.Now(),
+	}
+
+	for _, opt := range opts {
+		opt(&msg)
+	}
+
+	return msg
+}
+
+// WithMaxAttempts sets max delivery attempts
+func WithMaxAttempts(max int) func(*DeliveryOptions) {
+	return func(opts *DeliveryOptions) {
+		opts.MaxAttempts = max
+	}
+}
+
+// WithMessageURL sets the URL for QueueMessage
+func WithMessageURL(url string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.URL = url
+	}
+}
+
+// WithPayload sets the payload for QueueMessage
+func WithPayload(payload types.JSONB) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.Payload = payload
+	}
+}
+
+// WithMaxRetries sets max retries for QueueMessage
+func WithMaxRetries(max int) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.MaxRetries = max
+	}
+}
+
+// WithEventType sets the event type for QueueMessage
+func WithEventType(eventType string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.EventType = eventType
+	}
+}
+
+// WithAppUID sets the application UID
+func WithAppUID(uid string) func(*ApplicationOptions) {
+	return func(opts *ApplicationOptions) {
+		opts.UID = uid
+	}
+}
+
+// WithEndpointUID sets the endpoint UID
+func WithEndpointUID(uid string) func(*EndpointOptions) {
+	return func(opts *EndpointOptions) {
+		opts.UID = uid
+	}
+}
+
+// SetupQueue creates a test queue and handles cleanup.
+func SetupQueue(t *testing.T) *queue.Queue {
+	t.Helper()
+
+	q, err := queue.NewQueue(GetRabbitMQURL())
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+
+	t.Cleanup(func() {
+		q.Close()
+	})
+
+	return q
+}

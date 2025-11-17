@@ -114,7 +114,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhook(ctx, msg); err != nil {
+	if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 		t.Fatalf("failed to publish webhook: %v", err)
 	}
 
@@ -235,7 +235,7 @@ func TestWebhookRetry(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhook(ctx, msg); err != nil {
+	if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 		t.Fatalf("failed to publish webhook: %v", err)
 	}
 

@@ -144,10 +144,11 @@ func NewBenchmarkMessage(opts ...func(*types.QueueMessage)) types.QueueMessage {
 }
 
 // GenerateBenchmarkMessages creates multiple queue messages for batch benchmarks.
-func GenerateBenchmarkMessages(count int, opts ...func(*types.QueueMessage)) []types.QueueMessage {
-	messages := make([]types.QueueMessage, count)
+func GenerateBenchmarkMessages(count int, opts ...func(*types.QueueMessage)) []*types.QueueMessage {
+	messages := make([]*types.QueueMessage, count)
 	for i := 0; i < count; i++ {
-		messages[i] = NewBenchmarkMessage(opts...)
+		msg := NewBenchmarkMessage(opts...)
+		messages[i] = &msg
 	}
 	return messages
 }
@@ -245,6 +246,34 @@ func WithBenchPayload(payload map[string]interface{}) func(*types.QueueMessage) 
 func WithBenchURL(url string) func(*types.QueueMessage) {
 	return func(m *types.QueueMessage) {
 		m.URL = url
+	}
+}
+
+// WithDeliveryID sets the delivery ID for benchmark messages.
+func WithDeliveryID(id string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.DeliveryID = id
+	}
+}
+
+// WithMessageEventID sets the event ID for benchmark messages.
+func WithMessageEventID(id string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.EventID = id
+	}
+}
+
+// WithMessageEndpointID sets the endpoint ID for benchmark messages.
+func WithMessageEndpointID(id string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.EndpointID = id
+	}
+}
+
+// WithMessageSecret sets the secret for benchmark messages.
+func WithMessageSecret(secret string) func(*types.QueueMessage) {
+	return func(m *types.QueueMessage) {
+		m.Secret = secret
 	}
 }
 

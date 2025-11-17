@@ -299,7 +299,7 @@ func BenchmarkEndToEndQueuePublishAndConsume(b *testing.B) {
 		)
 
 		// Publish to queue (simulates API layer)
-		if err := publisher.PublishWebhook(ctx, msg); err != nil {
+		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			b.Fatal(err)
 		}
 	}

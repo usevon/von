@@ -91,7 +91,7 @@ func TestCircuitBreakerOpensAfterFailures(t *testing.T) {
 			util.WithMaxRetries(10),
 		)
 
-		if err := publisher.PublishWebhook(ctx, msg); err != nil {
+		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			t.Fatalf("failed to publish webhook: %v", err)
 		}
 	}
@@ -193,7 +193,7 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 			util.WithMaxRetries(10),
 		)
 
-		if err := publisher.PublishWebhook(ctx, msg); err != nil {
+		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			t.Fatalf("failed to publish webhook: %v", err)
 		}
 	}
@@ -231,7 +231,7 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 		util.WithMaxRetries(3),
 	)
 
-	if err := publisher.PublishWebhook(ctx, recoveryMsg); err != nil {
+	if err := publisher.PublishWebhook(ctx, &recoveryMsg); err != nil {
 		t.Fatalf("failed to publish recovery webhook: %v", err)
 	}
 
@@ -335,7 +335,7 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 			util.WithPayload(event.Payload),
 		)
 
-		if err := publisher.PublishWebhook(ctx, msg); err != nil {
+		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			t.Fatalf("failed to publish webhook: %v", err)
 		}
 	}
@@ -377,14 +377,14 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 			util.WithPayload(event.Payload),
 		)
 
-		if err := publisher.PublishWebhook(ctx, msg); err != nil {
+		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			t.Fatalf("failed to publish webhook: %v", err)
 		}
 	}
 
 	time.Sleep(3 * time.Second)
 
-	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
+	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint))
 
 	if updatedEndpoint.ConsecutiveFails != 0 {
 		t.Errorf("expected consecutive fails to reset after success, got %d", updatedEndpoint.ConsecutiveFails)

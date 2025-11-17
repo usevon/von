@@ -35,7 +35,7 @@ func TestQueueSetup(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = q.Enqueue(ctx, testMsg)
+	err = q.Enqueue(ctx, &testMsg)
 	if err != nil {
 		t.Fatalf("failed to enqueue message: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestPublishAndConsume(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = q.Enqueue(ctx, testMsg)
+	err = q.Enqueue(ctx, &testMsg)
 	if err != nil {
 		t.Fatalf("failed to enqueue webhook: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestPublishMultipleMessages(t *testing.T) {
 			util.WithDeliveryID(fmt.Sprintf("delivery-%d", i)),
 			util.WithPayload(map[string]interface{}{"index": i}),
 		)
-		err := q.Enqueue(ctx, msg)
+		err := q.Enqueue(ctx, &msg)
 		if err != nil {
 			t.Fatalf("failed to enqueue webhook: %v", err)
 		}
@@ -157,12 +157,13 @@ func TestEnqueueBatch(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Create batch of messages
-	messages := make([]types.QueueMessage, messageCount)
+	messages := make([]*types.QueueMessage, messageCount)
 	for i := 0; i < messageCount; i++ {
-		messages[i] = util.NewTestMessage(
+		msg := util.NewTestMessage(
 			util.WithDeliveryID(fmt.Sprintf("batch-delivery-%d", i)),
 			util.WithPayload(map[string]interface{}{"batch_index": i}),
 		)
+		messages[i] = &msg
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -223,7 +224,7 @@ func TestConsumerRetry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err = q.Enqueue(ctx, testMsg)
+	err = q.Enqueue(ctx, &testMsg)
 	if err != nil {
 		t.Fatalf("failed to enqueue webhook: %v", err)
 	}

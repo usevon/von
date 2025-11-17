@@ -51,7 +51,7 @@ func TestPoisonQueueMonitor_Basic(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhookToDLX(ctx, testMsg); err != nil {
+	if err := publisher.PublishWebhookToDLX(ctx, &testMsg); err != nil {
 		t.Fatalf("failed to publish to DLX: %v", err)
 	}
 
