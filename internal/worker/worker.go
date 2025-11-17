@@ -114,8 +114,6 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		return nil
 	}
 
-	w.UpdateDeliveryStatus(ctx, &delivery, types.DeliveryStatusDelivering)
-
 	result := w.client.DeliverWebhook(ctx, msg)
 
 	now := time.Now()

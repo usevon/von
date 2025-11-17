@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/usevon/von/pkg/types"
 	"gorm.io/driver/postgres"
@@ -17,7 +18,8 @@ type DB struct {
 // New returns a new database connection using the provided connection string.
 func New(connString string) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(connString), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:      logger.Default.LogMode(logger.Info),
+		PrepareStmt: true, // Enable prepared statement caching for better performance
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -31,6 +33,12 @@ func New(connString string) (*DB, error) {
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
+
+	// Configure connection pool for high-throughput webhook delivery
+	sqlDB.SetMaxOpenConns(100)                  // Maximum open connections
+	sqlDB.SetMaxIdleConns(10)                   // Idle connections to keep alive
+	sqlDB.SetConnMaxLifetime(time.Hour)         // Maximum lifetime of a connection
+	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // Maximum idle time before closing
 
 	return &DB{DB: db}, nil
 }
