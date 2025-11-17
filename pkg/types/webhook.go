@@ -2,8 +2,7 @@ package types
 
 import "time"
 
-// Application represents a top-level container for webhook endpoints within an organization.
-// Each application has its own UID, rate limits, and metadata.
+// Application represents a container for webhook endpoints within an organization with rate limits and metadata.
 type Application struct {
 	ID             string    `gorm:"type:uuid;primaryKey" json:"id"`
 	OrganizationID string    `gorm:"type:uuid;index;not null" json:"organization_id"`
@@ -24,8 +23,7 @@ func (Application) TableName() string {
 	return "application"
 }
 
-// Endpoint represents a webhook destination URL with circuit breaking, secrets, and event filtering.
-// Each endpoint belongs to an application and tracks health metrics to auto-disable failing destinations.
+// Endpoint represents a webhook destination URL with circuit breaking, secrets, filtering, and health tracking.
 type Endpoint struct {
 	ID            string    `gorm:"type:uuid;primaryKey" json:"id"`
 	ApplicationID string    `gorm:"type:uuid;index;not null" json:"application_id"`
@@ -70,6 +68,78 @@ type Endpoint struct {
 // TableName returns the database table name for Endpoint.
 func (Endpoint) TableName() string {
 	return "endpoint"
+}
+
+// EndpointConfig represents the configuration for a webhook endpoint including URL, secrets, and headers.
+type EndpointConfig struct {
+	ID             string        `gorm:"type:uuid;primaryKey" json:"id"`
+	ApplicationID  string        `gorm:"type:uuid;index;not null" json:"application_id"`
+	UID            string        `gorm:"uniqueIndex;not null" json:"uid"`
+	URL            string        `gorm:"not null" json:"url"`
+	Description    string        `json:"description"`
+	Secrets        JSONB         `gorm:"type:jsonb" json:"secrets,omitempty"`
+	SigningAlgo    SignatureAlgo `gorm:"default:'sha256'" json:"signing_algo"`
+	CustomHeaders  JSONB         `gorm:"type:jsonb" json:"custom_headers,omitempty"`
+	TimeoutSeconds int           `gorm:"default:30" json:"timeout_seconds"`
+	RateLimitRPS   *int          `json:"rate_limit_rps,omitempty"`
+	Tags           JSONB         `gorm:"type:jsonb" json:"tags,omitempty"`
+	Metadata       JSONB         `gorm:"type:jsonb" json:"metadata,omitempty"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+}
+
+// TableName returns the database table name for EndpointConfig.
+func (EndpointConfig) TableName() string {
+	return "endpoint_config"
+}
+
+// EndpointHealth tracks health status and reliability metrics updated after each delivery attempt.
+type EndpointHealth struct {
+	EndpointID       string         `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
+	Status           EndpointStatus `gorm:"default:'healthy';index" json:"status"`
+	HealthScore      int            `gorm:"default:100" json:"health_score"`
+	ConsecutiveFails int            `gorm:"default:0" json:"consecutive_fails"`
+	LastSuccessAt    *time.Time     `json:"last_success_at,omitempty"`
+	LastFailureAt    *time.Time     `json:"last_failure_at,omitempty"`
+	DisabledAt       *time.Time     `json:"disabled_at,omitempty"`
+	DisabledReason   string         `json:"disabled_reason,omitempty"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+}
+
+// TableName returns the database table name for EndpointHealth.
+func (EndpointHealth) TableName() string {
+	return "endpoint_health"
+}
+
+// EndpointRetryPolicy defines retry behavior with exponential, linear, or constant backoff strategies.
+type EndpointRetryPolicy struct {
+	EndpointID    string        `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
+	Strategy      RetryStrategy `gorm:"default:'exponential'" json:"retry_strategy"`
+	MaxRetries    int           `gorm:"default:5" json:"max_retries"`
+	RetryDelays   JSONB         `gorm:"type:jsonb" json:"retry_delays,omitempty"`
+	AutoRecovery  bool          `gorm:"default:true" json:"auto_recovery"`
+	RecoveryDelay int           `gorm:"default:3600" json:"recovery_delay"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+}
+
+// TableName returns the database table name for EndpointRetryPolicy.
+func (EndpointRetryPolicy) TableName() string {
+	return "endpoint_retry_policy"
+}
+
+// EndpointEventFilter defines which event types an endpoint receives with allow or block mode.
+type EndpointEventFilter struct {
+	EndpointID   string     `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
+	EventFilters JSONB      `gorm:"type:jsonb" json:"event_filters,omitempty"`
+	FilterMode   FilterMode `gorm:"default:'allow'" json:"filter_mode"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// TableName returns the database table name for EndpointEventFilter.
+func (EndpointEventFilter) TableName() string {
+	return "endpoint_event_filter"
 }
 
 // Event represents a webhook message with idempotency support and delivery tracking.
