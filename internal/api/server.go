@@ -24,6 +24,7 @@ type Server struct {
 	db        *gorm.DB
 	publisher WebhookPublisher
 	router    *chi.Mux
+	skipLog   bool
 }
 
 // NewServer returns a new API server with the given database and publisher.
@@ -38,11 +39,26 @@ func NewServer(db *gorm.DB, publisher WebhookPublisher) *Server {
 	return s
 }
 
+// NewServerWithoutLogging creates a server without HTTP request logging for benchmarks.
+func NewServerWithoutLogging(db *gorm.DB, publisher WebhookPublisher) *Server {
+	s := &Server{
+		db:        db,
+		publisher: publisher,
+		router:    chi.NewRouter(),
+		skipLog:   true,
+	}
+
+	s.setupRoutes()
+	return s
+}
+
 // setupRoutes registers all API routes and middleware.
 func (s *Server) setupRoutes() {
 	s.router.Use(middleware.RequestID)
 	s.router.Use(middleware.RealIP)
-	s.router.Use(middleware.Logger)
+	if !s.skipLog {
+		s.router.Use(middleware.Logger)
+	}
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(middleware.Timeout(60 * time.Second))
 	s.router.Use(vonmiddleware.IdempotencyMiddleware(s.db))
