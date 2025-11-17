@@ -58,5 +58,21 @@ func EnsureQueuesWithConfig(config Config) error {
 	}
 	dlxConsumer.Close()
 
+	// Declare usage events exchange and queue
+	usageConsumer, err := rabbitmq.NewConsumer(
+		conn,
+		UsageQueue,
+		rabbitmq.WithConsumerOptionsQueueDurable,
+		rabbitmq.WithConsumerOptionsExchangeName(UsageExchange),
+		rabbitmq.WithConsumerOptionsExchangeKind("topic"),
+		rabbitmq.WithConsumerOptionsExchangeDurable,
+		rabbitmq.WithConsumerOptionsExchangeDeclare,
+		rabbitmq.WithConsumerOptionsRoutingKey(UsageRoutingKey),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare usage queue: %w", err)
+	}
+	usageConsumer.Close()
+
 	return nil
 }

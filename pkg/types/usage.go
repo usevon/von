@@ -25,3 +25,12 @@ type UsageMetrics struct {
 func (UsageMetrics) TableName() string {
 	return "usage_metrics"
 }
+
+// UsageEvent represents a single usage event to be aggregated.
+type UsageEvent struct {
+	OrganizationID string
+	EventType      string // "event", "delivery", "retry"
+	PayloadSize    int
+	Successful     bool
+	Timestamp      time.Time
+}
