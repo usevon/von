@@ -290,12 +290,6 @@ func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpointID string, su
 		return false
 	}
 
-	if oldStatus != health.Status {
-		if err := w.DB.WithContext(ctx).Model(&types.Endpoint{}).Where("id = ?", endpointID).Update("status", health.Status).Error; err != nil {
-			log.Printf("failed to sync endpoint status: %v", err)
-		}
-	}
-
 	return oldStatus != health.Status
 }
 
