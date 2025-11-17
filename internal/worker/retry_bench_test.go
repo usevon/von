@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/usevon/von/pkg/types"
@@ -56,7 +57,7 @@ func BenchmarkCalculateBackoffVariousAttempts(b *testing.B) {
 	attempts := []int{1, 3, 5, 10, 20}
 
 	for _, attempt := range attempts {
-		b.Run(string(rune(attempt+'0')), func(b *testing.B) {
+		b.Run(strconv.Itoa(attempt), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_ = CalculateBackoff(attempt, types.RetryStrategyExponential)
 			}
