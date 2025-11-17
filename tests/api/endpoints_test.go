@@ -140,12 +140,10 @@ func TestGetEndpoint(t *testing.T) {
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
 		util.WithDescription("Test endpoint"),
-		util.WithSecrets(types.JSONB{"current": "test-secret"}),
+		util.WithSecret("test-secret"),
 		util.WithFilterMode(types.FilterModeAllow),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	rr := ts.request("GET", "/v1/endpoints/"+endpoint.ID, nil)
 
@@ -186,12 +184,10 @@ func TestUpdateEndpoint(t *testing.T) {
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
 		util.WithDescription("Test endpoint"),
-		util.WithSecrets(types.JSONB{"current": "test-secret"}),
+		util.WithSecret("test-secret"),
 		util.WithFilterMode(types.FilterModeAllow),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	updateReq := map[string]interface{}{
 		"url":         "https://example.com/new-webhook",
@@ -226,12 +222,10 @@ func TestDeleteEndpoint(t *testing.T) {
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
 		util.WithDescription("Test endpoint"),
-		util.WithSecrets(types.JSONB{"current": "test-secret"}),
+		util.WithSecret("test-secret"),
 		util.WithFilterMode(types.FilterModeAllow),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	rr := ts.request("DELETE", "/v1/endpoints/"+endpoint.ID, nil)
 

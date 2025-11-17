@@ -90,7 +90,7 @@ func (ts *testServer) cleanup(t *testing.T) {
 	if err := ts.db.Exec("DELETE FROM application").Error; err != nil {
 		t.Logf("cleanup warning: %v", err)
 	}
-	if err := ts.db.Exec("DELETE FROM idempotency_keys").Error; err != nil {
+	if err := ts.db.Exec("DELETE FROM idempotency_key").Error; err != nil {
 		t.Logf("cleanup warning: %v", err)
 	}
 	ts.publisher.reset()
