@@ -102,11 +102,11 @@ PublisherNestedJSON-16                              27884             43664
 ---------------------------------------------------------------------------
 Worker HTTP Client                             Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-HandleMessage-16                                       38          30664082
-HandleMessageParallel-16                              248           5483753
-DeliverWebhook-16                                    6572            207464
-DeliverWebhookParallel-16                           22464             50725
-DeliverWebhookLargePayload-16                        2113            586150
+HandleMessage-16                                       40          27559458
+HandleMessageParallel-16                              283           4635987
+DeliverWebhook-16                                    9031            132622
+DeliverWebhookParallel-16                           23996             53236
+DeliverWebhookLargePayload-16                        2480            468245
 ---------------------------------------------------------------------------
 Circuit Breaker & Retry                        Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
