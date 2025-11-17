@@ -76,8 +76,8 @@ func (Endpoint) TableName() string {
 // Events can be delivered synchronously or asynchronously based on the delivery mode.
 type Event struct {
 	ID             string     `gorm:"type:uuid;primaryKey" json:"id"`
-	ApplicationID  string     `gorm:"type:uuid;index;not null" json:"application_id"`
-	OrganizationID string     `gorm:"type:uuid;index;not null" json:"organization_id"`
+	ApplicationID  string     `gorm:"type:uuid;index;index:idx_app_created;not null" json:"application_id"`
+	OrganizationID string     `gorm:"type:uuid;index;index:idx_org_created;not null" json:"organization_id"`
 
 	IdempotencyKey *string `gorm:"uniqueIndex:idx_org_idempotency" json:"idempotency_key,omitempty"`
 
@@ -96,7 +96,7 @@ type Event struct {
 
 	ExpiresAt time.Time  `gorm:"index" json:"expires_at"`
 	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"`
-	CreatedAt time.Time  `gorm:"index" json:"created_at"`
+	CreatedAt time.Time  `gorm:"index;index:idx_app_created;index:idx_org_created" json:"created_at"`
 
 	Deliveries []EventDelivery `gorm:"foreignKey:EventID" json:"deliveries,omitempty"`
 }
@@ -111,9 +111,9 @@ func (Event) TableName() string {
 type EventDelivery struct {
 	ID         string     `gorm:"type:uuid;primaryKey" json:"id"`
 	EventID    string     `gorm:"type:uuid;index;not null" json:"event_id"`
-	EndpointID string     `gorm:"type:uuid;index;not null" json:"endpoint_id"`
+	EndpointID string     `gorm:"type:uuid;index;index:idx_endpoint_status;not null" json:"endpoint_id"`
 
-	Status DeliveryStatus `gorm:"index;not null" json:"status"`
+	Status DeliveryStatus `gorm:"index;index:idx_endpoint_status;not null" json:"status"`
 
 	NextAttemptAt *time.Time `gorm:"index" json:"next_attempt_at,omitempty"`
 	AttemptCount  int        `gorm:"default:0" json:"attempt_count"`
@@ -145,9 +145,9 @@ func (EventDelivery) TableName() string {
 // Stores complete request/response details including headers, body, signatures, and timing.
 type DeliveryAttempt struct {
 	ID         string     `gorm:"type:uuid;primaryKey" json:"id"`
-	DeliveryID string     `gorm:"type:uuid;index;not null" json:"delivery_id"`
+	DeliveryID string     `gorm:"type:uuid;index;index:idx_delivery_attempt;not null" json:"delivery_id"`
 
-	AttemptNumber int `gorm:"not null" json:"attempt_number"`
+	AttemptNumber int `gorm:"index:idx_delivery_attempt;not null" json:"attempt_number"`
 
 	RequestURL      string `gorm:"not null" json:"request_url"`
 	RequestHeaders  JSONB  `gorm:"type:jsonb" json:"request_headers,omitempty"`
