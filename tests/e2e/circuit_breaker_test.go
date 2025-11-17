@@ -45,14 +45,14 @@ func TestCircuitBreakerOpensAfterFailures(t *testing.T) {
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
 	)
-	database.DB.Create(&app)
+	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
 		util.WithEndpointMaxRetries(10),
 	)
-	database.DB.Create(&endpoint)
+	util.Must(t, database.DB.Create(&endpoint))
 
 	w, err := worker.NewWorker(database.DB, testRabbitMQURL, 5*time.Second)
 	if err != nil {
@@ -73,14 +73,14 @@ func TestCircuitBreakerOpensAfterFailures(t *testing.T) {
 			util.WithEventOrganizationID(orgID),
 			util.WithEventPayload(types.JSONB{"attempt": i}),
 		)
-		database.DB.Create(&event)
+		util.Must(t, database.DB.Create(&event))
 
 		delivery := util.NewTestDelivery(
 			util.WithEventIDForDelivery(event.ID),
 			util.WithEndpointIDForDelivery(endpoint.ID),
 			util.WithMaxAttempts(10),
 		)
-		database.DB.Create(&delivery)
+		util.Must(t, database.DB.Create(&delivery))
 
 		msg := util.NewTestMessage(
 			util.WithDeliveryID(delivery.ID),
@@ -146,14 +146,14 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
 	)
-	database.DB.Create(&app)
+	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
 		util.WithEndpointMaxRetries(10),
 	)
-	database.DB.Create(&endpoint)
+	util.Must(t, database.DB.Create(&endpoint))
 
 	w, err := worker.NewWorker(database.DB, testRabbitMQURL, 5*time.Second)
 	if err != nil {
@@ -175,14 +175,14 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 			util.WithEventOrganizationID(orgID),
 			util.WithEventPayload(types.JSONB{"phase": "failing", "attempt": i}),
 		)
-		database.DB.Create(&event)
+		util.Must(t, database.DB.Create(&event))
 
 		delivery := util.NewTestDelivery(
 			util.WithEventIDForDelivery(event.ID),
 			util.WithEndpointIDForDelivery(endpoint.ID),
 			util.WithMaxAttempts(10),
 		)
-		database.DB.Create(&delivery)
+		util.Must(t, database.DB.Create(&delivery))
 
 		msg := util.NewTestMessage(
 			util.WithDeliveryID(delivery.ID),
@@ -213,14 +213,14 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 		util.WithEventOrganizationID(orgID),
 		util.WithEventPayload(types.JSONB{"phase": "recovery"}),
 	)
-	database.DB.Create(&recoveryEvent)
+	util.Must(t, database.DB.Create(&recoveryEvent))
 
 	recoveryDelivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(recoveryEvent.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
 		util.WithMaxAttempts(3),
 	)
-	database.DB.Create(&recoveryDelivery)
+	util.Must(t, database.DB.Create(&recoveryDelivery))
 
 	recoveryMsg := util.NewTestMessage(
 		util.WithDeliveryID(recoveryDelivery.ID),
@@ -290,14 +290,14 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
 	)
-	database.DB.Create(&app)
+	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
 		util.WithHealthScore(100),
 	)
-	database.DB.Create(&endpoint)
+	util.Must(t, database.DB.Create(&endpoint))
 
 	w, err := worker.NewWorker(database.DB, testRabbitMQURL, 5*time.Second)
 	if err != nil {
@@ -319,13 +319,13 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 			util.WithEventOrganizationID(orgID),
 			util.WithEventPayload(types.JSONB{"phase": "failure", "index": i}),
 		)
-		database.DB.Create(&event)
+		util.Must(t, database.DB.Create(&event))
 
 		delivery := util.NewTestDelivery(
 			util.WithEventIDForDelivery(event.ID),
 			util.WithEndpointIDForDelivery(endpoint.ID),
 		)
-		database.DB.Create(&delivery)
+		util.Must(t, database.DB.Create(&delivery))
 
 		msg := util.NewTestMessage(
 			util.WithDeliveryID(delivery.ID),
@@ -343,7 +343,7 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	var updatedEndpoint types.Endpoint
-	database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
+	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
 
 	if updatedEndpoint.HealthScore >= 100 {
 		t.Errorf("expected health score to decrease after failures, got %d", updatedEndpoint.HealthScore)
@@ -361,13 +361,13 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 			util.WithEventOrganizationID(orgID),
 			util.WithEventPayload(types.JSONB{"phase": "success", "index": i}),
 		)
-		database.DB.Create(&event)
+		util.Must(t, database.DB.Create(&event))
 
 		delivery := util.NewTestDelivery(
 			util.WithEventIDForDelivery(event.ID),
 			util.WithEndpointIDForDelivery(endpoint.ID),
 		)
-		database.DB.Create(&delivery)
+		util.Must(t, database.DB.Create(&delivery))
 
 		msg := util.NewTestMessage(
 			util.WithDeliveryID(delivery.ID),
@@ -384,7 +384,7 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
+	util.Must(t, database.DB.Where("id = ?", endpoint.ID).First(&updatedEndpoint)
 
 	if updatedEndpoint.ConsecutiveFails != 0 {
 		t.Errorf("expected consecutive fails to reset after success, got %d", updatedEndpoint.ConsecutiveFails)

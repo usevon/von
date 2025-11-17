@@ -64,9 +64,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithAppName("Test App"),
 	)
 
-	if err := database.DB.Create(&app).Error; err != nil {
-		t.Fatalf("failed to create application: %v", err)
-	}
+	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
@@ -75,9 +73,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithEndpointMaxRetries(3),
 	)
 
-	if err := database.DB.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, database.DB.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(appID),
@@ -90,9 +86,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		}),
 	)
 
-	if err := database.DB.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, database.DB.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
@@ -100,9 +94,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithMaxAttempts(3),
 	)
 
-	if err := database.DB.Create(&delivery).Error; err != nil {
-		t.Fatalf("failed to create delivery: %v", err)
-	}
+	util.Must(t, database.DB.Create(&delivery))
 
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
@@ -199,7 +191,7 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithAppName("Test App"),
 		util.WithAppUID("app_retry"),
 	)
-	database.DB.Create(&app)
+	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
@@ -208,7 +200,7 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithSecret("test-secret"),
 		util.WithEndpointMaxRetries(5),
 	)
-	database.DB.Create(&endpoint)
+	util.Must(t, database.DB.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(appID),
@@ -216,14 +208,14 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithEventTypeForEvent("test.retry"),
 		util.WithEventPayload(types.JSONB{"test": "data"}),
 	)
-	database.DB.Create(&event)
+	util.Must(t, database.DB.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
 		util.WithMaxAttempts(5),
 	)
-	database.DB.Create(&delivery)
+	util.Must(t, database.DB.Create(&delivery))
 
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
 	if err != nil {
@@ -260,7 +252,7 @@ func TestWebhookRetry(t *testing.T) {
 	}
 
 	var updatedDelivery types.EventDelivery
-	database.DB.Where("id = ?", delivery.ID).First(&updatedDelivery)
+	util.Must(t, database.DB.Where("id = ?", delivery.ID).First(&updatedDelivery))
 
 	if updatedDelivery.Status != types.DeliveryStatusDelivered {
 		t.Errorf("expected status delivered after retries, got %s", updatedDelivery.Status)
