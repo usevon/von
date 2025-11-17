@@ -9,81 +9,78 @@ import (
 	"github.com/usevon/von/tests/util"
 )
 
-func TestUpdateEndpointHealth_Success(t *testing.T) {
-	database := util.SetupDatabase(t)
-	app := util.NewTestApplication()
-	util.Must(t, database.Create(&app))
-
-	w := &worker.Worker{DB: database.DB}
-
-	endpoint := util.NewTestEndpoint(
-		util.WithApplicationID(app.ID),
-		util.WithEndpointStatus(types.EndpointStatusFailing),
-	)
-	util.Must(t, database.Create(&endpoint))
-
-	health := types.EndpointHealth{
-		EndpointID:       endpoint.ID,
-		Status:           types.EndpointStatusFailing,
-		HealthScore:      50,
-		ConsecutiveFails: 3,
-	}
-	util.Must(t, database.Create(&health))
-
-	w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
-
-	var updated types.EndpointHealth
-	util.Must(t, database.Where("endpoint_id = ?", endpoint.ID).First(&updated))
-
-	if updated.HealthScore != 55 {
-		t.Errorf("expected health score 55, got %d", updated.HealthScore)
-	}
-
-	if updated.ConsecutiveFails != 0 {
-		t.Errorf("expected consecutive fails reset to 0, got %d", updated.ConsecutiveFails)
-	}
-
-	if updated.Status != types.EndpointStatusHealthy {
-		t.Errorf("expected status healthy, got %v", updated.Status)
-	}
-}
-
-func TestUpdateEndpointHealth_Failure(t *testing.T) {
-	database := util.SetupDatabase(t)
-	app := util.NewTestApplication()
-	util.Must(t, database.Create(&app))
-
-	w := &worker.Worker{DB: database.DB}
-
-	endpoint := util.NewTestEndpoint(
-		util.WithApplicationID(app.ID),
-		util.WithEndpointStatus(types.EndpointStatusHealthy),
-	)
-	util.Must(t, database.Create(&endpoint))
-
-	health := types.EndpointHealth{
-		EndpointID:       endpoint.ID,
-		Status:           types.EndpointStatusHealthy,
-		HealthScore:      50,
-		ConsecutiveFails: 0,
-	}
-	util.Must(t, database.Create(&health))
-
-	w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
-
-	var updated types.EndpointHealth
-	util.Must(t, database.Where("endpoint_id = ?", endpoint.ID).First(&updated))
-
-	if updated.HealthScore != 40 {
-		t.Errorf("expected health score 40, got %d", updated.HealthScore)
+func TestUpdateEndpointHealth(t *testing.T) {
+	tests := []struct {
+		name             string
+		successful       bool
+		initialStatus    types.EndpointStatus
+		initialScore     int
+		initialFails     int
+		expectedScore    int
+		expectedFails    int
+		expectedStatus   types.EndpointStatus
+	}{
+		{
+			name:           "success recovers failing endpoint",
+			successful:     true,
+			initialStatus:  types.EndpointStatusFailing,
+			initialScore:   50,
+			initialFails:   3,
+			expectedScore:  55,
+			expectedFails:  0,
+			expectedStatus: types.EndpointStatusHealthy,
+		},
+		{
+			name:           "failure degrades healthy endpoint",
+			successful:     false,
+			initialStatus:  types.EndpointStatusHealthy,
+			initialScore:   50,
+			initialFails:   0,
+			expectedScore:  40,
+			expectedFails:  1,
+			expectedStatus: types.EndpointStatusDegraded,
+		},
 	}
 
-	if updated.ConsecutiveFails != 1 {
-		t.Errorf("expected consecutive fails 1, got %d", updated.ConsecutiveFails)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			database := util.SetupDatabase(t)
+			app := util.NewTestApplication()
+			util.Must(t, database.Create(&app))
 
-	if updated.Status != types.EndpointStatusDegraded {
-		t.Errorf("expected status degraded, got %v", updated.Status)
+			w := &worker.Worker{DB: database.DB}
+
+			endpoint := util.NewTestEndpoint(
+				util.WithApplicationID(app.ID),
+				util.WithEndpointStatus(tt.initialStatus),
+			)
+			util.Must(t, database.Create(&endpoint))
+
+			health := types.EndpointHealth{
+				EndpointID:       endpoint.ID,
+				Status:           tt.initialStatus,
+				HealthScore:      tt.initialScore,
+				ConsecutiveFails: tt.initialFails,
+			}
+			util.Must(t, database.Create(&health))
+
+			w.UpdateEndpointHealth(context.Background(), endpoint.ID, tt.successful)
+
+			var updated types.EndpointHealth
+			util.Must(t, database.Where("endpoint_id = ?", endpoint.ID).First(&updated))
+
+			if updated.HealthScore != tt.expectedScore {
+				t.Errorf("expected health score %d, got %d", tt.expectedScore, updated.HealthScore)
+			}
+
+			if updated.ConsecutiveFails != tt.expectedFails {
+				t.Errorf("expected consecutive fails %d, got %d", tt.expectedFails, updated.ConsecutiveFails)
+			}
+
+			if updated.Status != tt.expectedStatus {
+				t.Errorf("expected status %v, got %v", tt.expectedStatus, updated.Status)
+			}
+		})
 	}
 }
 

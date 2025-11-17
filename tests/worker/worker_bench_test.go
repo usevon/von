@@ -1,6 +1,7 @@
 package worker_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func BenchmarkHandleMessage(b *testing.B) {
 		util.WithMessageSecret("test-secret"),
 	)
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -99,7 +100,7 @@ func BenchmarkHandleMessageParallel(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -138,7 +139,7 @@ func BenchmarkDeliverWebhook(b *testing.B) {
 		util.WithMessageSecret("test-secret"),
 	)
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -159,7 +160,7 @@ func BenchmarkDeliverWebhookParallel(b *testing.B) {
 		util.WithMessageSecret("test-secret"),
 	)
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -183,7 +184,7 @@ func BenchmarkDeliverWebhookLargePayload(b *testing.B) {
 		util.WithBenchPayload(util.BenchmarkPayload(100)),
 	)
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

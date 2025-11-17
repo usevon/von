@@ -1,7 +1,6 @@
 package util
 
 import (
-	"context"
 	"io"
 	"log"
 	"net/http"
@@ -207,34 +206,6 @@ func BenchmarkNestedPayload() map[string]interface{} {
 	}
 }
 
-// BenchmarkRealisticPayload generates a realistic webhook payload.
-// Simulates a typical e-commerce order webhook.
-func BenchmarkRealisticPayload() map[string]interface{} {
-	return map[string]interface{}{
-		"order_id":     "ord_1234567890",
-		"customer_id":  "cust_9876543210",
-		"status":       "completed",
-		"total_amount": 99.99,
-		"currency":     "USD",
-		"items": []interface{}{
-			map[string]interface{}{
-				"product_id": "prod_123",
-				"name":       "Test Product",
-				"quantity":   2,
-				"price":      49.99,
-			},
-		},
-		"shipping_address": map[string]interface{}{
-			"street":  "123 Main St",
-			"city":    "San Francisco",
-			"state":   "CA",
-			"zip":     "94105",
-			"country": "US",
-		},
-		"created_at": time.Now().Unix(),
-	}
-}
-
 // WithBenchPayload sets a custom payload for benchmark messages.
 func WithBenchPayload(payload map[string]interface{}) func(*types.QueueMessage) {
 	return func(m *types.QueueMessage) {
@@ -277,18 +248,3 @@ func WithMessageSecret(secret string) func(*types.QueueMessage) {
 	}
 }
 
-// BenchmarkContext returns a context suitable for benchmarks.
-// Uses background context with no cancellation to avoid overhead.
-func BenchmarkContext() context.Context {
-	return context.Background()
-}
-
-// CleanupBenchmarkData removes test data from the database between benchmark iterations.
-// This is optional but can help ensure consistent benchmark results.
-func CleanupBenchmarkData(b *testing.B, database *db.DB) {
-	b.Helper()
-	database.DB.Exec("DELETE FROM event_delivery")
-	database.DB.Exec("DELETE FROM endpoint")
-	database.DB.Exec("DELETE FROM event")
-	database.DB.Exec("DELETE FROM application")
-}

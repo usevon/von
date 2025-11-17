@@ -295,7 +295,7 @@ func TestEndpointHealthScoreUpdates(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
-		util.WithHealthScore(100),
+		func(opts *util.EndpointOptions) { opts.HealthScore = 100 },
 	)
 	util.Must(t, database.DB.Create(&endpoint))
 

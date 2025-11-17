@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/usevon/von/pkg/types"
 	"github.com/usevon/von/tests/util"
 )
 
@@ -15,7 +16,10 @@ func TestCreateEvent(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithEventTypes("user.created"),
+		func(opts *util.EndpointOptions) {
+			opts.EventFilters = types.JSONB{"filters": []interface{}{"user.created"}}
+			opts.FilterMode = types.FilterModeAllow
+		},
 	)
 	util.Must(t, ts.db.Create(&endpoint))
 

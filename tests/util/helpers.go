@@ -257,13 +257,6 @@ func WithEndpointStatus(status types.EndpointStatus) func(*EndpointOptions) {
 	}
 }
 
-// WithHealthScore sets the endpoint health score
-func WithHealthScore(score int) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.HealthScore = score
-	}
-}
-
 // WithRetryStrategy sets the retry strategy
 func WithRetryStrategy(strategy types.RetryStrategy) func(*EndpointOptions) {
 	return func(opts *EndpointOptions) {
@@ -292,29 +285,10 @@ func WithEventFilters(filters types.JSONB) func(*EndpointOptions) {
 	}
 }
 
-// WithEventTypes sets event filters with allow mode
-func WithEventTypes(eventTypes ...string) func(*EndpointOptions) {
-	filters := make([]interface{}, len(eventTypes))
-	for i, et := range eventTypes {
-		filters[i] = et
-	}
-	return func(opts *EndpointOptions) {
-		opts.EventFilters = types.JSONB{"filters": filters}
-		opts.FilterMode = types.FilterModeAllow
-	}
-}
-
 // WithEventApplicationID sets the application ID for an event
 func WithEventApplicationID(appID string) func(*EventOptions) {
 	return func(opts *EventOptions) {
 		opts.ApplicationID = appID
-	}
-}
-
-// WithEventTypeForEvent sets the event type
-func WithEventTypeForEvent(eventType string) func(*EventOptions) {
-	return func(opts *EventOptions) {
-		opts.EventType = eventType
 	}
 }
 
@@ -543,20 +517,6 @@ func WithMaxRetries(max int) func(*types.QueueMessage) {
 func WithEventType(eventType string) func(*types.QueueMessage) {
 	return func(m *types.QueueMessage) {
 		m.EventType = eventType
-	}
-}
-
-// WithAppUID sets the application UID
-func WithAppUID(uid string) func(*ApplicationOptions) {
-	return func(opts *ApplicationOptions) {
-		opts.UID = uid
-	}
-}
-
-// WithEndpointUID sets the endpoint UID
-func WithEndpointUID(uid string) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.UID = uid
 	}
 }
 

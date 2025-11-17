@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/usevon/von/internal/queue"
@@ -38,7 +39,7 @@ func BenchmarkEndToEndSingleDelivery(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -101,7 +102,7 @@ func BenchmarkEndToEndMultipleEndpoints(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -159,7 +160,7 @@ func BenchmarkEndToEndHighConcurrency(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -217,7 +218,7 @@ func BenchmarkEndToEndLargePayload(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -278,7 +279,7 @@ func BenchmarkEndToEndQueuePublishAndConsume(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	ctx := util.BenchmarkContext()
+	ctx := context.Background()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
