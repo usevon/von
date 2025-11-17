@@ -57,7 +57,7 @@ func NewPublisherWithConfig(config Config) (*Publisher, error) {
 }
 
 // PublishWebhook publishes a webhook delivery message to the queue.
-func (p *Publisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) error {
+func (p *Publisher) PublishWebhook(ctx context.Context, msg *types.QueueMessage) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
@@ -80,7 +80,7 @@ func (p *Publisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) 
 }
 
 // PublishBatch publishes multiple webhook delivery messages in a batch.
-func (p *Publisher) PublishBatch(ctx context.Context, messages []types.QueueMessage) error {
+func (p *Publisher) PublishBatch(ctx context.Context, messages []*types.QueueMessage) error {
 	for _, msg := range messages {
 		if err := p.PublishWebhook(ctx, msg); err != nil {
 			return err
@@ -90,7 +90,7 @@ func (p *Publisher) PublishBatch(ctx context.Context, messages []types.QueueMess
 }
 
 // PublishWebhookToDLX publishes a message directly to the dead letter exchange (for testing).
-func (p *Publisher) PublishWebhookToDLX(ctx context.Context, msg types.QueueMessage) error {
+func (p *Publisher) PublishWebhookToDLX(ctx context.Context, msg *types.QueueMessage) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)

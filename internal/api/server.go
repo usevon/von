@@ -8,14 +8,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/usevon/von/pkg/types"
 	vonmiddleware "github.com/usevon/von/internal/middleware"
+	"github.com/usevon/von/internal/repository"
+	"github.com/usevon/von/internal/service"
+	"github.com/usevon/von/pkg/types"
 	"gorm.io/gorm"
 )
 
 // WebhookPublisher publishes webhook messages to the queue.
 type WebhookPublisher interface {
-	PublishWebhook(ctx context.Context, msg types.QueueMessage) error
+	PublishWebhook(ctx context.Context, msg *types.QueueMessage) error
 	Close()
 }
 
@@ -67,9 +69,20 @@ func (s *Server) setupRoutes() {
 		Success(w, map[string]string{"status": "ok"})
 	})
 
-	eventsHandler := NewEventsHandler(s.db, s.publisher)
-	endpointsHandler := NewEndpointsHandler(s.db)
-	deliveriesHandler := NewDeliveriesHandler(s.db, s.publisher)
+	// Create repositories
+	endpointRepo := repository.NewEndpointRepo(s.db)
+	eventRepo := repository.NewEventRepo(s.db)
+	deliveryRepo := repository.NewDeliveryRepo(s.db)
+
+	// Create services
+	endpointService := service.NewEndpointService(s.db, endpointRepo)
+	eventService := service.NewEventService(s.db, eventRepo, endpointRepo, deliveryRepo, s.publisher)
+	deliveryService := service.NewDeliveryService(s.db, deliveryRepo, eventRepo, endpointRepo, s.publisher)
+
+	// Create handlers
+	eventsHandler := NewEventsHandler(eventService)
+	endpointsHandler := NewEndpointsHandler(endpointService)
+	deliveriesHandler := NewDeliveriesHandler(deliveryService)
 
 	s.router.Route("/v1", func(r chi.Router) {
 		r.Post("/events", eventsHandler.CreateEvent)

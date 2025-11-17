@@ -199,7 +199,7 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 // requeueDelivery schedules a retry after a delay.
 func (w *Worker) requeueDelivery(ctx context.Context, msg types.QueueMessage, delay time.Duration, rabbitmqURL string) error {
 	time.Sleep(delay)
-	return w.publisher.PublishWebhook(ctx, msg)
+	return w.publisher.PublishWebhook(ctx, &msg)
 }
 
 // UpdateDeliveryStatus updates the delivery status in the database.

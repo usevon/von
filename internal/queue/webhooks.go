@@ -38,13 +38,13 @@ func (q *Queue) Publisher() *Publisher {
 }
 
 // Enqueue adds a webhook delivery to the queue for async processing.
-func (q *Queue) Enqueue(ctx context.Context, delivery types.QueueMessage) error {
+func (q *Queue) Enqueue(ctx context.Context, delivery *types.QueueMessage) error {
 	return q.publisher.PublishWebhook(ctx, delivery)
 }
 
 // EnqueueBatch adds multiple webhook deliveries to the queue in a single operation.
 // This is more efficient than calling Enqueue multiple times.
-func (q *Queue) EnqueueBatch(ctx context.Context, deliveries []types.QueueMessage) error {
+func (q *Queue) EnqueueBatch(ctx context.Context, deliveries []*types.QueueMessage) error {
 	for i, delivery := range deliveries {
 		if err := q.publisher.PublishWebhook(ctx, delivery); err != nil {
 			return fmt.Errorf("failed to enqueue message %d/%d: %w", i+1, len(deliveries), err)
