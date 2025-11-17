@@ -70,29 +70,6 @@ func (Endpoint) TableName() string {
 	return "endpoint"
 }
 
-// EndpointConfig represents the configuration for a webhook endpoint including URL, secrets, and headers.
-type EndpointConfig struct {
-	ID             string        `gorm:"type:uuid;primaryKey" json:"id"`
-	ApplicationID  string        `gorm:"type:uuid;index;not null" json:"application_id"`
-	UID            string        `gorm:"uniqueIndex;not null" json:"uid"`
-	URL            string        `gorm:"not null" json:"url"`
-	Description    string        `json:"description"`
-	Secrets        JSONB         `gorm:"type:jsonb" json:"secrets,omitempty"`
-	SigningAlgo    SignatureAlgo `gorm:"default:'sha256'" json:"signing_algo"`
-	CustomHeaders  JSONB         `gorm:"type:jsonb" json:"custom_headers,omitempty"`
-	TimeoutSeconds int           `gorm:"default:30" json:"timeout_seconds"`
-	RateLimitRPS   *int          `json:"rate_limit_rps,omitempty"`
-	Tags           JSONB         `gorm:"type:jsonb" json:"tags,omitempty"`
-	Metadata       JSONB         `gorm:"type:jsonb" json:"metadata,omitempty"`
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
-}
-
-// TableName returns the database table name for EndpointConfig.
-func (EndpointConfig) TableName() string {
-	return "endpoint_config"
-}
-
 // EndpointHealth tracks health status and reliability metrics updated after each delivery attempt.
 type EndpointHealth struct {
 	EndpointID       string         `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
@@ -109,37 +86,6 @@ type EndpointHealth struct {
 // TableName returns the database table name for EndpointHealth.
 func (EndpointHealth) TableName() string {
 	return "endpoint_health"
-}
-
-// EndpointRetryPolicy defines retry behavior with exponential, linear, or constant backoff strategies.
-type EndpointRetryPolicy struct {
-	EndpointID    string        `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
-	Strategy      RetryStrategy `gorm:"default:'exponential'" json:"retry_strategy"`
-	MaxRetries    int           `gorm:"default:5" json:"max_retries"`
-	RetryDelays   JSONB         `gorm:"type:jsonb" json:"retry_delays,omitempty"`
-	AutoRecovery  bool          `gorm:"default:true" json:"auto_recovery"`
-	RecoveryDelay int           `gorm:"default:3600" json:"recovery_delay"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
-}
-
-// TableName returns the database table name for EndpointRetryPolicy.
-func (EndpointRetryPolicy) TableName() string {
-	return "endpoint_retry_policy"
-}
-
-// EndpointEventFilter defines which event types an endpoint receives with allow or block mode.
-type EndpointEventFilter struct {
-	EndpointID   string     `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
-	EventFilters JSONB      `gorm:"type:jsonb" json:"event_filters,omitempty"`
-	FilterMode   FilterMode `gorm:"default:'allow'" json:"filter_mode"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-}
-
-// TableName returns the database table name for EndpointEventFilter.
-func (EndpointEventFilter) TableName() string {
-	return "endpoint_event_filter"
 }
 
 // Event represents a webhook message with idempotency support and delivery tracking.
