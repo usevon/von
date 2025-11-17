@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/usevon/von/internal/cache"
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/internal/usage"
 	"github.com/usevon/von/internal/util"
@@ -23,6 +24,7 @@ type Worker struct {
 	consumer       *queue.Consumer
 	publisher      *queue.Publisher
 	circuitBreaker *CircuitBreaker
+	endpointCache  *cache.EndpointCache
 	rabbitmqURL    string
 }
 
@@ -33,6 +35,7 @@ func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker,
 		client:         NewClient(timeout),
 		usageTracker:   usage.NewTracker(db),
 		circuitBreaker: NewCircuitBreaker(),
+		endpointCache:  cache.NewEndpointCache(db, 5*time.Minute, 1000),
 		rabbitmqURL:    rabbitmqURL,
 	}
 
@@ -72,26 +75,31 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
+	// Load delivery with only needed fields
 	var delivery types.EventDelivery
-	if err := w.DB.WithContext(ctx).Where("id = ?", msg.DeliveryID).First(&delivery).Error; err != nil {
+	if err := w.DB.WithContext(ctx).
+		Select("id", "event_id", "endpoint_id", "status", "attempt_count", "max_attempts", "next_attempt_at", "last_status_code", "last_response_preview", "last_error", "total_latency_ms", "delivered_at", "failed_at", "cancelled_at").
+		Where("id = ?", msg.DeliveryID).
+		First(&delivery).Error; err != nil {
 		log.Printf("failed to load delivery %s: %v", msg.DeliveryID, err)
 		return nil
 	}
 
-	var endpoint types.Endpoint
-	if err := w.DB.WithContext(ctx).Where("id = ?", msg.EndpointID).First(&endpoint).Error; err != nil {
+	// Get endpoint config from cache
+	cachedEndpoint, err := w.endpointCache.Get(ctx, msg.EndpointID)
+	if err != nil {
 		log.Printf("failed to load endpoint %s: %v", msg.EndpointID, err)
 		return nil
 	}
 
-	if endpoint.Status == types.EndpointStatusDisabled {
-		log.Printf("endpoint %s is disabled, skipping delivery %s", endpoint.ID, delivery.ID)
+	if cachedEndpoint.Status == types.EndpointStatusDisabled {
+		log.Printf("endpoint %s is disabled, skipping delivery %s", msg.EndpointID, delivery.ID)
 		w.MarkDeliveryCancelled(ctx, &delivery)
 		return nil
 	}
 
 	if w.circuitBreaker.IsOpen(msg.EndpointID) {
-		log.Printf("circuit breaker open for endpoint %s, skipping delivery %s", endpoint.ID, delivery.ID)
+		log.Printf("circuit breaker open for endpoint %s, skipping delivery %s", msg.EndpointID, delivery.ID)
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
 		nextAttempt := time.Now().Add(backoff)
 		delivery.NextAttemptAt = &nextAttempt
@@ -108,8 +116,12 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		return nil
 	}
 
+	// Load event with only organization_id (needed for usage tracking)
 	var event types.Event
-	if err := w.DB.WithContext(ctx).Where("id = ?", msg.EventID).First(&event).Error; err != nil {
+	if err := w.DB.WithContext(ctx).
+		Select("organization_id").
+		Where("id = ?", msg.EventID).
+		First(&event).Error; err != nil {
 		log.Printf("failed to load event %s: %v", msg.EventID, err)
 		return nil
 	}
@@ -153,9 +165,13 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	if result.IsSuccessful() {
 		delivery.Status = types.DeliveryStatusDelivered
 		delivery.DeliveredAt = util.TimePtr(time.Now())
-		w.UpdateEndpointHealth(ctx, &endpoint, true)
+		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
 		w.circuitBreaker.RecordSuccess(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, true)
+		// Only invalidate cache if endpoint status changed
+		if statusChanged {
+			w.endpointCache.Invalidate(msg.EndpointID)
+		}
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
 		nextAttempt := time.Now().Add(backoff)
@@ -173,9 +189,13 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	} else {
 		delivery.Status = types.DeliveryStatusFailed
 		delivery.FailedAt = util.TimePtr(time.Now())
-		w.UpdateEndpointHealth(ctx, &endpoint, false)
+		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
 		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, false)
+		// Only invalidate cache if endpoint status changed
+		if statusChanged {
+			w.endpointCache.Invalidate(msg.EndpointID)
+		}
 	}
 
 	if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
@@ -210,8 +230,17 @@ func (w *Worker) MarkDeliveryCancelled(ctx context.Context, delivery *types.Even
 }
 
 // UpdateEndpointHealth updates the endpoint health metrics based on delivery success/failure.
-func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpoint *types.Endpoint, successful bool) {
+// Returns true if the endpoint status changed, false otherwise.
+func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpointID string, successful bool) bool {
+	// Load full endpoint for health update
+	var endpoint types.Endpoint
+	if err := w.DB.WithContext(ctx).Where("id = ?", endpointID).First(&endpoint).Error; err != nil {
+		log.Printf("failed to load endpoint for health update: %v", err)
+		return false
+	}
+
 	now := time.Now()
+	oldStatus := endpoint.Status
 
 	if successful {
 		endpoint.ConsecutiveFails = 0
@@ -248,8 +277,11 @@ func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpoint *types.Endpo
 		}
 	}
 
-	if err := w.DB.WithContext(ctx).Save(endpoint).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Save(&endpoint).Error; err != nil {
 		log.Printf("failed to update endpoint health: %v", err)
+		return false
 	}
+
+	return oldStatus != endpoint.Status
 }
 

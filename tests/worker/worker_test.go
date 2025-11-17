@@ -59,7 +59,8 @@ func TestUpdateEndpointHealth_Success(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	_ = statusChanged
 
 	if endpoint.HealthScore != 55 {
 		t.Errorf("expected health score 55, got %d", endpoint.HealthScore)
@@ -97,7 +98,8 @@ func TestUpdateEndpointHealth_Failure(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	_ = statusChanged
 
 	if endpoint.HealthScore != 40 {
 		t.Errorf("expected health score 40, got %d", endpoint.HealthScore)
@@ -134,7 +136,8 @@ func TestUpdateEndpointHealth_HealthScoreMax(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	_ = statusChanged
 
 	if endpoint.HealthScore != 100 {
 		t.Errorf("expected health score capped at 100, got %d", endpoint.HealthScore)
@@ -159,7 +162,8 @@ func TestUpdateEndpointHealth_HealthScoreMin(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	_ = statusChanged
 
 	if endpoint.HealthScore != 0 {
 		t.Errorf("expected health score floored at 0, got %d", endpoint.HealthScore)
@@ -185,7 +189,8 @@ func TestUpdateEndpointHealth_StatusTransitionToFailing(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	_ = statusChanged
 
 	if endpoint.ConsecutiveFails != 5 {
 		t.Errorf("expected consecutive fails 5, got %d", endpoint.ConsecutiveFails)
@@ -218,7 +223,8 @@ func TestUpdateEndpointHealth_StatusTransitionToDegraded(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	_ = statusChanged
 
 	if endpoint.HealthScore != 45 {
 		t.Errorf("expected health score 45, got %d", endpoint.HealthScore)
@@ -248,7 +254,8 @@ func TestUpdateEndpointHealth_AutoDisableAfter10Failures(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	_ = statusChanged
 
 	if endpoint.ConsecutiveFails != 10 {
 		t.Errorf("expected consecutive fails 10, got %d", endpoint.ConsecutiveFails)
@@ -289,7 +296,8 @@ func TestUpdateEndpointHealth_RecoveryFromFailing(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	w.UpdateEndpointHealth(context.Background(), &endpoint, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	_ = statusChanged
 
 	if endpoint.ConsecutiveFails != 0 {
 		t.Errorf("expected consecutive fails reset to 0, got %d", endpoint.ConsecutiveFails)
