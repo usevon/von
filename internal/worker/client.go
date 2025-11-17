@@ -41,11 +41,19 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// NewClient creates a new webhook HTTP client with configurable timeout.
+// NewClient creates a new webhook HTTP client with configurable timeout and connection pooling.
 func NewClient(timeout time.Duration) *Client {
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		MaxConnsPerHost:     100,
+		IdleConnTimeout:     90 * time.Second,
+	}
+
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout:   timeout,
+			Transport: transport,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},

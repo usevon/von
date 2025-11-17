@@ -34,7 +34,7 @@ func setupBenchmarkServer(b *testing.B) *benchmarkFixture {
 
 	database := util.SetupBenchmarkDatabase(b)
 	publisher := &benchmarkPublisher{}
-	server := api.NewServer(database.DB, publisher)
+	server := api.NewServerWithoutLogging(database.DB, publisher)
 
 	orgID := uuid.New().String()
 	appID := uuid.New().String()

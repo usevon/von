@@ -49,6 +49,7 @@ func (db *DB) AutoMigrate() error {
 	return db.DB.AutoMigrate(
 		&types.Application{},
 		&types.Endpoint{},
+		&types.EndpointHealth{},
 		&types.Event{},
 		&types.EventDelivery{},
 		&types.DeliveryAttempt{},

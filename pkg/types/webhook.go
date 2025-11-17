@@ -2,8 +2,7 @@ package types
 
 import "time"
 
-// Application represents a top-level container for webhook endpoints within an organization.
-// Each application has its own UID, rate limits, and metadata.
+// Application represents a container for webhook endpoints within an organization with rate limits and metadata.
 type Application struct {
 	ID             string    `gorm:"type:uuid;primaryKey" json:"id"`
 	OrganizationID string    `gorm:"type:uuid;index;not null" json:"organization_id"`
@@ -24,8 +23,7 @@ func (Application) TableName() string {
 	return "application"
 }
 
-// Endpoint represents a webhook destination URL with circuit breaking, secrets, and event filtering.
-// Each endpoint belongs to an application and tracks health metrics to auto-disable failing destinations.
+// Endpoint represents a webhook destination URL with circuit breaking, secrets, filtering, and health tracking.
 type Endpoint struct {
 	ID            string    `gorm:"type:uuid;primaryKey" json:"id"`
 	ApplicationID string    `gorm:"type:uuid;index;not null" json:"application_id"`
@@ -70,6 +68,24 @@ type Endpoint struct {
 // TableName returns the database table name for Endpoint.
 func (Endpoint) TableName() string {
 	return "endpoint"
+}
+
+// EndpointHealth tracks health status and reliability metrics updated after each delivery attempt.
+type EndpointHealth struct {
+	EndpointID       string         `gorm:"type:uuid;primaryKey" json:"endpoint_id"`
+	Status           EndpointStatus `gorm:"default:'healthy';index" json:"status"`
+	HealthScore      int            `gorm:"default:100" json:"health_score"`
+	ConsecutiveFails int            `gorm:"default:0" json:"consecutive_fails"`
+	LastSuccessAt    *time.Time     `json:"last_success_at,omitempty"`
+	LastFailureAt    *time.Time     `json:"last_failure_at,omitempty"`
+	DisabledAt       *time.Time     `json:"disabled_at,omitempty"`
+	DisabledReason   string         `json:"disabled_reason,omitempty"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+}
+
+// TableName returns the database table name for EndpointHealth.
+func (EndpointHealth) TableName() string {
+	return "endpoint_health"
 }
 
 // Event represents a webhook message with idempotency support and delivery tracking.

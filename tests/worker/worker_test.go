@@ -22,6 +22,7 @@ func setupTestDB(t *testing.T) *db.DB {
 	}
 
 	database.DB.Exec("DELETE FROM event_delivery")
+	database.DB.Exec("DELETE FROM endpoint_health")
 	database.DB.Exec("DELETE FROM endpoint")
 
 	return database
@@ -46,35 +47,51 @@ func TestUpdateEndpointHealth_Success(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:               uuid.New().String(),
-		ApplicationID:    app.ID,
-		URL:              "https://example.com/webhook",
-		HealthScore:      50,
-		ConsecutiveFails: 3,
-		Status:           types.EndpointStatusFailing,
+		ID:            endpointID,
+		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		Status:        types.EndpointStatusFailing,
 	}
 
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	health := types.EndpointHealth{
+		EndpointID:       endpointID,
+		HealthScore:      50,
+		ConsecutiveFails: 3,
+		Status:           types.EndpointStatusFailing,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
 	_ = statusChanged
 
-	if endpoint.HealthScore != 55 {
-		t.Errorf("expected health score 55, got %d", endpoint.HealthScore)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
 	}
 
-	if endpoint.ConsecutiveFails != 0 {
-		t.Errorf("expected consecutive fails to be reset to 0, got %d", endpoint.ConsecutiveFails)
+	if updated.HealthScore != 55 {
+		t.Errorf("expected health score 55, got %d", updated.HealthScore)
 	}
 
-	if endpoint.Status != types.EndpointStatusHealthy {
-		t.Errorf("expected status to recover to healthy, got %v", endpoint.Status)
+	if updated.ConsecutiveFails != 0 {
+		t.Errorf("expected consecutive fails to be reset to 0, got %d", updated.ConsecutiveFails)
 	}
 
-	if endpoint.LastSuccessAt == nil {
+	if updated.Status != types.EndpointStatusHealthy {
+		t.Errorf("expected status to recover to healthy, got %v", updated.Status)
+	}
+
+	if updated.LastSuccessAt == nil {
 		t.Error("expected LastSuccessAt to be set")
 	}
 }
@@ -85,35 +102,51 @@ func TestUpdateEndpointHealth_Failure(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:               uuid.New().String(),
-		ApplicationID:    app.ID,
-		URL:              "https://example.com/webhook",
-		HealthScore:      50,
-		ConsecutiveFails: 0,
-		Status:           types.EndpointStatusHealthy,
+		ID:            endpointID,
+		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		Status:        types.EndpointStatusHealthy,
 	}
 
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	health := types.EndpointHealth{
+		EndpointID:       endpointID,
+		HealthScore:      50,
+		ConsecutiveFails: 0,
+		Status:           types.EndpointStatusHealthy,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
 	_ = statusChanged
 
-	if endpoint.HealthScore != 40 {
-		t.Errorf("expected health score 40, got %d", endpoint.HealthScore)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
 	}
 
-	if endpoint.ConsecutiveFails != 1 {
-		t.Errorf("expected consecutive fails 1, got %d", endpoint.ConsecutiveFails)
+	if updated.HealthScore != 40 {
+		t.Errorf("expected health score 40, got %d", updated.HealthScore)
 	}
 
-	if endpoint.Status != types.EndpointStatusDegraded {
-		t.Errorf("expected status degraded, got %v", endpoint.Status)
+	if updated.ConsecutiveFails != 1 {
+		t.Errorf("expected consecutive fails 1, got %d", updated.ConsecutiveFails)
 	}
 
-	if endpoint.LastFailureAt == nil {
+	if updated.Status != types.EndpointStatusDegraded {
+		t.Errorf("expected status degraded, got %v", updated.Status)
+	}
+
+	if updated.LastFailureAt == nil {
 		t.Error("expected LastFailureAt to be set")
 	}
 }
@@ -124,11 +157,12 @@ func TestUpdateEndpointHealth_HealthScoreMax(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:            uuid.New().String(),
+		ID:            endpointID,
 		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
 		URL:           "https://example.com/webhook",
-		HealthScore:   97,
 		Status:        types.EndpointStatusHealthy,
 	}
 
@@ -136,11 +170,26 @@ func TestUpdateEndpointHealth_HealthScoreMax(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	health := types.EndpointHealth{
+		EndpointID:  endpointID,
+		HealthScore: 97,
+		Status:      types.EndpointStatusHealthy,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
 	_ = statusChanged
 
-	if endpoint.HealthScore != 100 {
-		t.Errorf("expected health score capped at 100, got %d", endpoint.HealthScore)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
+	}
+
+	if updated.HealthScore != 100 {
+		t.Errorf("expected health score capped at 100, got %d", updated.HealthScore)
 	}
 }
 
@@ -150,11 +199,12 @@ func TestUpdateEndpointHealth_HealthScoreMin(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:            uuid.New().String(),
+		ID:            endpointID,
 		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
 		URL:           "https://example.com/webhook",
-		HealthScore:   5,
 		Status:        types.EndpointStatusHealthy,
 	}
 
@@ -162,11 +212,26 @@ func TestUpdateEndpointHealth_HealthScoreMin(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	health := types.EndpointHealth{
+		EndpointID:  endpointID,
+		HealthScore: 5,
+		Status:      types.EndpointStatusHealthy,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
 	_ = statusChanged
 
-	if endpoint.HealthScore != 0 {
-		t.Errorf("expected health score floored at 0, got %d", endpoint.HealthScore)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
+	}
+
+	if updated.HealthScore != 0 {
+		t.Errorf("expected health score floored at 0, got %d", updated.HealthScore)
 	}
 }
 
@@ -176,32 +241,48 @@ func TestUpdateEndpointHealth_StatusTransitionToFailing(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:               uuid.New().String(),
-		ApplicationID:    app.ID,
-		URL:              "https://example.com/webhook",
-		HealthScore:      25,
-		ConsecutiveFails: 4,
-		Status:           types.EndpointStatusDegraded,
+		ID:            endpointID,
+		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		Status:        types.EndpointStatusDegraded,
 	}
 
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	health := types.EndpointHealth{
+		EndpointID:       endpointID,
+		HealthScore:      25,
+		ConsecutiveFails: 4,
+		Status:           types.EndpointStatusDegraded,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
 	_ = statusChanged
 
-	if endpoint.ConsecutiveFails != 5 {
-		t.Errorf("expected consecutive fails 5, got %d", endpoint.ConsecutiveFails)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
 	}
 
-	if endpoint.HealthScore != 15 {
-		t.Errorf("expected health score 15, got %d", endpoint.HealthScore)
+	if updated.ConsecutiveFails != 5 {
+		t.Errorf("expected consecutive fails 5, got %d", updated.ConsecutiveFails)
 	}
 
-	if endpoint.Status != types.EndpointStatusFailing {
-		t.Errorf("expected status failing (5+ fails and health < 20), got %v", endpoint.Status)
+	if updated.HealthScore != 15 {
+		t.Errorf("expected health score 15, got %d", updated.HealthScore)
+	}
+
+	if updated.Status != types.EndpointStatusFailing {
+		t.Errorf("expected status failing (5+ fails and health < 20), got %v", updated.Status)
 	}
 }
 
@@ -211,11 +292,12 @@ func TestUpdateEndpointHealth_StatusTransitionToDegraded(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:            uuid.New().String(),
+		ID:            endpointID,
 		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
 		URL:           "https://example.com/webhook",
-		HealthScore:   55,
 		Status:        types.EndpointStatusHealthy,
 	}
 
@@ -223,15 +305,30 @@ func TestUpdateEndpointHealth_StatusTransitionToDegraded(t *testing.T) {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
-	_ = statusChanged
-
-	if endpoint.HealthScore != 45 {
-		t.Errorf("expected health score 45, got %d", endpoint.HealthScore)
+	health := types.EndpointHealth{
+		EndpointID:  endpointID,
+		HealthScore: 55,
+		Status:      types.EndpointStatusHealthy,
 	}
 
-	if endpoint.Status != types.EndpointStatusDegraded {
-		t.Errorf("expected status degraded (health < 50), got %v", endpoint.Status)
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	_ = statusChanged
+
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
+	}
+
+	if updated.HealthScore != 45 {
+		t.Errorf("expected health score 45, got %d", updated.HealthScore)
+	}
+
+	if updated.Status != types.EndpointStatusDegraded {
+		t.Errorf("expected status degraded (health < 50), got %v", updated.Status)
 	}
 }
 
@@ -241,36 +338,52 @@ func TestUpdateEndpointHealth_AutoDisableAfter10Failures(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:               uuid.New().String(),
-		ApplicationID:    app.ID,
-		URL:              "https://example.com/webhook",
-		HealthScore:      10,
-		ConsecutiveFails: 9,
-		Status:           types.EndpointStatusFailing,
+		ID:            endpointID,
+		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		Status:        types.EndpointStatusFailing,
 	}
 
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
+	health := types.EndpointHealth{
+		EndpointID:       endpointID,
+		HealthScore:      10,
+		ConsecutiveFails: 9,
+		Status:           types.EndpointStatusFailing,
+	}
+
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
+	}
+
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
 	_ = statusChanged
 
-	if endpoint.ConsecutiveFails != 10 {
-		t.Errorf("expected consecutive fails 10, got %d", endpoint.ConsecutiveFails)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
 	}
 
-	if endpoint.Status != types.EndpointStatusDisabled {
-		t.Errorf("expected status disabled (10+ failures), got %v", endpoint.Status)
+	if updated.ConsecutiveFails != 10 {
+		t.Errorf("expected consecutive fails 10, got %d", updated.ConsecutiveFails)
 	}
 
-	if endpoint.DisabledAt == nil {
+	if updated.Status != types.EndpointStatusDisabled {
+		t.Errorf("expected status disabled (10+ failures), got %v", updated.Status)
+	}
+
+	if updated.DisabledAt == nil {
 		t.Error("expected DisabledAt to be set")
 	}
 
-	if endpoint.DisabledReason != "Too many consecutive failures" {
-		t.Errorf("expected disabled reason to be set, got %s", endpoint.DisabledReason)
+	if updated.DisabledReason != "Too many consecutive failures" {
+		t.Errorf("expected disabled reason to be set, got %s", updated.DisabledReason)
 	}
 }
 
@@ -280,11 +393,22 @@ func TestUpdateEndpointHealth_RecoveryFromFailing(t *testing.T) {
 
 	w := &worker.Worker{DB: database.DB}
 
-	disabledAt := time.Now()
+	endpointID := uuid.New().String()
 	endpoint := types.Endpoint{
-		ID:               uuid.New().String(),
-		ApplicationID:    app.ID,
-		URL:              "https://example.com/webhook",
+		ID:            endpointID,
+		ApplicationID: app.ID,
+		UID:           "test-endpoint-" + uuid.New().String(),
+		URL:           "https://example.com/webhook",
+		Status:        types.EndpointStatusFailing,
+	}
+
+	if err := database.Create(&endpoint).Error; err != nil {
+		t.Fatalf("failed to create endpoint: %v", err)
+	}
+
+	disabledAt := time.Now()
+	health := types.EndpointHealth{
+		EndpointID:       endpointID,
 		HealthScore:      10,
 		ConsecutiveFails: 7,
 		Status:           types.EndpointStatusFailing,
@@ -292,30 +416,35 @@ func TestUpdateEndpointHealth_RecoveryFromFailing(t *testing.T) {
 		DisabledReason:   "Too many failures",
 	}
 
-	if err := database.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
+	if err := database.Create(&health).Error; err != nil {
+		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
 	_ = statusChanged
 
-	if endpoint.ConsecutiveFails != 0 {
-		t.Errorf("expected consecutive fails reset to 0, got %d", endpoint.ConsecutiveFails)
+	var updated types.EndpointHealth
+	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+		t.Fatalf("failed to load health: %v", err)
 	}
 
-	if endpoint.HealthScore != 15 {
-		t.Errorf("expected health score 15, got %d", endpoint.HealthScore)
+	if updated.ConsecutiveFails != 0 {
+		t.Errorf("expected consecutive fails reset to 0, got %d", updated.ConsecutiveFails)
 	}
 
-	if endpoint.Status != types.EndpointStatusHealthy {
-		t.Errorf("expected status to recover to healthy, got %v", endpoint.Status)
+	if updated.HealthScore != 15 {
+		t.Errorf("expected health score 15, got %d", updated.HealthScore)
 	}
 
-	if endpoint.DisabledAt != nil {
+	if updated.Status != types.EndpointStatusHealthy {
+		t.Errorf("expected status to recover to healthy, got %v", updated.Status)
+	}
+
+	if updated.DisabledAt != nil {
 		t.Error("expected DisabledAt to be cleared")
 	}
 
-	if endpoint.DisabledReason != "" {
+	if updated.DisabledReason != "" {
 		t.Error("expected DisabledReason to be cleared")
 	}
 }

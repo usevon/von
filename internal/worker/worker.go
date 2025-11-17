@@ -232,56 +232,64 @@ func (w *Worker) MarkDeliveryCancelled(ctx context.Context, delivery *types.Even
 // UpdateEndpointHealth updates the endpoint health metrics based on delivery success/failure.
 // Returns true if the endpoint status changed, false otherwise.
 func (w *Worker) UpdateEndpointHealth(ctx context.Context, endpointID string, successful bool) bool {
-	// Load full endpoint for health update
-	var endpoint types.Endpoint
-	if err := w.DB.WithContext(ctx).Where("id = ?", endpointID).First(&endpoint).Error; err != nil {
-		log.Printf("failed to load endpoint for health update: %v", err)
-		return false
+	var health types.EndpointHealth
+	if err := w.DB.WithContext(ctx).Where("endpoint_id = ?", endpointID).First(&health).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			health = types.EndpointHealth{
+				EndpointID:  endpointID,
+				Status:      types.EndpointStatusHealthy,
+				HealthScore: 100,
+			}
+		} else {
+			log.Printf("failed to load endpoint health: %v", err)
+			return false
+		}
 	}
 
 	now := time.Now()
-	oldStatus := endpoint.Status
+	oldStatus := health.Status
 
 	if successful {
-		endpoint.ConsecutiveFails = 0
-		if endpoint.HealthScore+5 > 100 {
-			endpoint.HealthScore = 100
+		health.ConsecutiveFails = 0
+		if health.HealthScore+5 > 100 {
+			health.HealthScore = 100
 		} else {
-			endpoint.HealthScore += 5
+			health.HealthScore += 5
 		}
-		endpoint.LastSuccessAt = &now
-		if endpoint.Status == types.EndpointStatusFailing || endpoint.Status == types.EndpointStatusDegraded {
-			endpoint.Status = types.EndpointStatusHealthy
-			endpoint.DisabledAt = nil
-			endpoint.DisabledReason = ""
+		health.LastSuccessAt = &now
+		if health.Status == types.EndpointStatusFailing || health.Status == types.EndpointStatusDegraded {
+			health.Status = types.EndpointStatusHealthy
+			health.DisabledAt = nil
+			health.DisabledReason = ""
 		}
 	} else {
-		endpoint.ConsecutiveFails++
-		if endpoint.HealthScore-10 < 0 {
-			endpoint.HealthScore = 0
+		health.ConsecutiveFails++
+		if health.HealthScore-10 < 0 {
+			health.HealthScore = 0
 		} else {
-			endpoint.HealthScore -= 10
+			health.HealthScore -= 10
 		}
-		endpoint.LastFailureAt = &now
+		health.LastFailureAt = &now
 
-		if endpoint.ConsecutiveFails >= 5 && endpoint.HealthScore < 20 {
-			endpoint.Status = types.EndpointStatusFailing
-		} else if endpoint.HealthScore < 50 {
-			endpoint.Status = types.EndpointStatusDegraded
+		if health.ConsecutiveFails >= 5 && health.HealthScore < 20 {
+			health.Status = types.EndpointStatusFailing
+		} else if health.HealthScore < 50 {
+			health.Status = types.EndpointStatusDegraded
 		}
 
-		if endpoint.ConsecutiveFails >= 10 {
-			endpoint.Status = types.EndpointStatusDisabled
-			endpoint.DisabledAt = &now
-			endpoint.DisabledReason = "Too many consecutive failures"
+		if health.ConsecutiveFails >= 10 {
+			health.Status = types.EndpointStatusDisabled
+			health.DisabledAt = &now
+			health.DisabledReason = "Too many consecutive failures"
 		}
 	}
 
-	if err := w.DB.WithContext(ctx).Save(&endpoint).Error; err != nil {
+	health.UpdatedAt = now
+	if err := w.DB.WithContext(ctx).Save(&health).Error; err != nil {
 		log.Printf("failed to update endpoint health: %v", err)
 		return false
 	}
 
-	return oldStatus != endpoint.Status
+	return oldStatus != health.Status
 }
 
