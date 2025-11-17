@@ -134,33 +134,7 @@ func (h *EventsHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 		deliveryIDs = append(deliveryIDs, delivery.ID)
 
-		secret := "default-secret"
-		if currentSecret, ok := endpoint.Secrets["current"].(string); ok {
-			secret = currentSecret
-		}
-
-		headers := make(map[string]string)
-		for k, v := range endpoint.CustomHeaders {
-			if str, ok := v.(string); ok {
-				headers[k] = str
-			}
-		}
-
-		msg := types.QueueMessage{
-			DeliveryID:    delivery.ID,
-			EventID:       event.ID,
-			EndpointID:    endpoint.ID,
-			URL:           endpoint.URL,
-			EventType:     event.EventType,
-			Payload:       event.Payload,
-			Headers:       headers,
-			Secret:        secret,
-			AttemptNumber: 1,
-			DeliveryMode:  event.DeliveryMode,
-			MaxRetries:    endpoint.MaxRetries,
-			RetryStrategy: endpoint.RetryStrategy,
-			EnqueuedAt:    time.Now(),
-		}
+		msg := types.NewQueueMessage(&event, &endpoint, &delivery)
 
 		if err := h.publisher.PublishWebhook(ctx, msg); err != nil {
 			h.db.Model(&delivery).Update("status", types.DeliveryStatusFailed)
