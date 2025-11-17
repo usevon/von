@@ -17,15 +17,10 @@ func TestCreateEvent(t *testing.T) {
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
 		util.WithDescription("Test endpoint"),
-		util.WithSecrets(types.JSONB{"current": "test-secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
-		util.WithEventFilters(types.JSONB{
-			"filters": []interface{}{"user.created"},
-		}),
+		util.WithSecret("test-secret"),
+		util.WithEventTypes("user.created"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	req := map[string]interface{}{
 		"application_id":  ts.appID,
@@ -144,9 +139,7 @@ func TestCreateEventBlockMode(t *testing.T) {
 			"filters": []interface{}{"user.deleted"},
 		}),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	req := map[string]interface{}{
 		"application_id":  ts.appID,
@@ -236,9 +229,7 @@ func TestCreateEventIdempotency(t *testing.T) {
 		util.WithSecrets(types.JSONB{"current": "test-secret"}),
 		util.WithFilterMode(types.FilterModeAllow),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	req := map[string]interface{}{
 		"application_id":  ts.appID,
