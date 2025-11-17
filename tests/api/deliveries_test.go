@@ -18,39 +18,28 @@ func TestListDeliveries(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithSecrets(types.JSONB{"current": "secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
+		util.WithSecret("secret"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(ts.appID),
 		util.WithEventOrganizationID(ts.orgID),
-		util.WithEventTypeForEvent("test.event"),
 	)
-	if err := ts.db.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, ts.db.Create(&event))
 
 	delivery1 := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
-		util.WithDeliveryStatus(types.DeliveryStatusQueued),
 	)
-	if err := ts.db.Create(&delivery1).Error; err != nil {
-		t.Fatalf("failed to create delivery 1: %v", err)
-	}
+	util.Must(t, ts.db.Create(&delivery1))
 
 	delivery2 := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
 		util.WithDeliveryStatus(types.DeliveryStatusDelivered),
 	)
-	if err := ts.db.Create(&delivery2).Error; err != nil {
-		t.Fatalf("failed to create delivery 2: %v", err)
-	}
+	util.Must(t, ts.db.Create(&delivery2))
 
 	rr := ts.request("GET", "/v1/deliveries?application_id="+ts.appID, nil)
 
@@ -80,21 +69,15 @@ func TestListDeliveriesWithStatusFilter(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithSecrets(types.JSONB{"current": "secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
+		util.WithSecret("secret"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(ts.appID),
 		util.WithEventOrganizationID(ts.orgID),
-		util.WithEventTypeForEvent("test.event"),
 	)
-	if err := ts.db.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, ts.db.Create(&event))
 
 	deliveryPending := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
@@ -147,21 +130,15 @@ func TestGetDelivery(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithSecrets(types.JSONB{"current": "secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
+		util.WithSecret("secret"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(ts.appID),
 		util.WithEventOrganizationID(ts.orgID),
-		util.WithEventTypeForEvent("test.event"),
 	)
-	if err := ts.db.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, ts.db.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
@@ -210,21 +187,15 @@ func TestGetDeliveryAttempts(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithSecrets(types.JSONB{"current": "secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
+		util.WithSecret("secret"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(ts.appID),
 		util.WithEventOrganizationID(ts.orgID),
-		util.WithEventTypeForEvent("test.event"),
 	)
-	if err := ts.db.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, ts.db.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
@@ -295,21 +266,15 @@ func TestRetryDelivery(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(ts.appID),
 		util.WithURL("https://example.com/webhook"),
-		util.WithSecrets(types.JSONB{"current": "secret"}),
-		util.WithFilterMode(types.FilterModeAllow),
+		util.WithSecret("secret"),
 	)
-	if err := ts.db.Create(&endpoint).Error; err != nil {
-		t.Fatalf("failed to create endpoint: %v", err)
-	}
+	util.Must(t, ts.db.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(ts.appID),
 		util.WithEventOrganizationID(ts.orgID),
-		util.WithEventTypeForEvent("test.event"),
 	)
-	if err := ts.db.Create(&event).Error; err != nil {
-		t.Fatalf("failed to create event: %v", err)
-	}
+	util.Must(t, ts.db.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),

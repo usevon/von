@@ -1,6 +1,10 @@
 package util
 
-import "github.com/usevon/von/pkg/types"
+import (
+	"net/http"
+
+	"github.com/usevon/von/pkg/types"
+)
 
 // Application option functions
 
@@ -268,5 +272,112 @@ func WithEndpointHealthScore(score int) func(*EndpointHealthOptions) {
 func WithConsecutiveFails(fails int) func(*EndpointHealthOptions) {
 	return func(opts *EndpointHealthOptions) {
 		opts.ConsecutiveFails = fails
+	}
+}
+
+// JSONB Convenience Helpers
+
+// WithEventTypes sets event filters with allow mode (convenience wrapper for WithEventFilters)
+func WithEventTypes(eventTypes ...string) func(*EndpointOptions) {
+	filters := make([]interface{}, len(eventTypes))
+	for i, et := range eventTypes {
+		filters[i] = et
+	}
+	return func(opts *EndpointOptions) {
+		opts.EventFilters = types.JSONB{"filters": filters}
+		opts.FilterMode = types.FilterModeAllow
+	}
+}
+
+// Scenario Option Functions
+
+// WithScenarioEndpointURL sets the endpoint URL for scenarios
+func WithScenarioEndpointURL(url string) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.EndpointURL = url
+	}
+}
+
+// WithScenarioEndpointStatus sets the endpoint status for scenarios
+func WithScenarioEndpointStatus(status types.EndpointStatus) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.EndpointStatus = status
+	}
+}
+
+// WithScenarioEventType sets the event type for scenarios
+func WithScenarioEventType(eventType string) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.EventType = eventType
+	}
+}
+
+// WithScenarioEventPayload sets the event payload for scenarios
+func WithScenarioEventPayload(payload types.JSONB) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.EventPayload = payload
+	}
+}
+
+// WithScenarioDeliveryStatus sets the delivery status for scenarios
+func WithScenarioDeliveryStatus(status types.DeliveryStatus) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.DeliveryStatus = status
+	}
+}
+
+// WithScenarioAppID sets the app ID for scenarios
+func WithScenarioAppID(id string) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.AppID = id
+	}
+}
+
+// WithScenarioOrganizationID sets the organization ID for scenarios
+func WithScenarioOrganizationID(id string) func(*DeliveryScenarioOptions) {
+	return func(opts *DeliveryScenarioOptions) {
+		opts.OrganizationID = id
+	}
+}
+
+// WithHealthScenarioEndpointStatus sets endpoint status for health scenarios
+func WithHealthScenarioEndpointStatus(status types.EndpointStatus) func(*HealthScenarioOptions) {
+	return func(opts *HealthScenarioOptions) {
+		opts.EndpointStatus = status
+	}
+}
+
+// WithHealthScenarioScore sets health score for health scenarios
+func WithHealthScenarioScore(score int) func(*HealthScenarioOptions) {
+	return func(opts *HealthScenarioOptions) {
+		opts.HealthScore = score
+	}
+}
+
+// WithHealthScenarioConsecutiveFails sets consecutive fails for health scenarios
+func WithHealthScenarioConsecutiveFails(fails int) func(*HealthScenarioOptions) {
+	return func(opts *HealthScenarioOptions) {
+		opts.ConsecutiveFails = fails
+	}
+}
+
+// WithHealthScenarioStatus sets health status for health scenarios
+func WithHealthScenarioStatus(status types.EndpointStatus) func(*HealthScenarioOptions) {
+	return func(opts *HealthScenarioOptions) {
+		opts.HealthStatus = status
+	}
+}
+
+// WithE2EServerHandler sets the HTTP handler for E2E scenarios
+func WithE2EServerHandler(handler http.HandlerFunc) func(*E2EScenarioOptions) {
+	return func(opts *E2EScenarioOptions) {
+		opts.ServerHandler = handler
+	}
+}
+
+// WithE2EWorkerTimeout sets the worker timeout for E2E scenarios
+func WithE2EWorkerTimeout(timeout int) func(*E2EScenarioOptions) {
+	return func(opts *E2EScenarioOptions) {
+		opts.WorkerTimeout = timeout
 	}
 }
