@@ -16,7 +16,7 @@ import (
 
 type benchmarkPublisher struct{}
 
-func (m *benchmarkPublisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) error {
+func (m *benchmarkPublisher) PublishWebhook(ctx context.Context, msg *types.QueueMessage) error {
 	return nil
 }
 
