@@ -5,77 +5,43 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/usevon/von/internal/db"
 	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
+	"github.com/usevon/von/tests/util"
 )
 
-func setupTestDB(t *testing.T) *db.DB {
-	database, err := db.New("postgresql://von:von_dev_password@localhost:5432/von_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-
-	if err := database.AutoMigrate(); err != nil {
-		t.Fatalf("failed to run migrations: %v", err)
-	}
-
-	database.DB.Exec("DELETE FROM event_delivery")
-	database.DB.Exec("DELETE FROM endpoint_health")
-	database.DB.Exec("DELETE FROM endpoint")
-
-	return database
-}
-
-func createTestApp(t *testing.T, database *db.DB) *types.Application {
-	app := &types.Application{
-		ID:             uuid.New().String(),
-		OrganizationID: uuid.New().String(),
-		Name:           "Test App",
-		UID:            "test-app-" + uuid.New().String(),
-	}
-	if err := database.Create(app).Error; err != nil {
+func TestUpdateEndpointHealth_Success(t *testing.T) {
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
 		t.Fatalf("failed to create application: %v", err)
 	}
-	return app
-}
-
-func TestUpdateEndpointHealth_Success(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusFailing,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusFailing),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:       endpointID,
-		HealthScore:      50,
-		ConsecutiveFails: 3,
-		Status:           types.EndpointStatusFailing,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(50),
+		util.WithConsecutiveFails(3),
+		util.WithHealthStatus(types.EndpointStatusFailing),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -97,40 +63,37 @@ func TestUpdateEndpointHealth_Success(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_Failure(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusHealthy,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:       endpointID,
-		HealthScore:      50,
-		ConsecutiveFails: 0,
-		Status:           types.EndpointStatusHealthy,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(50),
+		util.WithConsecutiveFails(0),
+		util.WithHealthStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -152,39 +115,36 @@ func TestUpdateEndpointHealth_Failure(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_HealthScoreMax(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusHealthy,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:  endpointID,
-		HealthScore: 97,
-		Status:      types.EndpointStatusHealthy,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(97),
+		util.WithHealthStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -194,39 +154,36 @@ func TestUpdateEndpointHealth_HealthScoreMax(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_HealthScoreMin(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusHealthy,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:  endpointID,
-		HealthScore: 5,
-		Status:      types.EndpointStatusHealthy,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(5),
+		util.WithHealthStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -236,40 +193,37 @@ func TestUpdateEndpointHealth_HealthScoreMin(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_StatusTransitionToFailing(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusDegraded,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusDegraded),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:       endpointID,
-		HealthScore:      25,
-		ConsecutiveFails: 4,
-		Status:           types.EndpointStatusDegraded,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(25),
+		util.WithConsecutiveFails(4),
+		util.WithHealthStatus(types.EndpointStatusDegraded),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -287,39 +241,36 @@ func TestUpdateEndpointHealth_StatusTransitionToFailing(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_StatusTransitionToDegraded(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusHealthy,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:  endpointID,
-		HealthScore: 55,
-		Status:      types.EndpointStatusHealthy,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(55),
+		util.WithHealthStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -333,40 +284,37 @@ func TestUpdateEndpointHealth_StatusTransitionToDegraded(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_AutoDisableAfter10Failures(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusFailing,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusFailing),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	health := types.EndpointHealth{
-		EndpointID:       endpointID,
-		HealthScore:      10,
-		ConsecutiveFails: 9,
-		Status:           types.EndpointStatusFailing,
-	}
-
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(10),
+		util.WithConsecutiveFails(9),
+		util.WithHealthStatus(types.EndpointStatusFailing),
+	)
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, false)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, false)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -388,43 +336,41 @@ func TestUpdateEndpointHealth_AutoDisableAfter10Failures(t *testing.T) {
 }
 
 func TestUpdateEndpointHealth_RecoveryFromFailing(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpointID := uuid.New().String()
-	endpoint := types.Endpoint{
-		ID:            endpointID,
-		ApplicationID: app.ID,
-		UID:           "test-endpoint-" + uuid.New().String(),
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusFailing,
-	}
-
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusFailing),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
 	disabledAt := time.Now()
-	health := types.EndpointHealth{
-		EndpointID:       endpointID,
-		HealthScore:      10,
-		ConsecutiveFails: 7,
-		Status:           types.EndpointStatusFailing,
-		DisabledAt:       &disabledAt,
-		DisabledReason:   "Too many failures",
-	}
+	health := util.NewTestEndpointHealth(
+		util.WithHealthEndpointID(endpoint.ID),
+		util.WithEndpointHealthScore(10),
+		util.WithConsecutiveFails(7),
+		util.WithHealthStatus(types.EndpointStatusFailing),
+	)
+	health.DisabledAt = &disabledAt
+	health.DisabledReason = "Too many failures"
 
 	if err := database.Create(&health).Error; err != nil {
 		t.Fatalf("failed to create endpoint health: %v", err)
 	}
 
-	statusChanged := w.UpdateEndpointHealth(context.Background(), endpointID, true)
+	statusChanged := w.UpdateEndpointHealth(context.Background(), endpoint.ID, true)
 	_ = statusChanged
 
 	var updated types.EndpointHealth
-	if err := database.Where("endpoint_id = ?", endpointID).First(&updated).Error; err != nil {
+	if err := database.Where("endpoint_id = ?", endpoint.ID).First(&updated).Error; err != nil {
 		t.Fatalf("failed to load health: %v", err)
 	}
 
@@ -450,39 +396,35 @@ func TestUpdateEndpointHealth_RecoveryFromFailing(t *testing.T) {
 }
 
 func TestMarkDeliveryCancelled(t *testing.T) {
-	database := setupTestDB(t)
-	app := createTestApp(t, database)
+	database := util.SetupDatabase(t)
+	app := util.NewTestApplication()
+	if err := database.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create application: %v", err)
+	}
 
 	w := &worker.Worker{DB: database.DB}
 
-	endpoint := types.Endpoint{
-		ID:            uuid.New().String(),
-		ApplicationID: app.ID,
-		URL:           "https://example.com/webhook",
-		Status:        types.EndpointStatusHealthy,
-	}
+	endpoint := util.NewTestEndpoint(
+		util.WithApplicationID(app.ID),
+		util.WithEndpointStatus(types.EndpointStatusHealthy),
+	)
 	if err := database.Create(&endpoint).Error; err != nil {
 		t.Fatalf("failed to create endpoint: %v", err)
 	}
 
-	event := types.Event{
-		ID:             uuid.New().String(),
-		ApplicationID:  app.ID,
-		OrganizationID: app.OrganizationID,
-		EventType:      "test.event",
-		Payload:        types.JSONB{"test": "data"},
-	}
+	event := util.NewTestEvent(
+		util.WithEventApplicationID(app.ID),
+		util.WithEventOrganizationID(app.OrganizationID),
+	)
 	if err := database.Create(&event).Error; err != nil {
 		t.Fatalf("failed to create event: %v", err)
 	}
 
-	delivery := types.EventDelivery{
-		ID:         uuid.New().String(),
-		EventID:    event.ID,
-		EndpointID: endpoint.ID,
-		Status:     types.DeliveryStatusQueued,
-	}
-
+	delivery := util.NewTestDelivery(
+		util.WithEventIDForDelivery(event.ID),
+		util.WithEndpointIDForDelivery(endpoint.ID),
+		util.WithDeliveryStatus(types.DeliveryStatusQueued),
+	)
 	if err := database.Create(&delivery).Error; err != nil {
 		t.Fatalf("failed to create delivery: %v", err)
 	}
