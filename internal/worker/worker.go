@@ -33,21 +33,21 @@ func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker,
 	baseRepo := repository.NewEndpointRepo(db)
 	cachedRepo := repository.NewCachedEndpointRepo(baseRepo, 5*time.Minute, 1000)
 
-	w := &Worker{
-		DB:             db,
-		client:         NewClient(timeout),
-		usageTracker:   usage.NewTracker(db),
-		circuitBreaker: NewCircuitBreaker(),
-		endpointRepo:   cachedRepo,
-		rabbitmqURL:    rabbitmqURL,
-	}
-
-	// Create publisher for requeuing messages (reuse connection)
+	// Create publisher for requeuing messages and usage tracking
 	publisher, err := queue.NewPublisher(rabbitmqURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publisher: %w", err)
 	}
-	w.publisher = publisher
+
+	w := &Worker{
+		DB:             db,
+		client:         NewClient(timeout),
+		usageTracker:   usage.NewTracker(db, publisher),
+		circuitBreaker: NewCircuitBreaker(),
+		endpointRepo:   cachedRepo,
+		rabbitmqURL:    rabbitmqURL,
+		publisher:      publisher,
+	}
 
 	consumer, err := queue.NewConsumer(rabbitmqURL, w.HandleMessage)
 	if err != nil {
@@ -160,14 +160,18 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.DeliveredAt = util.TimePtr(time.Now())
 		w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
 		w.circuitBreaker.RecordSuccess(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true)
+		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true); err != nil {
+			log.Printf("failed to track delivery: %v", err)
+		}
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
 		nextAttempt := time.Now().Add(backoff)
 		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackRetry(ctx, msg.OrganizationID)
+		if err := w.usageTracker.TrackRetry(ctx, msg.OrganizationID); err != nil {
+			log.Printf("failed to track retry: %v", err)
+		}
 
 		newMsg := msg
 		newMsg.AttemptNumber++
@@ -180,7 +184,9 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.FailedAt = util.TimePtr(time.Now())
 		w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false)
+		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false); err != nil {
+			log.Printf("failed to track delivery: %v", err)
+		}
 	}
 
 	if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
