@@ -130,33 +130,8 @@ func (h *DeliveriesHandler) RetryDelivery(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	secret := "default-secret"
-	if currentSecret, ok := endpoint.Secrets["current"].(string); ok {
-		secret = currentSecret
-	}
-
-	headers := make(map[string]string)
-	for k, v := range endpoint.CustomHeaders {
-		if str, ok := v.(string); ok {
-			headers[k] = str
-		}
-	}
-
-	msg := types.QueueMessage{
-		DeliveryID:    delivery.ID,
-		EventID:       event.ID,
-		EndpointID:    endpoint.ID,
-		URL:           endpoint.URL,
-		EventType:     event.EventType,
-		Payload:       event.Payload,
-		Headers:       headers,
-		Secret:        secret,
-		AttemptNumber: delivery.AttemptCount + 1,
-		DeliveryMode:  event.DeliveryMode,
-		MaxRetries:    endpoint.MaxRetries,
-		RetryStrategy: endpoint.RetryStrategy,
-		EnqueuedAt:    time.Now(),
-	}
+	msg := types.NewQueueMessage(&event, &endpoint, &delivery)
+	msg.AttemptNumber = delivery.AttemptCount + 1
 
 	ctx := context.Background()
 	if err := h.publisher.PublishWebhook(ctx, msg); err != nil {

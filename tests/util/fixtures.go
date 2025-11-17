@@ -190,6 +190,37 @@ func NewTestDelivery(opts ...func(*DeliveryOptions)) types.EventDelivery {
 	}
 }
 
+// EndpointHealthOptions holds configuration for creating test endpoint health.
+type EndpointHealthOptions struct {
+	EndpointID       string
+	Status           types.EndpointStatus
+	HealthScore      int
+	ConsecutiveFails int
+}
+
+// NewTestEndpointHealth creates a test endpoint health record with sensible defaults.
+func NewTestEndpointHealth(opts ...func(*EndpointHealthOptions)) types.EndpointHealth {
+	options := &EndpointHealthOptions{
+		EndpointID:       uuid.New().String(),
+		Status:           types.EndpointStatusHealthy,
+		HealthScore:      100,
+		ConsecutiveFails: 0,
+	}
+
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	now := time.Now()
+	return types.EndpointHealth{
+		EndpointID:       options.EndpointID,
+		Status:           options.Status,
+		HealthScore:      options.HealthScore,
+		ConsecutiveFails: options.ConsecutiveFails,
+		UpdatedAt:        now,
+	}
+}
+
 // SetupDatabase creates a database connection and runs migrations for tests.
 // Automatically cleans up on test completion.
 func SetupDatabase(t *testing.T) *db.DB {

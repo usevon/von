@@ -1,15 +1,16 @@
 package types
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
-// IsTerminal returns true if the delivery status is in a final state.
-// Terminal states are: Delivered, Failed, or Cancelled.
+// IsTerminal returns true if the delivery status is in a final state (Delivered, Failed, or Cancelled).
 func (s DeliveryStatus) IsTerminal() bool {
 	return s == DeliveryStatusDelivered || s == DeliveryStatusFailed || s == DeliveryStatusCancelled
 }
 
-// CanRetry returns true if the delivery is in a state where retries are possible.
-// Only queued deliveries can be retried.
+// CanRetry returns true if the delivery can be retried (only queued deliveries).
 func (s DeliveryStatus) CanRetry() bool {
 	return s == DeliveryStatusQueued
 }
@@ -90,4 +91,52 @@ func (e *Event) Validate() error {
 		return errors.New("event_type is required")
 	}
 	return nil
+}
+
+// ExtractCurrentSecret extracts the current secret from endpoint secrets.
+// Returns "default-secret" if no secret is found.
+func ExtractCurrentSecret(secrets JSONB) string {
+	if secrets == nil {
+		return "default-secret"
+	}
+
+	if currentSecret, ok := secrets["current"].(string); ok {
+		return currentSecret
+	}
+
+	return "default-secret"
+}
+
+// ToMap converts a JSONB object to a map[string]string.
+// Non-string values are ignored.
+func (j JSONB) ToMap() map[string]string {
+	result := make(map[string]string)
+
+	for k, v := range j {
+		if str, ok := v.(string); ok {
+			result[k] = str
+		}
+	}
+
+	return result
+}
+
+// NewQueueMessage creates a new QueueMessage from an event, endpoint, and delivery.
+func NewQueueMessage(event *Event, endpoint *Endpoint, delivery *EventDelivery) QueueMessage {
+	return QueueMessage{
+		DeliveryID:     delivery.ID,
+		EventID:        event.ID,
+		EndpointID:     endpoint.ID,
+		OrganizationID: event.OrganizationID,
+		URL:            endpoint.URL,
+		EventType:      event.EventType,
+		Payload:        event.Payload,
+		Headers:        endpoint.CustomHeaders.ToMap(),
+		Secret:         ExtractCurrentSecret(endpoint.Secrets),
+		AttemptNumber:  1,
+		DeliveryMode:   event.DeliveryMode,
+		MaxRetries:     endpoint.MaxRetries,
+		RetryStrategy:  endpoint.RetryStrategy,
+		EnqueuedAt:     time.Now(),
+	}
 }

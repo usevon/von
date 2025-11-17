@@ -240,3 +240,33 @@ func WithMaxAttempts(max int) func(*DeliveryOptions) {
 		opts.MaxAttempts = max
 	}
 }
+
+// EndpointHealth option functions
+
+// WithHealthEndpointID sets the endpoint ID for health
+func WithHealthEndpointID(id string) func(*EndpointHealthOptions) {
+	return func(opts *EndpointHealthOptions) {
+		opts.EndpointID = id
+	}
+}
+
+// WithHealthStatus sets the endpoint health status
+func WithHealthStatus(status types.EndpointStatus) func(*EndpointHealthOptions) {
+	return func(opts *EndpointHealthOptions) {
+		opts.Status = status
+	}
+}
+
+// WithEndpointHealthScore sets the endpoint health score for EndpointHealth
+func WithEndpointHealthScore(score int) func(*EndpointHealthOptions) {
+	return func(opts *EndpointHealthOptions) {
+		opts.HealthScore = score
+	}
+}
+
+// WithConsecutiveFails sets consecutive failure count
+func WithConsecutiveFails(fails int) func(*EndpointHealthOptions) {
+	return func(opts *EndpointHealthOptions) {
+		opts.ConsecutiveFails = fails
+	}
+}

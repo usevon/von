@@ -116,16 +116,6 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		return nil
 	}
 
-	// Load event with only organization_id (needed for usage tracking)
-	var event types.Event
-	if err := w.DB.WithContext(ctx).
-		Select("organization_id").
-		Where("id = ?", msg.EventID).
-		First(&event).Error; err != nil {
-		log.Printf("failed to load event %s: %v", msg.EventID, err)
-		return nil
-	}
-
 	result := w.client.DeliverWebhook(ctx, msg)
 
 	now := time.Now()
@@ -167,7 +157,7 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.DeliveredAt = util.TimePtr(time.Now())
 		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
 		w.circuitBreaker.RecordSuccess(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, true)
+		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true)
 		// Only invalidate cache if endpoint status changed
 		if statusChanged {
 			w.endpointCache.Invalidate(msg.EndpointID)
@@ -178,7 +168,7 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackRetry(ctx, event.OrganizationID)
+		w.usageTracker.TrackRetry(ctx, msg.OrganizationID)
 
 		newMsg := msg
 		newMsg.AttemptNumber++
@@ -191,7 +181,7 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.FailedAt = util.TimePtr(time.Now())
 		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, event.OrganizationID, false)
+		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false)
 		// Only invalidate cache if endpoint status changed
 		if statusChanged {
 			w.endpointCache.Invalidate(msg.EndpointID)
