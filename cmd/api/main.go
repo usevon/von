@@ -7,6 +7,7 @@ import (
 	"github.com/usevon/von/internal/api"
 	"github.com/usevon/von/internal/db"
 	"github.com/usevon/von/internal/queue"
+	"github.com/usevon/von/internal/usage"
 )
 
 func main() {
@@ -39,6 +40,14 @@ func main() {
 		log.Fatalf("failed to create publisher: %v", err)
 	}
 	defer publisher.Close()
+
+	aggregator, err := usage.NewAggregator(database.DB, rabbitmqURL)
+	if err != nil {
+		log.Fatalf("failed to create usage aggregator: %v", err)
+	}
+	defer aggregator.Stop()
+
+	go aggregator.Start()
 
 	server := api.NewServer(database.DB, publisher)
 

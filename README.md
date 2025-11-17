@@ -15,6 +15,7 @@ Von is the open-source webhooks infrastructure built with Go and RabbitMQ for au
 - **Automatic retries** - Exponential backoff with configurable retry attempts
 - **Signature verification** - HMAC SHA-256/512 signature generation and validation
 - **Distributed workers** - Horizontally scalable worker servers consuming from RabbitMQ
+- **Usage tracking** - Real-time metrics aggregation for billing and analytics
 - **Dev tunnel** - WebSocket-based tunnel for local webhook testing
 - **Dashboard** - Web UI for monitoring webhook logs and attempts
 
@@ -43,6 +44,7 @@ go test ./tests/e2e/...           # End-to-end tests
 go test ./tests/api/...           # API integration tests
 go test ./tests/worker/...        # Worker integration tests
 go test ./tests/queue/...         # Queue integration tests
+go test ./tests/usage/...         # Usage tracking integration tests
 go test ./tests/middleware/...    # Middleware integration tests
 go test ./internal/worker/...     # Unit tests
 ```
@@ -72,69 +74,69 @@ Iterations show the number of times each operation ran, and latency measures nan
 ---------------------------------------------------------------------------
 End-to-End                                     Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-EndToEndSingleDelivery-16                              32          38340391
-EndToEndMultipleEndpoints-16                            7         155858814
-EndToEndHighConcurrency-16                            282           4071902
-EndToEndLargePayload-16                                37          41078681
-EndToEndQueuePublishAndConsume-16                     284           4204857
+EndToEndSingleDelivery-16                              43          30573716
+EndToEndMultipleEndpoints-16                            7         147944971
+EndToEndHighConcurrency-16                            265           4641833
+EndToEndLargePayload-16                                34          36578062
+EndToEndQueuePublishAndConsume-16                     297           4222155
 ---------------------------------------------------------------------------
 API Endpoints                                  Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-CreateEventHandler-16                                 234           5123507
-CreateEventHandlerMultipleEndpoints-16                214           5659201
-CreateEventHandlerLargePayload-16                     170           6898909
-ListDeliveriesHandler-16                              759           1530561
-CreateEndpointHandler-16                              255           4588575
-ListEndpointsHandler-16                               840           1570421
-RetryDeliveryHandler-16                               120          10494419
+CreateEventHandler-16                                 250           4862613
+CreateEventHandlerMultipleEndpoints-16                228           5841507
+CreateEventHandlerLargePayload-16                     163           6889694
+ListDeliveriesHandler-16                              813           1545961
+CreateEndpointHandler-16                              271           4271858
+ListEndpointsHandler-16                               729           1715088
+RetryDeliveryHandler-16                                79          12926313
 ---------------------------------------------------------------------------
 Queue Publishing                               Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-Publisher-16                                        30157             37272
-PublisherParallel-16                                33022             37328
-Publisher1KB-16                                     30115             39557
-Publisher10KB-16                                    16660             81888
-Publisher100KB-16                                    4034            255549
-Publisher1MB-16                                       637           2172561
-PublisherBatch-16                                     333           3575617
-PublisherFlatJSON-16                                30554             38296
-PublisherNestedJSON-16                              27583             45627
+Publisher-16                                        33586             35555
+PublisherParallel-16                                34650             35192
+Publisher1KB-16                                     30560             39653
+Publisher10KB-16                                    17805             70377
+Publisher100KB-16                                    5932            263998
+Publisher1MB-16                                       627           2594156
+PublisherBatch-16                                     336           3819227
+PublisherFlatJSON-16                                30019             40465
+PublisherNestedJSON-16                              26157             45166
 ---------------------------------------------------------------------------
 Worker HTTP Client                             Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-HandleMessage-16                                       42          27360343
-HandleMessageParallel-16                              321           3718575
-DeliverWebhook-16                                    7264            151920
-DeliverWebhookParallel-16                           77023             15528
-DeliverWebhookLargePayload-16                        2305            507464
+HandleMessage-16                                       45          26569576
+HandleMessageParallel-16                              279           4167867
+DeliverWebhook-16                                    5062            211220
+DeliverWebhookParallel-16                           63554             17955
+DeliverWebhookLargePayload-16                        2116            546919
 ---------------------------------------------------------------------------
 Circuit Breaker & Retry                        Iterations   Latency (ns/op)
 ---------------------------------------------------------------------------
-CBIsOpen-16                                      34098174             40.11
-CBRecordSuccess-16                               34097398             33.92
-CBRecordFailure-16                               23274397             59.24
-CBGetState-16                                    49516593             23.58
-CBReset-16                                       45685916             26.30
-CBConcurrentIsOpen-16                            11235481             108.1
-CBConcurrentRecordSuccess-16                     11017047             105.9
-CBConcurrentRecordFailure-16                      7534351             152.6
-CBConcurrentMixed-16                              8687272             160.9
-CBMultipleEndpoints-16                           33595282             34.48
-CBStateTransitions-16                             1689458             853.2
-CBConcurrentMultiEndpoints-16                     9160472             118.2
-CBHighContention-16                                 32214             37904
-CalculateBackoffExponential-16                    8541253             144.2
-CalculateBackoffLinear-16                        11961006             100.9
-CalculateBackoffConstant-16                      11420424             99.34
-ShouldRetry-16                                 1000000000            0.3489
-ExponentialBackoff-16                             7112678             168.1
-LinearBackoff-16                                 12202971             98.28
-ConstantBackoff-16                               12783282             93.88
-CalculateBackoffVariousAttempts/1-16             11617662             104.5
-CalculateBackoffVariousAttempts/3-16              8506572             140.3
-CalculateBackoffVariousAttempts/5-16              8447515             145.2
-CalculateBackoffVariousAttempts/10-16             7525638             164.3
-CalculateBackoffVariousAttempts/20-16             7028534             177.9
+CBIsOpen-16                                      33295966             42.33
+CBRecordSuccess-16                               33752955             34.76
+CBRecordFailure-16                               21240216             54.62
+CBGetState-16                                    49082764             26.75
+CBReset-16                                       42409119             27.92
+CBConcurrentIsOpen-16                            10999486             118.5
+CBConcurrentRecordSuccess-16                     10640410             116.2
+CBConcurrentRecordFailure-16                      6743167             168.3
+CBConcurrentMixed-16                              8100526             156.2
+CBMultipleEndpoints-16                           33788730             36.96
+CBStateTransitions-16                             1625580             783.0
+CBConcurrentMultiEndpoints-16                     9498148             126.2
+CBHighContention-16                                 28993             42299
+CalculateBackoffExponential-16                    7979317             155.5
+CalculateBackoffLinear-16                         9756136             107.5
+CalculateBackoffConstant-16                      12302518             98.75
+ShouldRetry-16                                 1000000000            0.2526
+ExponentialBackoff-16                             6853519             168.9
+LinearBackoff-16                                 12189670             98.93
+ConstantBackoff-16                               11624571             99.04
+CalculateBackoffVariousAttempts/1-16             11387002             105.7
+CalculateBackoffVariousAttempts/3-16              8512702             141.4
+CalculateBackoffVariousAttempts/5-16              7720368             144.7
+CalculateBackoffVariousAttempts/10-16             8266329             146.6
+CalculateBackoffVariousAttempts/20-16             6963606             172.2
 ---------------------------------------------------------------------------
 ```
 

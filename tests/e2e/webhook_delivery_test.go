@@ -78,7 +78,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(appID),
 		util.WithEventOrganizationID(orgID),
-		util.WithEventTypeForEvent("user.created"),
+		func(opts *util.EventOptions) { opts.EventType = "user.created" },
 		util.WithEventPayload(types.JSONB{
 			"user_id":  "12345",
 			"username": "testuser",
@@ -114,7 +114,7 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhook(ctx, msg); err != nil {
+	if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 		t.Fatalf("failed to publish webhook: %v", err)
 	}
 
@@ -189,14 +189,14 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
 		util.WithAppName("Test App"),
-		util.WithAppUID("app_retry"),
+		func(opts *util.ApplicationOptions) { opts.UID = "app_retry" },
 	)
 	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
-		util.WithEndpointUID("ep_retry"),
+		func(opts *util.EndpointOptions) { opts.UID = "ep_retry" },
 		util.WithSecret("test-secret"),
 		util.WithEndpointMaxRetries(5),
 	)
@@ -205,7 +205,7 @@ func TestWebhookRetry(t *testing.T) {
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(appID),
 		util.WithEventOrganizationID(orgID),
-		util.WithEventTypeForEvent("test.retry"),
+		func(opts *util.EventOptions) { opts.EventType = "test.retry" },
 		util.WithEventPayload(types.JSONB{"test": "data"}),
 	)
 	util.Must(t, database.DB.Create(&event))
@@ -235,7 +235,7 @@ func TestWebhookRetry(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhook(ctx, msg); err != nil {
+	if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 		t.Fatalf("failed to publish webhook: %v", err)
 	}
 

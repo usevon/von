@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/usevon/von/internal/cache"
 	"github.com/usevon/von/internal/queue"
+	"github.com/usevon/von/internal/repository"
 	"github.com/usevon/von/internal/usage"
 	"github.com/usevon/von/internal/util"
 	"github.com/usevon/von/pkg/types"
@@ -24,27 +24,30 @@ type Worker struct {
 	consumer       *queue.Consumer
 	publisher      *queue.Publisher
 	circuitBreaker *CircuitBreaker
-	endpointCache  *cache.EndpointCache
+	endpointRepo   repository.EndpointRepository
 	rabbitmqURL    string
 }
 
 // NewWorker creates a new worker that processes webhook deliveries.
 func NewWorker(db *gorm.DB, rabbitmqURL string, timeout time.Duration) (*Worker, error) {
-	w := &Worker{
-		DB:             db,
-		client:         NewClient(timeout),
-		usageTracker:   usage.NewTracker(db),
-		circuitBreaker: NewCircuitBreaker(),
-		endpointCache:  cache.NewEndpointCache(db, 5*time.Minute, 1000),
-		rabbitmqURL:    rabbitmqURL,
-	}
+	baseRepo := repository.NewEndpointRepo(db)
+	cachedRepo := repository.NewCachedEndpointRepo(baseRepo, 5*time.Minute, 1000)
 
-	// Create publisher for requeuing messages (reuse connection)
+	// Create publisher for requeuing messages and usage tracking
 	publisher, err := queue.NewPublisher(rabbitmqURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publisher: %w", err)
 	}
-	w.publisher = publisher
+
+	w := &Worker{
+		DB:             db,
+		client:         NewClient(timeout),
+		usageTracker:   usage.NewTracker(db, publisher),
+		circuitBreaker: NewCircuitBreaker(),
+		endpointRepo:   cachedRepo,
+		rabbitmqURL:    rabbitmqURL,
+		publisher:      publisher,
+	}
 
 	consumer, err := queue.NewConsumer(rabbitmqURL, w.HandleMessage)
 	if err != nil {
@@ -85,14 +88,14 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		return nil
 	}
 
-	// Get endpoint config from cache
-	cachedEndpoint, err := w.endpointCache.Get(ctx, msg.EndpointID)
+	// Get endpoint from repository
+	endpoint, err := w.endpointRepo.GetByID(ctx, msg.EndpointID)
 	if err != nil {
 		log.Printf("failed to load endpoint %s: %v", msg.EndpointID, err)
 		return nil
 	}
 
-	if cachedEndpoint.Status == types.EndpointStatusDisabled {
+	if endpoint.Status == types.EndpointStatusDisabled {
 		log.Printf("endpoint %s is disabled, skipping delivery %s", msg.EndpointID, delivery.ID)
 		w.MarkDeliveryCancelled(ctx, &delivery)
 		return nil
@@ -155,12 +158,10 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	if result.IsSuccessful() {
 		delivery.Status = types.DeliveryStatusDelivered
 		delivery.DeliveredAt = util.TimePtr(time.Now())
-		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
+		w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
 		w.circuitBreaker.RecordSuccess(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true)
-		// Only invalidate cache if endpoint status changed
-		if statusChanged {
-			w.endpointCache.Invalidate(msg.EndpointID)
+		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true); err != nil {
+			log.Printf("failed to track delivery: %v", err)
 		}
 	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
 		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
@@ -168,7 +169,9 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		delivery.NextAttemptAt = &nextAttempt
 		delivery.Status = types.DeliveryStatusQueued
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackRetry(ctx, msg.OrganizationID)
+		if err := w.usageTracker.TrackRetry(ctx, msg.OrganizationID); err != nil {
+			log.Printf("failed to track retry: %v", err)
+		}
 
 		newMsg := msg
 		newMsg.AttemptNumber++
@@ -179,12 +182,10 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	} else {
 		delivery.Status = types.DeliveryStatusFailed
 		delivery.FailedAt = util.TimePtr(time.Now())
-		statusChanged := w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
+		w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
 		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false)
-		// Only invalidate cache if endpoint status changed
-		if statusChanged {
-			w.endpointCache.Invalidate(msg.EndpointID)
+		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false); err != nil {
+			log.Printf("failed to track delivery: %v", err)
 		}
 	}
 

@@ -15,6 +15,9 @@ const (
 	WebhookDLXExchange = "von.webhooks.dlx"
 	WebhookDLXQueue    = "von.webhooks.failed"
 	WebhookRoutingKey  = "delivery"
+	UsageExchange      = "von.usage"
+	UsageQueue         = "von.usage.events"
+	UsageRoutingKey    = "event"
 )
 
 // Publisher publishes webhook delivery messages to RabbitMQ.
@@ -86,6 +89,29 @@ func (p *Publisher) PublishBatch(ctx context.Context, messages []*types.QueueMes
 			return err
 		}
 	}
+	return nil
+}
+
+// PublishUsageEvent publishes a usage tracking event to the queue.
+func (p *Publisher) PublishUsageEvent(ctx context.Context, event *types.UsageEvent) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal usage event: %w", err)
+	}
+
+	err = p.publisher.PublishWithContext(
+		ctx,
+		payload,
+		[]string{UsageRoutingKey},
+		rabbitmq.WithPublishOptionsContentType("application/json"),
+		rabbitmq.WithPublishOptionsMandatory,
+		rabbitmq.WithPublishOptionsPersistentDelivery,
+		rabbitmq.WithPublishOptionsExchange(UsageExchange),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to publish usage event: %w", err)
+	}
+
 	return nil
 }
 

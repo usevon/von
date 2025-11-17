@@ -2,7 +2,6 @@ package worker_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -10,13 +9,11 @@ import (
 	"github.com/usevon/von/internal/queue"
 	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
+	"github.com/usevon/von/tests/util"
 )
 
 func TestPoisonQueueMonitor_Basic(t *testing.T) {
-	rabbitmqURL := os.Getenv("RABBITMQ_URL")
-	if rabbitmqURL == "" {
-		rabbitmqURL = "amqp://von:von_dev_password@localhost:5672/"
-	}
+	rabbitmqURL := util.GetRabbitMQURL()
 
 	if err := queue.EnsureQueues(rabbitmqURL); err != nil {
 		t.Fatalf("failed to setup queues: %v", err)
@@ -51,7 +48,7 @@ func TestPoisonQueueMonitor_Basic(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := publisher.PublishWebhookToDLX(ctx, testMsg); err != nil {
+	if err := publisher.PublishWebhookToDLX(ctx, &testMsg); err != nil {
 		t.Fatalf("failed to publish to DLX: %v", err)
 	}
 

@@ -20,8 +20,8 @@ type mockPublisher struct {
 	messages []types.QueueMessage
 }
 
-func (m *mockPublisher) PublishWebhook(ctx context.Context, msg types.QueueMessage) error {
-	m.messages = append(m.messages, msg)
+func (m *mockPublisher) PublishWebhook(ctx context.Context, msg *types.QueueMessage) error {
+	m.messages = append(m.messages, *msg)
 	return nil
 }
 
