@@ -1,15 +1,12 @@
 package util
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/usevon/von/internal/db"
 	"github.com/usevon/von/internal/queue"
-	"github.com/usevon/von/internal/worker"
 	"github.com/usevon/von/pkg/types"
 	"gorm.io/gorm"
 )
@@ -324,104 +321,6 @@ func WithEventIDForDelivery(eventID string) func(*DeliveryOptions) {
 func WithEndpointIDForDelivery(endpointID string) func(*DeliveryOptions) {
 	return func(opts *DeliveryOptions) {
 		opts.EndpointID = endpointID
-	}
-}
-
-// E2EScenario provides a complete end-to-end test environment.
-type E2EScenario struct {
-	DB        *db.DB
-	Worker    *worker.Worker
-	Publisher *queue.Publisher
-	Server    *httptest.Server
-	App       types.Application
-	Endpoint  types.Endpoint
-	cleanup   func()
-}
-
-// E2EScenarioOptions configures an E2EScenario.
-type E2EScenarioOptions struct {
-	ServerHandler http.HandlerFunc
-	WorkerTimeout int
-}
-
-// NewE2EScenario creates a complete end-to-end test environment.
-func NewE2EScenario(t *testing.T, opts ...func(*E2EScenarioOptions)) *E2EScenario {
-	t.Helper()
-
-	options := &E2EScenarioOptions{
-		ServerHandler: func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		},
-		WorkerTimeout: 5,
-	}
-
-	for _, opt := range opts {
-		opt(options)
-	}
-
-	database := SetupDatabase(t)
-
-	if err := queue.EnsureQueues(GetRabbitMQURL()); err != nil {
-		t.Fatalf("failed to ensure queues: %v", err)
-	}
-
-	server := httptest.NewServer(options.ServerHandler)
-
-	app := NewTestApplication()
-	must(t, database.Create(&app))
-
-	endpoint := NewTestEndpoint(
-		WithApplicationID(app.ID),
-		WithURL(server.URL),
-	)
-	must(t, database.Create(&endpoint))
-
-	w, err := worker.NewWorker(database.DB, GetRabbitMQURL(), time.Duration(options.WorkerTimeout)*time.Second)
-	if err != nil {
-		server.Close()
-		t.Fatalf("failed to create worker: %v", err)
-	}
-
-	publisher, err := queue.NewPublisher(GetRabbitMQURL())
-	if err != nil {
-		w.Stop()
-		server.Close()
-		t.Fatalf("failed to create publisher: %v", err)
-	}
-
-	return &E2EScenario{
-		DB:        database,
-		Worker:    w,
-		Publisher: publisher,
-		Server:    server,
-		App:       app,
-		Endpoint:  endpoint,
-		cleanup: func() {
-			publisher.Close()
-			w.Stop()
-			server.Close()
-		},
-	}
-}
-
-// Cleanup closes all resources in the E2E scenario.
-func (s *E2EScenario) Cleanup() {
-	if s.cleanup != nil {
-		s.cleanup()
-	}
-}
-
-// WithE2EServerHandler sets the HTTP handler for E2E scenarios
-func WithE2EServerHandler(handler http.HandlerFunc) func(*E2EScenarioOptions) {
-	return func(opts *E2EScenarioOptions) {
-		opts.ServerHandler = handler
-	}
-}
-
-// WithE2EWorkerTimeout sets the worker timeout for E2E scenarios
-func WithE2EWorkerTimeout(timeout int) func(*E2EScenarioOptions) {
-	return func(opts *E2EScenarioOptions) {
-		opts.WorkerTimeout = timeout
 	}
 }
 

@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-// BenchmarkAll is a placeholder for running all benchmarks with go test ./... -bench=.
-func BenchmarkAll(b *testing.B) {
-	b.Skip("Use this to run all benchmarks: go test ./... -bench=.")
-}
-
 // TestRunAllBenchmarks runs all benchmark suites and formats output.
 func TestRunAllBenchmarks(t *testing.T) {
 	if testing.Short() {
