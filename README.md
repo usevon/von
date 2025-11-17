@@ -130,11 +130,11 @@ ShouldRetry-16                                 1000000000            0.3489
 ExponentialBackoff-16                             7112678             168.1
 LinearBackoff-16                                 12202971             98.28
 ConstantBackoff-16                               12783282             93.88
-CalculateBackoffVariousAttempts/1-16             11506000             104.4
-CalculateBackoffVariousAttempts/3-16              8454543             141.5
-CalculateBackoffVariousAttempts/5-16              7172053             152.7
-CalculateBackoffVariousAttempts/:-16              7607035             155.4
-CalculateBackoffVariousAttempts/D-16              7008588             185.1
+CalculateBackoffVariousAttempts/1-16             11617662             104.5
+CalculateBackoffVariousAttempts/3-16              8506572             140.3
+CalculateBackoffVariousAttempts/5-16              8447515             145.2
+CalculateBackoffVariousAttempts/10-16             7525638             164.3
+CalculateBackoffVariousAttempts/20-16             7028534             177.9
 ---------------------------------------------------------------------------
 ```
 
