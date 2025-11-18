@@ -26,21 +26,3 @@ func DefaultConfig(rabbitmqURL string) Config {
 		ReconnectInterval: 10 * time.Second,
 	}
 }
-
-// WithConcurrency sets the number of concurrent workers.
-func (c Config) WithConcurrency(n int) Config {
-	c.Concurrency = n
-	return c
-}
-
-// WithConsumerName sets the consumer name.
-func (c Config) WithConsumerName(name string) Config {
-	c.ConsumerName = name
-	return c
-}
-
-// WithReconnectInterval sets the reconnection interval.
-func (c Config) WithReconnectInterval(interval time.Duration) Config {
-	c.ReconnectInterval = interval
-	return c
-}
