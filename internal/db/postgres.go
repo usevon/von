@@ -19,7 +19,8 @@ type DB struct {
 func New(connString string) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(connString), &gorm.Config{
 		Logger:      logger.Default.LogMode(logger.Info),
-		PrepareStmt: true, // Enable prepared statement caching for better performance
+		 // Enable prepared statement caching for better performance
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -35,10 +36,10 @@ func New(connString string) (*DB, error) {
 	}
 
 	// Configure connection pool for high-throughput webhook delivery
-	sqlDB.SetMaxOpenConns(100)                  // Maximum open connections
-	sqlDB.SetMaxIdleConns(10)                   // Idle connections to keep alive
-	sqlDB.SetConnMaxLifetime(time.Hour)         // Maximum lifetime of a connection
-	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // Maximum idle time before closing
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(10 * time.Minute)
 
 	return &DB{DB: db}, nil
 }

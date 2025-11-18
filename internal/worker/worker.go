@@ -78,17 +78,12 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	// Load delivery with only needed fields
 	var delivery types.EventDelivery
-	if err := w.DB.WithContext(ctx).
-		Select("id", "event_id", "endpoint_id", "status", "attempt_count", "max_attempts", "next_attempt_at", "last_status_code", "last_response_preview", "last_error", "total_latency_ms", "delivered_at", "failed_at", "cancelled_at").
-		Where("id = ?", msg.DeliveryID).
-		First(&delivery).Error; err != nil {
+	if err := w.DB.WithContext(ctx).Where("id = ?", msg.DeliveryID).First(&delivery).Error; err != nil {
 		log.Printf("failed to load delivery %s: %v", msg.DeliveryID, err)
 		return nil
 	}
 
-	// Get endpoint from repository
 	endpoint, err := w.endpointRepo.GetByID(ctx, msg.EndpointID)
 	if err != nil {
 		log.Printf("failed to load endpoint %s: %v", msg.EndpointID, err)
@@ -103,28 +98,64 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 
 	if w.circuitBreaker.IsOpen(msg.EndpointID) {
 		log.Printf("circuit breaker open for endpoint %s, skipping delivery %s", msg.EndpointID, delivery.ID)
-		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
-		nextAttempt := time.Now().Add(backoff)
-		delivery.NextAttemptAt = &nextAttempt
-		delivery.Status = types.DeliveryStatusQueued
-		if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
-			log.Printf("failed to update delivery: %v", err)
-		}
-		newMsg := msg
-		newMsg.AttemptNumber++
-		if err := w.requeueDelivery(ctx, newMsg, backoff, w.rabbitmqURL); err != nil {
-			log.Printf("failed to requeue delivery: %v", err)
-			return err
-		}
-		return nil
+		return w.requeue(ctx, &delivery, msg)
 	}
 
 	result := w.client.DeliverWebhook(ctx, msg)
+	w.recordAttempt(ctx, &delivery, msg, &result)
 
+	if result.IsSuccessful() {
+		delivery.Status = types.DeliveryStatusDelivered
+		delivery.DeliveredAt = util.TimePtr(time.Now())
+		w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
+		w.circuitBreaker.RecordSuccess(msg.EndpointID)
+		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true)
+	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
+		w.circuitBreaker.RecordFailure(msg.EndpointID)
+		w.usageTracker.TrackRetry(ctx, msg.OrganizationID)
+		if err := w.requeue(ctx, &delivery, msg); err != nil {
+			return err
+		}
+	} else {
+		delivery.Status = types.DeliveryStatusFailed
+		delivery.FailedAt = util.TimePtr(time.Now())
+		w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
+		w.circuitBreaker.RecordFailure(msg.EndpointID)
+		w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false)
+	}
+
+	if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
+		log.Printf("failed to update delivery: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// requeue schedules a delivery for retry with exponential backoff.
+func (w *Worker) requeue(ctx context.Context, delivery *types.EventDelivery, msg types.QueueMessage) error {
+	backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
+	delivery.NextAttemptAt = util.TimePtr(time.Now().Add(backoff))
+	delivery.Status = types.DeliveryStatusQueued
+
+	if err := w.DB.WithContext(ctx).Save(delivery).Error; err != nil {
+		log.Printf("failed to update delivery: %v", err)
+	}
+
+	msg.AttemptNumber++
+	if err := w.requeueDelivery(ctx, msg, backoff, w.rabbitmqURL); err != nil {
+		log.Printf("failed to requeue delivery: %v", err)
+		return err
+	}
+	return nil
+}
+
+// recordAttempt creates a delivery attempt record and updates delivery metadata.
+func (w *Worker) recordAttempt(ctx context.Context, delivery *types.EventDelivery, msg types.QueueMessage, result *DeliveryResult) {
 	now := time.Now()
 	payloadBytes, _ := json.Marshal(msg.Payload)
 
-	attempt := types.DeliveryAttempt{
+	w.DB.WithContext(ctx).Create(&types.DeliveryAttempt{
 		ID:              uuid.New().String(),
 		DeliveryID:      delivery.ID,
 		AttemptNumber:   msg.AttemptNumber,
@@ -142,59 +173,14 @@ func (w *Worker) HandleMessage(ctx context.Context, msg types.QueueMessage) erro
 		Retryable:       result.Retryable,
 		DeliveryMode:    msg.DeliveryMode,
 		CreatedAt:       now,
-	}
-
-	if err := w.DB.WithContext(ctx).Create(&attempt).Error; err != nil {
-		log.Printf("failed to save delivery attempt: %v", err)
-	}
+	})
 
 	delivery.AttemptCount++
-	delivery.LastAttemptAt = util.TimePtr(time.Now())
+	delivery.LastAttemptAt = util.TimePtr(now)
 	delivery.LastStatusCode = util.IntPtr(result.StatusCode)
 	delivery.LastResponsePreview = util.Truncate(result.ResponseBody, 500)
 	delivery.LastError = result.Error
 	delivery.TotalLatencyMS += result.LatencyMS
-
-	if result.IsSuccessful() {
-		delivery.Status = types.DeliveryStatusDelivered
-		delivery.DeliveredAt = util.TimePtr(time.Now())
-		w.UpdateEndpointHealth(ctx, msg.EndpointID, true)
-		w.circuitBreaker.RecordSuccess(msg.EndpointID)
-		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, true); err != nil {
-			log.Printf("failed to track delivery: %v", err)
-		}
-	} else if ShouldRetry(msg.AttemptNumber, msg.MaxRetries, result.Retryable) {
-		backoff := CalculateBackoff(msg.AttemptNumber+1, msg.RetryStrategy)
-		nextAttempt := time.Now().Add(backoff)
-		delivery.NextAttemptAt = &nextAttempt
-		delivery.Status = types.DeliveryStatusQueued
-		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		if err := w.usageTracker.TrackRetry(ctx, msg.OrganizationID); err != nil {
-			log.Printf("failed to track retry: %v", err)
-		}
-
-		newMsg := msg
-		newMsg.AttemptNumber++
-		if err := w.requeueDelivery(ctx, newMsg, backoff, w.rabbitmqURL); err != nil {
-			log.Printf("failed to requeue delivery: %v", err)
-			return err
-		}
-	} else {
-		delivery.Status = types.DeliveryStatusFailed
-		delivery.FailedAt = util.TimePtr(time.Now())
-		w.UpdateEndpointHealth(ctx, msg.EndpointID, false)
-		w.circuitBreaker.RecordFailure(msg.EndpointID)
-		if err := w.usageTracker.TrackDelivery(ctx, msg.OrganizationID, false); err != nil {
-			log.Printf("failed to track delivery: %v", err)
-		}
-	}
-
-	if err := w.DB.WithContext(ctx).Save(&delivery).Error; err != nil {
-		log.Printf("failed to update delivery: %v", err)
-		return err
-	}
-
-	return nil
 }
 
 // requeueDelivery schedules a retry after a delay.

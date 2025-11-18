@@ -25,38 +25,20 @@ func CalculateBackoff(attemptNumber int, strategy types.RetryStrategy) time.Dura
 // exponentialBackoff calculates exponential backoff with jitter.
 // Base delay is 5 seconds, max delay is 1 hour.
 func exponentialBackoff(attemptNumber int) time.Duration {
-	baseDelay := 5 * time.Second
-	maxDelay := 1 * time.Hour
-
-	delay := float64(baseDelay) * math.Pow(2, float64(attemptNumber-1))
-	if delay > float64(maxDelay) {
-		delay = float64(maxDelay)
-	}
-
-	jitter := rand.Float64() * 0.2 * delay
-	return time.Duration(delay + jitter)
+	delay := math.Min(float64(5*time.Second)*math.Pow(2, float64(attemptNumber-1)), float64(time.Hour))
+	return time.Duration(delay * (1 + rand.Float64()*0.2))
 }
 
 // linearBackoff calculates linear backoff with jitter.
 // Delay increases by 30 seconds per attempt, max 15 minutes.
 func linearBackoff(attemptNumber int) time.Duration {
-	baseDelay := 30 * time.Second
-	maxDelay := 15 * time.Minute
-
-	delay := float64(baseDelay) * float64(attemptNumber)
-	if delay > float64(maxDelay) {
-		delay = float64(maxDelay)
-	}
-
-	jitter := rand.Float64() * 0.1 * delay
-	return time.Duration(delay + jitter)
+	delay := math.Min(float64(30*time.Second)*float64(attemptNumber), float64(15*time.Minute))
+	return time.Duration(delay * (1 + rand.Float64()*0.1))
 }
 
 // constantBackoff returns a constant 60 second delay with jitter.
 func constantBackoff() time.Duration {
-	baseDelay := 60 * time.Second
-	jitter := rand.Float64() * 0.1 * float64(baseDelay)
-	return time.Duration(float64(baseDelay) + jitter)
+	return time.Duration(float64(60*time.Second) * (1 + rand.Float64()*0.1))
 }
 
 // ShouldRetry determines if a delivery should be retried based on the attempt count and result.
