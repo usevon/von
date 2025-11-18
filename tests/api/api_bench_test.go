@@ -42,8 +42,8 @@ func setupBenchmarkServer(b *testing.B) *benchmarkFixture {
 	app := util.NewTestApplication(
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
-		util.WithAppName("Benchmark App"),
 	)
+	app.Name = "Benchmark App"
 
 	if err := database.DB.Create(&app).Error; err != nil {
 		b.Fatal(err)
@@ -65,8 +65,8 @@ func BenchmarkCreateEventHandler(b *testing.B) {
 	// Create endpoint to match the event
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(fixture.appID),
-		util.WithEventFilters(types.JSONB{"filters": []interface{}{"test.*"}}),
 	)
+	endpoint.EventFilters = types.JSONB{"filters": []interface{}{"test.*"}}
 	if err := fixture.db.Create(&endpoint).Error; err != nil {
 		b.Fatal(err)
 	}
@@ -103,8 +103,8 @@ func BenchmarkCreateEventHandlerMultipleEndpoints(b *testing.B) {
 	for i := 0; i < 10; i++ {
 		endpoint := util.NewTestEndpoint(
 			util.WithApplicationID(fixture.appID),
-			util.WithEventFilters(types.JSONB{"filters": []interface{}{"test.*"}}),
 		)
+		endpoint.EventFilters = types.JSONB{"filters": []interface{}{"test.*"}}
 		if err := fixture.db.Create(&endpoint).Error; err != nil {
 			b.Fatal(err)
 		}
@@ -137,8 +137,8 @@ func BenchmarkCreateEventHandlerLargePayload(b *testing.B) {
 
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(fixture.appID),
-		util.WithEventFilters(types.JSONB{"filters": []interface{}{"test.*"}}),
 	)
+	endpoint.EventFilters = types.JSONB{"filters": []interface{}{"test.*"}}
 	if err := fixture.db.Create(&endpoint).Error; err != nil {
 		b.Fatal(err)
 	}

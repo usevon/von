@@ -205,13 +205,6 @@ func WithOrganizationID(orgID string) func(*ApplicationOptions) {
 	}
 }
 
-// WithAppName sets the application name
-func WithAppName(name string) func(*ApplicationOptions) {
-	return func(opts *ApplicationOptions) {
-		opts.Name = name
-	}
-}
-
 // WithEndpointID sets the endpoint ID
 func WithEndpointID(id string) func(*EndpointOptions) {
 	return func(opts *EndpointOptions) {
@@ -247,52 +240,10 @@ func WithSecrets(secrets types.JSONB) func(*EndpointOptions) {
 	}
 }
 
-// WithEndpointStatus sets the endpoint status
-func WithEndpointStatus(status types.EndpointStatus) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.Status = status
-	}
-}
-
-// WithRetryStrategy sets the retry strategy
-func WithRetryStrategy(strategy types.RetryStrategy) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.RetryStrategy = strategy
-	}
-}
-
-// WithEndpointMaxRetries sets max retries for endpoints
-func WithEndpointMaxRetries(max int) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.MaxRetries = max
-	}
-}
-
-// WithFilterMode sets the endpoint filter mode
-func WithFilterMode(mode types.FilterMode) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.FilterMode = mode
-	}
-}
-
-// WithEventFilters sets the event filters for the endpoint
-func WithEventFilters(filters types.JSONB) func(*EndpointOptions) {
-	return func(opts *EndpointOptions) {
-		opts.EventFilters = filters
-	}
-}
-
 // WithEventApplicationID sets the application ID for an event
 func WithEventApplicationID(appID string) func(*EventOptions) {
 	return func(opts *EventOptions) {
 		opts.ApplicationID = appID
-	}
-}
-
-// WithEventPayload sets the event payload
-func WithEventPayload(payload types.JSONB) func(*EventOptions) {
-	return func(opts *EventOptions) {
-		opts.Payload = payload
 	}
 }
 
@@ -355,10 +306,6 @@ func Must(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func must(t *testing.T, db *gorm.DB) {
-	Must(t, db)
-}
-
 // NewTestMessage creates a test QueueMessage with sensible defaults.
 func NewTestMessage(opts ...func(*types.QueueMessage)) types.QueueMessage {
 	msg := types.QueueMessage{
@@ -384,38 +331,10 @@ func NewTestMessage(opts ...func(*types.QueueMessage)) types.QueueMessage {
 	return msg
 }
 
-// WithMaxAttempts sets max delivery attempts
-func WithMaxAttempts(max int) func(*DeliveryOptions) {
-	return func(opts *DeliveryOptions) {
-		opts.MaxAttempts = max
-	}
-}
-
-// WithMessageURL sets the URL for QueueMessage
-func WithMessageURL(url string) func(*types.QueueMessage) {
-	return func(m *types.QueueMessage) {
-		m.URL = url
-	}
-}
-
 // WithPayload sets the payload for QueueMessage
 func WithPayload(payload types.JSONB) func(*types.QueueMessage) {
 	return func(m *types.QueueMessage) {
 		m.Payload = payload
-	}
-}
-
-// WithMaxRetries sets max retries for QueueMessage
-func WithMaxRetries(max int) func(*types.QueueMessage) {
-	return func(m *types.QueueMessage) {
-		m.MaxRetries = max
-	}
-}
-
-// WithEventType sets the event type for QueueMessage
-func WithEventType(eventType string) func(*types.QueueMessage) {
-	return func(m *types.QueueMessage) {
-		m.EventType = eventType
 	}
 }
 
