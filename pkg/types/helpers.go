@@ -4,24 +4,30 @@ import (
 	"time"
 )
 
+// ExtractCurrentSecret extracts the current secret from a JSONB secrets field.
+func ExtractCurrentSecret(secrets JSONB) string {
+	if secrets == nil {
+		return "default-secret"
+	}
+	if currentSecret, ok := secrets["current"].(string); ok {
+		return currentSecret
+	}
+	return "default-secret"
+}
+
+// ToMap converts a JSONB to a map[string]string, ignoring non-string values.
+func (j JSONB) ToMap() map[string]string {
+	result := make(map[string]string)
+	for k, v := range j {
+		if str, ok := v.(string); ok {
+			result[k] = str
+		}
+	}
+	return result
+}
+
 // NewQueueMessage creates a new QueueMessage from an event, endpoint, and delivery.
 func NewQueueMessage(event *Event, endpoint *Endpoint, delivery *EventDelivery) QueueMessage {
-	// Extract current secret from endpoint secrets
-	secret := "default-secret"
-	if endpoint.Secrets != nil {
-		if currentSecret, ok := endpoint.Secrets["current"].(string); ok {
-			secret = currentSecret
-		}
-	}
-
-	// Convert custom headers JSONB to map[string]string
-	headers := make(map[string]string)
-	for k, v := range endpoint.CustomHeaders {
-		if str, ok := v.(string); ok {
-			headers[k] = str
-		}
-	}
-
 	return QueueMessage{
 		DeliveryID:     delivery.ID,
 		EventID:        event.ID,
@@ -30,8 +36,8 @@ func NewQueueMessage(event *Event, endpoint *Endpoint, delivery *EventDelivery) 
 		URL:            endpoint.URL,
 		EventType:      event.EventType,
 		Payload:        event.Payload,
-		Headers:        headers,
-		Secret:         secret,
+		Headers:        endpoint.CustomHeaders.ToMap(),
+		Secret:         ExtractCurrentSecret(endpoint.Secrets),
 		AttemptNumber:  1,
 		DeliveryMode:   event.DeliveryMode,
 		MaxRetries:     endpoint.MaxRetries,
