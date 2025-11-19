@@ -212,8 +212,8 @@ func BenchmarkEndToEndLargePayload(b *testing.B) {
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(app.ID),
 		util.WithEventOrganizationID(app.OrganizationID),
-		util.WithEventPayload(util.BenchmarkPayload(100)), // 100KB payload
 	)
+	event.Payload = util.BenchmarkPayload(100) // 100KB payload
 	if err := database.Create(&event).Error; err != nil {
 		b.Fatal(err)
 	}

@@ -58,8 +58,8 @@ func setupTestServer(t *testing.T) *testServer {
 	app := util.NewTestApplication(
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
-		util.WithAppName("Test App"),
 	)
+	app.Name = "Test App"
 
 	if err := database.DB.Create(&app).Error; err != nil {
 		t.Fatalf("failed to create test application: %v", err)

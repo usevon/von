@@ -28,10 +28,10 @@ func TestPublishAndConsume(t *testing.T) {
 
 	testMsg := util.NewTestMessage(
 		util.WithDeliveryID("test-delivery-123"),
-		util.WithEventType("user.created"),
 		util.WithPayload(map[string]interface{}{"user_id": "123"}),
-		util.WithMaxRetries(5),
 	)
+	testMsg.EventType = "user.created"
+	testMsg.MaxRetries = 5
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

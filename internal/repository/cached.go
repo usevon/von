@@ -11,7 +11,7 @@ import (
 // cachedEndpointRepo wraps an EndpointRepository with an in-memory cache.
 type cachedEndpointRepo struct {
 	base  EndpointRepository
-	cache sync.Map // map[string]*cacheEntry
+	cache sync.Map
 	ttl   time.Duration
 }
 

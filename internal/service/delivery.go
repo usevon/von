@@ -95,7 +95,7 @@ func (s *deliveryService) RetryDelivery(ctx context.Context, deliveryID string) 
 		return err
 	}
 
-	if delivery.Status.IsTerminal() && delivery.Status != types.DeliveryStatusFailed {
+	if (delivery.Status == types.DeliveryStatusDelivered || delivery.Status == types.DeliveryStatusCancelled) {
 		return ErrCannotRetryDelivery
 	}
 

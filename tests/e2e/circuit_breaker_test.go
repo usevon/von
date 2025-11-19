@@ -49,8 +49,8 @@ func TestCircuitBreakerIntegration(t *testing.T) {
 	endpoint := util.NewTestEndpoint(
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
-		util.WithEndpointMaxRetries(10),
 	)
+	endpoint.MaxRetries = 10
 	util.Must(t, database.DB.Create(&endpoint))
 
 	w, err := worker.NewWorker(database.DB, testRabbitMQURL, 5*time.Second)
@@ -71,25 +71,25 @@ func TestCircuitBreakerIntegration(t *testing.T) {
 		event := util.NewTestEvent(
 			util.WithEventApplicationID(appID),
 			util.WithEventOrganizationID(orgID),
-			util.WithEventPayload(types.JSONB{"attempt": i}),
 		)
+		event.Payload = types.JSONB{"attempt": i}
 		util.Must(t, database.DB.Create(&event))
 
 		delivery := util.NewTestDelivery(
 			util.WithEventIDForDelivery(event.ID),
 			util.WithEndpointIDForDelivery(endpoint.ID),
-			util.WithMaxAttempts(10),
 		)
+		delivery.MaxAttempts = 10
 		util.Must(t, database.DB.Create(&delivery))
 
 		msg := util.NewTestMessage(
 			util.WithDeliveryID(delivery.ID),
 			util.WithMessageEventID(event.ID),
 			util.WithMessageEndpointID(endpoint.ID),
-			util.WithMessageURL(server.URL),
 			util.WithPayload(event.Payload),
-			util.WithMaxRetries(10),
 		)
+		msg.URL = server.URL
+		msg.MaxRetries = 10
 
 		if err := publisher.PublishWebhook(ctx, &msg); err != nil {
 			t.Fatalf("failed to publish webhook: %v", err)

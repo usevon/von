@@ -61,8 +61,8 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 	app := util.NewTestApplication(
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
-		util.WithAppName("Test App"),
 	)
+	app.Name = "Test App"
 
 	util.Must(t, database.DB.Create(&app))
 
@@ -70,8 +70,8 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithApplicationID(appID),
 		util.WithURL(server.URL),
 		util.WithSecret("test-secret-key"),
-		util.WithEndpointMaxRetries(3),
 	)
+	endpoint.MaxRetries = 3
 
 	util.Must(t, database.DB.Create(&endpoint))
 
@@ -79,20 +79,20 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithEventApplicationID(appID),
 		util.WithEventOrganizationID(orgID),
 		func(opts *util.EventOptions) { opts.EventType = "user.created" },
-		util.WithEventPayload(types.JSONB{
-			"user_id":  "12345",
-			"username": "testuser",
-			"email":    "test@example.com",
-		}),
 	)
+	event.Payload = types.JSONB{
+		"user_id":  "12345",
+		"username": "testuser",
+		"email":    "test@example.com",
+	}
 
 	util.Must(t, database.DB.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
-		util.WithMaxAttempts(3),
 	)
+	delivery.MaxAttempts = 3
 
 	util.Must(t, database.DB.Create(&delivery))
 
@@ -106,12 +106,12 @@ func TestEndToEndWebhookDelivery(t *testing.T) {
 		util.WithDeliveryID(delivery.ID),
 		util.WithMessageEventID(event.ID),
 		util.WithMessageEndpointID(endpoint.ID),
-		util.WithMessageURL(server.URL),
-		util.WithEventType("user.created"),
 		util.WithPayload(event.Payload),
 		util.WithMessageSecret("test-secret-key"),
-		util.WithMaxRetries(3),
 	)
+	msg.URL = server.URL
+	msg.EventType = "user.created"
+	msg.MaxRetries = 3
 
 	ctx := context.Background()
 	if err := publisher.PublishWebhook(ctx, &msg); err != nil {
@@ -188,9 +188,9 @@ func TestWebhookRetry(t *testing.T) {
 	app := util.NewTestApplication(
 		util.WithAppID(appID),
 		util.WithOrganizationID(orgID),
-		util.WithAppName("Test App"),
 		func(opts *util.ApplicationOptions) { opts.UID = "app_retry" },
 	)
+	app.Name = "Test App"
 	util.Must(t, database.DB.Create(&app))
 
 	endpoint := util.NewTestEndpoint(
@@ -198,23 +198,23 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithURL(server.URL),
 		func(opts *util.EndpointOptions) { opts.UID = "ep_retry" },
 		util.WithSecret("test-secret"),
-		util.WithEndpointMaxRetries(5),
 	)
+	endpoint.MaxRetries = 5
 	util.Must(t, database.DB.Create(&endpoint))
 
 	event := util.NewTestEvent(
 		util.WithEventApplicationID(appID),
 		util.WithEventOrganizationID(orgID),
 		func(opts *util.EventOptions) { opts.EventType = "test.retry" },
-		util.WithEventPayload(types.JSONB{"test": "data"}),
 	)
+	event.Payload = types.JSONB{"test": "data"}
 	util.Must(t, database.DB.Create(&event))
 
 	delivery := util.NewTestDelivery(
 		util.WithEventIDForDelivery(event.ID),
 		util.WithEndpointIDForDelivery(endpoint.ID),
-		util.WithMaxAttempts(5),
 	)
+	delivery.MaxAttempts = 5
 	util.Must(t, database.DB.Create(&delivery))
 
 	publisher, err := queue.NewPublisher(testRabbitMQURL)
@@ -227,12 +227,12 @@ func TestWebhookRetry(t *testing.T) {
 		util.WithDeliveryID(delivery.ID),
 		util.WithMessageEventID(event.ID),
 		util.WithMessageEndpointID(endpoint.ID),
-		util.WithMessageURL(server.URL),
-		util.WithEventType("test.retry"),
 		util.WithPayload(event.Payload),
 		util.WithMessageSecret("test-secret"),
-		util.WithMaxRetries(5),
 	)
+	msg.URL = server.URL
+	msg.EventType = "test.retry"
+	msg.MaxRetries = 5
 
 	ctx := context.Background()
 	if err := publisher.PublishWebhook(ctx, &msg); err != nil {

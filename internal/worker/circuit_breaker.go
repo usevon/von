@@ -89,10 +89,7 @@ func (cb *CircuitBreaker) RecordFailure(endpointID string) {
 	circuit.consecutiveSucc = 0
 	circuit.lastFailureTime = time.Now()
 
-	if circuit.state == StateHalfOpen {
-		circuit.state = StateOpen
-		circuit.lastStateChange = time.Now()
-	} else if circuit.state == StateClosed && circuit.consecutiveFails >= cb.failureThreshold {
+	if circuit.state == StateHalfOpen || (circuit.state == StateClosed && circuit.consecutiveFails >= cb.failureThreshold) {
 		circuit.state = StateOpen
 		circuit.lastStateChange = time.Now()
 	}
@@ -103,7 +100,10 @@ func (cb *CircuitBreaker) GetState(endpointID string) CircuitState {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 
-	circuit := cb.getOrCreateCircuit(endpointID)
+	circuit, exists := cb.circuits[endpointID]
+	if !exists {
+		return StateClosed
+	}
 	return circuit.state
 }
 

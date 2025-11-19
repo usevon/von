@@ -52,8 +52,8 @@ func TestUpdateEndpointHealth(t *testing.T) {
 
 			endpoint := util.NewTestEndpoint(
 				util.WithApplicationID(app.ID),
-				util.WithEndpointStatus(tt.initialStatus),
 			)
+			endpoint.Status = tt.initialStatus
 			util.Must(t, database.Create(&endpoint))
 
 			health := types.EndpointHealth{

@@ -13,11 +13,27 @@ import (
 )
 
 var (
-	ErrInvalidURL        = errors.New("invalid url format")
+	ErrInvalidURL          = errors.New("invalid url format")
 	ErrApplicationNotFound = errors.New("application not found")
-	ErrEndpointNotFound  = errors.New("endpoint not found")
-	ErrInvalidRequest    = errors.New("invalid request")
+	ErrEndpointNotFound    = errors.New("endpoint not found")
+	ErrInvalidRequest      = errors.New("invalid request")
 )
+
+// parseEnum parses a string value to an enum type with a default fallback.
+func parseEnum[T ~string](value string, defaultVal T) T {
+	if value == "" {
+		return defaultVal
+	}
+	return T(value)
+}
+
+// withDefault returns the provided value if it's greater than zero, otherwise returns the default.
+func withDefault(value, defaultVal int) int {
+	if value > 0 {
+		return value
+	}
+	return defaultVal
+}
 
 type endpointService struct {
 	db   *gorm.DB
@@ -50,36 +66,13 @@ func (s *endpointService) CreateEndpoint(ctx context.Context, req *CreateEndpoin
 		return nil, err
 	}
 
-	signingAlgo := types.SignatureAlgoSHA256
-	if req.SigningAlgo == string(types.SignatureAlgoSHA512) {
-		signingAlgo = types.SignatureAlgoSHA512
-	}
+	signingAlgo := parseEnum(req.SigningAlgo, types.SignatureAlgoSHA256)
+	filterMode := parseEnum(req.FilterMode, types.FilterModeAllow)
+	retryStrategy := parseEnum(req.RetryStrategy, types.RetryStrategyExponential)
+	timeoutSeconds := withDefault(req.TimeoutSeconds, 30)
+	maxRetries := withDefault(req.MaxRetries, 3)
 
-	filterMode := types.FilterModeAllow
-	if req.FilterMode == string(types.FilterModeBlock) {
-		filterMode = types.FilterModeBlock
-	}
-
-	retryStrategy := types.RetryStrategyExponential
-	if req.RetryStrategy == string(types.RetryStrategyLinear) {
-		retryStrategy = types.RetryStrategyLinear
-	} else if req.RetryStrategy == string(types.RetryStrategyConstant) {
-		retryStrategy = types.RetryStrategyConstant
-	}
-
-	timeoutSeconds := 30
-	if req.TimeoutSeconds > 0 {
-		timeoutSeconds = req.TimeoutSeconds
-	}
-
-	maxRetries := 3
-	if req.MaxRetries >= 0 {
-		maxRetries = req.MaxRetries
-	}
-
-	secret := uuid.New().String()
-
-	eventFilters := make(types.JSONB)
+	eventFilters := types.JSONB{}
 	if len(req.EventFilters) > 0 {
 		filters := make([]interface{}, len(req.EventFilters))
 		for i, f := range req.EventFilters {
@@ -88,7 +81,7 @@ func (s *endpointService) CreateEndpoint(ctx context.Context, req *CreateEndpoin
 		eventFilters["filters"] = filters
 	}
 
-	customHeaders := make(types.JSONB)
+	customHeaders := types.JSONB{}
 	for k, v := range req.CustomHeaders {
 		customHeaders[k] = v
 	}
@@ -100,7 +93,7 @@ func (s *endpointService) CreateEndpoint(ctx context.Context, req *CreateEndpoin
 		URL:            req.URL,
 		Description:    req.Description,
 		SigningAlgo:    signingAlgo,
-		Secrets:        types.JSONB{"current": secret},
+		Secrets:        types.JSONB{"current": uuid.New().String()},
 		EventFilters:   eventFilters,
 		FilterMode:     filterMode,
 		Status:         types.EndpointStatusHealthy,
@@ -151,23 +144,17 @@ func (s *endpointService) UpdateEndpoint(ctx context.Context, id string, req *Up
 		endpoint.Description = *req.Description
 	}
 	if req.EventFilters != nil {
-		eventFilters := make(types.JSONB)
 		filters := make([]interface{}, len(req.EventFilters))
 		for i, f := range req.EventFilters {
 			filters[i] = f
 		}
-		eventFilters["filters"] = filters
-		endpoint.EventFilters = eventFilters
+		endpoint.EventFilters = types.JSONB{"filters": filters}
 	}
 	if req.FilterMode != nil {
-		if *req.FilterMode == string(types.FilterModeAllow) {
-			endpoint.FilterMode = types.FilterModeAllow
-		} else if *req.FilterMode == string(types.FilterModeBlock) {
-			endpoint.FilterMode = types.FilterModeBlock
-		}
+		endpoint.FilterMode = types.FilterMode(*req.FilterMode)
 	}
 	if req.CustomHeaders != nil {
-		customHeaders := make(types.JSONB)
+		customHeaders := types.JSONB{}
 		for k, v := range req.CustomHeaders {
 			customHeaders[k] = v
 		}
@@ -180,12 +167,7 @@ func (s *endpointService) UpdateEndpoint(ctx context.Context, id string, req *Up
 		endpoint.MaxRetries = *req.MaxRetries
 	}
 	if req.Status != nil {
-		switch *req.Status {
-		case string(types.EndpointStatusHealthy):
-			endpoint.Status = types.EndpointStatusHealthy
-		case string(types.EndpointStatusDisabled):
-			endpoint.Status = types.EndpointStatusDisabled
-		}
+		endpoint.Status = types.EndpointStatus(*req.Status)
 	}
 
 	endpoint.UpdatedAt = time.Now()

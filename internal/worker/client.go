@@ -64,35 +64,23 @@ func NewClient(timeout time.Duration) *Client {
 // DeliverWebhook sends a webhook HTTP request and returns the complete delivery result.
 func (c *Client) DeliverWebhook(ctx context.Context, msg types.QueueMessage) DeliveryResult {
 	startTime := time.Now()
+	errorResult := func(err string, code string, retryable bool) DeliveryResult {
+		return DeliveryResult{Error: err, ErrorCode: code, Retryable: retryable, LatencyMS: int(time.Since(startTime).Milliseconds())}
+	}
 
 	payload, err := json.Marshal(msg.Payload)
 	if err != nil {
-		return DeliveryResult{
-			Error:     fmt.Sprintf("failed to marshal payload: %v", err),
-			ErrorCode: "marshal_error",
-			Retryable: false,
-			LatencyMS: int(time.Since(startTime).Milliseconds()),
-		}
+		return errorResult(fmt.Sprintf("failed to marshal payload: %v", err), "marshal_error", false)
 	}
 
 	signature, err := crypto.GenerateSignature(payload, msg.Secret, types.SignatureAlgoSHA256)
 	if err != nil {
-		return DeliveryResult{
-			Error:     fmt.Sprintf("failed to generate signature: %v", err),
-			ErrorCode: "signature_error",
-			Retryable: false,
-			LatencyMS: int(time.Since(startTime).Milliseconds()),
-		}
+		return errorResult(fmt.Sprintf("failed to generate signature: %v", err), "signature_error", false)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", msg.URL, bytes.NewReader(payload))
 	if err != nil {
-		return DeliveryResult{
-			Error:     fmt.Sprintf("failed to create request: %v", err),
-			ErrorCode: "request_error",
-			Retryable: false,
-			LatencyMS: int(time.Since(startTime).Milliseconds()),
-		}
+		return errorResult(fmt.Sprintf("failed to create request: %v", err), "request_error", false)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -102,54 +90,31 @@ func (c *Client) DeliverWebhook(ctx context.Context, msg types.QueueMessage) Del
 	req.Header.Set("X-Von-Event-ID", msg.EventID)
 	req.Header.Set("X-Von-Delivery-ID", msg.DeliveryID)
 	req.Header.Set("X-Von-Attempt", fmt.Sprintf("%d", msg.AttemptNumber))
-
 	for key, value := range msg.Headers {
 		req.Header.Set(key, value)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return DeliveryResult{
-			Error:     fmt.Sprintf("request failed: %v", err),
-			ErrorCode: "network_error",
-			Retryable: true,
-			LatencyMS: int(time.Since(startTime).Milliseconds()),
-		}
+		return errorResult(fmt.Sprintf("request failed: %v", err), "network_error", true)
 	}
 	defer resp.Body.Close()
 
-	latencyMS := int(time.Since(startTime).Milliseconds())
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024))
-	if err != nil {
-		return DeliveryResult{
-			StatusCode: resp.StatusCode,
-			Error:      fmt.Sprintf("failed to read response body: %v", err),
-			ErrorCode:  "read_error",
-			Retryable:  false,
-			LatencyMS:  latencyMS,
-		}
-	}
-
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 10*1024))
 	result := DeliveryResult{
 		StatusCode:      resp.StatusCode,
 		ResponseHeaders: util.HTTPHeadersToMap(resp.Header),
 		ResponseBody:    string(body),
-		LatencyMS:       latencyMS,
+		LatencyMS:       int(time.Since(startTime).Milliseconds()),
 	}
 
-	if resp.StatusCode >= 500 {
-		result.Error = fmt.Sprintf("server error: %d", resp.StatusCode)
-		result.ErrorCode = "server_error"
-		result.Retryable = true
-	} else if resp.StatusCode == 429 {
-		result.Error = "rate limited"
-		result.ErrorCode = "rate_limit"
-		result.Retryable = true
-	} else if resp.StatusCode >= 400 {
-		result.Error = fmt.Sprintf("client error: %d", resp.StatusCode)
-		result.ErrorCode = "client_error"
-		result.Retryable = false
+	switch {
+	case resp.StatusCode >= 500:
+		result.Error, result.ErrorCode, result.Retryable = fmt.Sprintf("server error: %d", resp.StatusCode), "server_error", true
+	case resp.StatusCode == 429:
+		result.Error, result.ErrorCode, result.Retryable = "rate limited", "rate_limit", true
+	case resp.StatusCode >= 400:
+		result.Error, result.ErrorCode, result.Retryable = fmt.Sprintf("client error: %d", resp.StatusCode), "client_error", false
 	}
 
 	return result
