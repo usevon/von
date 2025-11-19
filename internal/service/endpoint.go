@@ -74,7 +74,11 @@ func (s *endpointService) CreateEndpoint(ctx context.Context, req *CreateEndpoin
 
 	eventFilters := types.JSONB{}
 	if len(req.EventFilters) > 0 {
-		eventFilters["filters"] = req.EventFilters
+		filters := make([]interface{}, len(req.EventFilters))
+		for i, f := range req.EventFilters {
+			filters[i] = f
+		}
+		eventFilters["filters"] = filters
 	}
 
 	customHeaders := types.JSONB{}
@@ -140,7 +144,11 @@ func (s *endpointService) UpdateEndpoint(ctx context.Context, id string, req *Up
 		endpoint.Description = *req.Description
 	}
 	if req.EventFilters != nil {
-		endpoint.EventFilters = types.JSONB{"filters": req.EventFilters}
+		filters := make([]interface{}, len(req.EventFilters))
+		for i, f := range req.EventFilters {
+			filters[i] = f
+		}
+		endpoint.EventFilters = types.JSONB{"filters": filters}
 	}
 	if req.FilterMode != nil {
 		endpoint.FilterMode = types.FilterMode(*req.FilterMode)
