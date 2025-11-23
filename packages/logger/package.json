@@ -15,10 +15,7 @@
   },
   "dependencies": {
     "pino": "^9.6.0",
-    "@bogeychan/elysia-logger": "^0.1.10"
-  },
-  "peerDependencies": {
-    "elysia": ">=1.0.0"
+    "pino-pretty": "^13.0.0"
   },
   "devDependencies": {
     "@von/tsconfig": "workspace:*",
