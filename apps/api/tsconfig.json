@@ -1,0 +1,9 @@
+{
+  "extends": "@von/tsconfig",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src"]
+}
