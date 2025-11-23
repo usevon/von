@@ -17,6 +17,7 @@
     "@von/logger": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.16",
+    "graceful-server-elysia": "^1.0.25",
     "nanoid": "^5.0.9",
     "postgres": "^3.4.7"
   },

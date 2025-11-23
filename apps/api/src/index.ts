@@ -1,18 +1,33 @@
 import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
 import { serverTiming } from "@elysiajs/server-timing"
-import { env } from "@von/env"
-import { createElysiaLogger } from "@von/logger/elysia"
-import { authRoutes } from "@/modules/auth"
-import { webhooks } from "@/modules/webhooks"
-import { endpoints } from "@/modules/endpoints"
-import { inboundManagement, inboundReceiver } from "@/modules/inbound"
+import { pluginGracefulServer } from "graceful-server-elysia"
 
-const app = new Elysia()
+import { env } from "@von/env"
+import { createLogger } from "@von/logger/elysia"
+
+import { auth } from "@/modules/auth"
+import { endpoints } from "@/modules/endpoints"
+import { inbound, inboundPublic } from "@/modules/inbound"
+import { webhooks } from "@/modules/webhooks"
+
+const log = createLogger({
+  level: env.NODE_ENV === "development" ? "debug" : "info",
+  pretty: env.NODE_ENV === "development",
+})
+
+const app = new Elysia({
+  name: "von-api",
+  aot: true,
+  normalize: true,
+})
   .use(cors())
   .use(serverTiming())
-  .use(createElysiaLogger({ level: env.NODE_ENV === "development" ? "debug" : "info" }))
-  .onError(({ code, error, set, log }) => {
+  .derive(() => ({ log }))
+  .onAfterResponse({ as: "global" }, ({ request, set }) => {
+    log.info({ method: request.method, url: request.url, status: set.status }, "request")
+  })
+  .onError(({ code, error, set }) => {
     const message = "message" in error ? error.message : String(error)
 
     if (code === "VALIDATION") {
@@ -28,14 +43,14 @@ const app = new Elysia()
     log.error({ code, err: error }, message)
     return { error: message }
   })
-  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  .use(authRoutes)
-  .use(inboundReceiver)
+  .use(pluginGracefulServer({
+    onReady: () => log.info(`Von API running on port ${env.PORT}`),
+  }))
+  .use(auth)
+  .use(inboundPublic)
   .use(webhooks)
   .use(endpoints)
-  .use(inboundManagement)
+  .use(inbound)
   .listen(env.PORT)
-
-app.log.info(`Von API running on port ${env.PORT}`)
 
 export type App = typeof app

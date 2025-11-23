@@ -3,7 +3,7 @@ import { createAuth } from "@von/auth"
 import { db } from "@von/db"
 import { env } from "@von/env"
 
-const auth = createAuth(db, {
+const betterAuth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: env.NODE_ENV === "development"
@@ -11,8 +11,8 @@ const auth = createAuth(db, {
     : [],
 })
 
-export const authRoutes = new Elysia({ name: "better-auth" })
-  .mount(auth.handler)
+export const auth = new Elysia({ name: "better-auth" })
+  .mount(betterAuth.handler)
 
 export const withApiKey = new Elysia({ name: "api-key-auth" })
   .derive({ as: "scoped" }, async ({ headers, set }) => {
@@ -22,7 +22,7 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
       throw new Error("Missing API key")
     }
 
-    const result = await auth.api.verifyApiKey({ body: { key } })
+    const result = await betterAuth.api.verifyApiKey({ body: { key } })
     if (!result.valid) {
       set.status = 401
       throw new Error(result.error?.message ?? "Invalid API key")
@@ -41,4 +41,4 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
     }
   })
 
-export { auth }
+export { betterAuth }

@@ -10,7 +10,7 @@ import { InboundService } from "@/modules/inbound/service"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withApiKey } from "@/modules/auth"
 
-export const inboundManagement = new Elysia({ prefix: "/inbound" })
+export const inbound = new Elysia({ prefix: "/inbound" })
   .use(withApiKey)
   .post(
     "/",
@@ -96,7 +96,7 @@ export const inboundManagement = new Elysia({ prefix: "/inbound" })
     }
   )
 
-export const inboundReceiver = new Elysia({ prefix: "/in" })
+export const inboundPublic = new Elysia({ prefix: "/in" })
   .post(
     "/:id",
     async ({ params, body, headers, status }) => {
