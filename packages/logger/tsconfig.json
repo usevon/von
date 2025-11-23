@@ -1,0 +1,4 @@
+{
+  "extends": "@von/tsconfig",
+  "include": ["src"]
+}

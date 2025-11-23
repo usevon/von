@@ -1,0 +1,27 @@
+{
+  "name": "@von/logger",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./elysia": {
+      "import": "./src/elysia.ts",
+      "types": "./src/elysia.ts"
+    }
+  },
+  "dependencies": {
+    "pino": "^9.6.0",
+    "@bogeychan/elysia-logger": "^0.1.10"
+  },
+  "peerDependencies": {
+    "elysia": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@von/tsconfig": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
