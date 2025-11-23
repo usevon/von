@@ -1,7 +1,6 @@
 import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
 import { serverTiming } from "@elysiajs/server-timing"
-import { pluginGracefulServer } from "graceful-server-elysia"
 
 import { env } from "@von/env"
 import { createLogger } from "@von/logger/elysia"
@@ -43,14 +42,15 @@ const app = new Elysia({
     log.error({ code, err: error }, message)
     return { error: message }
   })
-  .use(pluginGracefulServer({
-    onReady: () => log.info(`Von API running on port ${env.PORT}`),
-  }))
+  .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
+  .get("/ready", () => ({ status: "ok" }))
   .use(auth)
   .use(inboundPublic)
   .use(webhooks)
   .use(endpoints)
   .use(inbound)
   .listen(env.PORT)
+
+log.info(`Von API running on port ${env.PORT}`)
 
 export type App = typeof app

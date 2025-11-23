@@ -37,7 +37,7 @@ cd von
 bun install
 
 # Start the API server
-bun run --filter @von/api dev
+bun run --watch --filter @von/api start
 ```
 
 ## Contributing
