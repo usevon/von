@@ -1,0 +1,8 @@
+{
+  "extends": "@von/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src"]
+}

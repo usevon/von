@@ -1,0 +1,32 @@
+{
+  "name": "@von/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./schema": {
+      "import": "./src/schema.ts",
+      "types": "./src/schema.ts"
+    }
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@von/env": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@von/tsconfig": "workspace:*",
+    "drizzle-kit": "^0.31.7",
+    "typescript": "^5.7.2"
+  }
+}
