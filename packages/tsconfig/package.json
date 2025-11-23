@@ -1,0 +1,11 @@
+{
+  "name": "@von/tsconfig",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    ".": "./tsconfig.json"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.7"
+  }
+}
