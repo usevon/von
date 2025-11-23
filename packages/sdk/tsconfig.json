@@ -1,0 +1,7 @@
+{
+  "extends": "@von/tsconfig",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["src"]
+}
