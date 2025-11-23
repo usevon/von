@@ -39,5 +39,7 @@ export const createAuth = (
   })
 }
 
+export type Auth = ReturnType<typeof createAuth>
+
 export { vonApiKey } from "@/plugins/von-api-key"
 export type { VonApiKeyOptions, VonApiKey } from "@/plugins/von-api-key"

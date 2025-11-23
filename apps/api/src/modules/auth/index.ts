@@ -1,9 +1,9 @@
 import { Elysia } from "elysia"
-import { createAuth } from "@von/auth"
+import { createAuth, type Auth } from "@von/auth"
 import { db } from "@von/db"
 import { env } from "@von/env"
 
-const betterAuth = createAuth(db, {
+const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: env.NODE_ENV === "development"
