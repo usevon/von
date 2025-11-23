@@ -3,8 +3,6 @@
   "extends": "@tsconfig/bun/tsconfig.json",
   "compilerOptions": {
     "declaration": true,
-    "declarationMap": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "declarationMap": true
   }
 }
