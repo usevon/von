@@ -32,12 +32,21 @@ All out of the box, without reinventing webhook infrastructure.
 ```bash
 git clone https://github.com/usevon/von.git
 cd von
-
-# Install dependencies
 bun install
 
-# Start the API server
-bun run --watch --filter @von/api start
+# Start infrastructure
+docker compose -f docker-compose.dev.yml up -d
+
+# Copy env files
+cp apps/api/.env.example apps/api/.env
+cp apps/worker/.env.example apps/worker/.env
+
+# Push database schema
+cd apps/api && bun run db:push
+
+# Start the API and Worker (in separate terminals)
+cd apps/api && bun run dev
+cd apps/worker && bun run dev
 ```
 
 ## Testing
