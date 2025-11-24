@@ -1,6 +1,6 @@
 import { eq, and, count } from "drizzle-orm"
 import { nanoid } from "nanoid"
-import { db } from "@/lib/db"
+import { db } from "@von/db"
 import { endpoint } from "@von/db/schema"
 import type { CreateEndpointBodyType, UpdateEndpointBodyType, EndpointType } from "@/modules/endpoints/model"
 

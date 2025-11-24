@@ -1,7 +1,7 @@
 import { Elysia } from "elysia"
 import { createAuth, type Auth } from "@von/auth"
 import { db } from "@von/db"
-import { env } from "@von/env"
+import { env } from "@/env"
 
 const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,

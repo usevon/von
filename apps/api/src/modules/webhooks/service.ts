@@ -1,5 +1,5 @@
 import { eq, and, count } from "drizzle-orm"
-import { db } from "@/lib/db"
+import { db } from "@von/db"
 import { event, delivery, endpoint } from "@von/db/schema"
 import { getWebhookDeliveryQueue } from "@von/queue"
 import type { WebhookEventType } from "@/modules/webhooks/model"

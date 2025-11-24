@@ -1,4 +1,4 @@
-import { env } from "@von/env"
+import { env } from "@/env"
 import { app, log } from "@/app"
 
 app.listen(env.PORT)

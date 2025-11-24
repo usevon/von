@@ -2,7 +2,7 @@ import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
 import { serverTiming } from "@elysiajs/server-timing"
 
-import { env } from "@von/env"
+import { env } from "@/env"
 import { createLogger } from "@von/logger/elysia"
 
 import { auth } from "@/modules/auth"
