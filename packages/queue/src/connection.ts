@@ -1,5 +1,5 @@
 import IORedis from "ioredis"
-import { env } from "@von/env"
+import { env } from "./env"
 
 export type ConnectionOptions = {
   url?: string

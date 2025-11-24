@@ -3,14 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "./src/index.ts",
   "exports": {
     ".": {
       "import": "./src/index.ts",
-      "types": "./src/index.ts"
-    },
-    "./server": {
-      "import": "./src/server.ts",
-      "types": "./src/server.ts"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "dependencies": {
