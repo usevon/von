@@ -1,7 +1,8 @@
 import { eq, and, count } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { event, delivery, endpoint } from "@von/db/schema"
-import type { SendWebhookBodyType, WebhookEventType } from "@/modules/webhooks/model"
+import { getWebhookDeliveryQueue } from "@von/queue"
+import type { WebhookEventType } from "@/modules/webhooks/model"
 
 export type CreateEventParams = {
   organizationId: string
@@ -58,7 +59,7 @@ export const WebhookService = {
       })
       .returning()
 
-    const newEvent = result[0]
+    const newEvent = result[0]!
 
     let targetEndpoints: { id: string }[]
 
@@ -88,16 +89,30 @@ export const WebhookService = {
     }
 
     if (targetEndpoints.length > 0) {
-      await db.insert(delivery).values(
-        targetEndpoints.map((ep) => ({
-          eventId: newEvent.id,
-          endpointId: ep.id,
-          status: "pending",
-          attempts: 0,
-          nextAttemptAt: now,
-          createdAt: now,
-          updatedAt: now,
-        }))
+      const deliveryRecords = await db
+        .insert(delivery)
+        .values(
+          targetEndpoints.map((ep) => ({
+            eventId: newEvent.id,
+            endpointId: ep.id,
+            status: "pending",
+            attempts: 0,
+            nextAttemptAt: now,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        )
+        .returning()
+
+      const queue = getWebhookDeliveryQueue()
+      await Promise.all(
+        deliveryRecords.map((d) =>
+          queue.add("webhook-delivery", {
+            deliveryId: d.id,
+            eventId: newEvent.id,
+            endpointId: d.endpointId,
+          })
+        )
       )
     }
 
@@ -121,7 +136,7 @@ export const WebhookService = {
 
     return {
       events: events.map(toEventResponse),
-      total: totalResult[0].count,
+      total: totalResult[0]?.count ?? 0,
     }
   },
 

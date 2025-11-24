@@ -1,0 +1,21 @@
+{
+  "name": "@von/queue",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@von/env": "workspace:*",
+    "bullmq": "^5.64.1",
+    "ioredis": "^5.8.2"
+  },
+  "devDependencies": {
+    "@von/tsconfig": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
