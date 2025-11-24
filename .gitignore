@@ -6,12 +6,6 @@
 *.dylib
 bin/
 
-# Go
-*.test
-*.out
-go.work
-vendor/
-
 # Environment
 .env
 .env.local
@@ -33,3 +27,6 @@ docker/data/
 # Node
 node_modules/
 dist/
+
+# Turborepo
+.turbo
