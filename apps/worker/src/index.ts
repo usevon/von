@@ -1,7 +1,11 @@
 import { createLogger } from "@von/logger/elysia"
 import { createWebhookWorker } from "@/processors/webhook"
+import { env } from "@/env"
 
-const log = createLogger({ level: "info" })
+const log = createLogger({
+  level: env.NODE_ENV === "development" ? "debug" : "info",
+  pretty: env.NODE_ENV === "development",
+})
 
 const worker = createWebhookWorker()
 
