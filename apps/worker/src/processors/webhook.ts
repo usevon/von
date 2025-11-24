@@ -69,12 +69,6 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
   const now = new Date()
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(
-      () => controller.abort(),
-      endpointRecord.timeoutMs
-    )
-
     const response = await fetch(endpointRecord.url, {
       method: "POST",
       headers: {
@@ -85,10 +79,8 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         "X-Von-Event-Id": eventId,
       },
       body: payload,
-      signal: controller.signal,
+      signal: AbortSignal.timeout(endpointRecord.timeoutMs),
     })
-
-    clearTimeout(timeout)
 
     const responseBody = await response.text().catch(() => null)
 

@@ -40,6 +40,13 @@ bun install
 bun run --watch --filter @von/api start
 ```
 
+## Testing
+
+```bash
+bun test
+bun test --watch
+```
+
 ## Contributing
 
 Von is open source and welcomes contributions, issues, and feedback.
