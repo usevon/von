@@ -51,6 +51,7 @@ export const WebhookService = {
     const result = await db
       .insert(event)
       .values({
+        id: crypto.randomUUID(),
         organizationId: params.organizationId,
         eventType: params.eventType,
         payload: JSON.stringify(params.payload),
@@ -93,6 +94,7 @@ export const WebhookService = {
         .insert(delivery)
         .values(
           targetEndpoints.map((ep) => ({
+            id: crypto.randomUUID(),
             eventId: newEvent.id,
             endpointId: ep.id,
             status: "pending",

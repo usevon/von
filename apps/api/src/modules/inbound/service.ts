@@ -64,6 +64,7 @@ export const InboundService = {
     const result = await db
       .insert(inboundEndpoint)
       .values({
+        id: crypto.randomUUID(),
         organizationId: params.organizationId,
         name: params.name ?? null,
         provider: params.provider ?? null,
@@ -179,6 +180,7 @@ export const InboundService = {
     const result = await db
       .insert(inboundDelivery)
       .values({
+        id: crypto.randomUUID(),
         inboundEndpointId: params.endpointId,
         payload: JSON.stringify(params.payload),
         headers: JSON.stringify(params.headers),

@@ -36,6 +36,29 @@ export const createAuth = (
       organization(),
       apiKey(),
     ],
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session, ctx) => {
+            if (session.activeOrganizationId) {
+              return { data: session }
+            }
+            const members = await ctx?.context?.adapter?.findMany<{ organizationId: string }>({
+              model: "member",
+              where: [{ field: "userId", value: session.userId }],
+              limit: 1,
+            })
+            const firstMember = members?.[0]
+            if (firstMember) {
+              return {
+                data: { ...session, activeOrganizationId: firstMember.organizationId },
+              }
+            }
+            return { data: session }
+          },
+        },
+      },
+    },
   })
 }
 

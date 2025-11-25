@@ -40,6 +40,7 @@ export const EndpointService = {
     const result = await db
       .insert(endpoint)
       .values({
+        id: crypto.randomUUID(),
         organizationId: params.organizationId,
         url: params.url,
         description: params.description ?? null,
