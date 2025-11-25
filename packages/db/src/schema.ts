@@ -7,10 +7,9 @@ import {
   uuid,
   index,
 } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
 
 export const user = pgTable("user", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
@@ -23,7 +22,7 @@ export const user = pgTable("user", {
 })
 
 export const session = pgTable("session", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   expiresAt: timestamp("expires_at").notNull(),
   token: text("token").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -39,7 +38,7 @@ export const session = pgTable("session", {
 })
 
 export const account = pgTable("account", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
   userId: uuid("user_id")
@@ -59,7 +58,7 @@ export const account = pgTable("account", {
 })
 
 export const verification = pgTable("verification", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -71,7 +70,7 @@ export const verification = pgTable("verification", {
 })
 
 export const organization = pgTable("organization", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
@@ -80,7 +79,7 @@ export const organization = pgTable("organization", {
 })
 
 export const member = pgTable("member", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   organizationId: uuid("organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
@@ -92,7 +91,7 @@ export const member = pgTable("member", {
 })
 
 export const invitation = pgTable("invitation", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id").primaryKey(),
   organizationId: uuid("organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
@@ -108,27 +107,26 @@ export const invitation = pgTable("invitation", {
 export const apikey = pgTable(
   "apikey",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     name: text("name"),
     start: text("start"),
-    prefix: text("prefix"),
     key: text("key").notNull(),
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    environment: text("environment").default("dev").notNull(),
     organizationId: uuid("organization_id").references(() => organization.id, {
       onDelete: "cascade",
     }),
-    burstLimit: integer("burst_limit"),
+    environment: text("environment").default("dev"),
     enabled: boolean("enabled").default(true),
-    rateLimitEnabled: boolean("rate_limit_enabled").default(true),
-    rateLimitTimeWindow: integer("rate_limit_time_window").default(86400000),
-    rateLimitMax: integer("rate_limit_max").default(10),
-    requestCount: integer("request_count").default(0),
     expiresAt: timestamp("expires_at"),
-    createdAt: timestamp("created_at").notNull(),
-    updatedAt: timestamp("updated_at").notNull(),
+    requestCount: integer("request_count").default(0),
+    lastRequest: timestamp("last_request"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     index("apikey_key_idx").on(table.key),
@@ -140,7 +138,7 @@ export const apikey = pgTable(
 export const endpoint = pgTable(
   "endpoint",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -162,7 +160,7 @@ export const endpoint = pgTable(
 export const event = pgTable(
   "event",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -180,7 +178,7 @@ export const event = pgTable(
 export const delivery = pgTable(
   "delivery",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     eventId: uuid("event_id")
       .notNull()
       .references(() => event.id, { onDelete: "cascade" }),
@@ -209,7 +207,7 @@ export const delivery = pgTable(
 export const inboundEndpoint = pgTable(
   "inbound_endpoint",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -232,7 +230,7 @@ export const inboundEndpoint = pgTable(
 export const inboundDelivery = pgTable(
   "inbound_delivery",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id").primaryKey(),
     inboundEndpointId: uuid("inbound_endpoint_id")
       .notNull()
       .references(() => inboundEndpoint.id, { onDelete: "cascade" }),
