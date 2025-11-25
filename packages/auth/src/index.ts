@@ -2,12 +2,12 @@
  * Von Auth Server
  *
  * Centralized authentication using better-auth/minimal with Drizzle adapter.
- * Uses UUID for primary keys and includes organization and a forked api key plugin.
+ * Uses UUID for primary keys and includes organization and a custom api key plugin.
  */
 import { betterAuth } from "better-auth/minimal"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { organization } from "better-auth/plugins"
-import { vonApiKey } from "@/plugins/von-api-key"
+import { apiKey } from "@/plugins/api-key"
 
 export type CreateAuthOptions = {
   secret: string
@@ -29,17 +29,17 @@ export const createAuth = (
     },
     advanced: {
       database: {
-        generateId: "uuid",
+        generateId: () => crypto.randomUUID(),
       },
     },
     plugins: [
       organization(),
-      vonApiKey(),
+      apiKey(),
     ],
   })
 }
 
 export type Auth = ReturnType<typeof createAuth>
 
-export { vonApiKey } from "@/plugins/von-api-key"
-export type { VonApiKeyOptions, VonApiKey } from "@/plugins/von-api-key"
+export { apiKey } from "@/plugins/api-key"
+export type { ApiKeyOptions, ApiKey } from "@/plugins/api-key"
