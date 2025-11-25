@@ -68,7 +68,7 @@ function TestAuthPage() {
     if (error) {
       addLog('Create org error', error)
     } else {
-      addLog('Create org success', data)
+      addLog('Create org success (active org auto-set by server)', data)
     }
   }
 
@@ -95,9 +95,15 @@ function TestAuthPage() {
   }
 
   const handleCreateApiKey = async () => {
+    const orgId = session?.session?.activeOrganizationId
+    if (!orgId) {
+      addLog('No active organization - set one first')
+      return
+    }
     addLog('Creating API key...')
     const { data, error } = await apiKey.create({
       name: 'test-api-key',
+      organizationId: orgId,
     })
     if (error) {
       addLog('Create API key error', error)
@@ -174,19 +180,39 @@ function TestAuthPage() {
         >
           Sign Out
         </button>
-        <button onClick={handleCreateOrg} className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+        <button
+          onClick={handleCreateOrg}
+          disabled={!session || !!session?.session?.activeOrganizationId}
+          className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
           Create Org
         </button>
-        <button onClick={handleSetActiveOrg} className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+        <button
+          onClick={handleSetActiveOrg}
+          disabled={!session || !!session?.session?.activeOrganizationId}
+          className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
           Set Active Org
         </button>
-        <button onClick={handleCreateApiKey} className="p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+        <button
+          onClick={handleCreateApiKey}
+          disabled={!session?.session?.activeOrganizationId}
+          className="p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
           Create API Key
         </button>
-        <button onClick={handleListApiKeys} className="p-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">
+        <button
+          onClick={handleListApiKeys}
+          disabled={!session?.session?.activeOrganizationId}
+          className="p-2 bg-cyan-500 text-white rounded hover:bg-cyan-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
           List API Keys
         </button>
-        <button onClick={handleDeleteApiKey} className="p-2 bg-red-600 text-white rounded hover:bg-red-700">
+        <button
+          onClick={handleDeleteApiKey}
+          disabled={!session?.session?.activeOrganizationId}
+          className="p-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
           Delete API Key
         </button>
         <button onClick={() => setLog([])} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600">
