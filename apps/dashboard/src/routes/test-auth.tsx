@@ -116,6 +116,29 @@ function TestAuthPage() {
     }
   }
 
+  const handleDeleteApiKey = async () => {
+    addLog('Fetching API keys to delete the first one...')
+    const { data: keys, error: listError } = await apiKey.list()
+    if (listError) {
+      addLog('List API keys error', listError)
+      return
+    }
+    if (!keys || keys.length === 0) {
+      addLog('No API keys found to delete')
+      return
+    }
+    const keyToDelete = keys[0]
+    addLog(`Deleting API key: ${keyToDelete.start}...`)
+    const { data, error } = await apiKey.delete({
+      keyId: keyToDelete.id,
+    })
+    if (error) {
+      addLog('Delete API key error', error)
+    } else {
+      addLog('Delete API key success', data)
+    }
+  }
+
   return (
     <div className="p-5 font-mono">
       <h1 className="text-2xl font-bold mb-4">Auth Test Page</h1>
@@ -162,6 +185,9 @@ function TestAuthPage() {
         </button>
         <button onClick={handleListApiKeys} className="p-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">
           List API Keys
+        </button>
+        <button onClick={handleDeleteApiKey} className="p-2 bg-red-600 text-white rounded hover:bg-red-700">
+          Delete API Key
         </button>
         <button onClick={() => setLog([])} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600">
           Clear Log
