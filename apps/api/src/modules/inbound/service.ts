@@ -2,6 +2,7 @@ import { eq, and, count } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "@von/db"
 import { inboundEndpoint, inboundDelivery } from "@von/db/schema"
+import { getInboundForwardingQueue } from "@von/queue"
 import type {
   CreateInboundEndpointBodyType,
   UpdateInboundEndpointBodyType,
@@ -176,18 +177,25 @@ export const InboundService = {
 
   async receive(params: ReceiveWebhookParams): Promise<InboundDeliveryType> {
     const now = new Date()
+    const deliveryId = crypto.randomUUID()
 
     const result = await db
       .insert(inboundDelivery)
       .values({
-        id: crypto.randomUUID(),
+        id: deliveryId,
         inboundEndpointId: params.endpointId,
         payload: JSON.stringify(params.payload),
         headers: JSON.stringify(params.headers),
-        status: "received",
+        status: "pending",
         createdAt: now,
       })
       .returning()
+
+    const queue = getInboundForwardingQueue()
+    await queue.add("inbound-forwarding", {
+      deliveryId,
+      endpointId: params.endpointId,
+    })
 
     return toDeliveryResponse(result[0])
   },

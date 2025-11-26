@@ -2,8 +2,8 @@ import { Worker, Job } from "bullmq"
 import { eq } from "drizzle-orm"
 import { createHmac } from "crypto"
 import { db } from "@von/db"
-import { delivery, event, endpoint } from "@von/db/schema"
-import { createConnection, type WebhookDeliveryJob } from "@von/queue"
+import { inboundDelivery, inboundEndpoint } from "@von/db/schema"
+import { createConnection, type InboundForwardingJob } from "@von/queue"
 import { createLogger } from "@von/logger/elysia"
 import { env } from "@/env"
 
@@ -23,53 +23,42 @@ const CIRCUIT_CONFIG = {
   resetTimeoutMs: 300000,
 }
 
-const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  const { deliveryId, eventId, endpointId } = job.data
+const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
+  const { deliveryId, endpointId } = job.data
 
   const [deliveryRecord] = await db
     .select()
-    .from(delivery)
-    .where(eq(delivery.id, deliveryId))
+    .from(inboundDelivery)
+    .where(eq(inboundDelivery.id, deliveryId))
     .limit(1)
 
   if (!deliveryRecord) {
-    log.warn({ deliveryId }, "Delivery not found, skipping")
+    log.warn({ deliveryId }, "Inbound delivery not found, skipping")
     return
   }
 
-  if (deliveryRecord.status === "delivered") {
-    log.info({ deliveryId }, "Already delivered, skipping")
+  if (deliveryRecord.status === "forwarded") {
+    log.info({ deliveryId }, "Already forwarded, skipping")
     return
-  }
-
-  const [eventRecord] = await db
-    .select()
-    .from(event)
-    .where(eq(event.id, eventId))
-    .limit(1)
-
-  if (!eventRecord) {
-    log.error({ eventId }, "Event not found")
-    throw new Error(`Event ${eventId} not found`)
   }
 
   const [endpointRecord] = await db
     .select()
-    .from(endpoint)
-    .where(eq(endpoint.id, endpointId))
+    .from(inboundEndpoint)
+    .where(eq(inboundEndpoint.id, endpointId))
     .limit(1)
 
   if (!endpointRecord) {
-    log.error({ endpointId }, "Endpoint not found")
-    throw new Error(`Endpoint ${endpointId} not found`)
+    log.error({ endpointId }, "Inbound endpoint not found")
+    throw new Error(`Inbound endpoint ${endpointId} not found`)
   }
 
   if (!endpointRecord.enabled) {
-    log.info({ endpointId }, "Endpoint disabled, marking as skipped")
+    log.info({ endpointId }, "Inbound endpoint disabled, marking as skipped")
     await db
-      .update(delivery)
-      .set({ status: "skipped", updatedAt: new Date() })
-      .where(eq(delivery.id, deliveryId))
+      .update(inboundDelivery)
+      .set({ status: "skipped" })
+      .where(eq(inboundDelivery.id, deliveryId))
     return
   }
 
@@ -80,31 +69,32 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
         log.info({ endpointId }, "Circuit breaker open, marking as skipped")
         await db
-          .update(delivery)
-          .set({ status: "circuit_open", updatedAt: new Date() })
-          .where(eq(delivery.id, deliveryId))
+          .update(inboundDelivery)
+          .set({ status: "circuit_open" })
+          .where(eq(inboundDelivery.id, deliveryId))
         return
       }
       await db
-        .update(endpoint)
+        .update(inboundEndpoint)
         .set({ circuitState: "half_open", updatedAt: new Date() })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(inboundEndpoint.id, endpointId))
     }
   }
 
-  const payload = eventRecord.payload
+  const payload = deliveryRecord.payload
+  const originalHeaders: Record<string, string> = deliveryRecord.headers
+    ? JSON.parse(deliveryRecord.headers)
+    : {}
   const signature = generateSignature(payload, endpointRecord.secret)
   const now = new Date()
 
   try {
-    const response = await fetch(endpointRecord.url, {
+    const response = await fetch(endpointRecord.forwardUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        ...originalHeaders,
         "X-Von-Signature": signature,
-        "X-Von-Event-Type": eventRecord.eventType,
-        "X-Von-Delivery-Id": deliveryId,
-        "X-Von-Event-Id": eventId,
+        "X-Von-Inbound-Delivery-Id": deliveryId,
       },
       body: payload,
       signal: AbortSignal.timeout(endpointRecord.timeoutMs),
@@ -114,29 +104,29 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
 
     if (response.ok) {
       await db
-        .update(delivery)
+        .update(inboundDelivery)
         .set({
-          status: "delivered",
+          status: "forwarded",
           attempts: deliveryRecord.attempts + 1,
           lastAttemptAt: now,
+          forwardedAt: now,
           responseStatus: response.status,
           responseBody: responseBody?.slice(0, 1000) ?? null,
-          updatedAt: now,
         })
-        .where(eq(delivery.id, deliveryId))
+        .where(eq(inboundDelivery.id, deliveryId))
 
       await db
-        .update(endpoint)
+        .update(inboundEndpoint)
         .set({
           failureCount: 0,
           circuitState: "closed",
           updatedAt: now,
         })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(inboundEndpoint.id, endpointId))
 
       log.info(
         { deliveryId, status: response.status },
-        "Webhook delivered successfully"
+        "Inbound webhook forwarded successfully"
       )
     } else {
       throw new Error(`HTTP ${response.status}: ${responseBody?.slice(0, 200)}`)
@@ -147,19 +137,18 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     const isFinalAttempt = attempts >= maxAttempts
 
     await db
-      .update(delivery)
+      .update(inboundDelivery)
       .set({
         status: isFinalAttempt ? "failed" : "pending",
         attempts,
         lastAttemptAt: now,
-        updatedAt: now,
       })
-      .where(eq(delivery.id, deliveryId))
+      .where(eq(inboundDelivery.id, deliveryId))
 
     const newFailureCount = endpointRecord.failureCount + 1
     if (newFailureCount >= CIRCUIT_CONFIG.failureThreshold) {
       await db
-        .update(endpoint)
+        .update(inboundEndpoint)
         .set({
           circuitState: "open",
           circuitOpenedAt: now,
@@ -167,22 +156,22 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
           lastFailureAt: now,
           updatedAt: now,
         })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(inboundEndpoint.id, endpointId))
       log.warn({ endpointId, failureCount: newFailureCount }, "Circuit breaker opened")
     } else {
       await db
-        .update(endpoint)
+        .update(inboundEndpoint)
         .set({
           failureCount: newFailureCount,
           lastFailureAt: now,
           updatedAt: now,
         })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(inboundEndpoint.id, endpointId))
     }
 
     log.error(
       { deliveryId, attempts, maxAttempts, error: String(error) },
-      "Webhook delivery failed"
+      "Inbound forwarding failed"
     )
 
     if (!isFinalAttempt) {
@@ -191,10 +180,10 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
   }
 }
 
-export const createWebhookWorker = () => {
-  const worker = new Worker<WebhookDeliveryJob>(
-    "webhook-delivery",
-    processWebhookDelivery,
+export const createInboundWorker = () => {
+  const worker = new Worker<InboundForwardingJob>(
+    "inbound-forwarding",
+    processInboundForwarding,
     {
       connection: createConnection(),
       concurrency: 10,
@@ -202,11 +191,11 @@ export const createWebhookWorker = () => {
   )
 
   worker.on("completed", (job) => {
-    log.debug({ jobId: job.id }, "Job completed")
+    log.debug({ jobId: job.id }, "Inbound job completed")
   })
 
   worker.on("failed", (job, error) => {
-    log.error({ jobId: job?.id, error: error.message }, "Job failed")
+    log.error({ jobId: job?.id, error: error.message }, "Inbound job failed")
   })
 
   return worker
