@@ -4,6 +4,8 @@ import { serverTiming } from "@elysiajs/server-timing"
 
 import { env } from "@/env"
 import { createLogger } from "@von/logger/elysia"
+import { checkDatabaseConnection } from "@von/db"
+import { checkRedisConnection } from "@von/queue"
 
 import { auth } from "@/modules/auth"
 import { endpoints } from "@/modules/endpoints"
@@ -59,7 +61,23 @@ export const app = new Elysia({
     return { error: message }
   })
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
-  .get("/ready", () => ({ status: "ok" }))
+  .get("/ready", async ({ set }) => {
+    const [db, redis] = await Promise.all([
+      checkDatabaseConnection(),
+      checkRedisConnection(),
+    ])
+
+    const ok = db.ok && redis.ok
+    set.status = ok ? 200 : 503
+
+    return {
+      status: ok ? "ok" : "degraded",
+      services: {
+        database: db.ok ? "ok" : "unavailable",
+        redis: redis.ok ? "ok" : "unavailable",
+      },
+    }
+  })
   .use(auth)
   .use(inboundPublic)
   .use(webhooks)

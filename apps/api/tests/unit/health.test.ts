@@ -12,11 +12,12 @@ describe("Health endpoints", () => {
     expect(body.uptime).toBeGreaterThan(0)
   })
 
-  test("GET /ready returns ok status", async () => {
+  test("GET /ready returns service status", async () => {
     const response = await app.handle(createRequest("/ready"))
     const body = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(body.status).toBe("ok")
+    expect(body.services).toBeDefined()
+    expect(body.services.database).toBeDefined()
+    expect(body.services.redis).toBeDefined()
   })
 })
