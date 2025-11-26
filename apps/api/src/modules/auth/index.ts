@@ -16,22 +16,23 @@ export const auth = new Elysia({ name: "better-auth" })
 
 export const withApiKey = new Elysia({ name: "api-key-auth" })
   .derive({ as: "scoped" }, async ({ headers, set }) => {
-    const key = headers["x-api-key"]
-    if (!key) {
+    const authHeader = headers["authorization"]
+    if (!authHeader?.startsWith("Bearer ")) {
       set.status = 401
-      throw new Error("Missing API key")
+      throw new Error("Invalid API key.")
     }
+    const key = authHeader.slice(7)
 
     const result = await betterAuth.api.verifyApiKey({ body: { key } })
     if (!result.valid) {
       set.status = 401
-      throw new Error(result.error?.message ?? "Invalid API key")
+      throw new Error("Invalid API key.")
     }
 
     const organizationId = result.key?.organizationId
     if (!organizationId) {
       set.status = 401
-      throw new Error("API key must be associated with an organization")
+      throw new Error("Invalid API key.")
     }
 
     return {
