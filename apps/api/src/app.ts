@@ -10,17 +10,33 @@ import { endpoints } from "@/modules/endpoints"
 import { inbound, inboundPublic } from "@/modules/inbound"
 import { webhooks } from "@/modules/webhooks"
 
+const getLogLevel = () => {
+  if (env.NODE_ENV === "test") return "silent"
+  if (env.NODE_ENV === "development") return "debug"
+  return "info"
+}
+
 export const log = createLogger({
-  level: env.NODE_ENV === "development" ? "debug" : "info",
+  level: getLogLevel(),
   pretty: env.NODE_ENV === "development",
 })
+
+const getCorsOrigins = () => {
+  if (env.NODE_ENV === "development") {
+    return ["http://localhost:5173", "http://localhost:5174"]
+  }
+  if (env.CORS_ORIGINS) {
+    return env.CORS_ORIGINS.split(",").map((o) => o.trim())
+  }
+  return []
+}
 
 export const app = new Elysia({
   name: "von-api",
   aot: true,
   normalize: true,
 })
-  .use(cors())
+  .use(cors({ origin: getCorsOrigins() }))
   .use(serverTiming())
   .derive(() => ({ log }))
   .onAfterResponse({ as: "global" }, ({ request, set }) => {
