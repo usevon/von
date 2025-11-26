@@ -4,4 +4,9 @@ export type WebhookDeliveryJob = {
   endpointId: string
 }
 
-export type QueueName = "webhook-delivery"
+export type InboundForwardingJob = {
+  deliveryId: string
+  endpointId: string
+}
+
+export type QueueName = "webhook-delivery" | "inbound-forwarding"

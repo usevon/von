@@ -6,10 +6,33 @@ export type ConnectionOptions = {
   maxRetriesPerRequest?: number | null
 }
 
-export const createConnection = (options: ConnectionOptions = {}) => {
-  const url = options.url ?? env.REDIS_URL ?? "redis://localhost:6379"
+function getUrl(options: ConnectionOptions = {}) {
+  return options.url ?? env.REDIS_URL ?? "redis://localhost:6379"
+}
 
-  return new IORedis(url, {
+export async function checkRedisConnection(options: ConnectionOptions = {}): Promise<{ ok: boolean; url: string }> {
+  const url = getUrl(options)
+  const redis = new IORedis(url, {
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null,
+    lazyConnect: true,
+  })
+
+  redis.on("error", () => {})
+
+  try {
+    await redis.connect()
+    await redis.ping()
+    await redis.quit()
+    return { ok: true, url }
+  } catch {
+    await redis.quit().catch(() => {})
+    return { ok: false, url }
+  }
+}
+
+export function createConnection(options: ConnectionOptions = {}) {
+  return new IORedis(getUrl(options), {
     maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
   })
 }

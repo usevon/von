@@ -1,4 +1,4 @@
-export { createConnection } from "./connection"
-export { getWebhookDeliveryQueue } from "./queues"
-export type { WebhookDeliveryJob, QueueName } from "./types"
+export { createConnection, checkRedisConnection } from "./connection"
+export { getWebhookDeliveryQueue, getInboundForwardingQueue } from "./queues"
+export type { WebhookDeliveryJob, InboundForwardingJob, QueueName } from "./types"
 export type { ConnectionOptions } from "./connection"
