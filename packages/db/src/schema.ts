@@ -148,6 +148,10 @@ export const endpoint = pgTable(
     enabled: boolean("enabled").default(true).notNull(),
     retryCount: integer("retry_count").default(3).notNull(),
     timeoutMs: integer("timeout_ms").default(30000).notNull(),
+    circuitState: text("circuit_state").default("closed").notNull(),
+    failureCount: integer("failure_count").default(0).notNull(),
+    lastFailureAt: timestamp("last_failure_at"),
+    circuitOpenedAt: timestamp("circuit_opened_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -216,6 +220,12 @@ export const inboundEndpoint = pgTable(
     secret: text("secret").notNull(),
     forwardUrl: text("forward_url").notNull(),
     enabled: boolean("enabled").default(true).notNull(),
+    retryCount: integer("retry_count").default(3).notNull(),
+    timeoutMs: integer("timeout_ms").default(30000).notNull(),
+    circuitState: text("circuit_state").default("closed").notNull(),
+    failureCount: integer("failure_count").default(0).notNull(),
+    lastFailureAt: timestamp("last_failure_at"),
+    circuitOpenedAt: timestamp("circuit_opened_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -237,6 +247,8 @@ export const inboundDelivery = pgTable(
     payload: text("payload").notNull(),
     headers: text("headers"),
     status: text("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    lastAttemptAt: timestamp("last_attempt_at"),
     forwardedAt: timestamp("forwarded_at"),
     responseStatus: integer("response_status"),
     responseBody: text("response_body"),
@@ -244,5 +256,6 @@ export const inboundDelivery = pgTable(
   },
   (table) => [
     index("inbound_delivery_endpoint_id_idx").on(table.inboundEndpointId),
+    index("inbound_delivery_status_idx").on(table.status),
   ]
 )
