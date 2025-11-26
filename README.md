@@ -52,9 +52,18 @@ cd apps/worker && bun run dev
 ## Testing
 
 ```bash
+cd apps/api
+
+# Run unit tests (no API key required)
+bun test tests/unit
+
+# Run integration tests (prompts for API key on first run, saves to OS keychain)
+bun test tests/integration
+
+# Run all tests
 bun test
-bun test --watch
 ```
+
 
 ## Contributing
 

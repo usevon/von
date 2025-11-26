@@ -19,8 +19,13 @@ bun run dev
 
 **Running Tests**
 ```bash
-bun test
-bun test --watch
+cd apps/api
+
+# Unit tests (no setup required)
+bun test tests/unit
+
+# Integration tests (prompts for API key on first run)
+bun test tests/integration
 ```
 
 ## Pull Requests
