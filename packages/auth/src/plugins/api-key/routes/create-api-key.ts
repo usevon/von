@@ -1,6 +1,7 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
 import { z } from "zod"
 import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import { setApiKey } from "../adapter"
 
 const API_KEY_TABLE_NAME = "apikey"
 
@@ -139,6 +140,9 @@ export function createApiKey({
         model: API_KEY_TABLE_NAME,
         data,
       })
+
+      // Store in secondary storage (Redis) if configured
+      await setApiKey(ctx as never, apiKey, opts)
 
       return ctx.json({
         ...apiKey,

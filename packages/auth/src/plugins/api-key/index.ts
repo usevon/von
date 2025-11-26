@@ -3,7 +3,7 @@ import { createAuthMiddleware, APIError } from "better-auth/api"
 import { createApiKeyRoutes } from "./routes"
 import { validateApiKey } from "./routes/verify-api-key"
 import { apiKeySchema } from "./schema"
-import type { ApiKeyOptions } from "./types"
+import type { ApiKeyOptions, PredefinedApiKeyOptions } from "./types"
 
 function generateRandomString(length: number, ...charsets: string[]): string {
   const chars = charsets.length > 0
@@ -81,7 +81,7 @@ export const ERROR_CODES = {
 export const API_KEY_TABLE_NAME = "apikey"
 
 export const apiKey = (options?: ApiKeyOptions) => {
-  const opts = {
+  const opts: PredefinedApiKeyOptions = {
     apiKeyHeaders: options?.apiKeyHeaders ?? "x-api-key",
     defaultKeyLength: options?.defaultKeyLength ?? 64,
     maximumNameLength: options?.maximumNameLength ?? 64,
@@ -94,7 +94,10 @@ export const apiKey = (options?: ApiKeyOptions) => {
     },
     startingCharactersLength: options?.startingCharactersLength ?? 12,
     enableSessionForAPIKeys: options?.enableSessionForAPIKeys ?? false,
+    storage: options?.storage ?? "database",
+    fallbackToDatabase: options?.fallbackToDatabase ?? false,
     customKeyGenerator: options?.customKeyGenerator,
+    customStorage: options?.customStorage,
   }
 
   const schema = apiKeySchema()

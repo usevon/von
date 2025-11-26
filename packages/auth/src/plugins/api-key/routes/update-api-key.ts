@@ -1,6 +1,7 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
 import { z } from "zod"
 import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import { setApiKey } from "../adapter"
 
 const API_KEY_TABLE_NAME = "apikey"
 
@@ -70,6 +71,9 @@ export function updateApiKey({ opts }: { opts: PredefinedApiKeyOptions }) {
           message: "Failed to update API key",
         })
       }
+
+      // Update secondary storage (Redis) if configured
+      await setApiKey(ctx as never, updated, opts)
 
       const { key: _, ...safeKey } = updated
       return ctx.json(safeKey)

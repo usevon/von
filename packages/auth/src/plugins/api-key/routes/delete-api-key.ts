@@ -1,6 +1,7 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
 import { z } from "zod"
 import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import { deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
 
 const API_KEY_TABLE_NAME = "apikey"
 
@@ -41,10 +42,14 @@ export function deleteApiKey({ opts }: { opts: PredefinedApiKeyOptions }) {
         })
       }
 
+      // Delete from database
       await ctx.context.adapter.delete({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: ctx.body.keyId }],
       })
+
+      // Delete from secondary storage (Redis) if configured
+      await deleteApiKeyFromStorage(ctx as never, apiKey, opts)
 
       return ctx.json({ success: true })
     }

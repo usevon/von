@@ -1,6 +1,7 @@
 import { createAuthEndpoint, APIError } from "better-auth/api"
 import { z } from "zod"
 import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import { getApiKey, setApiKey, deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
 
 const API_KEY_TABLE_NAME = "apikey"
 
@@ -30,6 +31,11 @@ type AuthContext = {
   logger: {
     error: (message: string, ...args: unknown[]) => void
   }
+  secondaryStorage?: {
+    get: (key: string) => Promise<unknown> | unknown
+    set: (key: string, value: string, ttl?: number) => Promise<void | null | unknown> | void
+    delete: (key: string) => Promise<void | null | string> | void
+  } | null
 }
 
 type GenericEndpointContext = {
@@ -68,10 +74,8 @@ export async function validateApiKey({
   opts: PredefinedApiKeyOptions
   ctx: GenericEndpointContext
 }): Promise<ApiKey> {
-  const apiKey = await ctx.context.adapter.findOne<ApiKey>({
-    model: API_KEY_TABLE_NAME,
-    where: [{ field: "key", value: hashedKey }],
-  })
+  // Use adapter to get from Redis (if configured) or database
+  const apiKey = await getApiKey(ctx, hashedKey, opts)
 
   if (!apiKey) {
     throw new APIError("UNAUTHORIZED", {
@@ -89,12 +93,14 @@ export async function validateApiKey({
     const now = Date.now()
     const expiresAt = new Date(apiKey.expiresAt).getTime()
     if (now > expiresAt) {
-      // Delete expired key
+      // Delete expired key from database
       try {
         await ctx.context.adapter.delete({
           model: API_KEY_TABLE_NAME,
           where: [{ field: "id", value: apiKey.id }],
         })
+        // Also remove from secondary storage
+        await deleteApiKeyFromStorage(ctx, apiKey, opts)
       } catch (error) {
         ctx.context.logger.error("Failed to delete expired API key:", error)
       }
@@ -105,7 +111,7 @@ export async function validateApiKey({
     }
   }
 
-  // Update request count and last request time
+  // Update request count and last request time in database
   const updatedKey = await ctx.context.adapter.update<ApiKey>({
     model: API_KEY_TABLE_NAME,
     where: [{ field: "id", value: apiKey.id }],
@@ -121,6 +127,9 @@ export async function validateApiKey({
       message: ERROR_CODES.FAILED_TO_UPDATE_API_KEY,
     })
   }
+
+  // Update secondary storage with new request count
+  await setApiKey(ctx, updatedKey, opts)
 
   return updatedKey
 }
