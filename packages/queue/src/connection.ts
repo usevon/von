@@ -36,3 +36,17 @@ export function createConnection(options: ConnectionOptions = {}) {
     maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
   })
 }
+
+// Singleton Redis client for shared use (API key caching, etc.)
+let sharedClient: IORedis | null = null
+
+export function getRedisClient(options: ConnectionOptions = {}): IORedis {
+  if (!sharedClient) {
+    sharedClient = new IORedis(getUrl(options), {
+      maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
+      enableReadyCheck: true,
+      lazyConnect: false,
+    })
+  }
+  return sharedClient
+}
