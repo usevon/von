@@ -1,7 +1,11 @@
 import { Elysia } from "elysia"
 import { createAuth, type Auth } from "@von/auth"
+import { getRedisClient } from "@von/queue"
 import { db } from "@von/db"
 import { env } from "@/env"
+
+// Create Redis client for API key caching
+const redis = getRedisClient()
 
 const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
@@ -9,6 +13,19 @@ const betterAuth: Auth = createAuth(db, {
   trustedOrigins: env.NODE_ENV === "development"
     ? ["http://localhost:5173", "http://localhost:5174"]
     : [],
+  secondaryStorage: {
+    get: async (key) => await redis.get(key),
+    set: async (key, value, ttl) => {
+      if (ttl) {
+        await redis.setex(key, ttl, value)
+      } else {
+        await redis.set(key, value)
+      }
+    },
+    delete: async (key) => {
+      await redis.del(key)
+    },
+  },
 })
 
 export const auth = new Elysia({ name: "better-auth" })
