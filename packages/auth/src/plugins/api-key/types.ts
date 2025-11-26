@@ -1,5 +1,3 @@
-import type { apiKeySchema } from "./schema"
-
 export type ApiKeyOptions = {
   /**
    * The header name to check for API key
@@ -56,16 +54,6 @@ export type ApiKeyOptions = {
     maxExpiresIn?: number
   }
   /**
-   * Default rate limit per second for new keys (can be overridden per-key or by plan)
-   * @default 10
-   */
-  defaultRateLimitPerSecond?: number
-  /**
-   * Default burst multiplier as percentage (e.g., 150 = 1.5x burst capacity)
-   * @default 100 (no burst)
-   */
-  defaultBurstMultiplier?: number
-  /**
    * An API Key can represent a valid session.
    * @default false
    */
@@ -75,6 +63,30 @@ export type ApiKeyOptions = {
    * @default "dev"
    */
   defaultEnvironment?: "dev" | "staging" | "prod"
+  /**
+   * Storage backend for API keys.
+   * - "database": Store API keys in the database adapter only (default)
+   * - "secondary-storage": Use Redis/secondary storage for faster lookups
+   * @default "database"
+   */
+  storage?: "database" | "secondary-storage"
+  /**
+   * When storage is "secondary-storage", enable fallback to database
+   * if key is not found in secondary storage.
+   * Useful for gradual migration from database to secondary storage.
+   * @default false
+   */
+  fallbackToDatabase?: boolean
+  /**
+   * Custom storage methods for API keys.
+   * If provided, these methods will be used instead of ctx.context.secondaryStorage.
+   * Useful when you want to use a different storage backend specifically for API keys.
+   */
+  customStorage?: {
+    get: (key: string) => Promise<unknown> | unknown
+    set: (key: string, value: string, ttl?: number) => Promise<void | null | unknown> | void
+    delete: (key: string) => Promise<void | null | string> | void
+  }
 }
 
 export type ApiKey = {
@@ -107,8 +119,11 @@ export type PredefinedApiKeyOptions = Required<
     | "startingCharactersLength"
     | "enableSessionForAPIKeys"
     | "defaultEnvironment"
+    | "storage"
+    | "fallbackToDatabase"
   >
 > & {
   keyExpiration: Required<NonNullable<ApiKeyOptions["keyExpiration"]>>
   customKeyGenerator?: ApiKeyOptions["customKeyGenerator"]
+  customStorage?: ApiKeyOptions["customStorage"]
 }
