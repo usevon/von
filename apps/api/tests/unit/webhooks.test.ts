@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../src/app"
-import { createRequest, jsonRequest } from "./setup"
+import { app } from "../../src/app"
+import { createRequest, jsonRequest } from "../setup"
 
 describe("Webhooks endpoints", () => {
   describe("POST /webhooks", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../src/app"
-import { createRequest } from "./setup"
+import { app } from "../../src/app"
+import { createRequest } from "../setup"
 
 describe("Health endpoints", () => {
   test("GET /live returns ok status", async () => {
