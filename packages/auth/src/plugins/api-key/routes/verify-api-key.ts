@@ -9,7 +9,6 @@ export const ERROR_CODES = {
   INVALID_API_KEY: "Invalid API key.",
   KEY_DISABLED: "API Key is disabled",
   KEY_EXPIRED: "API Key has expired",
-  FAILED_TO_UPDATE_API_KEY: "Failed to update API key",
 } as const
 
 type AuthContext = {
@@ -111,27 +110,7 @@ export async function validateApiKey({
     }
   }
 
-  // Update request count and last request time in database
-  const updatedKey = await ctx.context.adapter.update<ApiKey>({
-    model: API_KEY_TABLE_NAME,
-    where: [{ field: "id", value: apiKey.id }],
-    update: {
-      requestCount: (apiKey.requestCount || 0) + 1,
-      lastRequest: new Date(),
-      updatedAt: new Date(),
-    },
-  })
-
-  if (!updatedKey) {
-    throw new APIError("INTERNAL_SERVER_ERROR", {
-      message: ERROR_CODES.FAILED_TO_UPDATE_API_KEY,
-    })
-  }
-
-  // Update secondary storage with new request count
-  await setApiKey(ctx, updatedKey, opts)
-
-  return updatedKey
+  return apiKey
 }
 
 export function verifyApiKey({
