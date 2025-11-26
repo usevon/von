@@ -16,6 +16,11 @@ export const createAuthClient = (options: CreateAuthClientOptions) => {
   return createBetterAuthClient({
     baseURL: options.baseURL,
     plugins: [organizationClient(), apiKeyClient()],
+    fetchOptions: {
+      query: {
+        staleTime: 1000 * 60 * 5,
+      },
+    },
   })
 }
 

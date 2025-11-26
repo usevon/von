@@ -1,25 +1,45 @@
 import { secrets } from "bun"
+import { app } from "../../src/app"
+import { createAuthRequest } from "../setup"
 
-// Only run setup if we're actually running integration tests
 const isIntegrationTest = process.argv.some(arg => arg.includes("integration"))
 
-// Load API key synchronously at module load time (before test files load)
-if (isIntegrationTest && !process.env.VON_API_KEY) {
-  // Check if already saved in OS keychain
-  const saved = await secrets.get({ service: "von", name: "VON_API_KEY" })
+const validateKey = async (key: string): Promise<boolean> => {
+  const response = await app.handle(createAuthRequest("/endpoints", key))
+  return response.status !== 401
+}
 
-  if (saved) {
-    process.env.VON_API_KEY = saved
-  } else {
-    // First time setup - prompt user
-    console.log("\nNo API key found for integration tests")
+const promptUntilValid = async () => {
+  while (true) {
     const key = prompt("Enter your VON_API_KEY (or press Enter to skip):")?.trim()
+    if (!key) return
 
-    if (key) {
+    const valid = await validateKey(key)
+    if (valid) {
       await secrets.set({ service: "von", name: "VON_API_KEY", value: key })
       process.env.VON_API_KEY = key
       console.log("Saved to OS keychain\n")
+      return
     }
+    console.log("Invalid API key, try again")
+  }
+}
+
+if (isIntegrationTest && !process.env.VON_API_KEY) {
+  const saved = await secrets.get({ service: "von", name: "VON_API_KEY" })
+
+  if (saved) {
+    const valid = await validateKey(saved)
+    if (valid) {
+      process.env.VON_API_KEY = saved
+    } else {
+      console.log("\nSaved API key is invalid")
+      await secrets.delete({ service: "von", name: "VON_API_KEY" })
+      await promptUntilValid()
+    }
+  } else {
+    console.log("\nNo API key found for integration tests")
+    await promptUntilValid()
   }
 }
 
