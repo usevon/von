@@ -8,6 +8,7 @@
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "test": "bun test",
+    "benchmark": "bun run --env-file=.env tests/benchmark/index.ts",
     "db:generate": "bun --env-file=.env run --filter @von/db db:generate",
     "db:migrate": "bun --env-file=.env run --filter @von/db db:migrate",
     "db:push": "bun --env-file=.env run --filter @von/db db:push",
