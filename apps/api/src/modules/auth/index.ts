@@ -11,7 +11,7 @@ const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: env.NODE_ENV === "development"
-    ? ["http://localhost:5173", "http://localhost:5174"]
+    ? ["http://localhost:5174"]
     : [],
   secondaryStorage: {
     get: async (key) => await redis.get(key),
@@ -53,6 +53,26 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
       apiKey: result.key,
       organizationId,
       userId: result.key?.userId ?? "",
+    }
+  })
+
+export const withSession = new Elysia({ name: "session-auth" })
+  .resolve({ as: "scoped" }, async ({ headers }) => {
+    const session = await betterAuth.api.getSession({ headers })
+    if (!session) {
+      throw new UnauthorizedError("Please sign in.")
+    }
+
+    const organizationId = session.session?.activeOrganizationId
+    if (!organizationId) {
+      throw new UnauthorizedError("No active organization.")
+    }
+
+    return {
+      user: session.user,
+      session: session.session,
+      organizationId,
+      userId: session.user?.id ?? "",
     }
   })
 
