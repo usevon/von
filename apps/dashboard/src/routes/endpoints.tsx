@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
 import { api } from '@/lib/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export const Route = createFileRoute('/endpoints')({
   component: EndpointsPage,
@@ -23,47 +23,42 @@ export default function EndpointsPage() {
   const { data: session } = useSession()
   const [endpoints, setEndpoints] = useState<Endpoint[]>([])
   const [loading, setLoading] = useState(false)
-  const [apiKey, setApiKey] = useState('')
   const [url, setUrl] = useState('https://example.com/webhook')
   const [description, setDescription] = useState('')
-  const [log, setLog] = useState<string[]>([])
 
-  const addLog = (message: string) => {
-    setLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`])
-  }
+  useEffect(() => {
+    if (session?.user) {
+      loadEndpoints()
+    }
+  }, [session])
 
   const loadEndpoints = async () => {
-    if (!apiKey) {
-      addLog('Error: API key required')
+    if (!session?.user) {
       return
     }
 
     setLoading(true)
-    addLog('Fetching endpoints...')
 
     const { data, error } = await api.endpoints.get({
-      headers: { authorization: `Bearer ${apiKey}` },
+      fetch: { credentials: 'include' },
     })
 
     setLoading(false)
 
     if (error) {
-      addLog(`Error: ${error.status} - ${JSON.stringify(error.value)}`)
+      console.error('Error loading endpoints:', error)
       return
     }
 
     setEndpoints(data.endpoints)
-    addLog(`Loaded ${data.endpoints.length} endpoints`)
   }
 
   const createEndpoint = async () => {
-    if (!apiKey) {
-      addLog('Error: API key required')
+    if (!session?.user) {
       return
     }
 
     setLoading(true)
-    addLog(`Creating endpoint: ${url}`)
 
     const { data, error } = await api.endpoints.post(
       {
@@ -71,40 +66,37 @@ export default function EndpointsPage() {
         description: description || undefined,
       },
       {
-        headers: { authorization: `Bearer ${apiKey}` },
+        fetch: { credentials: 'include' },
       }
     )
 
     setLoading(false)
 
     if (error) {
-      addLog(`Error: ${error.status} - ${JSON.stringify(error.value)}`)
+      console.error('Error creating endpoint:', error)
       return
     }
 
-    addLog(`Endpoint created! ID: ${data.id}, Secret: ${data.secret}`)
     loadEndpoints()
   }
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
     setLoading(true)
-    addLog(`${currentEnabled ? 'Disabling' : 'Enabling'} endpoint ${id}...`)
 
     const { data, error } = await api.endpoints({ id }).patch(
       { enabled: !currentEnabled },
       {
-        headers: { authorization: `Bearer ${apiKey}` },
+        fetch: { credentials: 'include' },
       }
     )
 
     setLoading(false)
 
     if (error) {
-      addLog(`Error: ${error.status} - ${JSON.stringify(error.value)}`)
+      console.error('Error toggling endpoint:', error)
       return
     }
 
-    addLog(`Endpoint ${currentEnabled ? 'disabled' : 'enabled'}`)
     loadEndpoints()
   }
 
@@ -112,21 +104,28 @@ export default function EndpointsPage() {
     if (!confirm('Are you sure you want to delete this endpoint?')) return
 
     setLoading(true)
-    addLog(`Deleting endpoint ${id}...`)
 
     const { data, error } = await api.endpoints({ id }).delete(null, {
-      headers: { authorization: `Bearer ${apiKey}` },
+      fetch: { credentials: 'include' },
     })
 
     setLoading(false)
 
     if (error) {
-      addLog(`Error: ${error.status} - ${JSON.stringify(error.value)}`)
+      console.error('Error deleting endpoint:', error)
       return
     }
 
-    addLog('Endpoint deleted')
     loadEndpoints()
+  }
+
+  if (!session?.user) {
+    return (
+      <div className="p-5 font-mono">
+        <h1 className="text-2xl font-bold mb-4">Webhook Endpoints</h1>
+        <p className="text-gray-600">Please sign in to manage endpoints.</p>
+      </div>
+    )
   }
 
   return (
@@ -140,23 +139,6 @@ export default function EndpointsPage() {
         <p className="text-sm text-gray-600 mb-2">
           Active Org ID: {session?.session?.activeOrganizationId || 'None'}
         </p>
-      </div>
-
-      <div className="mb-5 p-4 border rounded">
-        <h3 className="text-lg font-semibold mb-3">API Configuration</h3>
-        <div className="mb-3">
-          <label className="block text-sm font-medium mb-1">API Key</label>
-          <input
-            type="text"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="von_dev_..."
-            className="w-full p-2 border rounded font-mono text-sm"
-          />
-          <p className="text-xs text-gray-600 mt-1">
-            Get this from the test-auth page by creating an API key
-          </p>
-        </div>
       </div>
 
       <div className="mb-5 p-4 border rounded">
@@ -183,7 +165,7 @@ export default function EndpointsPage() {
         </div>
         <button
           onClick={createEndpoint}
-          disabled={loading || !apiKey || !url}
+          disabled={loading || !url}
           className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Create Endpoint
@@ -193,26 +175,11 @@ export default function EndpointsPage() {
       <div className="mb-5">
         <button
           onClick={loadEndpoints}
-          disabled={loading || !apiKey}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed mr-2"
+          disabled={loading}
+          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {loading ? 'Loading...' : 'Refresh Endpoints'}
         </button>
-        <button
-          onClick={() => setLog([])}
-          className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-        >
-          Clear Log
-        </button>
-      </div>
-
-      <div className="mb-5 bg-black text-green-400 p-4 min-h-[12.5rem] overflow-auto rounded border border-gray-700">
-        <h3 className="text-white text-lg font-semibold mb-3">Log Output</h3>
-        {log.map((entry, i) => (
-          <pre key={i} className="my-1 whitespace-pre-wrap text-xs">
-            {entry}
-          </pre>
-        ))}
       </div>
 
       <div className="p-4 border rounded">
