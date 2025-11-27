@@ -23,7 +23,7 @@
   "devDependencies": {
     "@better-auth/cli": "^1.4.2",
     "@types/node": "^22.0.0",
-    "@von/tsconfig": "workspace:*",
+    "@von/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

@@ -16,7 +16,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@von/tsconfig": "workspace:*",
+    "@von/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

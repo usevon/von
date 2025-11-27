@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "@von/tsconfig": "workspace:*",
+    "@von/typescript-config": "workspace:*",
     "drizzle-kit": "^0.31.7",
     "typescript": "^5.7.2"
   }

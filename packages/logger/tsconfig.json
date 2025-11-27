@@ -1,4 +1,4 @@
 {
-  "extends": "@von/tsconfig",
+  "extends": "@von/typescript-config",
   "include": ["src"]
 }

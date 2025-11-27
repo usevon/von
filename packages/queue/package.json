@@ -15,7 +15,7 @@
     "ioredis": "^5.8.2"
   },
   "devDependencies": {
-    "@von/tsconfig": "workspace:*",
+    "@von/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }
