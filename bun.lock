@@ -36,11 +36,13 @@
       "name": "@usevon/dashboard",
       "version": "0.0.0",
       "dependencies": {
+        "@elysiajs/eden": "^1.4.5",
         "@tanstack/react-router": "^1.136.1",
         "@tanstack/react-start": "^1.136.1",
         "@usevon/react": "workspace:*",
         "@usevon/sdk": "workspace:*",
         "@usevon/ui": "workspace:*",
+        "@von/api": "workspace:*",
         "@von/auth": "workspace:*",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
