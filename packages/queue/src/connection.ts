@@ -37,7 +37,6 @@ export function createConnection(options: ConnectionOptions = {}) {
   })
 }
 
-// Singleton Redis client for shared use (API key caching, etc.)
 let sharedClient: IORedis | null = null
 
 export function getRedisClient(options: ConnectionOptions = {}): IORedis {
@@ -47,6 +46,14 @@ export function getRedisClient(options: ConnectionOptions = {}): IORedis {
       enableReadyCheck: true,
       lazyConnect: false,
     })
+    sharedClient.on("error", () => {})
   }
   return sharedClient
+}
+
+export async function closeRedis(): Promise<void> {
+  if (sharedClient) {
+    await sharedClient.quit()
+    sharedClient = null
+  }
 }

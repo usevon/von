@@ -3,7 +3,11 @@ import postgres from "postgres"
 import * as schema from "@/schema"
 import { env } from "./env"
 
-const client = postgres(env.DATABASE_URL)
+const client = postgres(env.DATABASE_URL, {
+  max: 20,
+  idle_timeout: 20,
+  connect_timeout: 10,
+})
 export const db = drizzle(client, { schema })
 
 export async function checkDatabaseConnection(): Promise<{ ok: boolean; url: string }> {
@@ -13,6 +17,10 @@ export async function checkDatabaseConnection(): Promise<{ ok: boolean; url: str
   } catch {
     return { ok: false, url: env.DATABASE_URL }
   }
+}
+
+export async function closeDatabase(): Promise<void> {
+  await client.end()
 }
 
 export * from "@/schema"
