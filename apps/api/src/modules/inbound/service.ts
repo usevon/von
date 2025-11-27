@@ -1,8 +1,8 @@
-import { eq, and, count } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "@von/db"
 import { inboundEndpoint, inboundDelivery } from "@von/db/schema"
-import { getInboundForwardingQueue } from "@von/queue"
+import { getInboundForwardingQueue, getRedisClient } from "@von/queue"
 import type {
   CreateInboundEndpointBodyType,
   UpdateInboundEndpointBodyType,
@@ -27,9 +27,21 @@ export type GetInboundEndpointsParams = {
 
 export type ReceiveWebhookParams = {
   endpointId: string
+  endpoint: {
+    id: string
+    forwardUrl: string
+    secret: string
+    timeoutMs: number
+    retryCount: number
+  }
   payload: unknown
   headers: Record<string, string>
 }
+
+const CACHE_TTL = 60
+const redis = getRedisClient()
+
+const getCacheKey = (orgId: string) => `inbound:${orgId}`
 
 const generateSecret = () => `whsec_${nanoid(32)}`
 
@@ -77,26 +89,33 @@ export const InboundService = {
       })
       .returning()
 
+    await redis.del(getCacheKey(params.organizationId))
     return toEndpointResponse(result[0])
   },
 
   async getAll(params: GetInboundEndpointsParams) {
-    const [endpoints, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(inboundEndpoint)
-        .where(eq(inboundEndpoint.organizationId, params.organizationId))
-        .limit(params.limit)
-        .offset(params.offset),
-      db
-        .select({ count: count() })
-        .from(inboundEndpoint)
-        .where(eq(inboundEndpoint.organizationId, params.organizationId)),
-    ])
+    const cacheKey = getCacheKey(params.organizationId)
+    const cached = await redis.get(cacheKey)
+
+    if (cached) {
+      const allEndpoints = JSON.parse(cached) as InboundEndpointType[]
+      return {
+        endpoints: allEndpoints.slice(params.offset, params.offset + params.limit),
+        total: allEndpoints.length,
+      }
+    }
+
+    const endpoints = await db
+      .select()
+      .from(inboundEndpoint)
+      .where(eq(inboundEndpoint.organizationId, params.organizationId))
+
+    const allEndpoints = endpoints.map(toEndpointResponse)
+    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(allEndpoints))
 
     return {
-      endpoints: endpoints.map(toEndpointResponse),
-      total: totalResult[0].count,
+      endpoints: allEndpoints.slice(params.offset, params.offset + params.limit),
+      total: allEndpoints.length,
     }
   },
 
@@ -158,6 +177,7 @@ export const InboundService = {
       .where(eq(inboundEndpoint.id, params.endpointId))
       .returning()
 
+    await redis.del(getCacheKey(params.organizationId))
     return toEndpointResponse(result[0])
   },
 
@@ -172,30 +192,38 @@ export const InboundService = {
       )
       .returning({ id: inboundEndpoint.id })
 
+    await redis.del(getCacheKey(organizationId))
     return result.length > 0
   },
 
   async receive(params: ReceiveWebhookParams): Promise<InboundDeliveryType> {
     const now = new Date()
     const deliveryId = crypto.randomUUID()
-
-    const result = await db
-      .insert(inboundDelivery)
-      .values({
-        id: deliveryId,
-        inboundEndpointId: params.endpointId,
-        payload: JSON.stringify(params.payload),
-        headers: JSON.stringify(params.headers),
-        status: "pending",
-        createdAt: now,
-      })
-      .returning()
+    const payloadStr = JSON.stringify(params.payload)
+    const headersStr = JSON.stringify(params.headers)
 
     const queue = getInboundForwardingQueue()
-    await queue.add("inbound-forwarding", {
-      deliveryId,
-      endpointId: params.endpointId,
-    })
+
+    // Parallel: insert delivery + add to queue (both use pre-generated ID)
+    const [result] = await Promise.all([
+      db
+        .insert(inboundDelivery)
+        .values({
+          id: deliveryId,
+          inboundEndpointId: params.endpointId,
+          payload: payloadStr,
+          headers: headersStr,
+          status: "pending",
+          createdAt: now,
+        })
+        .returning(),
+      queue.add("inbound-forwarding", {
+        deliveryId,
+        endpoint: params.endpoint,
+        payload: payloadStr,
+        headers: headersStr,
+      }),
+    ])
 
     return toDeliveryResponse(result[0])
   },

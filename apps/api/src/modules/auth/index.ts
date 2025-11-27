@@ -4,8 +4,30 @@ import { getRedisClient } from "@von/queue"
 import { db } from "@von/db"
 import { env } from "@/env"
 
-// Create Redis client for API key caching
 const redis = getRedisClient()
+
+const CACHE_TTL_SECONDS = 300
+const MEMORY_CACHE_TTL_MS = 60000
+
+type CachedApiKey = {
+  id: string
+  name: string | null
+  start: string | null
+  userId: string | null
+  organizationId: string | null
+  expiresAt: string | null
+  enabled: boolean
+  rateLimitPerSecond: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+type MemoryCacheEntry = {
+  data: CachedApiKey
+  expiry: number
+}
+
+const memoryCache = new Map<string, MemoryCacheEntry>()
 
 const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
@@ -38,9 +60,41 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
       set.status = 401
       throw new Error("Invalid API key.")
     }
-    const key = authHeader.slice(7)
+    const rawKey = authHeader.slice(7)
+    const cacheKey = `apikey:${rawKey}`
 
-    const result = await betterAuth.api.verifyApiKey({ body: { key } })
+    const memEntry = memoryCache.get(cacheKey)
+    if (memEntry && memEntry.expiry > Date.now()) {
+      const apiKey = memEntry.data
+      if (apiKey.enabled && apiKey.organizationId) {
+        if (!apiKey.expiresAt || new Date(apiKey.expiresAt).getTime() > Date.now()) {
+          return {
+            apiKey,
+            organizationId: apiKey.organizationId,
+            userId: apiKey.userId ?? "",
+          }
+        }
+      }
+      memoryCache.delete(cacheKey)
+    }
+
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      const apiKey = JSON.parse(cached) as CachedApiKey
+      if (apiKey.enabled && apiKey.organizationId) {
+        if (!apiKey.expiresAt || new Date(apiKey.expiresAt).getTime() > Date.now()) {
+          memoryCache.set(cacheKey, { data: apiKey, expiry: Date.now() + MEMORY_CACHE_TTL_MS })
+          return {
+            apiKey,
+            organizationId: apiKey.organizationId,
+            userId: apiKey.userId ?? "",
+          }
+        }
+      }
+      await redis.del(cacheKey)
+    }
+
+    const result = await betterAuth.api.verifyApiKey({ body: { key: rawKey } })
     if (!result.valid) {
       set.status = 401
       throw new Error("Invalid API key.")
@@ -51,6 +105,9 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
       set.status = 401
       throw new Error("Invalid API key.")
     }
+
+    await redis.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(result.key))
+    memoryCache.set(cacheKey, { data: result.key as CachedApiKey, expiry: Date.now() + MEMORY_CACHE_TTL_MS })
 
     return {
       apiKey: result.key,

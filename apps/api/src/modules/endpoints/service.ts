@@ -1,7 +1,8 @@
-import { eq, and, count } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "@von/db"
 import { endpoint } from "@von/db/schema"
+import { getRedisClient } from "@von/queue"
 import type { CreateEndpointBodyType, UpdateEndpointBodyType, EndpointType } from "@/modules/endpoints/model"
 
 export type CreateEndpointParams = CreateEndpointBodyType & {
@@ -18,6 +19,11 @@ export type GetEndpointsParams = {
   limit: number
   offset: number
 }
+
+const CACHE_TTL = 60
+const redis = getRedisClient()
+
+const getCacheKey = (orgId: string) => `endpoints:${orgId}`
 
 const generateSecret = () => `whsec_${nanoid(32)}`
 
@@ -53,26 +59,35 @@ export const EndpointService = {
       })
       .returning()
 
+    await redis.del(getCacheKey(params.organizationId))
     return toEndpointResponse(result[0])
   },
 
   async getAll(params: GetEndpointsParams) {
-    const [endpoints, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(endpoint)
-        .where(eq(endpoint.organizationId, params.organizationId))
-        .limit(params.limit)
-        .offset(params.offset),
-      db
-        .select({ count: count() })
-        .from(endpoint)
-        .where(eq(endpoint.organizationId, params.organizationId)),
-    ])
+    const cacheKey = getCacheKey(params.organizationId)
+    const cached = await redis.get(cacheKey)
+
+    if (cached) {
+      const allEndpoints = JSON.parse(cached) as EndpointType[]
+      const offset = params.offset
+      const limit = params.limit
+      return {
+        endpoints: allEndpoints.slice(offset, offset + limit),
+        total: allEndpoints.length,
+      }
+    }
+
+    const endpoints = await db
+      .select()
+      .from(endpoint)
+      .where(eq(endpoint.organizationId, params.organizationId))
+
+    const allEndpoints = endpoints.map(toEndpointResponse)
+    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(allEndpoints))
 
     return {
-      endpoints: endpoints.map(toEndpointResponse),
-      total: totalResult[0].count,
+      endpoints: allEndpoints.slice(params.offset, params.offset + params.limit),
+      total: allEndpoints.length,
     }
   },
 
@@ -109,6 +124,7 @@ export const EndpointService = {
       .where(eq(endpoint.id, params.endpointId))
       .returning()
 
+    await redis.del(getCacheKey(params.organizationId))
     return toEndpointResponse(result[0])
   },
 
@@ -118,6 +134,42 @@ export const EndpointService = {
       .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
       .returning({ id: endpoint.id })
 
+    await redis.del(getCacheKey(organizationId))
     return result.length > 0
+  },
+
+  async getEnabledEndpointsForDelivery(
+    organizationId: string,
+    filterIds?: string[]
+  ): Promise<Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>> {
+    const cacheKey = getCacheKey(organizationId)
+    const cached = await redis.get(cacheKey)
+
+    let allEndpoints: EndpointType[]
+
+    if (cached) {
+      allEndpoints = JSON.parse(cached) as EndpointType[]
+    } else {
+      const endpoints = await db
+        .select()
+        .from(endpoint)
+        .where(eq(endpoint.organizationId, organizationId))
+
+      allEndpoints = endpoints.map(toEndpointResponse)
+      await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(allEndpoints))
+    }
+
+    let enabled = allEndpoints.filter((e) => e.enabled)
+    if (filterIds && filterIds.length > 0) {
+      enabled = enabled.filter((e) => filterIds.includes(e.id))
+    }
+
+    return enabled.map((e) => ({
+      id: e.id,
+      url: e.url,
+      secret: e.secret,
+      timeoutMs: e.timeoutMs,
+      retryCount: e.retryCount,
+    }))
   },
 }
