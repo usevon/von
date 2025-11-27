@@ -9,6 +9,14 @@ import { auth, withApiKey } from "@/modules/auth"
 import { endpoints } from "@/modules/endpoints"
 import { inbound, inboundPublic } from "@/modules/inbound"
 import { webhooks } from "@/modules/webhooks"
+import {
+  UnauthorizedError,
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError,
+  ConflictError,
+  InternalServerError,
+} from "@/lib/errors"
 
 const ping = new Elysia({ prefix: "/ping" })
   .use(withApiKey)
@@ -35,12 +43,48 @@ export const app = new Elysia({
   aot: true,
   normalize: true,
 })
+  .error({
+    UnauthorizedError,
+    NotFoundError,
+    BadRequestError,
+    ForbiddenError,
+    ConflictError,
+    InternalServerError,
+  })
   .onError(({ code, error, set }) => {
-    const message = "message" in error ? error.message : String(error)
+    if (code === "UnauthorizedError") {
+      set.status = 401
+      return { error: error.message }
+    }
+
+    if (code === "NotFoundError") {
+      set.status = 404
+      return { error: error.message }
+    }
+
+    if (code === "BadRequestError") {
+      set.status = 400
+      return { error: error.message }
+    }
+
+    if (code === "ForbiddenError") {
+      set.status = 403
+      return { error: error.message }
+    }
+
+    if (code === "ConflictError") {
+      set.status = 409
+      return { error: error.message }
+    }
+
+    if (code === "InternalServerError") {
+      set.status = 500
+      return { error: env.NODE_ENV === "production" ? "Internal server error" : error.message }
+    }
 
     if (code === "VALIDATION") {
       set.status = 400
-      return { error: message }
+      return { error: "message" in error ? error.message : "Validation failed" }
     }
 
     if (code === "NOT_FOUND") {
@@ -48,8 +92,9 @@ export const app = new Elysia({
       return { error: "Not found" }
     }
 
-    console.error({ code, err: error }, message)
-    return { error: message }
+    console.error({ code, error })
+    set.status = 500
+    return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
   })
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {

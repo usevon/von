@@ -3,6 +3,7 @@ import { createAuth, type Auth } from "@von/auth"
 import { getRedisClient } from "@von/queue"
 import { db } from "@von/db"
 import { env } from "@/env"
+import { UnauthorizedError } from "@/lib/errors"
 
 const redis = getRedisClient()
 
@@ -31,24 +32,21 @@ export const auth = new Elysia({ name: "better-auth" })
   .mount(betterAuth.handler)
 
 export const withApiKey = new Elysia({ name: "api-key-auth" })
-  .derive({ as: "scoped" }, async ({ headers, set }) => {
+  .resolve({ as: "scoped" }, async ({ headers }) => {
     const authHeader = headers["authorization"]
     if (!authHeader?.startsWith("Bearer ")) {
-      set.status = 401
-      throw new Error("Invalid API key.")
+      throw new UnauthorizedError("Invalid API key.")
     }
     const rawKey = authHeader.slice(7)
 
     const result = await betterAuth.api.verifyApiKey({ body: { key: rawKey } })
     if (!result.valid) {
-      set.status = 401
-      throw new Error("Invalid API key.")
+      throw new UnauthorizedError("Invalid API key.")
     }
 
     const organizationId = result.key?.organizationId
     if (!organizationId) {
-      set.status = 401
-      throw new Error("Invalid API key.")
+      throw new UnauthorizedError("Invalid API key.")
     }
 
     return {
