@@ -9,12 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WebhooksRouteImport } from './routes/webhooks'
 import { Route as TestAuthRouteImport } from './routes/test-auth'
+import { Route as InboundRouteImport } from './routes/inbound'
+import { Route as EndpointsRouteImport } from './routes/endpoints'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WebhooksRoute = WebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TestAuthRoute = TestAuthRouteImport.update({
   id: '/test-auth',
   path: '/test-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboundRoute = InboundRouteImport.update({
+  id: '/inbound',
+  path: '/inbound',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndpointsRoute = EndpointsRouteImport.update({
+  id: '/endpoints',
+  path: '/endpoints',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,37 +43,70 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/endpoints': typeof EndpointsRoute
+  '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
+  '/webhooks': typeof WebhooksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/endpoints': typeof EndpointsRoute
+  '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
+  '/webhooks': typeof WebhooksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/endpoints': typeof EndpointsRoute
+  '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
+  '/webhooks': typeof WebhooksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/test-auth'
+  fullPaths: '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/test-auth'
-  id: '__root__' | '/' | '/test-auth'
+  to: '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
+  id: '__root__' | '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EndpointsRoute: typeof EndpointsRoute
+  InboundRoute: typeof InboundRoute
   TestAuthRoute: typeof TestAuthRoute
+  WebhooksRoute: typeof WebhooksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/webhooks': {
+      id: '/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof WebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/test-auth': {
       id: '/test-auth'
       path: '/test-auth'
       fullPath: '/test-auth'
       preLoaderRoute: typeof TestAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbound': {
+      id: '/inbound'
+      path: '/inbound'
+      fullPath: '/inbound'
+      preLoaderRoute: typeof InboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/endpoints': {
+      id: '/endpoints'
+      path: '/endpoints'
+      fullPath: '/endpoints'
+      preLoaderRoute: typeof EndpointsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,7 +121,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EndpointsRoute: EndpointsRoute,
+  InboundRoute: InboundRoute,
   TestAuthRoute: TestAuthRoute,
+  WebhooksRoute: WebhooksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

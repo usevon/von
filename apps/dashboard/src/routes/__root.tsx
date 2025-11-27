@@ -25,7 +25,10 @@ const Navbar = () => {
     <nav className="flex items-center justify-between border-b px-5 py-3">
       <div className="flex items-center gap-5">
         <Link to="/" className="font-bold text-black no-underline">Von</Link>
-        <Link to="/test-auth" className="text-gray-600 no-underline">Test Auth</Link>
+        <Link to="/test-auth" className="text-gray-600 no-underline hover:text-black">Test Auth</Link>
+        <Link to="/webhooks" className="text-gray-600 no-underline hover:text-black">Webhooks</Link>
+        <Link to="/endpoints" className="text-gray-600 no-underline hover:text-black">Endpoints</Link>
+        <Link to="/inbound" className="text-gray-600 no-underline hover:text-black">Inbound</Link>
       </div>
       <div>
         {isPending ? (
