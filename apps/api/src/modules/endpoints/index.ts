@@ -1,11 +1,11 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withApiKey } from "@/modules/auth"
+import { withApiKey, withSession } from "@/modules/auth"
 import { EndpointModel } from "./model"
 import { EndpointService } from "./service"
 
 export const endpoints = new Elysia({ prefix: "/endpoints" })
-  .use(withApiKey)
+  .use(withSession)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
