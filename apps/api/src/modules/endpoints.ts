@@ -60,20 +60,8 @@ type GetEndpointsParams = {
 
 const generateSecret = () => `whsec_${generateId()}`
 
-const toEndpointResponse = (row: typeof endpoint.$inferSelect): EndpointType => ({
-  id: row.id,
-  url: row.url,
-  description: row.description,
-  secret: row.secret,
-  enabled: row.enabled,
-  retryCount: row.retryCount,
-  timeoutMs: row.timeoutMs,
-  createdAt: row.createdAt.toISOString(),
-  updatedAt: row.updatedAt.toISOString(),
-})
-
 const EndpointService = {
-  async create(params: CreateEndpointParams): Promise<EndpointType> {
+  async create(params: CreateEndpointParams) {
     const now = new Date()
 
     const result = await db
@@ -92,7 +80,8 @@ const EndpointService = {
       })
       .returning()
 
-    return toEndpointResponse(result[0]!)
+    if (!result[0]) throw new Error("Failed to create endpoint")
+    return result[0]
   },
 
   async getAll(params: GetEndpointsParams) {
@@ -101,26 +90,23 @@ const EndpointService = {
       .from(endpoint)
       .where(eq(endpoint.organizationId, params.organizationId))
 
-    const allEndpoints = endpoints.map(toEndpointResponse)
-
     return {
-      endpoints: allEndpoints.slice(params.offset, params.offset + params.limit),
-      total: allEndpoints.length,
+      endpoints: endpoints.slice(params.offset, params.offset + params.limit),
+      total: endpoints.length,
     }
   },
 
-  async getById(organizationId: string, endpointId: string): Promise<EndpointType | null> {
+  async getById(organizationId: string, endpointId: string) {
     const result = await db
       .select()
       .from(endpoint)
       .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
       .limit(1)
 
-    if (!result[0]) return null
-    return toEndpointResponse(result[0])
+    return result[0] ?? null
   },
 
-  async update(params: UpdateEndpointParams): Promise<EndpointType | null> {
+  async update(params: UpdateEndpointParams) {
     const existing = await db
       .select()
       .from(endpoint)
@@ -142,10 +128,11 @@ const EndpointService = {
       .where(eq(endpoint.id, params.endpointId))
       .returning()
 
-    return toEndpointResponse(result[0]!)
+    if (!result[0]) throw new Error("Failed to update endpoint")
+    return result[0]
   },
 
-  async delete(organizationId: string, endpointId: string): Promise<boolean> {
+  async delete(organizationId: string, endpointId: string) {
     const result = await db
       .delete(endpoint)
       .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
@@ -157,15 +144,13 @@ const EndpointService = {
   async getEnabledEndpointsForDelivery(
     organizationId: string,
     filterIds?: string[]
-  ): Promise<Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>> {
+  ) {
     const endpoints = await db
       .select()
       .from(endpoint)
       .where(eq(endpoint.organizationId, organizationId))
 
-    const allEndpoints = endpoints.map(toEndpointResponse)
-
-    let enabled = allEndpoints.filter((e) => e.enabled)
+    let enabled = endpoints.filter((e) => e.enabled)
     if (filterIds && filterIds.length > 0) {
       enabled = enabled.filter((e) => filterIds.includes(e.id))
     }

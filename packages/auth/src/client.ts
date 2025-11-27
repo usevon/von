@@ -6,7 +6,7 @@
  */
 import { createAuthClient as createBetterAuthClient } from "better-auth/react"
 import { organizationClient } from "better-auth/client/plugins"
-import { apiKeyClient } from "@/plugins/api-key/client"
+import { apiKeyClient } from "./plugins/api-key/client"
 
 export type CreateAuthClientOptions = {
   baseURL: string
@@ -25,4 +25,4 @@ export const createAuthClient = (options: CreateAuthClientOptions) => {
 }
 
 export { organizationClient } from "better-auth/client/plugins"
-export { apiKeyClient } from "@/plugins/api-key/client"
+export { apiKeyClient } from "./plugins/api-key/client"

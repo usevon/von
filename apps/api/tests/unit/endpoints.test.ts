@@ -26,7 +26,7 @@ describe("Endpoints API", () => {
 
   describe("GET /endpoints/:id", () => {
     test("returns 401 without API key", async () => {
-      const response = await app.handle(createRequest("/endpoints/test-id"))
+      const response = await app.handle(createRequest("/endpoints/550e8400-e29b-41d4-a716-446655440000"))
 
       expect(response.status).toBe(401)
     })
@@ -35,7 +35,7 @@ describe("Endpoints API", () => {
   describe("PATCH /endpoints/:id", () => {
     test("returns 401 without API key", async () => {
       const response = await app.handle(
-        new Request("http://localhost/endpoints/test-id", {
+        new Request("http://localhost/endpoints/550e8400-e29b-41d4-a716-446655440000", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled: false }),
@@ -49,7 +49,7 @@ describe("Endpoints API", () => {
   describe("DELETE /endpoints/:id", () => {
     test("returns 401 without API key", async () => {
       const response = await app.handle(
-        new Request("http://localhost/endpoints/test-id", {
+        new Request("http://localhost/endpoints/550e8400-e29b-41d4-a716-446655440000", {
           method: "DELETE",
         })
       )

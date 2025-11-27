@@ -82,33 +82,8 @@ type ReceiveWebhookParams = {
 
 const generateSecret = () => `whsec_${generateId()}`
 
-const toEndpointResponse = (
-  row: typeof inboundEndpoint.$inferSelect
-): InboundEndpointType => ({
-  id: row.id,
-  name: row.name,
-  provider: row.provider,
-  secret: row.secret,
-  forwardUrl: row.forwardUrl,
-  enabled: row.enabled,
-  createdAt: row.createdAt.toISOString(),
-  updatedAt: row.updatedAt.toISOString(),
-})
-
-const toDeliveryResponse = (
-  row: typeof inboundDelivery.$inferSelect
-): InboundDeliveryType => ({
-  id: row.id,
-  payload: row.payload ? JSON.parse(row.payload) : null,
-  headers: row.headers ? JSON.parse(row.headers) : null,
-  status: row.status,
-  forwardedAt: row.forwardedAt?.toISOString() ?? null,
-  responseStatus: row.responseStatus,
-  createdAt: row.createdAt.toISOString(),
-})
-
 const InboundService = {
-  async create(params: CreateInboundEndpointParams): Promise<InboundEndpointType> {
+  async create(params: CreateInboundEndpointParams) {
     const now = new Date()
 
     const result = await db
@@ -126,7 +101,8 @@ const InboundService = {
       })
       .returning()
 
-    return toEndpointResponse(result[0]!)
+    if (!result[0]) throw new Error("Failed to create inbound endpoint")
+    return result[0]
   },
 
   async getAll(params: GetInboundEndpointsParams) {
@@ -135,18 +111,13 @@ const InboundService = {
       .from(inboundEndpoint)
       .where(eq(inboundEndpoint.organizationId, params.organizationId))
 
-    const allEndpoints = endpoints.map(toEndpointResponse)
-
     return {
-      endpoints: allEndpoints.slice(params.offset, params.offset + params.limit),
-      total: allEndpoints.length,
+      endpoints: endpoints.slice(params.offset, params.offset + params.limit),
+      total: endpoints.length,
     }
   },
 
-  async getById(
-    organizationId: string,
-    endpointId: string
-  ): Promise<InboundEndpointType | null> {
+  async getById(organizationId: string, endpointId: string) {
     const result = await db
       .select()
       .from(inboundEndpoint)
@@ -158,8 +129,7 @@ const InboundService = {
       )
       .limit(1)
 
-    if (!result[0]) return null
-    return toEndpointResponse(result[0])
+    return result[0] ?? null
   },
 
   async getByPublicId(endpointId: string) {
@@ -173,9 +143,7 @@ const InboundService = {
     return result[0]
   },
 
-  async update(
-    params: UpdateInboundEndpointParams
-  ): Promise<InboundEndpointType | null> {
+  async update(params: UpdateInboundEndpointParams) {
     const existing = await db
       .select()
       .from(inboundEndpoint)
@@ -201,10 +169,11 @@ const InboundService = {
       .where(eq(inboundEndpoint.id, params.endpointId))
       .returning()
 
-    return toEndpointResponse(result[0]!)
+    if (!result[0]) throw new Error("Failed to update inbound endpoint")
+    return result[0]
   },
 
-  async delete(organizationId: string, endpointId: string): Promise<boolean> {
+  async delete(organizationId: string, endpointId: string) {
     const result = await db
       .delete(inboundEndpoint)
       .where(
@@ -218,7 +187,7 @@ const InboundService = {
     return result.length > 0
   },
 
-  async receive(params: ReceiveWebhookParams): Promise<InboundDeliveryType> {
+  async receive(params: ReceiveWebhookParams) {
     const now = new Date()
     const deliveryId = crypto.randomUUID()
     const payloadStr = JSON.stringify(params.payload)
@@ -246,7 +215,14 @@ const InboundService = {
       }),
     ])
 
-    return toDeliveryResponse(result[0]!)
+    if (!result[0]) throw new Error("Failed to create inbound delivery")
+    const delivery = result[0]
+
+    return {
+      ...delivery,
+      payload: delivery.payload ? JSON.parse(delivery.payload) : null,
+      headers: delivery.headers ? JSON.parse(delivery.headers) : null,
+    }
   },
 }
 

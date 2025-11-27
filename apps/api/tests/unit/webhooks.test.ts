@@ -26,7 +26,7 @@ describe("Webhooks endpoints", () => {
 
   describe("GET /webhooks/events/:id", () => {
     test("returns 401 without API key", async () => {
-      const response = await app.handle(createRequest("/webhooks/events/test-id"))
+      const response = await app.handle(createRequest("/webhooks/events/550e8400-e29b-41d4-a716-446655440000"))
 
       expect(response.status).toBe(401)
     })

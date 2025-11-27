@@ -82,17 +82,8 @@ type GetEventsParams = {
   offset: number
 }
 
-const toEventResponse = (row: typeof event.$inferSelect): WebhookEventType => ({
-  id: row.id,
-  eventType: row.eventType,
-  payload: JSON.parse(row.payload),
-  idempotencyKey: row.idempotencyKey,
-  status: "pending",
-  createdAt: row.createdAt.toISOString(),
-})
-
 const WebhookService = {
-  async createEvent(params: CreateEventParams): Promise<WebhookEventType> {
+  async createEvent(params: CreateEventParams) {
     const now = new Date()
 
     if (params.idempotencyKey) {
@@ -108,7 +99,11 @@ const WebhookService = {
         .limit(1)
 
       if (existing[0]) {
-        return toEventResponse(existing[0])
+        return {
+          ...existing[0],
+          payload: JSON.parse(existing[0].payload),
+          status: "pending" as const,
+        }
       }
     }
 
@@ -143,20 +138,25 @@ const WebhookService = {
       })
       .returning()
 
-    const newEvent = result[0]!
+    if (!result[0]) throw new Error("Failed to create event")
+    const newEvent = result[0]
 
     if (targetEndpoints.length > 0) {
       const queue = getWebhookDeliveryQueue()
-      const jobs = deliveryData.map((d, i) => ({
-        name: "webhook-delivery",
-        data: {
-          deliveryId: d.id,
-          eventId,
-          payload: payloadStr,
-          eventType: params.eventType,
-          endpoint: targetEndpoints[i]!,
-        },
-      }))
+      const jobs = deliveryData.map((d, i) => {
+        const endpoint = targetEndpoints[i]
+        if (!endpoint) throw new Error("Endpoint not found for delivery")
+        return {
+          name: "webhook-delivery",
+          data: {
+            deliveryId: d.id,
+            eventId,
+            payload: payloadStr,
+            eventType: params.eventType,
+            endpoint,
+          },
+        }
+      })
 
       await Promise.all([
         db.insert(delivery).values(deliveryData),
@@ -164,10 +164,14 @@ const WebhookService = {
       ])
     }
 
-    return toEventResponse(newEvent)
+    return {
+      ...newEvent,
+      payload: JSON.parse(newEvent.payload),
+      status: "pending" as const,
+    }
   },
 
-  async createBatch(params: CreateBatchParams): Promise<{ created: number; events: WebhookEventType[] }> {
+  async createBatch(params: CreateBatchParams) {
     const now = new Date()
     const results: WebhookEventType[] = []
     const newEvents: Array<{
@@ -204,7 +208,13 @@ const WebhookService = {
 
     for (const evt of params.events) {
       if (evt.idempotencyKey && existingByKey.has(evt.idempotencyKey)) {
-        results.push(toEventResponse(existingByKey.get(evt.idempotencyKey)!))
+        const existing = existingByKey.get(evt.idempotencyKey)
+        if (!existing) continue
+        results.push({
+          ...existing,
+          payload: JSON.parse(existing.payload),
+          status: "pending" as const,
+        })
         continue
       }
 
@@ -260,12 +270,13 @@ const WebhookService = {
     }> = []
 
     for (let i = 0; i < insertedEvents.length; i++) {
-      const inserted = insertedEvents[i]!
-      const original = newEvents[i]!
+      const inserted = insertedEvents[i]
+      const original = newEvents[i]
+      if (!inserted || !original) continue
 
       let targetEndpoints = allEndpoints
       if (original.endpointIds && original.endpointIds.length > 0) {
-        targetEndpoints = allEndpoints.filter((ep) => original.endpointIds!.includes(ep.id))
+        targetEndpoints = allEndpoints.filter((ep) => original.endpointIds && original.endpointIds.includes(ep.id))
       }
 
       for (const ep of targetEndpoints) {
@@ -292,7 +303,11 @@ const WebhookService = {
         })
       }
 
-      results.push(toEventResponse(inserted))
+      results.push({
+        ...inserted,
+        payload: JSON.parse(original.payload),
+        status: "pending" as const,
+      })
     }
 
     if (allDeliveries.length > 0) {
@@ -321,16 +336,19 @@ const WebhookService = {
         .where(eq(event.organizationId, params.organizationId)),
     ])
 
+    const total = totalResult[0]?.count ?? 0
+
     return {
-      events: events.map(toEventResponse),
-      total: totalResult[0]?.count ?? 0,
+      events: events.map((e) => ({
+        ...e,
+        payload: JSON.parse(e.payload),
+        status: "pending" as const,
+      })),
+      total,
     }
   },
 
-  async getEvent(
-    organizationId: string,
-    eventId: string
-  ): Promise<WebhookEventType | null> {
+  async getEvent(organizationId: string, eventId: string) {
     const result = await db
       .select()
       .from(event)
@@ -338,7 +356,12 @@ const WebhookService = {
       .limit(1)
 
     if (!result[0]) return null
-    return toEventResponse(result[0])
+
+    return {
+      ...result[0],
+      payload: JSON.parse(result[0].payload),
+      status: "pending" as const,
+    }
   },
 
   async getDeliveries(eventId: string) {
@@ -347,17 +370,7 @@ const WebhookService = {
       .from(delivery)
       .where(eq(delivery.eventId, eventId))
 
-    return deliveries.map((d) => ({
-      id: d.id,
-      eventId: d.eventId,
-      endpointId: d.endpointId,
-      status: d.status,
-      attempts: d.attempts,
-      nextAttemptAt: d.nextAttemptAt?.toISOString() ?? null,
-      lastAttemptAt: d.lastAttemptAt?.toISOString() ?? null,
-      responseStatus: d.responseStatus,
-      createdAt: d.createdAt.toISOString(),
-    }))
+    return deliveries
   },
 }
 
