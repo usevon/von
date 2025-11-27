@@ -1,12 +1,13 @@
 import { secrets } from "bun"
-import { app } from "../../src/app"
-import { createAuthRequest } from "../setup"
+import { client } from "../setup"
 
 const isIntegrationTest = process.argv.some(arg => arg.includes("integration"))
 
 const validateKey = async (key: string): Promise<boolean> => {
-  const response = await app.handle(createAuthRequest("/endpoints", key))
-  return response.status !== 401
+  const { error } = await client.endpoints.get({
+    headers: { authorization: `Bearer ${key}` }
+  })
+  return error?.status !== 401
 }
 
 const promptUntilValid = async () => {

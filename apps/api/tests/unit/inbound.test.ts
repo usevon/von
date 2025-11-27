@@ -1,20 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../../src/app"
-import { BASE_URL } from "../setup"
+import { client } from "../setup"
+
+const NON_EXISTENT_ID = "00000000-0000-0000-0000-000000000000"
 
 describe("Inbound public endpoints", () => {
   test(
     "POST /in/:id returns 404 for non-existent endpoint",
     async () => {
-      const response = await app.handle(
-        new Request(`${BASE_URL}/in/00000000-0000-0000-0000-000000000000`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: "test" }),
-        })
-      )
+      const { error } = await client.in({ id: NON_EXISTENT_ID }).post({ data: "test" })
 
-      expect(response.status).toBe(404)
+      expect(error?.status).toBe(404)
     },
     15000
   )

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../../src/app"
-import { createAuthRequest, jsonAuthRequest, BASE_URL } from "../setup"
+import { client } from "../setup"
 import { getApiKey } from "./setup"
 
 const apiKey = getApiKey()
@@ -9,42 +8,41 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
   let inboundEndpointId: string | null = null
 
   test("POST /inbound creates inbound endpoint", async () => {
-    const response = await app.handle(
-      jsonAuthRequest("/inbound", {
+    const { data, error } = await client.inbound.post(
+      {
         name: "Integration test inbound",
         provider: "stripe",
         forwardUrl: "https://example.com/inbound-webhook",
-      }, apiKey!)
+      },
+      {
+        headers: { authorization: `Bearer ${apiKey}` },
+      }
     )
 
-    expect(response.status).toBe(201)
-    const body = await response.json()
-    expect(body.id).toBeDefined()
-    expect(body.forwardUrl).toBe("https://example.com/inbound-webhook")
-    inboundEndpointId = body.id
+    if (error) throw error
+    expect(data.id).toBeDefined()
+    expect(data.forwardUrl).toBe("https://example.com/inbound-webhook")
+    inboundEndpointId = data.id
   })
 
   test("GET /inbound returns list", async () => {
-    const response = await app.handle(createAuthRequest("/inbound", apiKey!))
+    const { data, error } = await client.inbound.get({
+      headers: { authorization: `Bearer ${apiKey}` },
+    })
 
-    expect(response.status).toBe(200)
-    const body = await response.json()
-    expect(body.endpoints).toBeDefined()
-    expect(Array.isArray(body.endpoints)).toBe(true)
+    if (error) throw error
+    expect(data.endpoints).toBeDefined()
+    expect(Array.isArray(data.endpoints)).toBe(true)
   })
 
   test("DELETE /inbound/:id cleans up", async () => {
     if (!inboundEndpointId) return
 
-    const response = await app.handle(
-      new Request(`${BASE_URL}/inbound/${inboundEndpointId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      })
-    )
+    const { data, error } = await client.inbound({ id: inboundEndpointId }).delete(null, {
+      headers: { authorization: `Bearer ${apiKey}` },
+    })
 
-    expect(response.status).toBe(200)
+    if (error) throw error
+    expect(data.success).toBe(true)
   })
 })

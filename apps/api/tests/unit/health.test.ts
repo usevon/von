@@ -1,26 +1,24 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../../src/app"
-import { createRequest } from "../setup"
+import { client } from "../setup"
 
 describe("Health endpoints", () => {
   test("GET /live returns ok status", async () => {
-    const response = await app.handle(createRequest("/live"))
-    const body = await response.json()
+    const { data, error } = await client.live.get()
 
-    expect(response.status).toBe(200)
-    expect(body.status).toBe("ok")
-    expect(body.uptime).toBeGreaterThan(0)
+    if (error) throw error
+    expect(data.status).toBe("ok")
+    expect(data.uptime).toBeGreaterThan(0)
   })
 
   test(
     "GET /ready returns service status",
     async () => {
-      const response = await app.handle(createRequest("/ready"))
-      const body = await response.json()
+      const { data, error } = await client.ready.get()
 
-      expect(body.services).toBeDefined()
-      expect(body.services.database).toBeDefined()
-      expect(body.services.redis).toBeDefined()
+      if (error) throw error
+      expect(data.services).toBeDefined()
+      expect(data.services.database).toBeDefined()
+      expect(data.services.redis).toBeDefined()
     },
     15000
   )

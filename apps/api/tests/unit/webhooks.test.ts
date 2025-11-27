@@ -1,34 +1,33 @@
 import { describe, expect, test } from "bun:test"
-import { app } from "../../src/app"
-import { createRequest, jsonRequest } from "../setup"
+import { client } from "../setup"
+
+const TEST_ID = "550e8400-e29b-41d4-a716-446655440000"
 
 describe("Webhooks endpoints", () => {
   describe("POST /webhooks", () => {
     test("returns 401 without API key", async () => {
-      const response = await app.handle(
-        jsonRequest("/webhooks", {
-          eventType: "user.created",
-          payload: { id: "123" },
-        })
-      )
+      const { error } = await client.webhooks.post({
+        eventType: "user.created",
+        payload: { id: "123" },
+      })
 
-      expect(response.status).toBe(401)
+      expect(error?.status).toBe(401)
     })
   })
 
   describe("GET /webhooks/events", () => {
     test("returns 401 without API key", async () => {
-      const response = await app.handle(createRequest("/webhooks/events"))
+      const { error } = await client.webhooks.events.get()
 
-      expect(response.status).toBe(401)
+      expect(error?.status).toBe(401)
     })
   })
 
   describe("GET /webhooks/events/:id", () => {
     test("returns 401 without API key", async () => {
-      const response = await app.handle(createRequest("/webhooks/events/550e8400-e29b-41d4-a716-446655440000"))
+      const { error } = await client.webhooks.events({ id: TEST_ID }).get()
 
-      expect(response.status).toBe(401)
+      expect(error?.status).toBe(401)
     })
   })
 })
