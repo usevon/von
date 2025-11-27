@@ -2,7 +2,7 @@ import { Worker, Job } from "bullmq"
 import { eq } from "drizzle-orm"
 import { createHmac } from "crypto"
 import { db } from "@von/db"
-import { delivery, event, endpoint } from "@von/db/schema"
+import { delivery, endpoint } from "@von/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@von/queue"
 import { createLogger } from "@von/logger/elysia"
 import { env } from "@/env"
@@ -24,13 +24,22 @@ const CIRCUIT_CONFIG = {
 }
 
 const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  const { deliveryId, eventId, endpointId } = job.data
+  const { deliveryId, eventId, payload, eventType, endpoint: ep } = job.data
 
-  const [deliveryRecord] = await db
-    .select()
-    .from(delivery)
-    .where(eq(delivery.id, deliveryId))
-    .limit(1)
+  // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
+  const [[deliveryRecord], [endpointState]] = await Promise.all([
+    db.select().from(delivery).where(eq(delivery.id, deliveryId)).limit(1),
+    db
+      .select({
+        enabled: endpoint.enabled,
+        circuitState: endpoint.circuitState,
+        circuitOpenedAt: endpoint.circuitOpenedAt,
+        failureCount: endpoint.failureCount,
+      })
+      .from(endpoint)
+      .where(eq(endpoint.id, ep.id))
+      .limit(1),
+  ])
 
   if (!deliveryRecord) {
     log.warn({ deliveryId }, "Delivery not found, skipping")
@@ -42,30 +51,13 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     return
   }
 
-  const [eventRecord] = await db
-    .select()
-    .from(event)
-    .where(eq(event.id, eventId))
-    .limit(1)
-
-  if (!eventRecord) {
-    log.error({ eventId }, "Event not found")
-    throw new Error(`Event ${eventId} not found`)
+  if (!endpointState) {
+    log.error({ endpointId: ep.id }, "Endpoint not found")
+    throw new Error(`Endpoint ${ep.id} not found`)
   }
 
-  const [endpointRecord] = await db
-    .select()
-    .from(endpoint)
-    .where(eq(endpoint.id, endpointId))
-    .limit(1)
-
-  if (!endpointRecord) {
-    log.error({ endpointId }, "Endpoint not found")
-    throw new Error(`Endpoint ${endpointId} not found`)
-  }
-
-  if (!endpointRecord.enabled) {
-    log.info({ endpointId }, "Endpoint disabled, marking as skipped")
+  if (!endpointState.enabled) {
+    log.info({ endpointId: ep.id }, "Endpoint disabled, marking as skipped")
     await db
       .update(delivery)
       .set({ status: "skipped", updatedAt: new Date() })
@@ -73,12 +65,12 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     return
   }
 
-  if (endpointRecord.circuitState === "open") {
-    const circuitOpenedAt = endpointRecord.circuitOpenedAt
+  if (endpointState.circuitState === "open") {
+    const circuitOpenedAt = endpointState.circuitOpenedAt
     if (circuitOpenedAt) {
       const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
       if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId }, "Circuit breaker open, marking as skipped")
+        log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped")
         await db
           .update(delivery)
           .set({ status: "circuit_open", updatedAt: new Date() })
@@ -88,51 +80,52 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       await db
         .update(endpoint)
         .set({ circuitState: "half_open", updatedAt: new Date() })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(endpoint.id, ep.id))
     }
   }
 
-  const payload = eventRecord.payload
-  const signature = generateSignature(payload, endpointRecord.secret)
+  const signature = generateSignature(payload, ep.secret)
   const now = new Date()
 
   try {
-    const response = await fetch(endpointRecord.url, {
+    const response = await fetch(ep.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Von-Signature": signature,
-        "X-Von-Event-Type": eventRecord.eventType,
+        "X-Von-Event-Type": eventType,
         "X-Von-Delivery-Id": deliveryId,
         "X-Von-Event-Id": eventId,
       },
       body: payload,
-      signal: AbortSignal.timeout(endpointRecord.timeoutMs),
+      signal: AbortSignal.timeout(ep.timeoutMs),
     })
 
     const responseBody = await response.text().catch(() => null)
 
     if (response.ok) {
-      await db
-        .update(delivery)
-        .set({
-          status: "delivered",
-          attempts: deliveryRecord.attempts + 1,
-          lastAttemptAt: now,
-          responseStatus: response.status,
-          responseBody: responseBody?.slice(0, 1000) ?? null,
-          updatedAt: now,
-        })
-        .where(eq(delivery.id, deliveryId))
-
-      await db
-        .update(endpoint)
-        .set({
-          failureCount: 0,
-          circuitState: "closed",
-          updatedAt: now,
-        })
-        .where(eq(endpoint.id, endpointId))
+      // Parallel: update delivery + reset circuit breaker
+      await Promise.all([
+        db
+          .update(delivery)
+          .set({
+            status: "delivered",
+            attempts: deliveryRecord.attempts + 1,
+            lastAttemptAt: now,
+            responseStatus: response.status,
+            responseBody: responseBody?.slice(0, 1000) ?? null,
+            updatedAt: now,
+          })
+          .where(eq(delivery.id, deliveryId)),
+        db
+          .update(endpoint)
+          .set({
+            failureCount: 0,
+            circuitState: "closed",
+            updatedAt: now,
+          })
+          .where(eq(endpoint.id, ep.id)),
+      ])
 
       log.info(
         { deliveryId, status: response.status },
@@ -143,41 +136,46 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
   } catch (error) {
     const attempts = deliveryRecord.attempts + 1
-    const maxAttempts = endpointRecord.retryCount
+    const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    await db
-      .update(delivery)
-      .set({
-        status: isFinalAttempt ? "failed" : "pending",
-        attempts,
-        lastAttemptAt: now,
-        updatedAt: now,
-      })
-      .where(eq(delivery.id, deliveryId))
+    const newFailureCount = endpointState.failureCount + 1
+    const shouldOpenCircuit = newFailureCount >= CIRCUIT_CONFIG.failureThreshold
 
-    const newFailureCount = endpointRecord.failureCount + 1
-    if (newFailureCount >= CIRCUIT_CONFIG.failureThreshold) {
-      await db
-        .update(endpoint)
+    // Parallel: update delivery + update endpoint failure state
+    await Promise.all([
+      db
+        .update(delivery)
         .set({
-          circuitState: "open",
-          circuitOpenedAt: now,
-          failureCount: newFailureCount,
-          lastFailureAt: now,
+          status: isFinalAttempt ? "failed" : "pending",
+          attempts,
+          lastAttemptAt: now,
           updatedAt: now,
         })
-        .where(eq(endpoint.id, endpointId))
-      log.warn({ endpointId, failureCount: newFailureCount }, "Circuit breaker opened")
-    } else {
-      await db
-        .update(endpoint)
-        .set({
-          failureCount: newFailureCount,
-          lastFailureAt: now,
-          updatedAt: now,
-        })
-        .where(eq(endpoint.id, endpointId))
+        .where(eq(delivery.id, deliveryId)),
+      shouldOpenCircuit
+        ? db
+            .update(endpoint)
+            .set({
+              circuitState: "open",
+              circuitOpenedAt: now,
+              failureCount: newFailureCount,
+              lastFailureAt: now,
+              updatedAt: now,
+            })
+            .where(eq(endpoint.id, ep.id))
+        : db
+            .update(endpoint)
+            .set({
+              failureCount: newFailureCount,
+              lastFailureAt: now,
+              updatedAt: now,
+            })
+            .where(eq(endpoint.id, ep.id)),
+    ])
+
+    if (shouldOpenCircuit) {
+      log.warn({ endpointId: ep.id, failureCount: newFailureCount }, "Circuit breaker opened")
     }
 
     log.error(
@@ -197,7 +195,7 @@ export const createWebhookWorker = () => {
     processWebhookDelivery,
     {
       connection: createConnection(),
-      concurrency: 10,
+      concurrency: 200,
     }
   )
 

@@ -24,13 +24,22 @@ const CIRCUIT_CONFIG = {
 }
 
 const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
-  const { deliveryId, endpointId } = job.data
+  const { deliveryId, endpoint: ep, payload, headers } = job.data
 
-  const [deliveryRecord] = await db
-    .select()
-    .from(inboundDelivery)
-    .where(eq(inboundDelivery.id, deliveryId))
-    .limit(1)
+  // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
+  const [[deliveryRecord], [endpointState]] = await Promise.all([
+    db.select().from(inboundDelivery).where(eq(inboundDelivery.id, deliveryId)).limit(1),
+    db
+      .select({
+        enabled: inboundEndpoint.enabled,
+        circuitState: inboundEndpoint.circuitState,
+        circuitOpenedAt: inboundEndpoint.circuitOpenedAt,
+        failureCount: inboundEndpoint.failureCount,
+      })
+      .from(inboundEndpoint)
+      .where(eq(inboundEndpoint.id, ep.id))
+      .limit(1),
+  ])
 
   if (!deliveryRecord) {
     log.warn({ deliveryId }, "Inbound delivery not found, skipping")
@@ -42,19 +51,13 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     return
   }
 
-  const [endpointRecord] = await db
-    .select()
-    .from(inboundEndpoint)
-    .where(eq(inboundEndpoint.id, endpointId))
-    .limit(1)
-
-  if (!endpointRecord) {
-    log.error({ endpointId }, "Inbound endpoint not found")
-    throw new Error(`Inbound endpoint ${endpointId} not found`)
+  if (!endpointState) {
+    log.error({ endpointId: ep.id }, "Inbound endpoint not found")
+    throw new Error(`Inbound endpoint ${ep.id} not found`)
   }
 
-  if (!endpointRecord.enabled) {
-    log.info({ endpointId }, "Inbound endpoint disabled, marking as skipped")
+  if (!endpointState.enabled) {
+    log.info({ endpointId: ep.id }, "Inbound endpoint disabled, marking as skipped")
     await db
       .update(inboundDelivery)
       .set({ status: "skipped" })
@@ -62,12 +65,12 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     return
   }
 
-  if (endpointRecord.circuitState === "open") {
-    const circuitOpenedAt = endpointRecord.circuitOpenedAt
+  if (endpointState.circuitState === "open") {
+    const circuitOpenedAt = endpointState.circuitOpenedAt
     if (circuitOpenedAt) {
       const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
       if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId }, "Circuit breaker open, marking as skipped")
+        log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped")
         await db
           .update(inboundDelivery)
           .set({ status: "circuit_open" })
@@ -77,19 +80,16 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
       await db
         .update(inboundEndpoint)
         .set({ circuitState: "half_open", updatedAt: new Date() })
-        .where(eq(inboundEndpoint.id, endpointId))
+        .where(eq(inboundEndpoint.id, ep.id))
     }
   }
 
-  const payload = deliveryRecord.payload
-  const originalHeaders: Record<string, string> = deliveryRecord.headers
-    ? JSON.parse(deliveryRecord.headers)
-    : {}
-  const signature = generateSignature(payload, endpointRecord.secret)
+  const originalHeaders: Record<string, string> = headers ? JSON.parse(headers) : {}
+  const signature = generateSignature(payload, ep.secret)
   const now = new Date()
 
   try {
-    const response = await fetch(endpointRecord.forwardUrl, {
+    const response = await fetch(ep.forwardUrl, {
       method: "POST",
       headers: {
         ...originalHeaders,
@@ -97,32 +97,34 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         "X-Von-Inbound-Delivery-Id": deliveryId,
       },
       body: payload,
-      signal: AbortSignal.timeout(endpointRecord.timeoutMs),
+      signal: AbortSignal.timeout(ep.timeoutMs),
     })
 
     const responseBody = await response.text().catch(() => null)
 
     if (response.ok) {
-      await db
-        .update(inboundDelivery)
-        .set({
-          status: "forwarded",
-          attempts: deliveryRecord.attempts + 1,
-          lastAttemptAt: now,
-          forwardedAt: now,
-          responseStatus: response.status,
-          responseBody: responseBody?.slice(0, 1000) ?? null,
-        })
-        .where(eq(inboundDelivery.id, deliveryId))
-
-      await db
-        .update(inboundEndpoint)
-        .set({
-          failureCount: 0,
-          circuitState: "closed",
-          updatedAt: now,
-        })
-        .where(eq(inboundEndpoint.id, endpointId))
+      // Parallel: update delivery + reset circuit breaker
+      await Promise.all([
+        db
+          .update(inboundDelivery)
+          .set({
+            status: "forwarded",
+            attempts: deliveryRecord.attempts + 1,
+            lastAttemptAt: now,
+            forwardedAt: now,
+            responseStatus: response.status,
+            responseBody: responseBody?.slice(0, 1000) ?? null,
+          })
+          .where(eq(inboundDelivery.id, deliveryId)),
+        db
+          .update(inboundEndpoint)
+          .set({
+            failureCount: 0,
+            circuitState: "closed",
+            updatedAt: now,
+          })
+          .where(eq(inboundEndpoint.id, ep.id)),
+      ])
 
       log.info(
         { deliveryId, status: response.status },
@@ -133,40 +135,45 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     }
   } catch (error) {
     const attempts = deliveryRecord.attempts + 1
-    const maxAttempts = endpointRecord.retryCount
+    const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    await db
-      .update(inboundDelivery)
-      .set({
-        status: isFinalAttempt ? "failed" : "pending",
-        attempts,
-        lastAttemptAt: now,
-      })
-      .where(eq(inboundDelivery.id, deliveryId))
+    const newFailureCount = endpointState.failureCount + 1
+    const shouldOpenCircuit = newFailureCount >= CIRCUIT_CONFIG.failureThreshold
 
-    const newFailureCount = endpointRecord.failureCount + 1
-    if (newFailureCount >= CIRCUIT_CONFIG.failureThreshold) {
-      await db
-        .update(inboundEndpoint)
+    // Parallel: update delivery + update endpoint failure state
+    await Promise.all([
+      db
+        .update(inboundDelivery)
         .set({
-          circuitState: "open",
-          circuitOpenedAt: now,
-          failureCount: newFailureCount,
-          lastFailureAt: now,
-          updatedAt: now,
+          status: isFinalAttempt ? "failed" : "pending",
+          attempts,
+          lastAttemptAt: now,
         })
-        .where(eq(inboundEndpoint.id, endpointId))
-      log.warn({ endpointId, failureCount: newFailureCount }, "Circuit breaker opened")
-    } else {
-      await db
-        .update(inboundEndpoint)
-        .set({
-          failureCount: newFailureCount,
-          lastFailureAt: now,
-          updatedAt: now,
-        })
-        .where(eq(inboundEndpoint.id, endpointId))
+        .where(eq(inboundDelivery.id, deliveryId)),
+      shouldOpenCircuit
+        ? db
+            .update(inboundEndpoint)
+            .set({
+              circuitState: "open",
+              circuitOpenedAt: now,
+              failureCount: newFailureCount,
+              lastFailureAt: now,
+              updatedAt: now,
+            })
+            .where(eq(inboundEndpoint.id, ep.id))
+        : db
+            .update(inboundEndpoint)
+            .set({
+              failureCount: newFailureCount,
+              lastFailureAt: now,
+              updatedAt: now,
+            })
+            .where(eq(inboundEndpoint.id, ep.id)),
+    ])
+
+    if (shouldOpenCircuit) {
+      log.warn({ endpointId: ep.id, failureCount: newFailureCount }, "Circuit breaker opened")
     }
 
     log.error(
@@ -186,7 +193,7 @@ export const createInboundWorker = () => {
     processInboundForwarding,
     {
       connection: createConnection(),
-      concurrency: 10,
+      concurrency: 200,
     }
   )
 
