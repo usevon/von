@@ -84,3 +84,5 @@ export type Auth = ReturnType<typeof createAuth>
 
 export { apiKey } from "@/plugins/api-key"
 export type { ApiKeyOptions, ApiKey } from "@/plugins/api-key"
+
+export const generateId = () => crypto.randomUUID()

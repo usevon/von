@@ -1,21 +1,64 @@
+import { Elysia, t, type Static } from "elysia"
 import { eq, and, count, inArray } from "drizzle-orm"
 import { db } from "@von/db"
 import { event, delivery } from "@von/db/schema"
-import { getWebhookDeliveryQueue, getRedisClient } from "@von/queue"
-import { EndpointService } from "@/modules/endpoints/service"
-import type { WebhookEventType } from "@/modules/webhooks/model"
+import { getWebhookDeliveryQueue } from "@von/queue"
+import { IdParam, PaginationQuery, ErrorResponse } from "@/lib/models"
+import { withApiKey } from "@/modules/auth"
+import { EndpointService } from "@/modules/endpoints"
 
-const redis = getRedisClient()
-const IDEMPOTENCY_TTL = 24 * 60 * 60
+export const SendWebhookBody = t.Object({
+  eventType: t.String(),
+  payload: t.Unknown(),
+  idempotencyKey: t.Optional(t.String()),
+  endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+})
 
-let endpointCache: {
-  orgId: string
-  endpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
-  expiry: number
-} | null = null
-const ENDPOINT_CACHE_TTL = 30000
+export const SendWebhookBatchBody = t.Object({
+  events: t.Array(t.Object({
+    eventType: t.String(),
+    payload: t.Unknown(),
+    idempotencyKey: t.Optional(t.String()),
+    endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+  })),
+})
 
-export type CreateEventParams = {
+export const WebhookEvent = t.Object({
+  id: t.String({ format: "uuid" }),
+  eventType: t.String(),
+  payload: t.Unknown(),
+  idempotencyKey: t.Union([t.String(), t.Null()]),
+  status: t.String(),
+  createdAt: t.String(),
+})
+
+export const WebhookEventList = t.Object({
+  events: t.Array(WebhookEvent),
+  total: t.Number(),
+})
+
+export const WebhookBatchResult = t.Object({
+  created: t.Number(),
+  events: t.Array(WebhookEvent),
+})
+
+export const Delivery = t.Object({
+  id: t.String({ format: "uuid" }),
+  eventId: t.String({ format: "uuid" }),
+  endpointId: t.String({ format: "uuid" }),
+  status: t.String(),
+  attempts: t.Number(),
+  nextAttemptAt: t.Union([t.String(), t.Null()]),
+  lastAttemptAt: t.Union([t.String(), t.Null()]),
+  responseStatus: t.Union([t.Number(), t.Null()]),
+  createdAt: t.String(),
+})
+
+export type SendWebhookBodyType = Static<typeof SendWebhookBody>
+export type WebhookEventType = Static<typeof WebhookEvent>
+export type DeliveryType = Static<typeof Delivery>
+
+type CreateEventParams = {
   organizationId: string
   eventType: string
   payload: unknown
@@ -23,7 +66,7 @@ export type CreateEventParams = {
   endpointIds?: string[]
 }
 
-export type CreateBatchParams = {
+type CreateBatchParams = {
   organizationId: string
   events: Array<{
     eventType: string
@@ -33,7 +76,7 @@ export type CreateBatchParams = {
   }>
 }
 
-export type GetEventsParams = {
+type GetEventsParams = {
   organizationId: string
   limit: number
   offset: number
@@ -48,18 +91,11 @@ const toEventResponse = (row: typeof event.$inferSelect): WebhookEventType => ({
   createdAt: row.createdAt.toISOString(),
 })
 
-export const WebhookService = {
+const WebhookService = {
   async createEvent(params: CreateEventParams): Promise<WebhookEventType> {
     const now = new Date()
 
     if (params.idempotencyKey) {
-      const cacheKey = `idempotency:${params.organizationId}:${params.idempotencyKey}`
-      const cached = await redis.get(cacheKey)
-
-      if (cached) {
-        return JSON.parse(cached) as WebhookEventType
-      }
-
       const existing = await db
         .select()
         .from(event)
@@ -72,30 +108,17 @@ export const WebhookService = {
         .limit(1)
 
       if (existing[0]) {
-        const response = toEventResponse(existing[0])
-        redis.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(response))
-        return response
+        return toEventResponse(existing[0])
       }
     }
 
     const payloadStr = JSON.stringify(params.payload)
     const eventId = crypto.randomUUID()
 
-    let targetEndpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
-    if (endpointCache && endpointCache.orgId === params.organizationId && endpointCache.expiry > Date.now()) {
-      targetEndpoints = endpointCache.endpoints
-      if (params.endpointIds && params.endpointIds.length > 0) {
-        targetEndpoints = targetEndpoints.filter((ep) => params.endpointIds!.includes(ep.id))
-      }
-    } else {
-      targetEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
-        params.organizationId,
-        params.endpointIds
-      )
-      if (!params.endpointIds || params.endpointIds.length === 0) {
-        endpointCache = { orgId: params.organizationId, endpoints: targetEndpoints, expiry: Date.now() + ENDPOINT_CACHE_TTL }
-      }
-    }
+    const targetEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+      params.organizationId,
+      params.endpointIds
+    )
 
     const deliveryData = targetEndpoints.map((ep) => ({
       id: crypto.randomUUID(),
@@ -140,14 +163,8 @@ export const WebhookService = {
         queue.addBulk(jobs),
       ])
     }
-    const response = toEventResponse(newEvent)
 
-    if (params.idempotencyKey) {
-      const cacheKey = `idempotency:${params.organizationId}:${params.idempotencyKey}`
-      redis.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(response))
-    }
-
-    return response
+    return toEventResponse(newEvent)
   },
 
   async createBatch(params: CreateBatchParams): Promise<{ created: number; events: WebhookEventType[] }> {
@@ -169,46 +186,18 @@ export const WebhookService = {
 
     let existingByKey = new Map<string, typeof event.$inferSelect>()
     if (idempotencyKeys.length > 0) {
-      const pipeline = redis.pipeline()
-      for (const key of idempotencyKeys) {
-        pipeline.get(`idempotency:${params.organizationId}:${key}`)
-      }
-      const cachedResults = await pipeline.exec()
-
-      const uncachedKeys: string[] = []
-      if (cachedResults) {
-        for (let i = 0; i < idempotencyKeys.length; i++) {
-          const [err, cached] = cachedResults[i] as [Error | null, string | null]
-          if (!err && cached) {
-            const evt = JSON.parse(cached) as WebhookEventType
-            existingByKey.set(idempotencyKeys[i]!, {
-              id: evt.id,
-              eventType: evt.eventType,
-              payload: JSON.stringify(evt.payload),
-              idempotencyKey: evt.idempotencyKey,
-              organizationId: params.organizationId,
-              createdAt: new Date(evt.createdAt),
-            } as typeof event.$inferSelect)
-          } else {
-            uncachedKeys.push(idempotencyKeys[i]!)
-          }
-        }
-      }
-
-      if (uncachedKeys.length > 0) {
-        const existing = await db
-          .select()
-          .from(event)
-          .where(
-            and(
-              eq(event.organizationId, params.organizationId),
-              inArray(event.idempotencyKey, uncachedKeys)
-            )
+      const existing = await db
+        .select()
+        .from(event)
+        .where(
+          and(
+            eq(event.organizationId, params.organizationId),
+            inArray(event.idempotencyKey, idempotencyKeys)
           )
-        for (const e of existing) {
-          if (e.idempotencyKey) {
-            existingByKey.set(e.idempotencyKey, e)
-          }
+        )
+      for (const e of existing) {
+        if (e.idempotencyKey) {
+          existingByKey.set(e.idempotencyKey, e)
         }
       }
     }
@@ -234,13 +223,7 @@ export const WebhookService = {
       return { created: 0, events: results }
     }
 
-    let allEndpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
-    if (endpointCache && endpointCache.orgId === params.organizationId && endpointCache.expiry > Date.now()) {
-      allEndpoints = endpointCache.endpoints
-    } else {
-      allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(params.organizationId)
-      endpointCache = { orgId: params.organizationId, endpoints: allEndpoints, expiry: Date.now() + ENDPOINT_CACHE_TTL }
-    }
+    const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(params.organizationId)
 
     const insertedEvents = await db
       .insert(event)
@@ -320,16 +303,6 @@ export const WebhookService = {
       ])
     }
 
-    const idempotentEvents = insertedEvents.filter((e) => e.idempotencyKey)
-    if (idempotentEvents.length > 0) {
-      const pipeline = redis.pipeline()
-      for (const e of idempotentEvents) {
-        const cacheKey = `idempotency:${params.organizationId}:${e.idempotencyKey}`
-        pipeline.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(toEventResponse(e)))
-      }
-      pipeline.exec()
-    }
-
     return { created: newEvents.length, events: results }
   },
 
@@ -387,3 +360,72 @@ export const WebhookService = {
     }))
   },
 }
+
+export const webhooks = new Elysia({ prefix: "/webhooks" })
+  .use(withApiKey)
+  .post(
+    "/",
+    async ({ organizationId, body, set }) => {
+      set.status = 201
+      return WebhookService.createEvent({
+        organizationId,
+        eventType: body.eventType,
+        payload: body.payload,
+        idempotencyKey: body.idempotencyKey,
+        endpointIds: body.endpointIds,
+      })
+    },
+    {
+      body: SendWebhookBody,
+      response: { 201: WebhookEvent },
+    }
+  )
+  .post(
+    "/batch",
+    async ({ organizationId, body, set }) => {
+      set.status = 201
+      return WebhookService.createBatch({
+        organizationId,
+        events: body.events,
+      })
+    },
+    {
+      body: SendWebhookBatchBody,
+      response: { 201: WebhookBatchResult },
+    }
+  )
+  .get(
+    "/events",
+    async ({ organizationId, query }) => {
+      return WebhookService.getEvents({
+        organizationId,
+        limit: query.limit ?? 20,
+        offset: query.offset ?? 0,
+      })
+    },
+    {
+      query: PaginationQuery,
+      response: WebhookEventList,
+    }
+  )
+  .get(
+    "/events/:id",
+    async ({ organizationId, params, status }) => {
+      const event = await WebhookService.getEvent(organizationId, params.id)
+
+      if (!event) {
+        return status(404, { error: "Event not found" })
+      }
+
+      return event
+    },
+    {
+      params: IdParam,
+      response: {
+        200: WebhookEvent,
+        404: ErrorResponse,
+      },
+    }
+  )
+
+export { WebhookService }
