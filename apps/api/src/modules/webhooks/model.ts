@@ -7,6 +7,15 @@ export const SendWebhookBody = t.Object({
   endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
 })
 
+export const SendWebhookBatchBody = t.Object({
+  events: t.Array(t.Object({
+    eventType: t.String(),
+    payload: t.Unknown(),
+    idempotencyKey: t.Optional(t.String()),
+    endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+  })),
+})
+
 export const WebhookEvent = t.Object({
   id: t.String({ format: "uuid" }),
   eventType: t.String(),
@@ -19,6 +28,11 @@ export const WebhookEvent = t.Object({
 export const WebhookEventList = t.Object({
   events: t.Array(WebhookEvent),
   total: t.Number(),
+})
+
+export const WebhookBatchResult = t.Object({
+  created: t.Number(),
+  events: t.Array(WebhookEvent),
 })
 
 export const Delivery = t.Object({

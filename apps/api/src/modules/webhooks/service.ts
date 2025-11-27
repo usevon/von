@@ -1,8 +1,19 @@
-import { eq, and, count } from "drizzle-orm"
+import { eq, and, count, inArray } from "drizzle-orm"
 import { db } from "@von/db"
-import { event, delivery, endpoint } from "@von/db/schema"
-import { getWebhookDeliveryQueue } from "@von/queue"
+import { event, delivery } from "@von/db/schema"
+import { getWebhookDeliveryQueue, getRedisClient } from "@von/queue"
+import { EndpointService } from "@/modules/endpoints/service"
 import type { WebhookEventType } from "@/modules/webhooks/model"
+
+const redis = getRedisClient()
+const IDEMPOTENCY_TTL = 24 * 60 * 60
+
+let endpointCache: {
+  orgId: string
+  endpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
+  expiry: number
+} | null = null
+const ENDPOINT_CACHE_TTL = 30000
 
 export type CreateEventParams = {
   organizationId: string
@@ -10,6 +21,16 @@ export type CreateEventParams = {
   payload: unknown
   idempotencyKey?: string
   endpointIds?: string[]
+}
+
+export type CreateBatchParams = {
+  organizationId: string
+  events: Array<{
+    eventType: string
+    payload: unknown
+    idempotencyKey?: string
+    endpointIds?: string[]
+  }>
 }
 
 export type GetEventsParams = {
@@ -32,6 +53,13 @@ export const WebhookService = {
     const now = new Date()
 
     if (params.idempotencyKey) {
+      const cacheKey = `idempotency:${params.organizationId}:${params.idempotencyKey}`
+      const cached = await redis.get(cacheKey)
+
+      if (cached) {
+        return JSON.parse(cached) as WebhookEventType
+      }
+
       const existing = await db
         .select()
         .from(event)
@@ -44,17 +72,49 @@ export const WebhookService = {
         .limit(1)
 
       if (existing[0]) {
-        return toEventResponse(existing[0])
+        const response = toEventResponse(existing[0])
+        redis.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(response))
+        return response
       }
     }
+
+    const payloadStr = JSON.stringify(params.payload)
+    const eventId = crypto.randomUUID()
+
+    let targetEndpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
+    if (endpointCache && endpointCache.orgId === params.organizationId && endpointCache.expiry > Date.now()) {
+      targetEndpoints = endpointCache.endpoints
+      if (params.endpointIds && params.endpointIds.length > 0) {
+        targetEndpoints = targetEndpoints.filter((ep) => params.endpointIds!.includes(ep.id))
+      }
+    } else {
+      targetEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+        params.organizationId,
+        params.endpointIds
+      )
+      if (!params.endpointIds || params.endpointIds.length === 0) {
+        endpointCache = { orgId: params.organizationId, endpoints: targetEndpoints, expiry: Date.now() + ENDPOINT_CACHE_TTL }
+      }
+    }
+
+    const deliveryData = targetEndpoints.map((ep) => ({
+      id: crypto.randomUUID(),
+      eventId,
+      endpointId: ep.id,
+      status: "pending",
+      attempts: 0,
+      nextAttemptAt: now,
+      createdAt: now,
+      updatedAt: now,
+    }))
 
     const result = await db
       .insert(event)
       .values({
-        id: crypto.randomUUID(),
+        id: eventId,
         organizationId: params.organizationId,
         eventType: params.eventType,
-        payload: JSON.stringify(params.payload),
+        payload: payloadStr,
         idempotencyKey: params.idempotencyKey ?? null,
         createdAt: now,
       })
@@ -62,63 +122,215 @@ export const WebhookService = {
 
     const newEvent = result[0]!
 
-    let targetEndpoints: { id: string }[]
-
-    if (params.endpointIds && params.endpointIds.length > 0) {
-      targetEndpoints = await db
-        .select({ id: endpoint.id })
-        .from(endpoint)
-        .where(
-          and(
-            eq(endpoint.organizationId, params.organizationId),
-            eq(endpoint.enabled, true)
-          )
-        )
-        .then((endpoints) =>
-          endpoints.filter((e) => params.endpointIds!.includes(e.id))
-        )
-    } else {
-      targetEndpoints = await db
-        .select({ id: endpoint.id })
-        .from(endpoint)
-        .where(
-          and(
-            eq(endpoint.organizationId, params.organizationId),
-            eq(endpoint.enabled, true)
-          )
-        )
-    }
-
     if (targetEndpoints.length > 0) {
-      const deliveryRecords = await db
-        .insert(delivery)
-        .values(
-          targetEndpoints.map((ep) => ({
-            id: crypto.randomUUID(),
-            eventId: newEvent.id,
-            endpointId: ep.id,
-            status: "pending",
-            attempts: 0,
-            nextAttemptAt: now,
-            createdAt: now,
-            updatedAt: now,
-          }))
-        )
-        .returning()
-
       const queue = getWebhookDeliveryQueue()
-      await Promise.all(
-        deliveryRecords.map((d) =>
-          queue.add("webhook-delivery", {
-            deliveryId: d.id,
-            eventId: newEvent.id,
-            endpointId: d.endpointId,
-          })
-        )
-      )
+      const jobs = deliveryData.map((d, i) => ({
+        name: "webhook-delivery",
+        data: {
+          deliveryId: d.id,
+          eventId,
+          payload: payloadStr,
+          eventType: params.eventType,
+          endpoint: targetEndpoints[i]!,
+        },
+      }))
+
+      await Promise.all([
+        db.insert(delivery).values(deliveryData),
+        queue.addBulk(jobs),
+      ])
+    }
+    const response = toEventResponse(newEvent)
+
+    if (params.idempotencyKey) {
+      const cacheKey = `idempotency:${params.organizationId}:${params.idempotencyKey}`
+      redis.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(response))
     }
 
-    return toEventResponse(newEvent)
+    return response
+  },
+
+  async createBatch(params: CreateBatchParams): Promise<{ created: number; events: WebhookEventType[] }> {
+    const now = new Date()
+    const results: WebhookEventType[] = []
+    const newEvents: Array<{
+      id: string
+      organizationId: string
+      eventType: string
+      payload: string
+      idempotencyKey: string | null
+      createdAt: Date
+      endpointIds?: string[]
+    }> = []
+
+    const idempotencyKeys = params.events
+      .filter((e) => e.idempotencyKey)
+      .map((e) => e.idempotencyKey!)
+
+    let existingByKey = new Map<string, typeof event.$inferSelect>()
+    if (idempotencyKeys.length > 0) {
+      const pipeline = redis.pipeline()
+      for (const key of idempotencyKeys) {
+        pipeline.get(`idempotency:${params.organizationId}:${key}`)
+      }
+      const cachedResults = await pipeline.exec()
+
+      const uncachedKeys: string[] = []
+      if (cachedResults) {
+        for (let i = 0; i < idempotencyKeys.length; i++) {
+          const [err, cached] = cachedResults[i] as [Error | null, string | null]
+          if (!err && cached) {
+            const evt = JSON.parse(cached) as WebhookEventType
+            existingByKey.set(idempotencyKeys[i]!, {
+              id: evt.id,
+              eventType: evt.eventType,
+              payload: JSON.stringify(evt.payload),
+              idempotencyKey: evt.idempotencyKey,
+              organizationId: params.organizationId,
+              createdAt: new Date(evt.createdAt),
+            } as typeof event.$inferSelect)
+          } else {
+            uncachedKeys.push(idempotencyKeys[i]!)
+          }
+        }
+      }
+
+      if (uncachedKeys.length > 0) {
+        const existing = await db
+          .select()
+          .from(event)
+          .where(
+            and(
+              eq(event.organizationId, params.organizationId),
+              inArray(event.idempotencyKey, uncachedKeys)
+            )
+          )
+        for (const e of existing) {
+          if (e.idempotencyKey) {
+            existingByKey.set(e.idempotencyKey, e)
+          }
+        }
+      }
+    }
+
+    for (const evt of params.events) {
+      if (evt.idempotencyKey && existingByKey.has(evt.idempotencyKey)) {
+        results.push(toEventResponse(existingByKey.get(evt.idempotencyKey)!))
+        continue
+      }
+
+      newEvents.push({
+        id: crypto.randomUUID(),
+        organizationId: params.organizationId,
+        eventType: evt.eventType,
+        payload: JSON.stringify(evt.payload),
+        idempotencyKey: evt.idempotencyKey ?? null,
+        createdAt: now,
+        endpointIds: evt.endpointIds,
+      })
+    }
+
+    if (newEvents.length === 0) {
+      return { created: 0, events: results }
+    }
+
+    let allEndpoints: Array<{ id: string; url: string; secret: string; timeoutMs: number; retryCount: number }>
+    if (endpointCache && endpointCache.orgId === params.organizationId && endpointCache.expiry > Date.now()) {
+      allEndpoints = endpointCache.endpoints
+    } else {
+      allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(params.organizationId)
+      endpointCache = { orgId: params.organizationId, endpoints: allEndpoints, expiry: Date.now() + ENDPOINT_CACHE_TTL }
+    }
+
+    const insertedEvents = await db
+      .insert(event)
+      .values(newEvents.map((e) => ({
+        id: e.id,
+        organizationId: e.organizationId,
+        eventType: e.eventType,
+        payload: e.payload,
+        idempotencyKey: e.idempotencyKey,
+        createdAt: e.createdAt,
+      })))
+      .returning()
+
+    const allDeliveries: Array<{
+      id: string
+      eventId: string
+      endpointId: string
+      status: string
+      attempts: number
+      nextAttemptAt: Date
+      createdAt: Date
+      updatedAt: Date
+    }> = []
+
+    const allJobs: Array<{
+      name: string
+      data: {
+        deliveryId: string
+        eventId: string
+        payload: string
+        eventType: string
+        endpoint: { id: string; url: string; secret: string; timeoutMs: number; retryCount: number }
+      }
+    }> = []
+
+    for (let i = 0; i < insertedEvents.length; i++) {
+      const inserted = insertedEvents[i]!
+      const original = newEvents[i]!
+
+      let targetEndpoints = allEndpoints
+      if (original.endpointIds && original.endpointIds.length > 0) {
+        targetEndpoints = allEndpoints.filter((ep) => original.endpointIds!.includes(ep.id))
+      }
+
+      for (const ep of targetEndpoints) {
+        const deliveryId = crypto.randomUUID()
+        allDeliveries.push({
+          id: deliveryId,
+          eventId: inserted.id,
+          endpointId: ep.id,
+          status: "pending",
+          attempts: 0,
+          nextAttemptAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        allJobs.push({
+          name: "webhook-delivery",
+          data: {
+            deliveryId,
+            eventId: inserted.id,
+            payload: original.payload,
+            eventType: inserted.eventType,
+            endpoint: ep,
+          },
+        })
+      }
+
+      results.push(toEventResponse(inserted))
+    }
+
+    if (allDeliveries.length > 0) {
+      const queue = getWebhookDeliveryQueue()
+      await Promise.all([
+        db.insert(delivery).values(allDeliveries),
+        queue.addBulk(allJobs),
+      ])
+    }
+
+    const idempotentEvents = insertedEvents.filter((e) => e.idempotencyKey)
+    if (idempotentEvents.length > 0) {
+      const pipeline = redis.pipeline()
+      for (const e of idempotentEvents) {
+        const cacheKey = `idempotency:${params.organizationId}:${e.idempotencyKey}`
+        pipeline.setex(cacheKey, IDEMPOTENCY_TTL, JSON.stringify(toEventResponse(e)))
+      }
+      pipeline.exec()
+    }
+
+    return { created: newEvents.length, events: results }
   },
 
   async getEvents(params: GetEventsParams) {

@@ -1,5 +1,5 @@
 import { Elysia } from "elysia"
-import { SendWebhookBody, WebhookEvent, WebhookEventList } from "@/modules/webhooks/model"
+import { SendWebhookBody, SendWebhookBatchBody, WebhookEvent, WebhookEventList, WebhookBatchResult } from "@/modules/webhooks/model"
 import { WebhookService } from "@/modules/webhooks/service"
 import { IdParam, PaginationQuery, ErrorResponse } from "@/lib/models"
 import { withApiKey } from "@/modules/auth"
@@ -21,6 +21,20 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
     {
       body: SendWebhookBody,
       response: { 201: WebhookEvent },
+    }
+  )
+  .post(
+    "/batch",
+    async ({ organizationId, body, set }) => {
+      set.status = 201
+      return WebhookService.createBatch({
+        organizationId,
+        events: body.events,
+      })
+    },
+    {
+      body: SendWebhookBatchBody,
+      response: { 201: WebhookBatchResult },
     }
   )
   .get(

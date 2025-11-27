@@ -119,6 +119,13 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
 
       return InboundService.receive({
         endpointId: params.id,
+        endpoint: {
+          id: endpoint.id,
+          forwardUrl: endpoint.forwardUrl,
+          secret: endpoint.secret,
+          timeoutMs: endpoint.timeoutMs,
+          retryCount: endpoint.retryCount,
+        },
         payload: body,
         headers: headerRecord,
       })

@@ -1,12 +1,28 @@
 export type WebhookDeliveryJob = {
   deliveryId: string
   eventId: string
-  endpointId: string
+  payload: string
+  eventType: string
+  endpoint: {
+    id: string
+    url: string
+    secret: string
+    timeoutMs: number
+    retryCount: number
+  }
 }
 
 export type InboundForwardingJob = {
   deliveryId: string
-  endpointId: string
+  endpoint: {
+    id: string
+    forwardUrl: string
+    secret: string
+    timeoutMs: number
+    retryCount: number
+  }
+  payload: string
+  headers: string
 }
 
 export type QueueName = "webhook-delivery" | "inbound-forwarding"
