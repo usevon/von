@@ -6,7 +6,9 @@
   <a href="https://base-ui.com/"><img src="https://img.shields.io/badge/Base_UI-Built_On-purple.svg" alt="Base UI"></a>
 </p>
 
-Shared React UI components for Von's dashboard and applications. Built on [coss ui](https://coss.com/ui) (Base UI + Tailwind CSS v4).
+Shared React UI components for Von’s dashboard and apps, providing reusable, consistently styled building blocks across all web interfaces.
+
+Built on top of [coss ui](https://coss.com/ui) (Base UI + Tailwind CSS v4).
 
 ## Installation
 
