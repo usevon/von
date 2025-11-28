@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Button } from '@usevon/ui';
+import { Button } from '@von/ui';
 
 const App = () => {
   return (
     <div>
       <h1>Von</h1>
       <p>Webhooks infrastructure that just works.</p>
-      <Button variant="primary">Get Started</Button>
+      <Button variant="default">Get Started</Button>
     </div>
   );
 };
