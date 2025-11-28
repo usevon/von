@@ -1,0 +1,27 @@
+{
+  "name": "@von/worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@von/db": "workspace:*",
+    "@von/env": "workspace:*",
+    "@von/logger": "workspace:*",
+    "@von/queue": "workspace:*",
+    "bullmq": "^5.64.1",
+    "drizzle-orm": "^0.44.7",
+    "ioredis": "^5.8.2",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@von/typescript-config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

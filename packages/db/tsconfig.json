@@ -1,0 +1,9 @@
+{
+  "extends": "@von/typescript-config",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "types": ["node"]
+  },
+  "include": ["src", "drizzle.config.ts"]
+}

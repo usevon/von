@@ -6,12 +6,6 @@
 *.dylib
 bin/
 
-# Go
-*.test
-*.out
-go.work
-vendor/
-
 # Environment
 .env
 .env.local
@@ -29,3 +23,10 @@ Thumbs.db
 
 # Docker
 docker/data/
+
+# Node
+node_modules/
+dist/
+
+# Turborepo
+.turbo

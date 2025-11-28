@@ -1,0 +1,7 @@
+{
+  "extends": "@von/typescript-config",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@von/typescript-config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    ".": "./tsconfig.json",
+    "./tsdown": "./tsdown.config.base.ts"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.7",
+    "tsdown": "^0.16.8"
+  }
+}

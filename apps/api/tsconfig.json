@@ -1,0 +1,12 @@
+{
+  "extends": "@von/typescript-config",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["src", "tests"]
+}
