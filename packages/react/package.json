@@ -9,17 +9,21 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun && tsc",
-    "dev": "bun build src/index.ts --outdir dist --watch"
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
   "dependencies": {
-    "@usevon/sdk": "workspace:*"
+    "@von/logger": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.2.0"
