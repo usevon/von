@@ -1,64 +1,29 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
 import { api } from '@/lib/api'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useInbound } from '@usevon/react/hooks'
+import { Button } from '@von/ui'
 
 export const Route = createFileRoute('/inbound')({
   component: InboundPage,
 })
 
-type InboundEndpoint = {
-  id: string
-  name: string | null
-  provider: string | null
-  secret: string
-  forwardUrl: string
-  enabled: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 export default function InboundPage() {
-  const { data: session } = useSession()
-  const [endpoints, setEndpoints] = useState<InboundEndpoint[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data } = useSession()
+  const { session, user } = data ?? {}
+  const { endpoints, isLoading, isConnected, error, refresh } = useInbound()
   const [name, setName] = useState('')
   const [provider, setProvider] = useState('')
   const [forwardUrl, setForwardUrl] = useState('https://example.com/inbound-webhook')
-
-  useEffect(() => {
-    if (session?.user) {
-      loadEndpoints()
-    }
-  }, [session])
-
-  const loadEndpoints = async () => {
-    if (!session?.user) {
-      return
-    }
-
-    setLoading(true)
-
-    const { data, error } = await api.inbound.get({
-      fetch: { credentials: 'include' },
-    })
-
-    setLoading(false)
-
-    if (error) {
-      console.error('Error loading inbound endpoints:', error)
-      return
-    }
-
-    setEndpoints(data.endpoints)
-  }
+  const [actionLoading, setActionLoading] = useState(false)
 
   const createEndpoint = async () => {
-    if (!session?.user) {
+    if (!user) {
       return
     }
 
-    setLoading(true)
+    setActionLoading(true)
 
     const { data, error } = await api.inbound.post(
       {
@@ -71,36 +36,36 @@ export default function InboundPage() {
       }
     )
 
-    setLoading(false)
+    setActionLoading(false)
 
     if (error) {
       console.error('Error creating inbound endpoint:', error)
       return
     }
 
-    loadEndpoints()
+    refresh()
   }
 
   const deleteEndpoint = async (id: string) => {
     if (!confirm('Are you sure you want to delete this inbound endpoint?')) return
 
-    setLoading(true)
+    setActionLoading(true)
 
     const { data, error } = await api.inbound({ id }).delete(null, {
       fetch: { credentials: 'include' },
     })
 
-    setLoading(false)
+    setActionLoading(false)
 
     if (error) {
       console.error('Error deleting inbound endpoint:', error)
       return
     }
 
-    loadEndpoints()
+    refresh()
   }
 
-  if (!session?.user) {
+  if (!user) {
     return (
       <div className="p-5 font-mono">
         <h1 className="text-2xl font-bold mb-4">Inbound Endpoints</h1>
@@ -115,10 +80,15 @@ export default function InboundPage() {
 
       <div className="mb-5 p-4 bg-gray-100 rounded">
         <h3 className="text-lg font-semibold mb-2">
-          Session: {session ? 'Authenticated' : 'Not authenticated'}
+          Session: {data ? 'Authenticated' : 'Not authenticated'}
         </h3>
         <p className="text-sm text-gray-600 mb-2">
-          Active Org ID: {session?.session?.activeOrganizationId || 'None'}
+          Active Org ID: {session?.activeOrganizationId || 'None'}
+        </p>
+        <p className="text-sm text-gray-600">
+          WebSocket: <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </p>
       </div>
 
@@ -157,24 +127,22 @@ export default function InboundPage() {
             Where incoming webhooks will be forwarded to
           </p>
         </div>
-        <button
-          onClick={createEndpoint}
-          disabled={loading || !forwardUrl}
-          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
+        <Button onClick={createEndpoint} disabled={actionLoading || !forwardUrl}>
           Create Inbound Endpoint
-        </button>
+        </Button>
       </div>
 
       <div className="mb-5">
-        <button
-          onClick={loadEndpoints}
-          disabled={loading}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Loading...' : 'Refresh Endpoints'}
-        </button>
+        <Button onClick={refresh} disabled={isLoading} variant="secondary">
+          {isLoading ? 'Loading...' : 'Refresh Endpoints'}
+        </Button>
       </div>
+
+      {error && (
+        <div className="mb-5 p-4 bg-red-100 text-red-700 rounded">
+          Error: {error.message}
+        </div>
+      )}
 
       <div className="p-4 border rounded">
         <h3 className="text-lg font-semibold mb-3">Inbound Endpoints ({endpoints.length})</h3>
@@ -208,13 +176,14 @@ export default function InboundPage() {
                     <p className="text-sm text-gray-600">Forwards to: {endpoint.forwardUrl}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => deleteEndpoint(endpoint.id)}
-                      disabled={loading}
-                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400"
+                      disabled={actionLoading}
+                      variant="destructive"
+                      size="sm"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="bg-white p-3 rounded border mb-2">

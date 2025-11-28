@@ -1,64 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
 import { api } from '@/lib/api'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useEndpoints } from '@usevon/react/hooks'
+import { Button } from '@von/ui'
 
 export const Route = createFileRoute('/endpoints')({
   component: EndpointsPage,
 })
 
-type Endpoint = {
-  id: string
-  url: string
-  description: string | null
-  secret: string
-  enabled: boolean
-  retryCount: number
-  timeoutMs: number
-  createdAt: string
-  updatedAt: string
-}
-
 export default function EndpointsPage() {
-  const { data: session } = useSession()
-  const [endpoints, setEndpoints] = useState<Endpoint[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data } = useSession()
+  const { session, user } = data ?? {}
+  const { endpoints, isLoading, isConnected, error, refresh } = useEndpoints()
   const [url, setUrl] = useState('https://example.com/webhook')
   const [description, setDescription] = useState('')
-
-  useEffect(() => {
-    if (session?.user) {
-      loadEndpoints()
-    }
-  }, [session])
-
-  const loadEndpoints = async () => {
-    if (!session?.user) {
-      return
-    }
-
-    setLoading(true)
-
-    const { data, error } = await api.endpoints.get({
-      fetch: { credentials: 'include' },
-    })
-
-    setLoading(false)
-
-    if (error) {
-      console.error('Error loading endpoints:', error)
-      return
-    }
-
-    setEndpoints(data.endpoints)
-  }
+  const [actionLoading, setActionLoading] = useState(false)
 
   const createEndpoint = async () => {
-    if (!session?.user) {
+    if (!user) {
       return
     }
 
-    setLoading(true)
+    setActionLoading(true)
 
     const { data, error } = await api.endpoints.post(
       {
@@ -70,18 +34,18 @@ export default function EndpointsPage() {
       }
     )
 
-    setLoading(false)
+    setActionLoading(false)
 
     if (error) {
       console.error('Error creating endpoint:', error)
       return
     }
 
-    loadEndpoints()
+    refresh()
   }
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
-    setLoading(true)
+    setActionLoading(true)
 
     const { data, error } = await api.endpoints({ id }).patch(
       { enabled: !currentEnabled },
@@ -90,36 +54,36 @@ export default function EndpointsPage() {
       }
     )
 
-    setLoading(false)
+    setActionLoading(false)
 
     if (error) {
       console.error('Error toggling endpoint:', error)
       return
     }
 
-    loadEndpoints()
+    refresh()
   }
 
   const deleteEndpoint = async (id: string) => {
     if (!confirm('Are you sure you want to delete this endpoint?')) return
 
-    setLoading(true)
+    setActionLoading(true)
 
     const { data, error } = await api.endpoints({ id }).delete(null, {
       fetch: { credentials: 'include' },
     })
 
-    setLoading(false)
+    setActionLoading(false)
 
     if (error) {
       console.error('Error deleting endpoint:', error)
       return
     }
 
-    loadEndpoints()
+    refresh()
   }
 
-  if (!session?.user) {
+  if (!user) {
     return (
       <div className="p-5 font-mono">
         <h1 className="text-2xl font-bold mb-4">Webhook Endpoints</h1>
@@ -134,10 +98,15 @@ export default function EndpointsPage() {
 
       <div className="mb-5 p-4 bg-gray-100 rounded">
         <h3 className="text-lg font-semibold mb-2">
-          Session: {session ? 'Authenticated' : 'Not authenticated'}
+          Session: {data ? 'Authenticated' : 'Not authenticated'}
         </h3>
         <p className="text-sm text-gray-600 mb-2">
-          Active Org ID: {session?.session?.activeOrganizationId || 'None'}
+          Active Org ID: {session?.activeOrganizationId || 'None'}
+        </p>
+        <p className="text-sm text-gray-600">
+          WebSocket: <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </p>
       </div>
 
@@ -163,24 +132,22 @@ export default function EndpointsPage() {
             className="w-full p-2 border rounded"
           />
         </div>
-        <button
-          onClick={createEndpoint}
-          disabled={loading || !url}
-          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
+        <Button onClick={createEndpoint} disabled={actionLoading || !url}>
           Create Endpoint
-        </button>
+        </Button>
       </div>
 
       <div className="mb-5">
-        <button
-          onClick={loadEndpoints}
-          disabled={loading}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Loading...' : 'Refresh Endpoints'}
-        </button>
+        <Button onClick={refresh} disabled={isLoading} variant="secondary">
+          {isLoading ? 'Loading...' : 'Refresh Endpoints'}
+        </Button>
       </div>
+
+      {error && (
+        <div className="mb-5 p-4 bg-red-100 text-red-700 rounded">
+          Error: {error.message}
+        </div>
+      )}
 
       <div className="p-4 border rounded">
         <h3 className="text-lg font-semibold mb-3">Endpoints ({endpoints.length})</h3>
@@ -209,20 +176,22 @@ export default function EndpointsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => toggleEndpoint(endpoint.id, endpoint.enabled)}
-                      disabled={loading}
-                      className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-400"
+                      disabled={actionLoading}
+                      variant="outline"
+                      size="sm"
                     >
                       {endpoint.enabled ? 'Disable' : 'Enable'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => deleteEndpoint(endpoint.id)}
-                      disabled={loading}
-                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400"
+                      disabled={actionLoading}
+                      variant="destructive"
+                      size="sm"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">

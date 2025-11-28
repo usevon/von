@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { createRootRoute, HeadContent, Scripts, Outlet, Link } from '@tanstack/react-router';
 import appCss from '@/styles/app.css?url';
 import { useSession, signOut } from '@/lib/auth/client';
+import { AuthenticatedVonProvider } from '@/lib/providers/authenticated-von-provider';
 
 const NotFound = () => {
   return (
@@ -47,11 +48,13 @@ const Navbar = () => {
 };
 
 const RootComponent = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
   return (
-    <>
+    <AuthenticatedVonProvider apiUrl={apiUrl}>
       <Navbar />
       <Outlet />
-    </>
+    </AuthenticatedVonProvider>
   );
 };
 

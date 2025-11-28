@@ -1,23 +1,39 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useSession, signUp, signIn, signOut, organization, apiKey } from '@/lib/auth/client'
+import { useSession, signUp, signIn, signOut, organization, apiKey, deleteUser } from '@/lib/auth/client'
 import { useState, useEffect, useRef } from 'react'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogPopup,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogClose,
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardPanel,
+} from '@von/ui'
 
 export const Route = createFileRoute('/test-auth')({
   component: TestAuthPage,
 })
 
 function TestAuthPage() {
-  const { data: session, isPending } = useSession()
+  const { data, isPending } = useSession()
+  const { session, user } = data ?? {}
   const [log, setLog] = useState<string[]>([])
-  const prevSessionRef = useRef(session)
+  const prevSessionRef = useRef(data)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
-    // Clear log when user signs out (session changes from truthy to null)
-    if (prevSessionRef.current && !session && !isPending) {
+    if (prevSessionRef.current && !data && !isPending) {
       setLog([])
     }
-    prevSessionRef.current = session
-  }, [session, isPending])
+    prevSessionRef.current = data
+  }, [data, isPending])
 
   const addLog = (message: string, data?: unknown) => {
     const entry = data ? `${message}: ${JSON.stringify(data, null, 2)}` : message
@@ -95,7 +111,7 @@ function TestAuthPage() {
   }
 
   const handleCreateApiKey = async () => {
-    const orgId = session?.session?.activeOrganizationId
+    const orgId = session?.activeOrganizationId
     if (!orgId) {
       addLog('No active organization - set one first')
       return
@@ -145,89 +161,106 @@ function TestAuthPage() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    addLog('Deleting account...')
+    const { error } = await deleteUser()
+    if (error) {
+      addLog('Delete account error', error)
+    } else {
+      addLog('Account deleted successfully')
+      setTimeout(() => setLog([]), 500)
+    }
+    setDeleteDialogOpen(false)
+  }
+
   return (
     <div className="p-5 font-mono">
       <h1 className="text-2xl font-bold mb-4">Auth Test Page</h1>
 
-      <div className="mb-5 p-4 bg-gray-100 rounded">
+      <div className="mb-5 p-4 bg-muted rounded-lg">
         <h3 className="text-lg font-semibold mb-2">
-          Session Status: {isPending ? 'Loading...' : session ? 'Authenticated' : 'Not authenticated'}
+          Session Status: {isPending ? 'Loading...' : data ? 'Authenticated' : 'Not authenticated'}
         </h3>
         <pre className="text-xs overflow-auto">
-          {JSON.stringify(session, null, 2)}
+          {JSON.stringify(data, null, 2)}
         </pre>
       </div>
 
       <div className="flex gap-2 flex-wrap mb-5">
-        <button
-          onClick={handleSignUp}
-          disabled={!!session}
-          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Sign Up
-        </button>
-        <button
-          onClick={handleSignIn}
-          disabled={!!session}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Sign In
-        </button>
-        <button
-          onClick={handleSignOut}
-          disabled={!session}
-          className="p-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Sign Out
-        </button>
-        <button
-          onClick={handleCreateOrg}
-          disabled={!session || !!session?.session?.activeOrganizationId}
-          className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Create Org
-        </button>
-        <button
-          onClick={handleSetActiveOrg}
-          disabled={!session || !!session?.session?.activeOrganizationId}
-          className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Set Active Org
-        </button>
-        <button
-          onClick={handleCreateApiKey}
-          disabled={!session?.session?.activeOrganizationId}
-          className="p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Create API Key
-        </button>
-        <button
-          onClick={handleListApiKeys}
-          disabled={!session?.session?.activeOrganizationId}
-          className="p-2 bg-cyan-500 text-white rounded hover:bg-cyan-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          List API Keys
-        </button>
-        <button
-          onClick={handleDeleteApiKey}
-          disabled={!session?.session?.activeOrganizationId}
-          className="p-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Delete API Key
-        </button>
-        <button onClick={() => setLog([])} className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+        {!data && (
+          <>
+            <Button onClick={handleSignUp}>
+              Sign Up
+            </Button>
+            <Button onClick={handleSignIn} variant="outline">
+              Sign In
+            </Button>
+          </>
+        )}
+        {data && (
+          <>
+            <Button onClick={handleSignOut} variant="destructive">
+              Sign Out
+            </Button>
+            <Button onClick={handleCreateOrg} disabled={!!session?.activeOrganizationId} variant="secondary">
+              Create Org
+            </Button>
+            <Button onClick={handleSetActiveOrg} disabled={!!session?.activeOrganizationId} variant="secondary">
+              Set Active Org
+            </Button>
+            {session?.activeOrganizationId && (
+              <>
+                <Button onClick={handleCreateApiKey} variant="outline">
+                  Create API Key
+                </Button>
+                <Button onClick={handleListApiKeys} variant="outline">
+                  List API Keys
+                </Button>
+                <Button onClick={handleDeleteApiKey} variant="destructive-outline">
+                  Delete API Key
+                </Button>
+              </>
+            )}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger render={<Button variant="destructive" />}>
+                Delete Account
+              </AlertDialogTrigger>
+              <AlertDialogPopup>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete your account? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogClose render={<Button variant="outline" />}>
+                    Cancel
+                  </AlertDialogClose>
+                  <Button variant="destructive" onClick={handleDeleteAccount}>
+                    Delete Account
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogPopup>
+            </AlertDialog>
+          </>
+        )}
+        <Button onClick={() => setLog([])} variant="outline">
           Clear Log
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-black text-green-400 p-4 min-h-[18.75rem] overflow-auto rounded border border-gray-700">
-        <h3 className="text-white text-lg font-semibold mb-3">Log Output</h3>
-        {log.map((entry, i) => (
-          <pre key={i} className="my-1 whitespace-pre-wrap text-xs">
-            {entry}
-          </pre>
-        ))}
-      </div>
+      <Card className="min-h-[18.75rem] overflow-auto">
+        <CardHeader>
+          <CardTitle>Log Output</CardTitle>
+        </CardHeader>
+        <CardPanel>
+          {log.map((entry, i) => (
+            <pre key={i} className="whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
+              {entry}
+            </pre>
+          ))}
+        </CardPanel>
+      </Card>
     </div>
   )
 }

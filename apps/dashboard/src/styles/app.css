@@ -1,1 +1,2 @@
-@import "tailwindcss";
+@import "@von/ui/styles";
+@source "../../../../packages/ui/src";

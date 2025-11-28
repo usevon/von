@@ -1,54 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
-import { api } from '@/lib/api'
-import { useState, useEffect } from 'react'
+import { useWebhooks } from '@usevon/react/hooks'
+import { Button } from '@von/ui'
 
 export const Route = createFileRoute('/webhooks')({
   component: WebhooksPage,
 })
 
-type WebhookEvent = {
-  id: string
-  eventType: string
-  payload: unknown
-  status: string
-  createdAt: string
-}
-
 export default function WebhooksPage() {
-  const { data: session } = useSession()
-  const [events, setEvents] = useState<WebhookEvent[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data } = useSession()
+  const { session, user } = data ?? {}
+  const { events, isLoading, isConnected, error, refresh } = useWebhooks()
 
-  useEffect(() => {
-    if (session?.user) {
-      loadEvents()
-    }
-  }, [session])
-
-  const loadEvents = async () => {
-    if (!session?.user) {
-      return
-    }
-
-    setLoading(true)
-
-    const { data, error } = await api.webhooks.events.get({
-      query: { limit: 50, offset: 0 },
-      fetch: { credentials: 'include' },
-    })
-
-    setLoading(false)
-
-    if (error) {
-      console.error('Error loading events:', error)
-      return
-    }
-
-    setEvents(data.events)
-  }
-
-  if (!session?.user) {
+  if (!user) {
     return (
       <div className="p-5 font-mono">
         <h1 className="text-2xl font-bold mb-4">Webhooks</h1>
@@ -63,22 +27,29 @@ export default function WebhooksPage() {
 
       <div className="mb-5 p-4 bg-gray-100 rounded">
         <h3 className="text-lg font-semibold mb-2">
-          Session: {session ? 'Authenticated' : 'Not authenticated'}
+          Session: {data ? 'Authenticated' : 'Not authenticated'}
         </h3>
         <p className="text-sm text-gray-600 mb-2">
-          Active Org ID: {session?.session?.activeOrganizationId || 'None'}
+          Active Org ID: {session?.activeOrganizationId || 'None'}
+        </p>
+        <p className="text-sm text-gray-600">
+          WebSocket: <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </p>
       </div>
 
       <div className="mb-5">
-        <button
-          onClick={loadEvents}
-          disabled={loading}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Loading...' : 'Refresh Events'}
-        </button>
+        <Button onClick={refresh} disabled={isLoading} variant="secondary">
+          {isLoading ? 'Loading...' : 'Refresh Events'}
+        </Button>
       </div>
+
+      {error && (
+        <div className="mb-5 p-4 bg-red-100 text-red-700 rounded">
+          Error: {error.message}
+        </div>
+      )}
 
       <div className="p-4 border rounded">
         <h3 className="text-lg font-semibold mb-3">Webhook Events ({events.length})</h3>
