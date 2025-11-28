@@ -1,5 +1,5 @@
 import { Elysia } from "elysia"
-import { createAuth, type Auth } from "@von/auth"
+import { createAuth, type Auth, type Session, type User } from "@von/auth"
 import { getRedisClient } from "@von/queue"
 import { db } from "@von/db"
 import { env } from "@/env"
@@ -57,22 +57,23 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
   })
 
 export const withSession = new Elysia({ name: "session-auth" })
-  .resolve({ as: "scoped" }, async ({ headers }) => {
-    const session = await betterAuth.api.getSession({ headers })
-    if (!session) {
+  .resolve({ as: "scoped" }, async ({ headers }): Promise<{ user: User; session: Session["session"]; organizationId: string; userId: string }> => {
+    const data = await betterAuth.api.getSession({ headers })
+    if (!data) {
       throw new UnauthorizedError("Please sign in.")
     }
 
-    const organizationId = session.session?.activeOrganizationId
+    const { session, user } = data
+    const organizationId = session?.activeOrganizationId
     if (!organizationId) {
       throw new UnauthorizedError("No active organization.")
     }
 
     return {
-      user: session.user,
-      session: session.session,
+      user,
+      session,
       organizationId,
-      userId: session.user?.id ?? "",
+      userId: user?.id ?? "",
     }
   })
 
