@@ -1,12 +1,10 @@
-import { mergeProps } from "@base-ui-components/react/merge-props";
-import { useRender } from "@base-ui-components/react/use-render";
+import { Button as ButtonPrimitive } from "@base-ui-components/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border bg-clip-padding font-medium text-sm outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 disabled:select-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border bg-clip-padding font-medium text-sm outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background data-[disabled]:pointer-events-none data-[disabled]:opacity-64 data-[disabled]:select-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       size: "default",
@@ -29,42 +27,34 @@ const buttonVariants = cva(
       },
       variant: {
         default:
-          "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-primary bg-primary text-primary-foreground shadow-primary/24 shadow-xs hover:bg-primary/90 [&:is(:active,[data-pressed])]:inset-shadow-[0_1px_--theme(--color-black/8%)] [&:is(:disabled,:active,[data-pressed])]:shadow-none",
+          "not-data-[disabled]:inset-shadow-[0_1px_--theme(--color-white/16%)] border-primary bg-primary text-primary-foreground shadow-primary/24 shadow-xs hover:not-data-[disabled]:bg-primary/90 [&:is(:active,[data-pressed])]:inset-shadow-[0_1px_--theme(--color-black/8%)] [&:is([data-disabled],:active,[data-pressed])]:shadow-none",
         destructive:
-          "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-destructive bg-destructive text-white shadow-destructive/24 shadow-xs hover:bg-destructive/90 [&:is(:active,[data-pressed])]:inset-shadow-[0_1px_--theme(--color-black/8%)] [&:is(:disabled,:active,[data-pressed])]:shadow-none",
+          "not-data-[disabled]:inset-shadow-[0_1px_--theme(--color-white/16%)] border-destructive bg-destructive text-white shadow-destructive/24 shadow-xs hover:not-data-[disabled]:bg-destructive/90 [&:is(:active,[data-pressed])]:inset-shadow-[0_1px_--theme(--color-black/8%)] [&:is([data-disabled],:active,[data-pressed])]:shadow-none",
         "destructive-outline":
-          "border-border bg-transparent text-destructive-foreground shadow-xs not-disabled:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:not-in-data-[slot=group]:bg-clip-border dark:not-disabled:before:shadow-[0_-1px_--theme(--color-white/4%)] dark:not-disabled:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/8%)] [&:is(:disabled,:active,[data-pressed])]:shadow-none [&:is(:hover,[data-pressed])]:border-destructive/32 [&:is(:hover,[data-pressed])]:bg-destructive/4",
-        ghost: "border-transparent hover:bg-accent data-pressed:bg-accent",
+          "border-border bg-transparent text-destructive-foreground shadow-xs not-data-[disabled]:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:not-in-data-[slot=group]:bg-clip-border dark:not-data-[disabled]:before:shadow-[0_-1px_--theme(--color-white/4%)] dark:not-data-[disabled]:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/8%)] [&:is([data-disabled],:active,[data-pressed])]:shadow-none [&:is(:hover,[data-pressed])]:border-destructive/32 [&:is(:hover,[data-pressed])]:bg-destructive/4",
+        ghost: "border-transparent hover:not-data-[disabled]:bg-accent data-pressed:bg-accent",
         link: "border-transparent underline-offset-4 hover:underline",
         outline:
-          "border-border bg-background shadow-xs not-disabled:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:not-in-data-[slot=group]:bg-clip-border dark:not-disabled:before:shadow-[0_-1px_--theme(--color-white/4%)] dark:not-disabled:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/8%)] [&:is(:disabled,:active,[data-pressed])]:shadow-none [&:is(:hover,[data-pressed])]:bg-accent/50 dark:[&:is(:hover,[data-pressed])]:bg-input/64",
+          "border-border bg-background shadow-xs not-data-[disabled]:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:not-in-data-[slot=group]:bg-clip-border dark:not-data-[disabled]:before:shadow-[0_-1px_--theme(--color-white/4%)] dark:not-data-[disabled]:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/8%)] [&:is([data-disabled],:active,[data-pressed])]:shadow-none [&:is(:hover,[data-pressed])]:bg-accent/50 dark:[&:is(:hover,[data-pressed])]:bg-input/64",
         secondary:
-          "border-secondary bg-secondary text-secondary-foreground hover:bg-secondary/90 data-pressed:bg-secondary/90",
+          "border-secondary bg-secondary text-secondary-foreground hover:not-data-[disabled]:bg-secondary/90 data-pressed:bg-secondary/90",
       },
     },
   },
 );
 
-interface ButtonProps extends useRender.ComponentProps<"button"> {
-  variant?: VariantProps<typeof buttonVariants>["variant"];
-  size?: VariantProps<typeof buttonVariants>["size"];
-}
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants>;
 
-function Button({ className, variant, size, render, ...props }: ButtonProps) {
-  const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>["type"] =
-    render ? undefined : "button";
+function Button(props: ButtonProps) {
+  const { className, variant, size, ...rest } = props;
 
-  const defaultProps = {
-    className: cn(buttonVariants({ className, size, variant })),
-    "data-slot": "button",
-    type: typeValue,
-  };
-
-  return useRender({
-    defaultTagName: "button",
-    props: mergeProps<"button">(defaultProps, props),
-    render,
-  });
+  return (
+    <ButtonPrimitive
+      className={cn(buttonVariants({ className, size, variant }))}
+      data-slot="button"
+      {...rest}
+    />
+  );
 }
 
 export { Button, buttonVariants };
