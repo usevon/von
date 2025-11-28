@@ -38,10 +38,22 @@ export const createAuth = (
     emailAndPassword: {
       enabled: true,
     },
+    user: {
+      deleteUser: {
+        enabled: true,
+      },
+    },
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+      },
+    },
     experimental: {
       joins: true,
     },
     advanced: {
+      cookiePrefix: "von",
       database: {
         generateId: () => crypto.randomUUID(),
       },
@@ -81,6 +93,8 @@ export const createAuth = (
 }
 
 export type Auth = ReturnType<typeof createAuth>
+export type Session = Auth["$Infer"]["Session"]
+export type User = Session["user"]
 
 export { apiKey } from "@/plugins/api-key"
 export type { ApiKeyOptions, ApiKey } from "@/plugins/api-key"

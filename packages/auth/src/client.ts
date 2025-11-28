@@ -18,11 +18,9 @@ export const createAuthClient = (options: CreateAuthClientOptions) => {
     plugins: [organizationClient(), apiKeyClient()],
     fetchOptions: {
       query: {
+        // 5 minutes
         staleTime: 1000 * 60 * 5,
       },
     },
   })
 }
-
-export { organizationClient } from "better-auth/client/plugins"
-export { apiKeyClient } from "./plugins/api-key/client"
