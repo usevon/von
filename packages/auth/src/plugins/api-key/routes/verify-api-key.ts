@@ -1,7 +1,7 @@
 import { createAuthEndpoint, APIError } from "better-auth/api"
 import { z } from "zod"
 import type { ApiKey, PredefinedApiKeyOptions } from "../types"
-import { getApiKey, setApiKey, deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
+import { getApiKey, deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
 
 const API_KEY_TABLE_NAME = "apikey"
 

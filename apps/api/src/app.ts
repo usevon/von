@@ -8,8 +8,7 @@ import { checkRedisConnection } from "@von/queue"
 import { auth, withApiKey } from "@/modules/auth"
 import { endpoints } from "@/modules/endpoints"
 import { inbound, inboundPublic } from "@/modules/inbound"
-import { webhooks } from "@/modules/webhooks"
-import { websocket } from "@/websocket"
+import { webhooks, webhookEvents } from "@/modules/webhooks"
 import {
   UnauthorizedError,
   NotFoundError,
@@ -119,8 +118,8 @@ export const app = new Elysia({
   .use(ping)
   .use(inboundPublic)
   .use(webhooks)
+  .use(webhookEvents)
   .use(endpoints)
   .use(inbound)
-  .use(websocket)
 
 export type App = typeof app

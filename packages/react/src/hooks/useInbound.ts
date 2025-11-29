@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useWebSocketContext, useApiContext } from "../provider"
+import { useVonContext } from "../provider"
 
 type InboundEndpoint = {
   id: string
@@ -15,7 +15,6 @@ type InboundEndpoint = {
 type UseInboundResult = {
   endpoints: InboundEndpoint[]
   isLoading: boolean
-  isConnected: boolean
   error: Error | null
   refresh: () => Promise<void>
 }
@@ -24,14 +23,14 @@ export const useInbound = (): UseInboundResult => {
   const [endpoints, setEndpoints] = useState<InboundEndpoint[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const { isConnected, subscribe, unsubscribe } = useWebSocketContext()
-  const { apiUrl } = useApiContext()
+  const { apiUrl, getToken } = useVonContext()
 
   const fetchEndpoints = useCallback(async () => {
     try {
       setIsLoading(true)
+      const token = await getToken()
       const response = await fetch(`${apiUrl}/inbound`, {
-        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
 
       if (!response.ok) {
@@ -46,35 +45,15 @@ export const useInbound = (): UseInboundResult => {
     } finally {
       setIsLoading(false)
     }
-  }, [apiUrl])
+  }, [apiUrl, getToken])
 
   useEffect(() => {
     fetchEndpoints()
-
-    const handleUpdate = (data: unknown) => {
-      const endpoint = data as InboundEndpoint
-      setEndpoints((prev) => {
-        const existing = prev.findIndex((e) => e.id === endpoint.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = endpoint
-          return updated
-        }
-        return [endpoint, ...prev]
-      })
-    }
-
-    subscribe("inbound", handleUpdate)
-
-    return () => {
-      unsubscribe("inbound")
-    }
-  }, [fetchEndpoints, subscribe, unsubscribe])
+  }, [fetchEndpoints])
 
   return {
     endpoints,
     isLoading,
-    isConnected,
     error,
     refresh: fetchEndpoints,
   }

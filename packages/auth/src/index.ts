@@ -6,7 +6,7 @@
  */
 import { betterAuth } from "better-auth/minimal"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { organization } from "better-auth/plugins"
+import { organization, bearer } from "better-auth/plugins"
 import { apiKey } from "@/plugins/api-key"
 
 export type SecondaryStorage = {
@@ -59,6 +59,7 @@ export const createAuth = (
       },
     },
     plugins: [
+      bearer(),
       organization(),
       apiKey({
         storage: "secondary-storage",

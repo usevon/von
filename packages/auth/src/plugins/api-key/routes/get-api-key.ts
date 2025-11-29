@@ -4,7 +4,7 @@ import type { ApiKey, PredefinedApiKeyOptions } from "../types"
 
 const API_KEY_TABLE_NAME = "apikey"
 
-export function getApiKey({ opts }: { opts: PredefinedApiKeyOptions }) {
+export function getApiKey(_config: { opts: PredefinedApiKeyOptions }) {
   return createAuthEndpoint(
     "/api-key/get",
     {

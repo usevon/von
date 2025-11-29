@@ -57,22 +57,18 @@ export const withApiKey = new Elysia({ name: "api-key-auth" })
   })
 
 export const withSession = new Elysia({ name: "session-auth" })
-  .resolve({ as: "scoped" }, async ({ headers }): Promise<{ user: User; session: Session["session"]; organizationId: string; userId: string }> => {
-    const data = await betterAuth.api.getSession({ headers })
+  .resolve({ as: "scoped" }, async ({ headers }): Promise<{ user: User; session: Session["session"]; organizationId: string | null; userId: string }> => {
+    const data = await betterAuth.api.getSession({ headers: headers as HeadersInit })
     if (!data) {
       throw new UnauthorizedError("Please sign in.")
     }
 
     const { session, user } = data
-    const organizationId = session?.activeOrganizationId
-    if (!organizationId) {
-      throw new UnauthorizedError("No active organization.")
-    }
 
     return {
       user,
       session,
-      organizationId,
+      organizationId: session?.activeOrganizationId ?? null,
       userId: user?.id ?? "",
     }
   })

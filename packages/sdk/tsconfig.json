@@ -1,7 +1,10 @@
 {
   "extends": "@von/typescript-config",
   "compilerOptions": {
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "rootDir": "src"
   },
   "include": ["src"]
 }

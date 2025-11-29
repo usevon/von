@@ -5,15 +5,16 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./src/index.ts",
-      "types": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts"
     },
     "./schema": {
-      "import": "./src/schema.ts",
-      "types": "./src/schema.ts"
+      "types": "./dist/schema.d.ts",
+      "import": "./src/schema.ts"
     }
   },
   "scripts": {
+    "build:types": "tsc --emitDeclarationOnly",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

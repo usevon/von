@@ -2,6 +2,7 @@
 
 import { Select as SelectPrimitive } from "@base-ui-components/react/select";
 import {
+  CheckIcon,
   ChevronDownIcon,
   ChevronsUpDownIcon,
   ChevronUpIcon,
@@ -9,7 +10,18 @@ import {
 
 import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root;
+type SelectItem = {
+  label: string;
+  value: string | null;
+};
+
+type SelectProps = SelectPrimitive.Root.Props & {
+  items?: SelectItem[];
+};
+
+function Select({ items, ...props }: SelectProps) {
+  return <SelectPrimitive.Root {...props} />;
+}
 
 function SelectTrigger({
   className,
@@ -116,19 +128,7 @@ function SelectItem({
       {...props}
     >
       <SelectPrimitive.ItemIndicator className="col-start-1">
-        <svg
-          fill="none"
-          height="24"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          width="24"
-          xmlns="http://www.w3.org/1500/svg"
-        >
-          <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
-        </svg>
+        <CheckIcon className="size-4" />
       </SelectPrimitive.ItemIndicator>
       <SelectPrimitive.ItemText className="col-start-2 min-w-0">
         {children}

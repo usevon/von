@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useWebSocketContext, useApiContext } from "../provider"
+import { useVonContext } from "../provider"
 
 type WebhookEvent = {
   id: string
@@ -13,7 +13,6 @@ type WebhookEvent = {
 type UseWebhooksResult = {
   events: WebhookEvent[]
   isLoading: boolean
-  isConnected: boolean
   error: Error | null
   refresh: () => Promise<void>
 }
@@ -22,14 +21,14 @@ export const useWebhooks = (): UseWebhooksResult => {
   const [events, setEvents] = useState<WebhookEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const { isConnected, subscribe, unsubscribe } = useWebSocketContext()
-  const { apiUrl } = useApiContext()
+  const { apiUrl, getToken } = useVonContext()
 
   const fetchEvents = useCallback(async () => {
     try {
       setIsLoading(true)
+      const token = await getToken()
       const response = await fetch(`${apiUrl}/webhooks/events`, {
-        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
 
       if (!response.ok) {
@@ -44,35 +43,15 @@ export const useWebhooks = (): UseWebhooksResult => {
     } finally {
       setIsLoading(false)
     }
-  }, [apiUrl])
+  }, [apiUrl, getToken])
 
   useEffect(() => {
     fetchEvents()
-
-    const handleUpdate = (data: unknown) => {
-      const event = data as WebhookEvent
-      setEvents((prev) => {
-        const existing = prev.findIndex((e) => e.id === event.id)
-        if (existing >= 0) {
-          const updated = [...prev]
-          updated[existing] = event
-          return updated
-        }
-        return [event, ...prev]
-      })
-    }
-
-    subscribe("webhook_events", handleUpdate)
-
-    return () => {
-      unsubscribe("webhook_events")
-    }
-  }, [fetchEvents, subscribe, unsubscribe])
+  }, [fetchEvents])
 
   return {
     events,
     isLoading,
-    isConnected,
     error,
     refresh: fetchEvents,
   }
