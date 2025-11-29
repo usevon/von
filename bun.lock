@@ -169,7 +169,7 @@
     },
     "packages/react": {
       "name": "@usevon/react",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
         "@usevon/auth": "workspace:*",
         "swr": "^2.3.3",
@@ -186,11 +186,13 @@
     },
     "packages/sdk": {
       "name": "@usevon/sdk",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
         "zod": "^3.24.1",
       },
       "devDependencies": {
+        "@types/bun": "latest",
+        "@types/node": "^22.0.0",
         "@usevon/typescript-config": "workspace:*",
         "typescript": "^5.7.2",
       },
