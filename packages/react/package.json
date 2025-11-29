@@ -1,7 +1,16 @@
 {
   "name": "@usevon/react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "React hooks and context provider for Von",
+  "license": "MIT",
+  "author": "usevon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/usevon/von.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://usevon.com",
+  "keywords": ["webhooks", "react", "hooks", "typescript", "swr", "webhook-management"],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -34,5 +43,8 @@
     "@usevon/typescript-config": "workspace:*",
     "react": "^19.2.0",
     "typescript": "^5.7.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -15,7 +15,6 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "build:types": "tsc --emitDeclarationOnly && tsc-alias",
     "test": "bun test",
-    "benchmark": "bun run --env-file=.env tests/benchmark/index.ts",
     "db:generate": "bun --env-file=.env run --filter @usevon/db db:generate",
     "db:migrate": "bun --env-file=.env run --filter @usevon/db db:migrate",
     "db:push": "bun --env-file=.env run --filter @usevon/db db:push",
