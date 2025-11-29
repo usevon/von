@@ -34,6 +34,8 @@ const getCorsOrigins = () => {
 
 const corsMiddleware = cors({ origin: getCorsOrigins() })
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 const browserRoutes = new Elysia()
   .use(corsMiddleware)
   .use(auth)
@@ -95,6 +97,12 @@ export const app = new Elysia({
     console.error({ code, error })
     set.status = 500
     return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
+  })
+  .onBeforeHandle(async ({ path }) => {
+    const skipDelay = path.startsWith("/live") || path.startsWith("/ready") || path.startsWith("/api/auth")
+    if (env.NODE_ENV === "development" && !skipDelay) {
+      await delay(500)
+    }
   })
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {
