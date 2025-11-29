@@ -30,3 +30,6 @@ dist/
 
 # Turborepo
 .turbo
+
+# Vite
+.vite
