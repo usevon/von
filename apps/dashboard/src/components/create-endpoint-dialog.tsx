@@ -16,7 +16,7 @@ import {
   FieldLabel,
   FieldDescription,
   Input,
-} from '@von/ui'
+} from '@usevon/ui'
 
 type CreateEndpointDialogProps = {
   onCreated: () => void

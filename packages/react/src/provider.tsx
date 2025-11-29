@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react"
 import type { ReactNode } from "react"
-import { getBearerToken } from "@von/auth/client"
+import { getBearerToken } from "@usevon/auth/client"
 
 type Credentials =
   | { type: "bearer"; token: string }

@@ -1,4 +1,4 @@
-# Von - @von/ui
+# Von - @usevon/ui
 
 <p align="center">
   <a href="../../../LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
@@ -13,14 +13,14 @@ Built on top of [coss ui](https://coss.com/ui) (Base UI + Tailwind CSS v4).
 ## Installation
 
 ```bash
-bun add @von/ui
+bun add @usevon/ui
 ```
 
 ## Usage
 
 ```typescript
-import { Button } from '@von/ui';
-import '@von/ui/styles';
+import { Button } from '@usevon/ui';
+import '@usevon/ui/styles';
 
 const App = () => {
   return <Button variant="default">Click me</Button>;

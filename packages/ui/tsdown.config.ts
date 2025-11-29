@@ -1,4 +1,4 @@
-import { defineConfig, reactConfig } from '@von/typescript-config/tsdown'
+import { defineConfig, reactConfig } from '@usevon/typescript-config/tsdown'
 
 export default defineConfig({
   ...reactConfig,

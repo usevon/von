@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Button } from '@von/ui';
+import { Button } from '@usevon/ui';
 
 const App = () => {
   return (

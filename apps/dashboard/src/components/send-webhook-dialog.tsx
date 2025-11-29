@@ -23,7 +23,7 @@ import {
   SelectValue,
   SelectPopup,
   SelectItem as SelectItemType,
-} from '@von/ui'
+} from '@usevon/ui'
 
 type SendWebhookDialogProps = {
   onSent: () => void

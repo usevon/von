@@ -1,5 +1,5 @@
 {
-  "name": "@von/db",
+  "name": "@usevon/db",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -21,13 +21,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@von/env": "workspace:*",
+    "@usevon/env": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "drizzle-kit": "^0.31.7",
     "typescript": "^5.7.2"
   }

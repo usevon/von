@@ -1,8 +1,8 @@
 import { eq, and } from "drizzle-orm"
-import { db } from "@von/db"
-import { inboundEndpoint, inboundDelivery } from "@von/db/schema"
-import { getInboundForwardingQueue } from "@von/queue"
-import { generateId } from "@von/auth"
+import { db } from "@usevon/db"
+import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
+import { getInboundForwardingQueue } from "@usevon/queue"
+import { generateId } from "@usevon/auth"
 import { InternalServerError, NotFoundError } from "@/lib/errors"
 import type { InboundModel } from "./model"
 

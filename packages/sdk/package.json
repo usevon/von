@@ -22,7 +22,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

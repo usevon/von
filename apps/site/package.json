@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.136.1",
-    "@von/ui": "workspace:*",
+    "@usevon/ui": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

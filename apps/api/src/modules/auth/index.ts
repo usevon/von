@@ -1,7 +1,7 @@
 import { Elysia } from "elysia"
-import { createAuth, type Auth, type Session, type User } from "@von/auth"
-import { getRedisClient } from "@von/queue"
-import { db } from "@von/db"
+import { createAuth, type Auth, type Session, type User } from "@usevon/auth"
+import { getRedisClient } from "@usevon/queue"
+import { db } from "@usevon/db"
 import { env } from "@/env"
 import { UnauthorizedError } from "@/lib/errors"
 

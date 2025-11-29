@@ -14,7 +14,7 @@ import {
   EmptyDescription,
   EmptyContent,
   Spinner,
-} from "@von/ui";
+} from "@usevon/ui";
 
 export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
