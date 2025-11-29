@@ -25,12 +25,15 @@
   ],
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun && tsc",
-    "dev": "bun build src/index.ts --outdir dist --watch"
+    "dev": "bun build src/index.ts --outdir dist --watch",
+    "test": "bun test"
   },
   "dependencies": {
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0",
     "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   },

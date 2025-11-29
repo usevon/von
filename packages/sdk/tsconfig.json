@@ -2,9 +2,14 @@
   "extends": "@usevon/typescript-config",
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
+    "types": ["node"],
     "emitDeclarationOnly": true,
+    "baseUrl": ".",
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src"]
 }
