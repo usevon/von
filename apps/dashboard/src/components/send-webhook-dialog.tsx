@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
   SelectPopup,
-  SelectItem,
+  SelectItem as SelectItemType,
 } from '@von/ui'
 
 type SendWebhookDialogProps = {
@@ -30,10 +30,16 @@ type SendWebhookDialogProps = {
   disabled?: boolean
 }
 
+type SelectItem = {
+  label: string
+  value: string | null
+}
+
 export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [jsonError, setJsonError] = useState<string | null>(null)
+  const [selectedEndpoint, setSelectedEndpoint] = useState<SelectItem | null>(null)
   const { endpoints, isLoading: endpointsLoading } = useEndpoints()
 
   const enabledEndpoints = endpoints.filter((e) => e.enabled)
@@ -45,8 +51,9 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
     return 'Select an endpoint'
   }
 
-  const items = [
-    { label: getPlaceholderLabel(), value: null },
+  const placeholderItem = { label: getPlaceholderLabel(), value: null }
+  const items: SelectItem[] = [
+    placeholderItem,
     ...enabledEndpoints.map((e) => ({ label: e.url, value: e.id })),
   ]
 
@@ -70,10 +77,8 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
     const formData = new FormData(e.currentTarget)
     const eventType = formData.get('eventType') as string
     const payloadJson = formData.get('payload') as string
-    const endpointValue = formData.get('endpoint') as string
-    const endpoint = endpointValue ? JSON.parse(endpointValue) : null
 
-    if (!endpoint?.value) {
+    if (!selectedEndpoint?.value) {
       return
     }
 
@@ -87,7 +92,7 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
       {
         eventType,
         payload: JSON.parse(payloadJson),
-        endpointIds: [endpoint.value],
+        endpointIds: [selectedEndpoint.value],
       },
       { fetch: { credentials: 'include' } }
     )
@@ -101,6 +106,7 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
 
     setOpen(false)
     setJsonError(null)
+    setSelectedEndpoint(null)
     props.onSent()
   }
 
@@ -118,20 +124,19 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
               <FieldLabel>Endpoint</FieldLabel>
               <Select
                 aria-label="Select endpoint"
-                defaultValue={items[0]}
+                value={selectedEndpoint ?? placeholderItem}
+                onValueChange={setSelectedEndpoint}
                 disabled={endpointsLoading || hasNoEndpoints}
                 items={items}
-                name="endpoint"
-                required
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectPopup alignItemWithTrigger={false}>
                   {items.map((item) => (
-                    <SelectItem key={item.value} value={item}>
+                    <SelectItemType key={item.value} value={item}>
                       {item.label}
-                    </SelectItem>
+                    </SelectItemType>
                   ))}
                 </SelectPopup>
               </Select>

@@ -5,7 +5,7 @@ import { WebhookModel } from "./model"
 import { WebhookService } from "./service"
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
-  .use(withApiKey)
+  .use(withSession)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
