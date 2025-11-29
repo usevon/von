@@ -1,1 +1,1 @@
-export { VonProvider } from "./provider"
+export { VonProvider, useVonContext } from "./provider"

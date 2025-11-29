@@ -23,7 +23,7 @@ export const Route = createFileRoute('/test-auth')({
 
 function TestAuthPage() {
   const { data, isPending } = useSession()
-  const { session, user } = data ?? {}
+  const { session } = data ?? {}
   const [log, setLog] = useState<string[]>([])
   const prevSessionRef = useRef(data)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -202,12 +202,16 @@ function TestAuthPage() {
             <Button onClick={handleSignOut} variant="destructive">
               Sign Out
             </Button>
-            <Button onClick={handleCreateOrg} disabled={!!session?.activeOrganizationId} variant="secondary">
-              Create Org
-            </Button>
-            <Button onClick={handleSetActiveOrg} disabled={!!session?.activeOrganizationId} variant="secondary">
-              Set Active Org
-            </Button>
+            {!session?.activeOrganizationId && (
+              <>
+                <Button onClick={handleCreateOrg} variant="secondary">
+                  Create Org
+                </Button>
+                <Button onClick={handleSetActiveOrg} variant="secondary">
+                  Set Active Org
+                </Button>
+              </>
+            )}
             {session?.activeOrganizationId && (
               <>
                 <Button onClick={handleCreateApiKey} variant="outline">

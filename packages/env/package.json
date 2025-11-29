@@ -6,10 +6,13 @@
   "main": "./src/index.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./src/index.ts",
-      "types": "./src/index.ts",
       "default": "./src/index.ts"
     }
+  },
+  "scripts": {
+    "build:types": "tsc --emitDeclarationOnly"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.11.1",

@@ -1,6 +1,7 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withApiKey, withSession } from "@/modules/auth"
+import { withSession } from "@/modules/auth"
+import { BadRequestError } from "@/lib/errors"
 import { EndpointModel } from "./model"
 import { EndpointService } from "./service"
 
@@ -9,6 +10,7 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .post(
     "/",
     async ({ organizationId, body, set }) => {
+      if (!organizationId) throw new BadRequestError("No active organization")
       set.status = 201
       return EndpointService.create({
         organizationId,
@@ -23,6 +25,7 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .get(
     "/",
     async ({ organizationId, query }) => {
+      if (!organizationId) return { endpoints: [], total: 0 }
       return EndpointService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
     },
     {
@@ -33,6 +36,7 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .get(
     "/:id",
     async ({ organizationId, params, status }) => {
+      if (!organizationId) return status(404, { error: "Endpoint not found" })
       const endpoint = await EndpointService.getById(organizationId, params.id)
 
       if (!endpoint) {
@@ -52,6 +56,7 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .patch(
     "/:id",
     async ({ organizationId, params, body, status }) => {
+      if (!organizationId) return status(404, { error: "Endpoint not found" })
       const endpoint = await EndpointService.update({
         organizationId,
         endpointId: params.id,
@@ -75,14 +80,18 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   )
   .delete(
     "/:id",
-    async ({ organizationId, params }) => {
+    async ({ organizationId, params, status }) => {
+      if (!organizationId) return status(404, { error: "Endpoint not found" })
       await EndpointService.delete(organizationId, params.id)
 
       return { success: true }
     },
     {
       params: IdParam,
-      response: SuccessResponse,
+      response: {
+        200: SuccessResponse,
+        404: ErrorResponse,
+      },
     }
   )
 

@@ -1,90 +1,136 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useSession } from '@/lib/auth/client'
-import { useWebhooks } from '@usevon/react/hooks'
-import { Button } from '@von/ui'
+import { useSession } from "@/lib/auth/client";
+import { useWebhooks } from "@usevon/react/hooks";
+import {
+  Button,
+  Card,
+  CardPanel,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  Spinner,
+} from "@von/ui";
+import { Webhook, Building2 } from "lucide-react";
+import { SendWebhookDialog } from "@/components/send-webhook-dialog";
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/webhooks')({
+export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
-})
+});
 
 export default function WebhooksPage() {
-  const { data } = useSession()
-  const { session, user } = data ?? {}
-  const { events, isLoading, isConnected, error, refresh } = useWebhooks()
+  const { data } = useSession();
+  const { session, user } = data ?? {};
+  const { events, isLoading, error, refresh } = useWebhooks();
+
+  const isDisabled = !user || !session?.activeOrganizationId;
 
   if (!user) {
     return (
-      <div className="p-5 font-mono">
-        <h1 className="text-2xl font-bold mb-4">Webhooks</h1>
-        <p className="text-gray-600">Please sign in to view webhook events.</p>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Webhook className="size-4.5" />
+          </EmptyMedia>
+          <EmptyTitle>Sign in required</EmptyTitle>
+          <EmptyDescription>Please sign in to view webhook events.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  if (!session?.activeOrganizationId) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Building2 className="size-4.5" />
+          </EmptyMedia>
+          <EmptyTitle>No organization</EmptyTitle>
+          <EmptyDescription>Create an organization to start sending webhooks.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button>Create Organization</Button>
+        </EmptyContent>
+      </Empty>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Spinner className="size-4.5" />
+          </EmptyMedia>
+          <EmptyTitle>Loading webhook events...</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-100 text-red-700 rounded">
+        Error: {error.message}
       </div>
-    )
+    );
   }
 
   return (
-    <div className="p-5 font-mono">
-      <h1 className="text-2xl font-bold mb-4">Webhook Events</h1>
-
-      <div className="mb-5 p-4 bg-gray-100 rounded">
-        <h3 className="text-lg font-semibold mb-2">
-          Session: {data ? 'Authenticated' : 'Not authenticated'}
-        </h3>
-        <p className="text-sm text-gray-600 mb-2">
-          Active Org ID: {session?.activeOrganizationId || 'None'}
-        </p>
-        <p className="text-sm text-gray-600">
-          WebSocket: <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-        </p>
-      </div>
-
-      <div className="mb-5">
-        <Button onClick={refresh} disabled={isLoading} variant="secondary">
-          {isLoading ? 'Loading...' : 'Refresh Events'}
-        </Button>
-      </div>
-
-      {error && (
-        <div className="mb-5 p-4 bg-red-100 text-red-700 rounded">
-          Error: {error.message}
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Webhook Events</h1>
+        <div className="flex gap-2">
+          <SendWebhookDialog disabled={isDisabled} onSent={refresh} />
+          <Button onClick={refresh} disabled={isLoading || isDisabled} variant="secondary">
+            Refresh
+          </Button>
         </div>
-      )}
+      </div>
 
-      <div className="p-4 border rounded">
-        <h3 className="text-lg font-semibold mb-3">Webhook Events ({events.length})</h3>
-        {events.length === 0 ? (
-          <p className="text-gray-500">No events yet. Send a webhook via the API to see it here.</p>
-        ) : (
-          <div className="space-y-2">
-            {events.map((event) => (
-              <div key={event.id} className="p-3 bg-gray-50 rounded border">
+      {events.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Webhook className="size-4.5" />
+            </EmptyMedia>
+            <EmptyTitle>No webhook events</EmptyTitle>
+            <EmptyDescription>Send a webhook via the API to see it here.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="space-y-4">
+          {events.map((event) => (
+            <Card key={event.id}>
+              <CardPanel>
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-semibold">{event.eventType}</span>
                   <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      event.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : event.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                    }`}
+                    className={`px-2 py-1 text-xs rounded ${event.status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : event.status === "completed"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {event.status}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 mb-2">ID: {event.id}</p>
-                <pre className="text-xs bg-white p-2 rounded overflow-auto">
+                <p className="text-xs text-muted-foreground mb-2">ID: {event.id}</p>
+                <pre className="text-xs bg-muted p-2 rounded overflow-auto">
                   {JSON.stringify(event.payload, null, 2)}
                 </pre>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   {new Date(event.createdAt).toLocaleString()}
                 </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              </CardPanel>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
-  )
+  );
 }

@@ -4,6 +4,7 @@ import { Dialog as DialogPrimitive } from "@base-ui-components/react/dialog";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -84,7 +85,7 @@ function DialogHeader({
   return (
     <div
       className={cn(
-        "grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-3 max-sm:pb-4 [&_[data-slot=dialog-description]]:col-span-full",
+        "grid grid-cols-[1fr_auto] gap-x-4 p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-2 max-sm:pb-4 [&_[data-slot=dialog-description]]:col-span-full",
         className,
       )}
       data-slot="dialog-header"
@@ -92,7 +93,10 @@ function DialogHeader({
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close className="row-start-1 col-start-2 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent opacity-72 outline-none transition-[color,background-color,box-shadow,opacity] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background [&_svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0">
+        <DialogPrimitive.Close
+          className="row-start-1 col-start-2"
+          render={<Button variant="ghost" size="icon-sm" />}
+        >
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -113,8 +117,7 @@ function DialogFooter({
       className={cn(
         "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end sm:rounded-b-xl",
         variant === "default" && "border-t bg-muted/50 py-4",
-        variant === "bare" &&
-          "in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pt-3 pt-4 pb-6",
+        variant === "bare" && "pb-6",
         className,
       )}
       data-slot="dialog-footer"

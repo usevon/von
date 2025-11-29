@@ -1,8 +1,10 @@
 {
   "extends": "@von/typescript-config",
   "compilerOptions": {
-    "noEmit": true,
+    "composite": true,
     "baseUrl": ".",
+    "outDir": "dist",
+    "rootDir": "src",
     "paths": { "@/*": ["src/*"] }
   },
   "include": ["src"]

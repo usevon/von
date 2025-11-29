@@ -4,7 +4,6 @@ import { event, delivery } from "@von/db/schema"
 import { getWebhookDeliveryQueue } from "@von/queue"
 import { InternalServerError } from "@/lib/errors"
 import { EndpointService } from "@/modules/endpoints"
-import { publish } from "@/websocket/server"
 import type { WebhookModel } from "./model"
 
 type CreateEventParams = {
@@ -113,7 +112,7 @@ export abstract class WebhookService {
         await queue.addBulk(jobs)
       }
 
-      const result = {
+      return {
         id: newEvent.id,
         eventType: newEvent.eventType,
         payload: JSON.parse(newEvent.payload),
@@ -121,10 +120,6 @@ export abstract class WebhookService {
         status: "pending",
         createdAt: newEvent.createdAt.toISOString(),
       }
-
-      publish(`webhook_events:${params.organizationId}`, result)
-
-      return result
     } catch (error) {
       console.error("Error creating webhook event:", error)
       throw new InternalServerError("Failed to create webhook event")
