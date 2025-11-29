@@ -2,11 +2,13 @@
   "extends": "@usevon/typescript-config",
   "compilerOptions": {
     "composite": true,
+    "types": ["node"],
     "baseUrl": ".",
     "outDir": "dist",
     "rootDir": "src",
-    "paths": { "@/*": ["src/*"] },
-    "types": ["node"]
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["drizzle.config.ts"]
