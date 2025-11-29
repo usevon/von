@@ -1,10 +1,10 @@
 import { Worker, Job } from "bullmq"
 import { eq } from "drizzle-orm"
 import { createHmac } from "crypto"
-import { db } from "@von/db"
-import { inboundDelivery, inboundEndpoint } from "@von/db/schema"
-import { createConnection, type InboundForwardingJob } from "@von/queue"
-import { createLogger } from "@von/logger/elysia"
+import { db } from "@usevon/db"
+import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema"
+import { createConnection, type InboundForwardingJob } from "@usevon/queue"
+import { createLogger } from "@usevon/logger/elysia"
 import { env } from "@/env"
 
 const log = createLogger({

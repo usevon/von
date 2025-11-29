@@ -2,8 +2,8 @@ import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
 
 import { env } from "@/env"
-import { checkDatabaseConnection } from "@von/db"
-import { checkRedisConnection } from "@von/queue"
+import { checkDatabaseConnection } from "@usevon/db"
+import { checkRedisConnection } from "@usevon/queue"
 
 import { auth, withApiKey } from "@/modules/auth"
 import { endpoints } from "@/modules/endpoints"

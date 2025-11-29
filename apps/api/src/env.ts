@@ -1,4 +1,4 @@
-import { createEnv, z } from "@von/env"
+import { createEnv, z } from "@usevon/env"
 
 export const env = createEnv({
   server: {

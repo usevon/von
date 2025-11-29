@@ -1,5 +1,5 @@
 {
-  "name": "@von/ui",
+  "name": "@usevon/ui",
   "version": "0.0.0",
   "private": true,
   "description": "Shared React components for Von - built on coss ui (Base UI + Tailwind)",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.17",

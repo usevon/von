@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
   CardPanel,
-} from '@von/ui'
+} from '@usevon/ui'
 
 export const Route = createFileRoute('/test-auth')({
   component: TestAuthPage,

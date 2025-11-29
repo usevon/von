@@ -1,5 +1,5 @@
 {
-  "name": "@von/api",
+  "name": "@usevon/api",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -16,26 +16,26 @@
     "build:types": "tsc --emitDeclarationOnly && tsc-alias",
     "test": "bun test",
     "benchmark": "bun run --env-file=.env tests/benchmark/index.ts",
-    "db:generate": "bun --env-file=.env run --filter @von/db db:generate",
-    "db:migrate": "bun --env-file=.env run --filter @von/db db:migrate",
-    "db:push": "bun --env-file=.env run --filter @von/db db:push",
-    "db:studio": "bun --env-file=.env run --filter @von/db db:studio"
+    "db:generate": "bun --env-file=.env run --filter @usevon/db db:generate",
+    "db:migrate": "bun --env-file=.env run --filter @usevon/db db:migrate",
+    "db:push": "bun --env-file=.env run --filter @usevon/db db:push",
+    "db:studio": "bun --env-file=.env run --filter @usevon/db db:studio"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.0",
     "@elysiajs/server-timing": "^1.4.0",
-    "@von/auth": "workspace:*",
-    "@von/db": "workspace:*",
-    "@von/env": "workspace:*",
-    "@von/logger": "workspace:*",
-    "@von/queue": "workspace:*",
+    "@usevon/auth": "workspace:*",
+    "@usevon/db": "workspace:*",
+    "@usevon/env": "workspace:*",
+    "@usevon/logger": "workspace:*",
+    "@usevon/queue": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.16",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

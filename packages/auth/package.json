@@ -1,5 +1,5 @@
 {
-  "name": "@von/auth",
+  "name": "@usevon/auth",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@better-auth/cli": "^1.4.2",
     "@types/node": "^22.0.0",
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

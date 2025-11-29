@@ -1,5 +1,5 @@
 {
-  "name": "@von/queue",
+  "name": "@usevon/queue",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,12 +13,12 @@
     "build:types": "tsc --emitDeclarationOnly"
   },
   "dependencies": {
-    "@von/env": "workspace:*",
+    "@usevon/env": "workspace:*",
     "bullmq": "^5.64.1",
     "ioredis": "^5.8.2"
   },
   "devDependencies": {
-    "@von/typescript-config": "workspace:*",
+    "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"
   }
 }

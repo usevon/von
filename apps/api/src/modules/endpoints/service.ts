@@ -1,7 +1,7 @@
 import { eq, and } from "drizzle-orm"
-import { db } from "@von/db"
-import { endpoint } from "@von/db/schema"
-import { generateId } from "@von/auth"
+import { db } from "@usevon/db"
+import { endpoint } from "@usevon/db/schema"
+import { generateId } from "@usevon/auth"
 import { InternalServerError, NotFoundError } from "@/lib/errors"
 import type { EndpointModel } from "./model"
 

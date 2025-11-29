@@ -1,5 +1,5 @@
 {
-  "extends": "@von/typescript-config",
+  "extends": "@usevon/typescript-config",
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
