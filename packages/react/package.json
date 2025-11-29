@@ -23,7 +23,8 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@von/auth": "workspace:*"
+    "@von/auth": "workspace:*",
+    "swr": "^2.3.3"
   },
   "peerDependencies": {
     "react": "^19.2.0"

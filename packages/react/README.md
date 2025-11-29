@@ -1,11 +1,6 @@
-# Von - @usevon/react
+# @usevon/react
 
-<p align="center">
-  <a href="../../../LICENSE-MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19+-blue.svg" alt="React"></a>
-</p>
-
-React hooks and context provider for Von.
+React hooks and provider for Von webhook management.
 
 ## Installation
 
@@ -13,49 +8,75 @@ React hooks and context provider for Von.
 bun add @usevon/react
 ```
 
-## Usage
+## Setup
 
-### Setup Provider
+```tsx
+import { VonProvider } from "@usevon/react"
 
-Wrap your app with `VonProvider`:
+// API key auth (SDK users)
+<VonProvider apiUrl="https://api.usevon.com" apiKey="von_live_xxx">
+  <App />
+</VonProvider>
 
-```typescript
-import { VonProvider } from '@usevon/react';
+// Session cookie auth (dashboard)
+<VonProvider apiUrl="/api" useSession>
+  <App />
+</VonProvider>
+```
 
-const App = () => {
+## Hooks
+
+### useEndpoints
+
+```tsx
+const { endpoints, isLoading, isRefreshing, error, refresh, mutate } = useEndpoints()
+```
+
+### useInbound
+
+```tsx
+const { endpoints, isLoading, isRefreshing, error, refresh, mutate } = useInbound()
+```
+
+### useWebhooks
+
+```tsx
+const { events, isLoading, isRefreshing, error, refresh, mutate } = useWebhooks()
+```
+
+## Example
+
+```tsx
+import { useEndpoints } from "@usevon/react/hooks"
+
+const EndpointList = () => {
+  const { endpoints, isLoading, isRefreshing, refresh, mutate } = useEndpoints()
+
+  const toggle = async (id: string, enabled: boolean) => {
+    mutate(
+      endpoints.map(e => e.id === id ? { ...e, enabled: !enabled } : e),
+      { revalidate: false }
+    )
+    await api.endpoints({ id }).patch({ enabled: !enabled })
+    mutate()
+  }
+
+  if (isLoading) return <div>Loading...</div>
+
   return (
-    <VonProvider apiUrl="http://localhost:3000" apiKey="your-api-key">
-      <YourApp />
-    </VonProvider>
-  );
-};
+    <div>
+      {endpoints.map(endpoint => (
+        <div key={endpoint.id}>
+          <span>{endpoint.url}</span>
+          <button onClick={() => toggle(endpoint.id, endpoint.enabled)}>
+            {endpoint.enabled ? "Disable" : "Enable"}
+          </button>
+        </div>
+      ))}
+      <button onClick={refresh} disabled={isRefreshing}>
+        {isRefreshing ? "Refreshing..." : "Refresh"}
+      </button>
+    </div>
+  )
+}
 ```
-
-### Use in Components
-
-Access the SDK using `useVon` hook:
-
-```typescript
-import { useVon } from '@usevon/react';
-
-const SendWebhook = () => {
-  const von = useVon();
-
-  const handleSend = async () => {
-    const result = await von.send({
-      to: 'https://customer.com/webhook',
-      event: 'order.created',
-      data: { orderId: '123' },
-    });
-
-    console.log(result);
-  };
-
-  return <button onClick={handleSend}>Send Webhook</button>;
-};
-```
-
-## License
-
-MIT - see [LICENSE-MIT](../../../LICENSE-MIT)
-
