@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
 import { api } from '@/lib/api'
-import { useState } from 'react'
 import { useEndpoints } from '@usevon/react/hooks'
 import { Globe, Building2 } from 'lucide-react'
 import { CreateEndpointDialog } from '@/components/create-endpoint-dialog'
@@ -33,42 +32,41 @@ export const Route = createFileRoute('/endpoints')({
 export default function EndpointsPage() {
   const { data } = useSession()
   const { session, user } = data ?? {}
-  const { endpoints, isLoading, error, refresh } = useEndpoints()
-  const [loadingEndpointId, setLoadingEndpointId] = useState<string | null>(null)
+  const { endpoints, isLoading, isRefreshing, error, refresh, mutate } = useEndpoints()
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
-    setLoadingEndpointId(id)
+    mutate(
+      endpoints.map(e => e.id === id ? { ...e, enabled: !currentEnabled } : e),
+      { revalidate: false }
+    )
 
     const { error } = await api.endpoints({ id }).patch(
       { enabled: !currentEnabled },
       { fetch: { credentials: 'include' } }
     )
 
-    setLoadingEndpointId(null)
-
     if (error) {
       console.error('Error toggling endpoint:', error)
-      return
     }
 
-    refresh()
+    mutate()
   }
 
   const deleteEndpoint = async (id: string) => {
-    setLoadingEndpointId(id)
+    mutate(
+      endpoints.filter(e => e.id !== id),
+      { revalidate: false }
+    )
 
     const { error } = await api.endpoints({ id }).delete(null, {
       fetch: { credentials: 'include' },
     })
 
-    setLoadingEndpointId(null)
-
     if (error) {
       console.error('Error deleting endpoint:', error)
-      return
     }
 
-    refresh()
+    mutate()
   }
 
   const isDisabled = !user || !session?.activeOrganizationId
@@ -113,7 +111,11 @@ export default function EndpointsPage() {
               <Spinner className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Loading endpoints...</EmptyTitle>
+            <EmptyDescription>Fetching your webhook endpoints.</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <Button disabled>Create Endpoint</Button>
+          </EmptyContent>
         </Empty>
       )
     }
@@ -168,14 +170,13 @@ export default function EndpointsPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={() => toggleEndpoint(endpoint.id, endpoint.enabled)}
-                    disabled={loadingEndpointId === endpoint.id}
                     variant="outline"
                     size="sm"
                   >
-                    {loadingEndpointId === endpoint.id ? '...' : endpoint.enabled ? 'Disable' : 'Enable'}
+                    {endpoint.enabled ? 'Disable' : 'Enable'}
                   </Button>
                   <AlertDialog>
-                    <AlertDialogTrigger render={<Button variant="destructive" size="sm" disabled={loadingEndpointId === endpoint.id} />}>
+                    <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
                       Delete
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
@@ -190,7 +191,7 @@ export default function EndpointsPage() {
                           Cancel
                         </AlertDialogClose>
                         <Button variant="destructive" onClick={() => deleteEndpoint(endpoint.id)}>
-                          {loadingEndpointId === endpoint.id ? 'Deleting...' : 'Delete'}
+                          Delete
                         </Button>
                       </AlertDialogFooter>
                     </AlertDialogPopup>
@@ -227,9 +228,9 @@ export default function EndpointsPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Webhook Endpoints</h1>
         <div className="flex gap-2">
-          <CreateEndpointDialog onCreated={refresh} disabled={isDisabled} />
-          <Button onClick={refresh} disabled={isLoading || isDisabled} variant="secondary">
-            Refresh
+          <CreateEndpointDialog onCreated={refresh} disabled={isLoading || isDisabled} />
+          <Button onClick={refresh} disabled={isLoading || isRefreshing || isDisabled} variant="secondary">
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>

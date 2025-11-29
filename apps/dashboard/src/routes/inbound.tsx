@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth/client'
 import { api } from '@/lib/api'
-import { useState } from 'react'
 import { useInbound } from '@usevon/react/hooks'
 import { Download, Building2 } from 'lucide-react'
 import { CreateInboundDialog } from '@/components/create-inbound-dialog'
@@ -33,42 +32,41 @@ export const Route = createFileRoute('/inbound')({
 export default function InboundPage() {
   const { data } = useSession()
   const { session, user } = data ?? {}
-  const { endpoints, isLoading, error, refresh } = useInbound()
-  const [loadingEndpointId, setLoadingEndpointId] = useState<string | null>(null)
+  const { endpoints, isLoading, isRefreshing, error, refresh, mutate } = useInbound()
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
-    setLoadingEndpointId(id)
+    mutate(
+      endpoints.map(e => e.id === id ? { ...e, enabled: !currentEnabled } : e),
+      { revalidate: false }
+    )
 
     const { error } = await api.inbound({ id }).patch(
       { enabled: !currentEnabled },
       { fetch: { credentials: 'include' } }
     )
 
-    setLoadingEndpointId(null)
-
     if (error) {
       console.error('Error toggling inbound endpoint:', error)
-      return
     }
 
-    refresh()
+    mutate()
   }
 
   const deleteEndpoint = async (id: string) => {
-    setLoadingEndpointId(id)
+    mutate(
+      endpoints.filter(e => e.id !== id),
+      { revalidate: false }
+    )
 
     const { error } = await api.inbound({ id }).delete(null, {
       fetch: { credentials: 'include' },
     })
 
-    setLoadingEndpointId(null)
-
     if (error) {
       console.error('Error deleting inbound endpoint:', error)
-      return
     }
 
-    refresh()
+    mutate()
   }
 
   const isDisabled = !user || !session?.activeOrganizationId
@@ -113,7 +111,11 @@ export default function InboundPage() {
               <Spinner className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Loading inbound endpoints...</EmptyTitle>
+            <EmptyDescription>Fetching your inbound endpoints.</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <Button disabled>Create Inbound Endpoint</Button>
+          </EmptyContent>
         </Empty>
       )
     }
@@ -173,14 +175,13 @@ export default function InboundPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={() => toggleEndpoint(endpoint.id, endpoint.enabled)}
-                    disabled={loadingEndpointId === endpoint.id}
                     variant="outline"
                     size="sm"
                   >
-                    {loadingEndpointId === endpoint.id ? '...' : endpoint.enabled ? 'Disable' : 'Enable'}
+                    {endpoint.enabled ? 'Disable' : 'Enable'}
                   </Button>
                   <AlertDialog>
-                    <AlertDialogTrigger render={<Button variant="destructive" size="sm" disabled={loadingEndpointId === endpoint.id} />}>
+                    <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
                       Delete
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
@@ -195,7 +196,7 @@ export default function InboundPage() {
                           Cancel
                         </AlertDialogClose>
                         <Button variant="destructive" onClick={() => deleteEndpoint(endpoint.id)}>
-                          {loadingEndpointId === endpoint.id ? 'Deleting...' : 'Delete'}
+                          Delete
                         </Button>
                       </AlertDialogFooter>
                     </AlertDialogPopup>
@@ -232,9 +233,9 @@ export default function InboundPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Inbound Endpoints</h1>
         <div className="flex gap-2">
-          <CreateInboundDialog onCreated={refresh} disabled={isDisabled} />
-          <Button onClick={refresh} disabled={isLoading || isDisabled} variant="secondary">
-            Refresh
+          <CreateInboundDialog onCreated={refresh} disabled={isLoading || isDisabled} />
+          <Button onClick={refresh} disabled={isLoading || isRefreshing || isDisabled} variant="secondary">
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>
