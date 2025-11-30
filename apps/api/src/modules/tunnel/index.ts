@@ -83,7 +83,7 @@ export const tunnel = new Elysia({ prefix: "/api/tunnel" })
       return {
         tunnelId,
         wsUrl: getWsUrl(tunnelId),
-        tunnelUrl: `${getTunnelUrl()}/${tunnelId}`,
+        tunnelUrl: `${getTunnelUrl()}/t/${tunnelId}`,
       }
     },
     {
@@ -172,7 +172,7 @@ const forwardRequest = (
   })
 }
 
-export const tunnelPublic = new Elysia()
+export const tunnelPublic = new Elysia({ prefix: "/t" })
   .all("/:tunnelId/*", async ({ params, request, set }) => {
     const tunnelId = params.tunnelId
     const connection = tunnels.get(tunnelId)
@@ -183,7 +183,7 @@ export const tunnelPublic = new Elysia()
     }
 
     const url = new URL(request.url)
-    const path = url.pathname.replace(`/${tunnelId}`, "") || "/"
+    const path = url.pathname.replace(`/t/${tunnelId}`, "") || "/"
 
     const headers: Record<string, string> = {}
     request.headers.forEach((value, key) => {

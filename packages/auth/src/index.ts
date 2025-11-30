@@ -67,7 +67,7 @@ export const createAuth = (
         customStorage: options.secondaryStorage,
       }),
       deviceAuthorization({
-        verificationUri: "/device",
+        verificationUri: "http://localhost:5174/device",
         expiresIn: "30m",
         interval: "5s",
       }),
