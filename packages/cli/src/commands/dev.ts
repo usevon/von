@@ -2,8 +2,8 @@ import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import WebSocket from "ws"
-import { loadConfig, isLoggedIn } from "../lib/config"
-import { registerTunnel } from "../lib/api"
+import { requireAuth } from "@/lib/config"
+import { registerTunnel } from "@/lib/api"
 
 type TunnelRequest = {
   id: string
@@ -22,13 +22,15 @@ type TunnelResponse = {
 
 export const dev = new Command("dev")
   .description("Start dev tunnel for local webhook testing")
-  .requiredOption("-p, --port <port>", "Local port to forward to")
+  .option("-p, --port <port>", "Local port to forward to")
   .option("-o, --org <orgId>", "Organization ID (uses active org if not specified)")
   .action(async (options) => {
-    if (!isLoggedIn()) {
-      p.log.error("Not logged in. Run 'von login' first.")
+    if (!options.port) {
+      p.log.error("Port is required. Usage: von dev -p <port>")
       process.exit(1)
     }
+
+    const { token, config } = requireAuth()!
 
     const port = parseInt(options.port, 10)
     if (isNaN(port) || port < 1 || port > 65535) {
@@ -36,8 +38,6 @@ export const dev = new Command("dev")
       process.exit(1)
     }
 
-    const config = loadConfig()
-    const token = config.token!
     const organizationId = options.org || config.organizationId
 
     if (!organizationId) {

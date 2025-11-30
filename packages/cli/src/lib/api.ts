@@ -1,4 +1,4 @@
-import { loadConfig } from "./config"
+import { loadConfig } from "@/lib/config"
 
 type DeviceCodeResponse = {
   device_code: string
@@ -61,7 +61,7 @@ export const requestDeviceCode = async (
     throw new Error("Failed to request device code")
   }
 
-  return res.json()
+  return res.json() as Promise<DeviceCodeResponse>
 }
 
 export const pollDeviceToken = async (
@@ -81,7 +81,7 @@ export const pollDeviceToken = async (
     }),
   })
 
-  return res.json()
+  return res.json() as Promise<DeviceTokenResponse>
 }
 
 export const getSession = async (token: string): Promise<UserSession | null> => {
@@ -93,7 +93,7 @@ export const getSession = async (token: string): Promise<UserSession | null> => 
 
   if (!res.ok) return null
 
-  return res.json()
+  return res.json() as Promise<UserSession>
 }
 
 export const listOrganizations = async (token: string): Promise<Organization[]> => {
@@ -106,7 +106,7 @@ export const listOrganizations = async (token: string): Promise<Organization[]> 
 
   if (!res.ok) return []
 
-  const data = await res.json()
+  const data = await res.json() as Organization[]
   return data || []
 }
 
@@ -145,9 +145,9 @@ export const registerTunnel = async (
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
+    const error = await res.json().catch(() => ({})) as { message?: string }
     throw new Error(error.message || "Failed to register tunnel")
   }
 
-  return res.json()
+  return res.json() as Promise<TunnelRegistration>
 }

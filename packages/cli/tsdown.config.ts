@@ -5,4 +5,7 @@ export default defineConfig({
   format: ["esm"],
   clean: true,
   shims: true,
+  alias: {
+    "@": "./src",
+  },
 })

@@ -2,14 +2,14 @@ import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import open from "open"
-import { loadConfig, saveConfig, clearConfig } from "../lib/config"
+import { loadConfig, saveConfig, clearConfig, requireAuth } from "@/lib/config"
 import {
   requestDeviceCode,
   pollDeviceToken,
   getSession,
   listOrganizations,
   setActiveOrganization,
-} from "../lib/api"
+} from "@/lib/api"
 
 export const login = new Command("login")
   .description("Authenticate with Von")
@@ -123,10 +123,6 @@ export const login = new Command("login")
 
       if (orgs.length === 0) {
         p.note("No organizations found. Create one in the dashboard.", "Next steps")
-      } else if (orgs.length === 1) {
-        await setActiveOrganization(token, orgs[0].id)
-        saveConfig({ organizationId: orgs[0].id })
-        p.log.success(`Organization set to ${pc.cyan(orgs[0].name)}`)
       } else {
         const orgChoice = await p.select({
           message: "Select an organization:",
@@ -158,25 +154,22 @@ export const login = new Command("login")
 export const logout = new Command("logout")
   .description("Log out of Von")
   .action(() => {
+    if (!requireAuth(false)) {
+      return
+    }
     clearConfig()
-    p.intro(pc.cyan("Logged out of Von"))
-    p.outro("Token and organization cleared")
+    p.log.success("Logged out of Von")
   })
 
 export const switchOrg = new Command("switch")
   .description("Switch active organization")
   .action(async () => {
-    const config = loadConfig()
-
-    if (!config.token) {
-      p.log.error("Not logged in. Run 'von login' first.")
-      process.exit(1)
-    }
+    const { token, config } = requireAuth()!
 
     const s = p.spinner()
     s.start("Fetching organizations...")
 
-    const orgs = await listOrganizations(config.token)
+    const orgs = await listOrganizations(token)
 
     if (orgs.length === 0) {
       s.stop("No organizations found")
@@ -205,7 +198,7 @@ export const switchOrg = new Command("switch")
       process.exit(0)
     }
 
-    await setActiveOrganization(config.token, orgChoice as string)
+    await setActiveOrganization(token, orgChoice as string)
     saveConfig({ organizationId: orgChoice as string })
 
     const selected = orgs.find((o) => o.id === orgChoice)

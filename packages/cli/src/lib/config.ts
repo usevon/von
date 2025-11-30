@@ -50,10 +50,12 @@ export const clearConfig = (): void => {
   writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
 }
 
-export const getToken = (): string | undefined => {
-  return loadConfig().token
-}
-
-export const isLoggedIn = (): boolean => {
-  return !!getToken()
+export const requireAuth = (exit: boolean = true): { token: string; config: VonConfig } | null => {
+  const config = loadConfig()
+  if (!config.token) {
+    console.error("Not logged in, run 'von login' first")
+    if (exit) process.exit(1)
+    return null
+  }
+  return { token: config.token, config }
 }
