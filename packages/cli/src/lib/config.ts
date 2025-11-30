@@ -1,0 +1,59 @@
+import { homedir } from "node:os"
+import { join } from "node:path"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+
+export type VonConfig = {
+  apiUrl: string
+  tunnelUrl: string
+  token?: string
+  organizationId?: string
+}
+
+const CONFIG_DIR = join(homedir(), ".von")
+const CONFIG_FILE = join(CONFIG_DIR, "config.json")
+
+const DEFAULT_CONFIG: VonConfig = {
+  apiUrl: "https://api.usevon.com",
+  tunnelUrl: "https://dev.usevon.com",
+}
+
+export const ensureConfigDir = (): void => {
+  if (!existsSync(CONFIG_DIR)) {
+    mkdirSync(CONFIG_DIR, { recursive: true })
+  }
+}
+
+export const loadConfig = (): VonConfig => {
+  ensureConfigDir()
+
+  if (!existsSync(CONFIG_FILE)) {
+    return { ...DEFAULT_CONFIG }
+  }
+
+  try {
+    const raw = readFileSync(CONFIG_FILE, "utf-8")
+    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) }
+  } catch {
+    return { ...DEFAULT_CONFIG }
+  }
+}
+
+export const saveConfig = (config: Partial<VonConfig>): void => {
+  ensureConfigDir()
+  const current = loadConfig()
+  const updated = { ...current, ...config }
+  writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2))
+}
+
+export const clearConfig = (): void => {
+  ensureConfigDir()
+  writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
+}
+
+export const getToken = (): string | undefined => {
+  return loadConfig().token
+}
+
+export const isLoggedIn = (): boolean => {
+  return !!getToken()
+}
