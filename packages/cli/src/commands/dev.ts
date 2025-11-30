@@ -25,12 +25,12 @@ export const dev = new Command("dev")
   .option("-p, --port <port>", "Local port to forward to")
   .option("-o, --org <orgId>", "Organization ID (uses active org if not specified)")
   .action(async (options) => {
+    const { token, config } = requireAuth()
+
     if (!options.port) {
       p.log.error("Port is required. Usage: von dev -p <port>")
       process.exit(1)
     }
-
-    const { token, config } = requireAuth()!
 
     const port = parseInt(options.port, 10)
     if (isNaN(port) || port < 1 || port > 65535) {

@@ -1,6 +1,7 @@
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import * as p from "@clack/prompts"
 
 export type VonConfig = {
   apiUrl: string
@@ -50,10 +51,12 @@ export const clearConfig = (): void => {
   writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
 }
 
-export const requireAuth = (exit: boolean = true): { token: string; config: VonConfig } | null => {
+export function requireAuth(exit?: true): { token: string; config: VonConfig }
+export function requireAuth(exit: false): { token: string; config: VonConfig } | null
+export function requireAuth(exit: boolean = true): { token: string; config: VonConfig } | null {
   const config = loadConfig()
   if (!config.token) {
-    console.error("Not logged in, run 'von login' first")
+    p.log.warn("Not logged in, run 'von login' first")
     if (exit) process.exit(1)
     return null
   }

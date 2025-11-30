@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander"
-import { login, logout, switchOrg } from "@/commands/login"
+import { login } from "@/commands/login"
+import { logout } from "@/commands/logout"
+import { switchOrg } from "@/commands/switch"
 import { dev } from "@/commands/dev"
 
 const program = new Command("von")
