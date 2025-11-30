@@ -9,6 +9,7 @@ import { auth, withApiKey } from "@/modules/auth"
 import { endpoints } from "@/modules/endpoints"
 import { inbound, inboundPublic } from "@/modules/inbound"
 import { webhooks, webhookEvents } from "@/modules/webhooks"
+import { tunnel, tunnelWs, tunnelPublic } from "@/modules/tunnel"
 import {
   UnauthorizedError,
   NotFoundError,
@@ -129,5 +130,8 @@ export const app = new Elysia({
   .use(webhookEvents)
   .use(endpoints)
   .use(inbound)
+  .use(tunnel)
+  .use(tunnelWs)
+  .use(tunnelPublic)
 
 export type App = typeof app
