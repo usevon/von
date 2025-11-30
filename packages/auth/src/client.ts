@@ -6,7 +6,7 @@
  * Uses Bearer tokens for cross-origin authentication.
  */
 import { createAuthClient as createBetterAuthClient } from "better-auth/react"
-import { organizationClient } from "better-auth/client/plugins"
+import { organizationClient, deviceAuthorizationClient } from "better-auth/client/plugins"
 import { apiKeyClient } from "./plugins/api-key/client"
 
 export const BEARER_TOKEN_KEY = "von_bearer_token"
@@ -18,7 +18,7 @@ export type CreateAuthClientOptions = {
 export const createAuthClient = (options: CreateAuthClientOptions) => {
   return createBetterAuthClient({
     baseURL: options.baseURL,
-    plugins: [organizationClient(), apiKeyClient()],
+    plugins: [organizationClient(), apiKeyClient(), deviceAuthorizationClient()],
     fetchOptions: {
       auth: {
         type: "Bearer",
