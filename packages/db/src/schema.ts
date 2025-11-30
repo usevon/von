@@ -9,10 +9,6 @@ import {
   index,
 } from "drizzle-orm/pg-core"
 
-// =============================================================================
-// Better Auth Core Tables
-// =============================================================================
-
 export const user = pgTable("user", {
   id: uuid("id").primaryKey(),
   name: text("name").notNull(),
@@ -86,10 +82,6 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 )
 
-// =============================================================================
-// Organization Plugin Tables
-// =============================================================================
-
 export const organization = pgTable("organization", {
   id: uuid("id").primaryKey(),
   name: text("name").notNull(),
@@ -139,9 +131,30 @@ export const invitation = pgTable(
   ]
 )
 
-// =============================================================================
-// Custom API Key Plugin Table
-// =============================================================================
+export const deviceCode = pgTable(
+  "device_code",
+  {
+    id: uuid("id").primaryKey(),
+    deviceCode: text("device_code").notNull(),
+    userCode: text("user_code").notNull(),
+    userId: uuid("user_id").references(() => user.id, { onDelete: "cascade" }),
+    clientId: text("client_id"),
+    scope: text("scope"),
+    status: text("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    lastPolledAt: timestamp("last_polled_at"),
+    pollingInterval: integer("polling_interval"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("device_code_device_code_idx").on(table.deviceCode),
+    index("device_code_user_code_idx").on(table.userCode),
+  ]
+)
 
 export const apikey = pgTable(
   "apikey",
@@ -173,10 +186,6 @@ export const apikey = pgTable(
     index("apikey_organization_id_idx").on(table.organizationId),
   ]
 )
-
-// =============================================================================
-// Von Webhook Tables
-// =============================================================================
 
 export const endpoint = pgTable(
   "endpoint",
@@ -303,9 +312,26 @@ export const inboundDelivery = pgTable(
   ]
 )
 
-// =============================================================================
-// Drizzle Relations (enables better-auth experimental joins)
-// =============================================================================
+export const tunnel = pgTable(
+  "tunnel",
+  {
+    id: text("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    port: integer("port").notNull(),
+    status: text("status").default("active").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastPingAt: timestamp("last_ping_at"),
+  },
+  (table) => [
+    index("tunnel_organization_id_idx").on(table.organizationId),
+    index("tunnel_user_id_idx").on(table.userId),
+  ]
+)
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),

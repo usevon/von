@@ -13,6 +13,7 @@ import { Route as WebhooksRouteImport } from './routes/webhooks'
 import { Route as TestAuthRouteImport } from './routes/test-auth'
 import { Route as InboundRouteImport } from './routes/inbound'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as DeviceRouteImport } from './routes/device'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WebhooksRoute = WebhooksRouteImport.update({
@@ -35,6 +36,11 @@ const EndpointsRoute = EndpointsRouteImport.update({
   path: '/endpoints',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeviceRoute = DeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/device': typeof DeviceRoute
   '/endpoints': typeof EndpointsRoute
   '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/device': typeof DeviceRoute
   '/endpoints': typeof EndpointsRoute
   '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/device': typeof DeviceRoute
   '/endpoints': typeof EndpointsRoute
   '/inbound': typeof InboundRoute
   '/test-auth': typeof TestAuthRoute
@@ -65,14 +74,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
+  fullPaths:
+    | '/'
+    | '/device'
+    | '/endpoints'
+    | '/inbound'
+    | '/test-auth'
+    | '/webhooks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
-  id: '__root__' | '/' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
+  to: '/' | '/device' | '/endpoints' | '/inbound' | '/test-auth' | '/webhooks'
+  id:
+    | '__root__'
+    | '/'
+    | '/device'
+    | '/endpoints'
+    | '/inbound'
+    | '/test-auth'
+    | '/webhooks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DeviceRoute: typeof DeviceRoute
   EndpointsRoute: typeof EndpointsRoute
   InboundRoute: typeof InboundRoute
   TestAuthRoute: typeof TestAuthRoute
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EndpointsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/device': {
+      id: '/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof DeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +151,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DeviceRoute: DeviceRoute,
   EndpointsRoute: EndpointsRoute,
   InboundRoute: InboundRoute,
   TestAuthRoute: TestAuthRoute,

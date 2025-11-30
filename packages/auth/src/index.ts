@@ -6,7 +6,7 @@
  */
 import { betterAuth } from "better-auth/minimal"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { organization, bearer } from "better-auth/plugins"
+import { organization, bearer, deviceAuthorization } from "better-auth/plugins"
 import { apiKey } from "@/plugins/api-key"
 
 export type SecondaryStorage = {
@@ -65,6 +65,11 @@ export const createAuth = (
         storage: "secondary-storage",
         fallbackToDatabase: true,
         customStorage: options.secondaryStorage,
+      }),
+      deviceAuthorization({
+        verificationUri: "http://localhost:5174/device",
+        expiresIn: "30m",
+        interval: "5s",
       }),
     ],
     databaseHooks: {
