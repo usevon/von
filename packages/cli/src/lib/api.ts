@@ -45,16 +45,20 @@ export const requestDeviceCode = async (
   clientId: string = "von-cli"
 ): Promise<DeviceCodeResponse> => {
   const config = loadConfig()
+  const url = `${config.apiUrl}/api/auth/device/code`
 
-  const res = await fetch(`${config.apiUrl}/api/auth/device/code`, {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ client_id: clientId }),
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.message || "Failed to request device code")
+    const text = await res.text()
+    console.error(`Device code request failed: ${res.status} ${res.statusText}`)
+    console.error(`URL: ${url}`)
+    console.error(`Response: ${text}`)
+    throw new Error("Failed to request device code")
   }
 
   return res.json()
@@ -65,8 +69,9 @@ export const pollDeviceToken = async (
   clientId: string = "von-cli"
 ): Promise<DeviceTokenResponse> => {
   const config = loadConfig()
+  const url = `${config.apiUrl}/api/auth/device/token`
 
-  const res = await fetch(`${config.apiUrl}/api/auth/device/token`, {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

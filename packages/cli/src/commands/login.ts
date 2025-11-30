@@ -13,14 +13,28 @@ import {
 
 export const login = new Command("login")
   .description("Authenticate with Von")
-  .action(async () => {
+  .option("-l, --local", "Use local development URLs (localhost:8080)")
+  .option("--api-url <url>", "Custom API URL")
+  .option("--tunnel-url <url>", "Custom tunnel URL")
+  .action(async (options) => {
     p.intro(pc.cyan("Von CLI Login"))
 
     const config = loadConfig()
 
-    if (!config.apiUrl || config.apiUrl === "https://api.usevon.com") {
+    if (options.local) {
+      saveConfig({
+        apiUrl: "http://localhost:8080",
+        tunnelUrl: "http://localhost:8080",
+      })
+      p.log.info("Using local development URLs")
+    } else if (options.apiUrl) {
+      saveConfig({
+        apiUrl: options.apiUrl,
+        tunnelUrl: options.tunnelUrl || options.apiUrl,
+      })
+    } else if (!config.apiUrl || config.apiUrl === "https://api.usevon.com") {
       const instanceType = await p.select({
-        message: "Which Von instance?",
+        message: "How are you connecting to Von?",
         options: [
           { value: "hosted", label: "Hosted (api.usevon.com)", hint: "recommended" },
           { value: "self-hosted", label: "Self-hosted" },
@@ -35,7 +49,7 @@ export const login = new Command("login")
       if (instanceType === "self-hosted") {
         const apiUrl = await p.text({
           message: "API URL:",
-          placeholder: "https://api.yourdomain.com",
+          placeholder: "http://localhost:8080",
           validate: (v) => {
             if (!v) return "API URL is required"
             if (!v.startsWith("http")) return "Must be a valid URL"
@@ -49,7 +63,8 @@ export const login = new Command("login")
 
         const tunnelUrl = await p.text({
           message: "Tunnel URL:",
-          placeholder: "https://dev.yourdomain.com",
+          placeholder: "http://localhost:8080",
+          initialValue: apiUrl as string,
           validate: (v) => {
             if (!v) return "Tunnel URL is required"
             if (!v.startsWith("http")) return "Must be a valid URL"
@@ -146,6 +161,55 @@ export const logout = new Command("logout")
     clearConfig()
     p.intro(pc.cyan("Logged out of Von"))
     p.outro("Token and organization cleared")
+  })
+
+export const switchOrg = new Command("switch")
+  .description("Switch active organization")
+  .action(async () => {
+    const config = loadConfig()
+
+    if (!config.token) {
+      p.log.error("Not logged in. Run 'von login' first.")
+      process.exit(1)
+    }
+
+    const s = p.spinner()
+    s.start("Fetching organizations...")
+
+    const orgs = await listOrganizations(config.token)
+
+    if (orgs.length === 0) {
+      s.stop("No organizations found")
+      p.note("Create an organization in the dashboard first.", "Next steps")
+      process.exit(1)
+    }
+
+    s.stop(`Found ${orgs.length} organization${orgs.length > 1 ? "s" : ""}`)
+
+    const currentOrg = orgs.find((o) => o.id === config.organizationId)
+    if (currentOrg) {
+      p.log.info(`Current: ${pc.cyan(currentOrg.name)}`)
+    }
+
+    const orgChoice = await p.select({
+      message: "Select an organization:",
+      options: orgs.map((org) => ({
+        value: org.id,
+        label: org.name,
+        hint: org.id === config.organizationId ? "current" : org.slug,
+      })),
+    })
+
+    if (p.isCancel(orgChoice)) {
+      p.cancel("Cancelled")
+      process.exit(0)
+    }
+
+    await setActiveOrganization(config.token, orgChoice as string)
+    saveConfig({ organizationId: orgChoice as string })
+
+    const selected = orgs.find((o) => o.id === orgChoice)
+    p.outro(pc.green(`Switched to ${pc.cyan(selected?.name || "Unknown")}`))
   })
 
 const waitForToken = async (

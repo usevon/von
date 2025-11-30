@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "dev": "tsx ./src/index.ts"
+    "cli": "tsx ./src/index.ts"
   },
   "dependencies": {
     "commander": "^12.1.0",
