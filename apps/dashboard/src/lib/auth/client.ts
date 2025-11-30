@@ -23,4 +23,5 @@ export const {
   signUp,
   organization,
   apiKey,
+  device,
 } = authClient
