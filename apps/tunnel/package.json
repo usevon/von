@@ -1,0 +1,30 @@
+{
+  "name": "@usevon/tunnel-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test --preload ./tests/preload.ts",
+    "test:unit": "bun test --preload ./tests/preload.ts tests/unit",
+    "test:integration": "bun test --preload ./tests/preload.ts tests/integration"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.1.0",
+    "@usevon/auth": "workspace:*",
+    "@usevon/db": "workspace:*",
+    "@usevon/env": "workspace:*",
+    "@usevon/logger": "workspace:*",
+    "@usevon/queue": "workspace:*",
+    "@usevon/tunnel": "workspace:*",
+    "elysia": "^1.4.16"
+  },
+  "devDependencies": {
+    "@elysiajs/eden": "^1.4.1",
+    "@types/bun": "latest",
+    "@usevon/typescript-config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

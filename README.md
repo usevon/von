@@ -80,10 +80,12 @@ For security concerns, see our [Security Policy](.github/SECURITY.md).
 Von uses dual licensing:
 
 **AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
-- `apps/` - Applications (API, Dashboard, Site)
-- `packages/` - Internal packages (auth, db, env, logger)
+- `apps/` - api, dashboard, site, tunnel, worker
+- `packages/` - auth, db, env, logger, queue
 
 **MIT License** ([LICENSE-MIT](LICENSE-MIT))
+- `packages/cli/` - CLI
 - `packages/sdk/` - TypeScript SDK
-- `packages/react/` - React hooks and components
-- `packages/ui/` - UI component library
+- `packages/tunnel/` - tunnel client
+- `packages/react/` - React hooks
+- `packages/ui/` - UI components

@@ -36,8 +36,13 @@ type Organization = {
   slug: string
 }
 
+type TunnelRegistrationResponse = {
+  tunnelId: string
+}
+
 type TunnelRegistration = {
   tunnelId: string
+  tunnelUrl: string
   wsUrl: string
 }
 
@@ -47,18 +52,29 @@ export const requestDeviceCode = async (
   const config = loadConfig()
   const url = `${config.apiUrl}/api/auth/device/code`
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: clientId }),
-  })
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: clientId }),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
+      throw new Error(`Could not connect to ${config.apiUrl}\nIs the server running?`)
+    }
+    throw new Error(`Connection failed: ${msg}`)
+  }
 
   if (!res.ok) {
-    const text = await res.text()
-    console.error(`Device code request failed: ${res.status} ${res.statusText}`)
-    console.error(`URL: ${url}`)
-    console.error(`Response: ${text}`)
-    throw new Error("Failed to request device code")
+    if (res.status === 404) {
+      throw new Error(`API not found at ${config.apiUrl}\nCheck the URL or try 'von login --local' for local development`)
+    }
+    if (res.status >= 500) {
+      throw new Error(`Server error (${res.status})\nThe Von API may be unavailable`)
+    }
+    throw new Error(`Request failed: ${res.status} ${res.statusText}`)
   }
 
   return res.json() as Promise<DeviceCodeResponse>
@@ -135,7 +151,7 @@ export const registerTunnel = async (
 ): Promise<TunnelRegistration> => {
   const config = loadConfig()
 
-  const res = await fetch(`${config.apiUrl}/api/tunnel/register`, {
+  const res = await fetch(`${config.tunnelUrl}/register`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -149,5 +165,12 @@ export const registerTunnel = async (
     throw new Error(error.message || "Failed to register tunnel")
   }
 
-  return res.json() as Promise<TunnelRegistration>
+  const { tunnelId } = await res.json() as TunnelRegistrationResponse
+
+  const tunnelUrl = `${config.tunnelUrl}/${tunnelId}`
+  const wsUrl = config.tunnelUrl
+    .replace("http://", "ws://")
+    .replace("https://", "wss://") + `/ws/${tunnelId}`
+
+  return { tunnelId, tunnelUrl, wsUrl }
 }

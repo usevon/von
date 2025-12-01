@@ -80,3 +80,7 @@ const EndpointList = () => {
   )
 }
 ```
+
+## License
+
+MIT - see [LICENSE-MIT](../../LICENSE-MIT)

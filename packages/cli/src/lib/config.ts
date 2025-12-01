@@ -13,9 +13,11 @@ export type VonConfig = {
 const CONFIG_DIR = join(homedir(), ".von")
 const CONFIG_FILE = join(CONFIG_DIR, "config.json")
 
+export const getConfigPath = (): string => CONFIG_FILE
+
 const DEFAULT_CONFIG: VonConfig = {
   apiUrl: "https://api.usevon.com",
-  tunnelUrl: "https://dev.usevon.com",
+  tunnelUrl: "https://tunnel.usevon.com",
 }
 
 export const ensureConfigDir = (): void => {

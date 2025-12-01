@@ -20,15 +20,16 @@
     "cli": "tsx ./src/index.ts"
   },
   "dependencies": {
-    "commander": "^12.1.0",
     "@clack/prompts": "^0.11.0",
-    "picocolors": "^1.1.1",
+    "commander": "^12.1.0",
     "open": "^10.1.0",
+    "picocolors": "^1.1.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
     "@types/ws": "^8.5.0",
+    "@usevon/tunnel": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
     "tsdown": "^0.12.7",
     "tsx": "^4.20.0",

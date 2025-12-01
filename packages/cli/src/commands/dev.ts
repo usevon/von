@@ -1,40 +1,34 @@
 import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import WebSocket from "ws"
-import { requireAuth } from "@/lib/config"
+import { watch, type FSWatcher } from "node:fs"
+import { TunnelManager } from "@usevon/tunnel"
+import { requireAuth, loadConfig, getConfigPath } from "@/lib/config"
 import { registerTunnel } from "@/lib/api"
-
-type TunnelRequest = {
-  id: string
-  method: string
-  path: string
-  headers: Record<string, string>
-  body?: string
-}
-
-type TunnelResponse = {
-  requestId: string
-  status: number
-  headers: Record<string, string>
-  body: string
-}
 
 export const dev = new Command("dev")
   .description("Start dev tunnel for local webhook testing")
-  .option("-p, --port <port>", "Local port to forward to")
+  .option("-p, --port <port...>", "Local port(s) to forward to (max 3)")
   .option("-o, --org <orgId>", "Organization ID (uses active org if not specified)")
+  .option("-v, --verbose", "Show detailed request/response info")
   .action(async (options) => {
     const { token, config } = requireAuth()
 
-    if (!options.port) {
+    if (!options.port || options.port.length === 0) {
       p.log.error("Port is required. Usage: von dev -p <port>")
       process.exit(1)
     }
 
-    const port = parseInt(options.port, 10)
-    if (isNaN(port) || port < 1 || port > 65535) {
-      p.log.error("Invalid port number")
+    const ports = options.port.map((p: string) => parseInt(p, 10))
+    for (const port of ports) {
+      if (isNaN(port) || port < 1 || port > 65535) {
+        p.log.error(`Invalid port number: ${port}`)
+        process.exit(1)
+      }
+    }
+
+    if (ports.length > 3) {
+      p.log.error("Maximum 3 ports allowed per organization")
       process.exit(1)
     }
 
@@ -46,24 +40,30 @@ export const dev = new Command("dev")
     }
 
     const s = p.spinner()
-    s.start("Registering tunnel...")
+    s.start("Registering tunnel(s)...")
 
     try {
-      const { tunnelId, wsUrl } = await registerTunnel(token, port, organizationId)
-      s.stop("Tunnel registered")
+      const tunnels: Array<{ port: number; tunnelUrl: string; wsUrl: string }> = []
 
-      const tunnelUrl = `${config.tunnelUrl}/${tunnelId}`
+      for (const port of ports) {
+        const { tunnelUrl, wsUrl } = await registerTunnel(token, port, organizationId)
+        tunnels.push({ port, tunnelUrl, wsUrl })
+      }
+
+      s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`)
 
       console.log()
-      console.log(pc.green("  Tunnel active"))
+      for (const t of tunnels) {
+        console.log(`  ${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`)
+      }
       console.log()
-      console.log(`  ${pc.dim("URL:")}      ${pc.cyan(tunnelUrl)}`)
-      console.log(`  ${pc.dim("Forward:")}  http://localhost:${port}`)
-      console.log()
+      if (options.verbose) {
+        console.log(pc.dim("  Verbose mode enabled"))
+      }
       console.log(pc.dim("  Press Ctrl+C to stop"))
       console.log()
 
-      await connectTunnel(wsUrl, token, port)
+      await connectTunnels(token, tunnels, options.verbose ?? false)
     } catch (err) {
       s.stop("Error")
       p.log.error(`Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`)
@@ -71,104 +71,66 @@ export const dev = new Command("dev")
     }
   })
 
-const connectTunnel = async (
-  wsUrl: string,
+type TunnelInfo = { port: number; tunnelUrl: string; wsUrl: string }
+
+const connectTunnels = async (
   token: string,
-  localPort: number
+  tunnels: TunnelInfo[],
+  verbose: boolean
 ): Promise<void> => {
   return new Promise((_, reject) => {
-    let reconnectAttempts = 0
-    const maxReconnectAttempts = 10
+    let isShuttingDown = false
+    let configWatcher: FSWatcher | null = null
 
-    const connect = () => {
-      const ws = new WebSocket(wsUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      ws.on("open", () => {
-        reconnectAttempts = 0
-        console.log(pc.dim("  Connected to tunnel server"))
-      })
-
-      ws.on("message", async (data) => {
-        try {
-          const request: TunnelRequest = JSON.parse(data.toString())
-          await handleRequest(ws, request, localPort)
-        } catch (err) {
-          console.log(pc.red(`  Error handling request: ${err instanceof Error ? err.message : "Unknown"}`))
+    const manager = new TunnelManager(token, {
+      verbose,
+      onTakeover: () => {
+        if (manager.activeTunnels === 0) {
+          console.log()
+          console.log(pc.dim("  all tunnels taken over, exiting..."))
+          process.exit(0)
         }
-      })
+      },
+      onMaxRetries: (port) => {
+        reject(new Error(`${port} max reconnection attempts reached`))
+      },
+    })
 
-      ws.on("close", () => {
-        if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-          console.log(pc.yellow(`  Disconnected. Reconnecting in ${delay / 1000}s...`))
-          setTimeout(connect, delay)
-        } else {
-          reject(new Error("Max reconnection attempts reached"))
-        }
-      })
+    const shutdown = (reason?: string) => {
+      if (isShuttingDown) return
+      isShuttingDown = true
+      configWatcher?.close()
+      console.log()
+      console.log(pc.dim(`  ${reason ?? "closing"}...`))
+      manager.terminate()
+      process.exit(0)
+    }
 
-      ws.on("error", (err) => {
-        console.log(pc.red(`  WebSocket error: ${err.message}`))
-      })
+    // Watch config file for logout
+    const configPath = getConfigPath()
+    configWatcher = watch(configPath, () => {
+      const newConfig = loadConfig()
+      if (!newConfig?.token) {
+        shutdown("logged out, closing tunnels")
+      }
+    })
 
-      process.on("SIGINT", () => {
-        console.log()
-        console.log(pc.dim("  Closing tunnel..."))
-        ws.close()
-        process.exit(0)
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true)
+      process.stdin.resume()
+      process.stdin.on("data", (data) => {
+        if (data[0] === 0x03) shutdown()
       })
     }
 
-    connect()
+    process.on("SIGINT", shutdown)
+    process.on("SIGTERM", shutdown)
+    process.on("exit", () => configWatcher?.close())
+
+    for (const tunnel of tunnels) {
+      manager.addTunnel(tunnel.port, tunnel.wsUrl)
+    }
+
+    manager.connect()
   })
-}
-
-const handleRequest = async (
-  ws: WebSocket,
-  request: TunnelRequest,
-  localPort: number
-): Promise<void> => {
-  const timestamp = new Date().toLocaleTimeString()
-  console.log(`  ${pc.dim(timestamp)} ${pc.cyan(request.method)} ${request.path}`)
-
-  try {
-    const url = `http://localhost:${localPort}${request.path}`
-
-    const res = await fetch(url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-    })
-
-    const responseBody = await res.text()
-    const responseHeaders: Record<string, string> = {}
-    res.headers.forEach((value, key) => {
-      responseHeaders[key] = value
-    })
-
-    const response: TunnelResponse = {
-      requestId: request.id,
-      status: res.status,
-      headers: responseHeaders,
-      body: responseBody,
-    }
-
-    ws.send(JSON.stringify(response))
-
-    const statusColor = res.status >= 400 ? pc.red : res.status >= 300 ? pc.yellow : pc.green
-    console.log(`  ${pc.dim(timestamp)} ${statusColor(res.status.toString())} ${pc.dim(`(${responseBody.length} bytes)`)}`)
-  } catch (err) {
-    const response: TunnelResponse = {
-      requestId: request.id,
-      status: 502,
-      headers: {},
-      body: `Failed to forward request: ${err instanceof Error ? err.message : "Unknown error"}`,
-    }
-
-    ws.send(JSON.stringify(response))
-    console.log(`  ${pc.dim(timestamp)} ${pc.red("502")} ${pc.dim("(forward failed)")}`)
-  }
 }
