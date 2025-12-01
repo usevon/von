@@ -39,6 +39,7 @@ type Organization = {
 type TunnelRegistration = {
   tunnelId: string
   wsUrl: string
+  tunnelUrl: string
 }
 
 export const requestDeviceCode = async (
@@ -135,7 +136,7 @@ export const registerTunnel = async (
 ): Promise<TunnelRegistration> => {
   const config = loadConfig()
 
-  const res = await fetch(`${config.apiUrl}/api/tunnel/register`, {
+  const res = await fetch(`${config.tunnelUrl}/register`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -24,7 +24,7 @@ export const login = new Command("login")
     if (options.local) {
       saveConfig({
         apiUrl: "http://localhost:8080",
-        tunnelUrl: "http://localhost:8080",
+        tunnelUrl: "http://localhost:8081",
       })
       p.log.info("Using local development URLs")
     } else if (options.apiUrl) {

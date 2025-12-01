@@ -15,7 +15,7 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json")
 
 const DEFAULT_CONFIG: VonConfig = {
   apiUrl: "https://api.usevon.com",
-  tunnelUrl: "https://dev.usevon.com",
+  tunnelUrl: "https://tunnel.usevon.com",
 }
 
 export const ensureConfigDir = (): void => {

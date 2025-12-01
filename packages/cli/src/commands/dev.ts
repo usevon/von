@@ -49,10 +49,8 @@ export const dev = new Command("dev")
     s.start("Registering tunnel...")
 
     try {
-      const { tunnelId, wsUrl } = await registerTunnel(token, port, organizationId)
+      const { tunnelUrl } = await registerTunnel(token, port, organizationId)
       s.stop("Tunnel registered")
-
-      const tunnelUrl = `${config.tunnelUrl}/${tunnelId}`
 
       console.log()
       console.log(pc.green("  Tunnel active"))
@@ -63,7 +61,7 @@ export const dev = new Command("dev")
       console.log(pc.dim("  Press Ctrl+C to stop"))
       console.log()
 
-      await connectTunnel(wsUrl, token, port)
+      await connectTunnel(token, port, organizationId, config.tunnelUrl)
     } catch (err) {
       s.stop("Error")
       p.log.error(`Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`)
@@ -72,54 +70,117 @@ export const dev = new Command("dev")
   })
 
 const connectTunnel = async (
-  wsUrl: string,
   token: string,
-  localPort: number
+  localPort: number,
+  organizationId: string,
+  tunnelBaseUrl: string
 ): Promise<void> => {
   return new Promise((_, reject) => {
     let reconnectAttempts = 0
     const maxReconnectAttempts = 10
+    let currentWs: WebSocket | null = null
+    let isShuttingDown = false
 
-    const connect = () => {
-      const ws = new WebSocket(wsUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    // Register SIGINT handler once (use once to avoid multiple registrations)
+    const shutdown = () => {
+      if (isShuttingDown) return
+      isShuttingDown = true
+      console.log()
+      console.log(pc.dim("  Closing tunnel..."))
+      if (currentWs) {
+        currentWs.terminate()
+      }
+      // Force exit after a short delay to ensure cleanup
+      setTimeout(() => process.exit(0), 100)
+    }
 
-      ws.on("open", () => {
-        reconnectAttempts = 0
-        console.log(pc.dim("  Connected to tunnel server"))
-      })
+    process.once("SIGINT", shutdown)
+    process.once("SIGTERM", shutdown)
 
-      ws.on("message", async (data) => {
-        try {
-          const request: TunnelRequest = JSON.parse(data.toString())
-          await handleRequest(ws, request, localPort)
-        } catch (err) {
-          console.log(pc.red(`  Error handling request: ${err instanceof Error ? err.message : "Unknown"}`))
+    const connect = async () => {
+      if (isShuttingDown) return
+
+      try {
+        // Re-register tunnel on each connect (handles server restarts)
+        const { wsUrl, tunnelUrl } = await registerTunnel(token, localPort, organizationId)
+
+        if (reconnectAttempts > 0) {
+          console.log(pc.green(`  Tunnel re-registered: ${tunnelUrl}`))
         }
-      })
 
-      ws.on("close", () => {
+        const ws = new WebSocket(wsUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        currentWs = ws
+
+        ws.on("open", () => {
+          const wasReconnect = reconnectAttempts > 0
+          reconnectAttempts = 0
+          if (wasReconnect) {
+            console.log(pc.green("  Reconnected to tunnel server"))
+          } else {
+            console.log(pc.dim("  Connected to tunnel server"))
+          }
+
+          let pongReceived = true
+
+          // Heartbeat ping every 10 seconds
+          const pingInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              if (!pongReceived) {
+                console.log(pc.yellow("  Connection stale, reconnecting..."))
+                ws.terminate()
+                return
+              }
+              pongReceived = false
+              ws.ping()
+            }
+          }, 10000)
+
+          ws.on("pong", () => {
+            pongReceived = true
+          })
+
+          ws.on("close", () => clearInterval(pingInterval))
+        })
+
+        ws.on("message", async (data) => {
+          try {
+            const request: TunnelRequest = JSON.parse(data.toString())
+            await handleRequest(ws, request, localPort)
+          } catch (err) {
+            console.log(pc.red(`  Error handling request: ${err instanceof Error ? err.message : "Unknown"}`))
+          }
+        })
+
+        ws.on("close", () => {
+          if (isShuttingDown) return
+
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
+            console.log(pc.yellow(`  Disconnected. Reconnecting in ${delay / 1000}s...`))
+            setTimeout(connect, delay)
+          } else {
+            reject(new Error("Max reconnection attempts reached"))
+          }
+        })
+
+        ws.on("error", (err) => {
+          console.log(pc.red(`  WebSocket error: ${err.message}`))
+        })
+      } catch (err) {
+        if (isShuttingDown) return
+
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-          console.log(pc.yellow(`  Disconnected. Reconnecting in ${delay / 1000}s...`))
+          console.log(pc.yellow(`  Registration failed. Retrying in ${delay / 1000}s...`))
           setTimeout(connect, delay)
         } else {
           reject(new Error("Max reconnection attempts reached"))
         }
-      })
-
-      ws.on("error", (err) => {
-        console.log(pc.red(`  WebSocket error: ${err.message}`))
-      })
-
-      process.on("SIGINT", () => {
-        console.log()
-        console.log(pc.dim("  Closing tunnel..."))
-        ws.close()
-        process.exit(0)
-      })
+      }
     }
 
     connect()
