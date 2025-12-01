@@ -43,7 +43,7 @@ export const login = new Command("login")
         apiUrl: options.apiUrl,
         tunnelUrl: options.tunnelUrl || options.apiUrl,
       })
-    } else if (!config.apiUrl || config.apiUrl === "https://api.usevon.com") {
+    } else {
       const instanceType = await p.select({
         message: "How are you connecting to Von?",
         options: [
