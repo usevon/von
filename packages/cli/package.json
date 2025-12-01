@@ -1,6 +1,6 @@
 {
   "name": "@usevon/cli",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "CLI for Von webhooks",
   "license": "MIT",
   "author": "usevon",
@@ -10,7 +10,13 @@
     "directory": "packages/cli"
   },
   "homepage": "https://usevon.com",
-  "keywords": ["webhooks", "cli", "tunnel", "development", "webhook-testing"],
+  "keywords": [
+    "webhooks",
+    "cli",
+    "tunnel",
+    "development",
+    "webhook-testing"
+  ],
   "type": "module",
   "bin": {
     "von": "./dist/index.js"

@@ -20,8 +20,16 @@ All out of the box, without reinventing webhook infrastructure.
 
 ## SDKs
 
-- **TypeScript** — [`@usevon/sdk`](packages/sdk)
-- **React** — [`@usevon/react`](packages/react)
+- **TypeScript** - [`@usevon/sdk`](packages/sdk) ([npm](https://www.npmjs.com/package/@usevon/sdk))
+- **React** - [`@usevon/react`](packages/react) ([npm](https://www.npmjs.com/package/@usevon/react))
+
+## CLI
+
+```bash
+npm install -g @usevon/cli
+```
+
+[`@usevon/cli`](packages/cli) ([npm](https://www.npmjs.com/package/@usevon/cli)) - local webhook testing with tunnels
 
 ## Getting Started
 
@@ -40,28 +48,25 @@ docker compose -f docker-compose.dev.yml up -d
 # Copy env files
 cp apps/api/.env.example apps/api/.env
 cp apps/worker/.env.example apps/worker/.env
+cp apps/tunnel/.env.example apps/tunnel/.env
 
 # Push database schema
-cd apps/api && bun run db:push
+bun run --cwd apps/api db:push
 
-# Start the API and Worker (in separate terminals)
-cd apps/api && bun run dev
-cd apps/worker && bun run dev
+# Start all services
+bun dev
 ```
 
 ## Testing
 
 ```bash
-cd apps/api
-
-# Run unit tests (no API key required)
-bun test tests/unit
-
-# Run integration tests (prompts for API key on first run, saves to OS keychain)
-bun test tests/integration
-
 # Run all tests
 bun test
+
+# Run tests for a specific package
+bun test --cwd apps/api
+bun test --cwd apps/tunnel
+bun test --cwd packages/sdk
 ```
 
 
