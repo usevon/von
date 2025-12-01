@@ -125,20 +125,24 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
       if (!connection) return
 
       try {
-        let messageStr: string
-        if (typeof message === "string") {
-          messageStr = message
-        } else if (Buffer.isBuffer(message)) {
-          messageStr = message.toString("utf-8")
-        } else if (message instanceof ArrayBuffer) {
-          messageStr = new TextDecoder().decode(message)
-        } else if (ArrayBuffer.isView(message)) {
-          messageStr = new TextDecoder().decode(message)
-        } else {
-          messageStr = String(message)
-        }
+        let response: TunnelResponse
 
-        const response = JSON.parse(messageStr) as TunnelResponse
+        // Elysia may auto-parse JSON or send various types
+        if (typeof message === "object" && message !== null && "requestId" in message) {
+          // Already parsed object
+          response = message as TunnelResponse
+        } else if (typeof message === "string") {
+          response = JSON.parse(message)
+        } else if (Buffer.isBuffer(message)) {
+          response = JSON.parse(message.toString("utf-8"))
+        } else if (message instanceof ArrayBuffer) {
+          response = JSON.parse(new TextDecoder().decode(message))
+        } else if (ArrayBuffer.isView(message)) {
+          response = JSON.parse(new TextDecoder().decode(message))
+        } else {
+          console.error("[tunnel] Unknown message type:", typeof message, message)
+          return
+        }
         const pending = connection.pendingRequests.get(response.requestId)
         if (pending) {
           clearTimeout(pending.timeout)
