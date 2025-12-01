@@ -27,7 +27,9 @@ const promptUntilValid = async () => {
   }
 }
 
-if (isIntegrationTest && !process.env.VON_API_KEY) {
+const init = async () => {
+  if (!isIntegrationTest || process.env.VON_API_KEY) return
+
   const saved = await secrets.get({ service: "von", name: "VON_API_KEY" })
 
   if (saved) {
@@ -44,5 +46,7 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
     await promptUntilValid()
   }
 }
+
+void init()
 
 export const getApiKey = () => process.env.VON_API_KEY

@@ -1,57 +1,15 @@
-import { Elysia, t } from "elysia"
-import { createHash } from "crypto"
-import { withSession } from "@/modules/auth"
+import { Elysia } from "elysia"
+import { createLogger } from "@usevon/logger"
+import type { TunnelResponse } from "@usevon/tunnel"
+import { betterAuth, withSession } from "@/modules/auth"
 import { UnauthorizedError } from "@/lib/errors"
 import { env } from "@/env"
+import { TunnelModel } from "./model"
+import { TunnelService } from "./service"
 
-type TunnelConnection = {
-  organizationId: string
-  userId: string
-  port: number
-  createdAt: Date
-  send: (data: string) => void
-  pendingRequests: Map<string, {
-    resolve: (response: TunnelResponse) => void
-    reject: (error: Error) => void
-    timeout: NodeJS.Timeout
-  }>
-}
+const log = createLogger({ name: "tunnel" })
 
-type TunnelRequest = {
-  id: string
-  method: string
-  path: string
-  headers: Record<string, string>
-  body?: string
-}
-
-type TunnelResponse = {
-  requestId: string
-  status: number
-  headers: Record<string, string>
-  body: string
-}
-
-const tunnels = new Map<string, TunnelConnection>()
-const orgTunnelCounts = new Map<string, number>()
-
-const generateTunnelId = (orgId: string, userId: string, port: number): string => {
-  return createHash("sha256")
-    .update(`${orgId}:${userId}:${port}`)
-    .digest("hex")
-    .slice(0, 12)
-}
-
-const getTunnelUrl = (tunnelId: string) => {
-  const baseUrl = env.TUNNEL_URL ?? `http://localhost:${env.PORT}`
-  return `${baseUrl}/${tunnelId}`
-}
-
-const getWsUrl = (tunnelId: string) => {
-  const baseUrl = env.TUNNEL_URL ?? `http://localhost:${env.PORT}`
-  const wsUrl = baseUrl.replace("http://", "ws://").replace("https://", "wss://")
-  return `${wsUrl}/ws/${tunnelId}`
-}
+const SESSION_VALIDATION_INTERVAL_MS = 30_000
 
 export const tunnelRegister = new Elysia({ prefix: "/register" })
   .use(withSession)
@@ -62,23 +20,18 @@ export const tunnelRegister = new Elysia({ prefix: "/register" })
         throw new UnauthorizedError("No active organization")
       }
 
-      const currentCount = orgTunnelCounts.get(organizationId) ?? 0
+      const currentCount = TunnelService.getOrgTunnelCount(organizationId)
       if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
         throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
       }
 
-      const tunnelId = generateTunnelId(organizationId, userId, body.port)
+      const tunnelId = TunnelService.generateTunnelId(organizationId, userId, body.port)
 
-      return {
-        tunnelId,
-        wsUrl: getWsUrl(tunnelId),
-        tunnelUrl: getTunnelUrl(tunnelId),
-      }
+      return { tunnelId }
     },
     {
-      body: t.Object({
-        port: t.Number({ minimum: 1, maximum: 65535 }),
-      }),
+      body: TunnelModel.registerBody,
+      response: TunnelModel.registerResponse,
     }
   )
 
@@ -93,176 +46,102 @@ export const tunnelWs = new Elysia()
         return
       }
 
-      tunnels.set(tunnelId, {
-        organizationId: "",
-        userId: "",
-        port: 0,
-        createdAt: new Date(),
-        send: (data) => ws.send(data),
-        pendingRequests: new Map(),
-      })
+      // Close existing connection if tunnel is being taken over
+      const existing = TunnelService.getTunnel(tunnelId)
+      if (existing) {
+        if (existing.validationInterval) clearInterval(existing.validationInterval)
+        existing.send(JSON.stringify({ type: "takeover" }))
+        existing.close()
+      }
 
-      console.log(`[tunnel] Connected: ${tunnelId}`)
+      const headers: Record<string, string> = {}
+      for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
+        if (value) headers[key] = value
+      }
+
+      const connection = {
+        send: (data: string) => ws.send(data),
+        close: () => ws.close(),
+        pending: new Map(),
+        headers,
+        validationInterval: undefined as ReturnType<typeof setInterval> | undefined,
+      }
+
+      // Periodic session validation
+      connection.validationInterval = setInterval(async () => {
+        try {
+          const session = await betterAuth.api.getSession({ headers: headers as HeadersInit })
+          if (!session) {
+            log.info(`Session expired: ${tunnelId}`)
+            if (connection.validationInterval) clearInterval(connection.validationInterval)
+            ws.close(4001, "Session expired")
+          }
+        } catch {
+          log.info(`Session validation failed: ${tunnelId}`)
+          if (connection.validationInterval) clearInterval(connection.validationInterval)
+          ws.close(4001, "Session expired")
+        }
+      }, SESSION_VALIDATION_INTERVAL_MS)
+
+      TunnelService.setTunnel(tunnelId, connection)
+
+      log.info(`Connected: ${tunnelId}`)
     },
     message(ws, message) {
       const tunnelId = ws.data.params.tunnelId
-      const connection = tunnels.get(tunnelId)
+      const connection = TunnelService.getTunnel(tunnelId)
       if (!connection) return
 
       try {
         let response: TunnelResponse
 
-        // Elysia may auto-parse JSON or send various types
         if (typeof message === "object" && message !== null && "requestId" in message) {
-          // Already parsed object
           response = message as TunnelResponse
         } else if (typeof message === "string") {
           response = JSON.parse(message)
-        } else if (Buffer.isBuffer(message)) {
-          response = JSON.parse(message.toString("utf-8"))
         } else if (message instanceof ArrayBuffer) {
           response = JSON.parse(new TextDecoder().decode(message))
         } else if (ArrayBuffer.isView(message)) {
           response = JSON.parse(new TextDecoder().decode(message))
         } else {
-          console.error("[tunnel] Unknown message type:", typeof message, message)
+          log.error(`Unknown message type: ${typeof message}`)
           return
         }
-        const pending = connection.pendingRequests.get(response.requestId)
+
+        const pending = connection.pending.get(response.requestId)
         if (pending) {
           clearTimeout(pending.timeout)
           pending.resolve(response)
-          connection.pendingRequests.delete(response.requestId)
+          connection.pending.delete(response.requestId)
         }
       } catch (e) {
-        console.error("[tunnel] Failed to parse response:", e)
+        log.error(`Failed to parse response: ${e}`)
       }
     },
     close(ws) {
       const tunnelId = ws.data.params.tunnelId
-      const connection = tunnels.get(tunnelId)
+      const connection = TunnelService.getTunnel(tunnelId)
 
       if (connection) {
-        for (const [, pending] of connection.pendingRequests) {
+        if (connection.validationInterval) clearInterval(connection.validationInterval)
+        for (const pending of connection.pending.values()) {
           clearTimeout(pending.timeout)
           pending.reject(new Error("Tunnel closed"))
         }
-        tunnels.delete(tunnelId)
+        TunnelService.deleteTunnel(tunnelId)
       }
 
-      console.log(`[tunnel] Disconnected: ${tunnelId}`)
+      log.info(`Disconnected: ${tunnelId}`)
     },
   })
 
-const forwardRequest = (
-  connection: TunnelConnection,
-  request: TunnelRequest,
-  timeoutMs: number = 30000
-): Promise<TunnelResponse> => {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      connection.pendingRequests.delete(request.id)
-      reject(new Error("Request timeout"))
-    }, timeoutMs)
-
-    connection.pendingRequests.set(request.id, { resolve, reject, timeout })
-    connection.send(JSON.stringify(request))
-  })
-}
-
 export const tunnelProxy = new Elysia()
-  .all("/:tunnelId/*", async ({ params, request, set }) => {
-    const tunnelId = params.tunnelId
-    const connection = tunnels.get(tunnelId)
-
-    if (!connection) {
-      set.status = 502
-      return { error: "Tunnel not connected" }
-    }
-
-    const url = new URL(request.url)
-    const path = url.pathname.replace(`/${tunnelId}`, "") || "/"
-
-    const headers: Record<string, string> = {}
-    request.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== "host") {
-        headers[key] = value
-      }
-    })
-
-    const body = request.method !== "GET" && request.method !== "HEAD"
-      ? await request.text()
-      : undefined
-
-    const tunnelRequest: TunnelRequest = {
-      id: crypto.randomUUID(),
-      method: request.method,
-      path,
-      headers,
-      body,
-    }
-
-    try {
-      const response = await forwardRequest(connection, tunnelRequest)
-
-      set.status = response.status
-
-      for (const [key, value] of Object.entries(response.headers)) {
-        if (key.toLowerCase() !== "content-encoding" &&
-            key.toLowerCase() !== "transfer-encoding") {
-          set.headers[key] = value
-        }
-      }
-
-      return response.body
-    } catch (e) {
-      set.status = 502
-      return { error: e instanceof Error ? e.message : "Tunnel error" }
-    }
+  .all("/:tunnelId/*", ({ params, request, set }) => {
+    const path = new URL(request.url).pathname.replace(`/${params.tunnelId}`, "") || "/"
+    return TunnelService.handleProxy(params.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], path)
   })
-  .all("/:tunnelId", async ({ params, request, set }) => {
-    const tunnelId = params.tunnelId
-    const connection = tunnels.get(tunnelId)
+  .all("/:tunnelId", ({ params, request, set }) =>
+    TunnelService.handleProxy(params.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], "/")
+  )
 
-    if (!connection) {
-      set.status = 502
-      return { error: "Tunnel not connected" }
-    }
-
-    const headers: Record<string, string> = {}
-    request.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== "host") {
-        headers[key] = value
-      }
-    })
-
-    const body = request.method !== "GET" && request.method !== "HEAD"
-      ? await request.text()
-      : undefined
-
-    const tunnelRequest: TunnelRequest = {
-      id: crypto.randomUUID(),
-      method: request.method,
-      path: "/",
-      headers,
-      body,
-    }
-
-    try {
-      const response = await forwardRequest(connection, tunnelRequest)
-
-      set.status = response.status
-
-      for (const [key, value] of Object.entries(response.headers)) {
-        if (key.toLowerCase() !== "content-encoding" &&
-            key.toLowerCase() !== "transfer-encoding") {
-          set.headers[key] = value
-        }
-      }
-
-      return response.body
-    } catch (e) {
-      set.status = 502
-      return { error: e instanceof Error ? e.message : "Tunnel error" }
-    }
-  })
+export { TunnelModel, TunnelService }
