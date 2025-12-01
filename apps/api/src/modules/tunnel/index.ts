@@ -125,7 +125,20 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
       if (!connection) return
 
       try {
-        const response = JSON.parse(message as string) as TunnelResponse
+        let messageStr: string
+        if (typeof message === "string") {
+          messageStr = message
+        } else if (Buffer.isBuffer(message)) {
+          messageStr = message.toString("utf-8")
+        } else if (message instanceof ArrayBuffer) {
+          messageStr = new TextDecoder().decode(message)
+        } else if (ArrayBuffer.isView(message)) {
+          messageStr = new TextDecoder().decode(message)
+        } else {
+          messageStr = String(message)
+        }
+
+        const response = JSON.parse(messageStr) as TunnelResponse
         const pending = connection.pendingRequests.get(response.requestId)
         if (pending) {
           clearTimeout(pending.timeout)
