@@ -79,6 +79,25 @@
         "vite": "^7.2.2",
       },
     },
+    "apps/tunnel": {
+      "name": "@usevon/tunnel",
+      "version": "0.0.1",
+      "dependencies": {
+        "@elysiajs/cors": "^1.1.0",
+        "@usevon/auth": "workspace:*",
+        "@usevon/db": "workspace:*",
+        "@usevon/env": "workspace:*",
+        "@usevon/logger": "workspace:*",
+        "@usevon/queue": "workspace:*",
+        "elysia": "^1.4.16",
+      },
+      "devDependencies": {
+        "@elysiajs/eden": "^1.4.1",
+        "@types/bun": "latest",
+        "@usevon/typescript-config": "workspace:*",
+        "typescript": "^5.7.2",
+      },
+    },
     "apps/worker": {
       "name": "@usevon/worker",
       "version": "0.0.1",
@@ -698,6 +717,8 @@
     "@usevon/sdk": ["@usevon/sdk@workspace:packages/sdk"],
 
     "@usevon/site": ["@usevon/site@workspace:apps/site"],
+
+    "@usevon/tunnel": ["@usevon/tunnel@workspace:apps/tunnel"],
 
     "@usevon/typescript-config": ["@usevon/typescript-config@workspace:packages/typescript-config"],
 
