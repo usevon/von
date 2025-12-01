@@ -38,4 +38,4 @@ bunx --bun shadcn@latest add @coss/button
 
 ## License
 
-MIT - see [LICENSE-MIT](../../../LICENSE-MIT)
+MIT - see [LICENSE-MIT](../../LICENSE-MIT)
