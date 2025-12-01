@@ -12,7 +12,15 @@ export const switchOrg = new Command("switch")
     const s = p.spinner()
     s.start("Fetching organizations...")
 
-    const orgs = await listOrganizations(token)
+    let orgs
+    try {
+      orgs = await listOrganizations(token)
+    } catch {
+      s.stop("Error")
+      p.log.error(`Could not connect to ${pc.cyan(config.apiUrl)}`)
+      p.outro("Is the server running?")
+      process.exit(1)
+    }
 
     if (orgs.length === 0) {
       s.stop()

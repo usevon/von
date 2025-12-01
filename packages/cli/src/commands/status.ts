@@ -8,25 +8,27 @@ export const status = new Command("status")
   .description("Show current status")
   .action(async () => {
     const auth = requireAuth(false)
-    if (!auth) {
-      p.log.info("Run 'von login' to authenticate")
-      return
-    }
+    if (!auth) return
 
     const { token, config } = auth
 
-    const session = await getSession(token)
-    if (!session) {
-      p.log.warn("Session expired, run 'von login' to re-authenticate")
-      return
+    try {
+      const session = await getSession(token)
+      if (!session) {
+        p.log.warn("Session expired, run 'von login' to re-authenticate")
+        return
+      }
+
+      const orgs = await listOrganizations(token)
+      const currentOrg = orgs.find((o) => o.id === config.organizationId)
+
+      console.log()
+      console.log(`  ${pc.dim("User:")}         ${session.user.email}`)
+      console.log(`  ${pc.dim("Organization:")} ${currentOrg?.name ?? pc.yellow("None")}`)
+      console.log(`  ${pc.dim("API:")}          ${config.apiUrl}`)
+      console.log()
+    } catch {
+      p.log.error(`Could not connect to ${pc.cyan(config.apiUrl)}`)
+      p.outro("Is the server running?")
     }
-
-    const orgs = await listOrganizations(token)
-    const currentOrg = orgs.find((o) => o.id === config.organizationId)
-
-    console.log()
-    console.log(`  ${pc.dim("User:")}         ${session.user.email}`)
-    console.log(`  ${pc.dim("Organization:")} ${currentOrg?.name ?? pc.yellow("None")}`)
-    console.log(`  ${pc.dim("API:")}          ${config.apiUrl}`)
-    console.log()
   })
