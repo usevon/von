@@ -1,4 +1,5 @@
 import pino from "pino"
+import pretty from "pino-pretty"
 
 export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace"
 
@@ -8,19 +9,11 @@ export type LoggerOptions = {
 }
 
 export const createLogger = (options: LoggerOptions = {}) => {
-  return pino({
-    level: options.level ?? "info",
-    name: options.name,
-    transport:
-      process.env.NODE_ENV === "development"
-        ? {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-            },
-          }
-        : undefined,
-  })
+  const stream = process.env.NODE_ENV === "development"
+    ? pretty({ colorize: true })
+    : undefined
+
+  return pino({ level: options.level ?? "info", name: options.name }, stream)
 }
 
 export const logger = createLogger({ name: "von" })
