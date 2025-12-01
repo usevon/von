@@ -80,22 +80,30 @@ const connectTunnel = async (
     const maxReconnectAttempts = 10
     let currentWs: WebSocket | null = null
     let isShuttingDown = false
+    let pingInterval: NodeJS.Timeout | null = null
 
-    // Register SIGINT handler once (use once to avoid multiple registrations)
     const shutdown = () => {
       if (isShuttingDown) return
       isShuttingDown = true
       console.log()
       console.log(pc.dim("  Closing tunnel..."))
-      if (currentWs) {
-        currentWs.terminate()
-      }
-      // Force exit after a short delay to ensure cleanup
-      setTimeout(() => process.exit(0), 100)
+      if (pingInterval) clearInterval(pingInterval)
+      if (currentWs) currentWs.terminate()
+      process.exit(0)
     }
 
-    process.once("SIGINT", shutdown)
-    process.once("SIGTERM", shutdown)
+    // Handle Ctrl+C on Windows via raw stdin
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true)
+      process.stdin.resume()
+      process.stdin.on("data", (data) => {
+        // Ctrl+C is 0x03
+        if (data[0] === 0x03) shutdown()
+      })
+    }
+
+    process.on("SIGINT", shutdown)
+    process.on("SIGTERM", shutdown)
 
     const connect = async () => {
       if (isShuttingDown) return
@@ -125,7 +133,7 @@ const connectTunnel = async (
           let pongReceived = true
 
           // Heartbeat ping every 10 seconds
-          const pingInterval = setInterval(() => {
+          pingInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               if (!pongReceived) {
                 console.log(pc.yellow("  Connection stale, reconnecting..."))
@@ -141,7 +149,12 @@ const connectTunnel = async (
             pongReceived = true
           })
 
-          ws.on("close", () => clearInterval(pingInterval))
+          ws.on("close", () => {
+            if (pingInterval) {
+              clearInterval(pingInterval)
+              pingInterval = null
+            }
+          })
         })
 
         ws.on("message", async (data) => {
