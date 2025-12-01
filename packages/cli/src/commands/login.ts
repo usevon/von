@@ -57,7 +57,12 @@ export const login = new Command("login")
         process.exit(0)
       }
 
-      if (instanceType === "self-hosted") {
+      if (instanceType === "hosted") {
+        saveConfig({
+          apiUrl: "https://api.usevon.com",
+          tunnelUrl: "https://tunnel.usevon.com",
+        })
+      } else if (instanceType === "self-hosted") {
         const apiUrl = await p.text({
           message: "API URL:",
           placeholder: "http://localhost:8080",
