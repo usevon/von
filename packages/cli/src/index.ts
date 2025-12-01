@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander"
+import * as p from "@clack/prompts"
 import { login } from "@/commands/login"
 import { logout } from "@/commands/logout"
 import { switchOrg } from "@/commands/switch"
@@ -8,7 +9,13 @@ import { dev } from "@/commands/dev"
 
 const program = new Command("von")
   .description("Von CLI - Webhooks infrastructure that just works")
-  .version("0.1.0", "-V, --version")
+  .version("0.1.1", "-V, --version")
+  .configureOutput({
+    outputError: (str) => {
+      const msg = str.replace(/^error: /, "").trim()
+      p.log.error(msg)
+    },
+  })
 
 program.addCommand(login)
 program.addCommand(logout)

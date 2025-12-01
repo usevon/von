@@ -133,7 +133,9 @@ export const login = new Command("login")
       const orgs = await listOrganizations(token)
 
       if (orgs.length === 0) {
-        p.note("No organizations found. Create one in the dashboard.", "Next steps")
+        p.log.info("No organizations found")
+        p.outro(`Create one at ${pc.cyan("app.usevon.com")}`)
+        return
       } else {
         const orgChoice = await p.select({
           message: "Select an organization:",
