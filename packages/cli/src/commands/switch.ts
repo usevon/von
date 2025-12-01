@@ -15,12 +15,27 @@ export const switchOrg = new Command("switch")
     const orgs = await listOrganizations(token)
 
     if (orgs.length === 0) {
-      s.stop("No organizations found")
-      p.note("Create an organization in the dashboard first.", "Next steps")
+      s.stop()
+      p.log.info("No organizations found")
+      p.outro(`Create one at ${pc.cyan("app.usevon.com")}`)
       process.exit(1)
     }
 
-    s.stop(`Found ${orgs.length} organization${orgs.length > 1 ? "s" : ""}`)
+    if (orgs.length === 1) {
+      const org = orgs[0]
+      if (org.id === config.organizationId) {
+        s.stop(`Already using ${pc.cyan(org.name)}`)
+        p.outro(`Use ${pc.dim("von switch")} after creating more orgs`)
+      } else {
+        s.stop(`Found ${pc.cyan(org.name)}`)
+        await setActiveOrganization(token, org.id)
+        saveConfig({ organizationId: org.id })
+        p.outro(`Switched to ${pc.cyan(org.name)}`)
+      }
+      return
+    }
+
+    s.stop(`Found ${orgs.length} organizations`)
 
     const currentOrg = orgs.find((o) => o.id === config.organizationId)
     if (currentOrg) {
@@ -41,9 +56,13 @@ export const switchOrg = new Command("switch")
       process.exit(0)
     }
 
-    await setActiveOrganization(token, orgChoice as string)
-    saveConfig({ organizationId: orgChoice as string })
-
     const selected = orgs.find((o) => o.id === orgChoice)
-    p.outro(pc.green(`Switched to ${pc.cyan(selected?.name || "Unknown")}`))
+
+    if (orgChoice === config.organizationId) {
+      p.outro(`Already using ${pc.cyan(selected?.name)}`)
+    } else {
+      await setActiveOrganization(token, orgChoice as string)
+      saveConfig({ organizationId: orgChoice as string })
+      p.outro(`Switched to ${pc.cyan(selected?.name)}`)
+    }
   })
