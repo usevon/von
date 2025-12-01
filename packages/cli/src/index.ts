@@ -8,7 +8,7 @@ import { dev } from "@/commands/dev"
 
 const program = new Command("von")
   .description("Von CLI - Webhooks infrastructure that just works")
-  .version("0.1.0", "-v, --version")
+  .version("0.1.0", "-V, --version")
 
 program.addCommand(login)
 program.addCommand(logout)

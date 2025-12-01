@@ -1,6 +1,14 @@
 # @usevon/cli
 
-Command-line interface for Von webhooks infrastructure.
+CLI for Von webhooks infrastructure. With the CLI, you get:
+
+- Secure tunnels for local webhook testing
+- Auto-reconnect with exponential backoff
+- Up to 3 tunnels running simultaneously
+- Automatic takeover when reconnecting to the same port
+- Verbose mode for debugging requests
+
+No ngrok setup, no manual forwarding.
 
 ## Installation
 
@@ -8,71 +16,63 @@ Command-line interface for Von webhooks infrastructure.
 npm install -g @usevon/cli
 ```
 
-## Usage
-
-### Authentication
+## Quick Start
 
 ```bash
-# Login to Von (opens browser for device authorization)
+# Login to Von
 von login
 
-# Login with local development server
-von login --local
+# Forward webhooks to localhost:3000
+von dev -p 3000
+```
 
-# Login with custom API URL
-von login --api-url http://localhost:8080
+## Commands
 
-# Logout
+### `von login`
+
+Authenticate with Von via device authorization flow.
+
+```bash
+von login                    # Hosted (api.usevon.com)
+von login --local            # Local development (localhost:8080)
+von login --api-url <url>    # Custom API URL
+von login --force            # Re-authenticate even if logged in
+```
+
+### `von logout`
+
+Log out and clear stored credentials.
+
+```bash
 von logout
+```
 
-# Switch organization
+### `von switch`
+
+Switch active organization.
+
+```bash
 von switch
 ```
 
-### Development Tunnel
+### `von dev`
 
-Forward webhooks to your local development server:
+Start dev tunnel for local webhook testing.
 
 ```bash
-# Start tunnel on port 3000
-von dev -p 3000
-
-# Start tunnel with specific organization
-von dev -p 3000 --org <org-id>
+von dev -p 3000              # Single port
+von dev -p 3000 -p 4000      # Multiple ports (max 3)
+von dev -p 3000 -v           # Verbose mode (show headers/body)
 ```
-
-### Commands
-
-| Command | Description |
-|---------|-------------|
-| `von login` | Authenticate with Von |
-| `von logout` | Log out of Von |
-| `von switch` | Switch active organization |
-| `von dev -p <port>` | Start dev tunnel for local webhook testing |
-
-### Options
-
-**Global**
-- `-v, --version` - Show version number
-- `-h, --help` - Show help
-
-**login**
-- `-l, --local` - Use local development URLs (localhost:8080)
-- `--api-url <url>` - Custom API URL
-- `--tunnel-url <url>` - Custom tunnel URL
-
-**dev**
-- `-p, --port <port>` - Local port to forward to (required)
-- `-o, --org <orgId>` - Organization ID (uses active org if not specified)
 
 ## Configuration
 
-Configuration is stored in `~/.von/config.json`:
+Stored in `~/.von/config.json`:
 
 ```json
 {
   "apiUrl": "https://api.usevon.com",
-  "tunnelUrl": "https://dev.usevon.com",
+  "tunnelUrl": "https://tunnel.usevon.com",
   "token": "...",
   "organizationId": "..."
 }
@@ -80,4 +80,4 @@ Configuration is stored in `~/.von/config.json`:
 
 ## License
 
-MIT
+MIT - see [LICENSE-MIT](../../LICENSE-MIT)

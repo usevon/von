@@ -8,4 +8,5 @@ export default defineConfig({
   alias: {
     "@": "./src",
   },
+  noExternal: ["@usevon/tunnel"],
 })

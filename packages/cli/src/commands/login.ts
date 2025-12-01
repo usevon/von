@@ -16,10 +16,21 @@ export const login = new Command("login")
   .option("-l, --local", "Use local development URLs (localhost:8080)")
   .option("--api-url <url>", "Custom API URL")
   .option("--tunnel-url <url>", "Custom tunnel URL")
+  .option("-f, --force", "Force re-login even if already authenticated")
   .action(async (options) => {
     p.intro(pc.cyan("Von CLI Login"))
 
     const config = loadConfig()
+
+    // Check if already logged in
+    if (config.token && !options.force) {
+      const session = await getSession(config.token).catch(() => null)
+      if (session) {
+        p.log.info(`Already logged in as ${pc.cyan(session.user.email)}`)
+        p.outro(`Use ${pc.dim("von login --force")} to re-authenticate`)
+        return
+      }
+    }
 
     if (options.local) {
       saveConfig({
