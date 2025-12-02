@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify-whitespace --minify-syntax",
     "build:types": "tsc --emitDeclarationOnly && tsc-alias",
     "test": "bun test",
     "db:generate": "bun --env-file=.env run --filter @usevon/db db:generate",
