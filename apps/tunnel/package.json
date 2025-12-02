@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build src/index.ts --outdir dist --target bun --minify-whitespace --minify-syntax",
     "test": "bun test --preload ./tests/preload.ts",
     "test:unit": "bun test --preload ./tests/preload.ts tests/unit",
     "test:integration": "bun test --preload ./tests/preload.ts tests/integration"
