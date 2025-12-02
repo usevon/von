@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --bun vite",
     "build": "tsc && bun --bun vite build",
+    "start": "bun --bun vite preview --port 3000 --host",
     "preview": "bun --bun vite preview"
   },
   "dependencies": {
