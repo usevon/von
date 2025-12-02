@@ -33,9 +33,24 @@ npm install -g @usevon/cli
 
 ## Getting Started
 
-**Cloud:** The quickest way to start is through [usevon.com](https://usevon.com)
+### Cloud
 
-**Self-hosted:**
+The quickest way to start is through [usevon.com](https://usevon.com)
+
+### Self-hosted
+
+Run Von on your own infrastructure. With self-hosted, you get:
+
+- Standalone binaries for api, tunnel, and worker (no Bun needed on server)
+- PM2 process management with zero-downtime reloads
+- Full control over your data and deployment
+- No usage limits or rate limiting
+
+Backend services require a VPS or dedicated server (stateful WebSocket connections aren't compatible with serverless platforms like Cloudflare Workers), but frontend can be deployed anywhere.
+
+Requires PostgreSQL, Redis, and Bun (for building).
+
+#### Development
 
 ```bash
 git clone https://github.com/usevon/von.git
@@ -56,6 +71,53 @@ bun run --cwd apps/api db:push
 # Start all services
 bun dev
 ```
+
+#### Production
+
+Deploy to a Linux VPS with PM2 for process management.
+
+**Prerequisites:** Linux VPS, [Bun](https://bun.sh), PostgreSQL, Redis, PM2 (`npm install -g pm2`)
+
+**Build:**
+
+```bash
+# Backend (standalone binaries)
+bun run --cwd apps/api build:prod
+bun run --cwd apps/tunnel build:prod
+bun run --cwd apps/worker build:prod
+
+# Frontend
+bun run --cwd apps/dashboard build
+bun run --cwd apps/site build
+```
+
+**Deploy** (replace `user@server` with your SSH user and server address):
+
+```bash
+# Backend binaries
+scp apps/api/dist/api user@server:/app/
+scp apps/tunnel/dist/tunnel user@server:/app/
+scp apps/worker/dist/worker user@server:/app/
+
+# Dashboard
+rsync -av apps/dashboard/.output/ user@server:/app/dashboard/
+
+# Site
+rsync -av apps/site/dist/ user@server:/app/site/
+```
+
+**Start with PM2:**
+
+```bash
+pm2 start /app/api --name api
+pm2 start /app/tunnel --name tunnel
+pm2 start /app/worker --name worker
+pm2 start "bun /app/dashboard/server/index.mjs" --name dashboard
+pm2 start "bun --bun vite preview --port 3000" --name site --cwd /app/site
+pm2 save && pm2 startup
+```
+
+**Zero-downtime reload:** `pm2 reload all`
 
 ## Testing
 
