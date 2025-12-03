@@ -1,12 +1,12 @@
 import { Elysia, t } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withSession } from "@/modules/auth"
+import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@/lib/errors"
 import { InboundModel } from "./model"
 import { InboundService } from "./service"
 
 export const inbound = new Elysia({ prefix: "/inbound" })
-  .use(withSession)
+  .use(withAuth)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
