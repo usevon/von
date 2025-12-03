@@ -163,6 +163,7 @@ export abstract class EndpointService {
       secret: string
       timeoutMs: number
       retryCount: number
+      version: string | null
     }>
   > {
     try {
@@ -182,6 +183,7 @@ export abstract class EndpointService {
         secret: e.secret,
         timeoutMs: e.timeoutMs,
         retryCount: e.retryCount,
+        version: e.version,
       }))
     } catch (error) {
       console.error("Error fetching enabled endpoints:", error)

@@ -27,6 +27,7 @@ docker/data/
 # Node
 node_modules/
 dist/
+*.tsbuildinfo
 
 # Turborepo
 .turbo

@@ -9,6 +9,7 @@ export type WebhookDeliveryJob = {
     secret: string
     timeoutMs: number
     retryCount: number
+    version: string | null
   }
 }
 
