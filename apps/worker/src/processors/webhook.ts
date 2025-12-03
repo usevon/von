@@ -1,11 +1,51 @@
 import { Worker, Job } from "bullmq"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { createHmac } from "crypto"
 import { db } from "@usevon/db"
-import { delivery, endpoint } from "@usevon/db/schema"
+import { delivery, endpoint, webhookVersion } from "@usevon/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue"
 import { createLogger } from "@usevon/logger/elysia"
 import { env } from "@/env"
+
+type TransformMappings = {
+  rename?: Record<string, string>
+  remove?: string[]
+  defaults?: Record<string, unknown>
+}
+
+type Transforms = Record<string, TransformMappings>
+
+const applyTransforms = (
+  payload: Record<string, unknown>,
+  transforms: TransformMappings
+): Record<string, unknown> => {
+  const result = { ...payload }
+
+  if (transforms.remove) {
+    for (const field of transforms.remove) {
+      delete result[field]
+    }
+  }
+
+  if (transforms.rename) {
+    for (const [from, to] of Object.entries(transforms.rename)) {
+      if (from in result) {
+        result[to] = result[from]
+        delete result[from]
+      }
+    }
+  }
+
+  if (transforms.defaults) {
+    for (const [field, value] of Object.entries(transforms.defaults)) {
+      if (!(field in result)) {
+        result[field] = value
+      }
+    }
+  }
+
+  return result
+}
 
 const log = createLogger({
   level: env.NODE_ENV === "development" ? "debug" : "info",
@@ -84,7 +124,29 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
   }
 
-  const signature = generateSignature(payload, ep.secret)
+  let finalPayload = payload
+
+  if (ep.version) {
+    const [version] = await db
+      .select({ transforms: webhookVersion.transforms })
+      .from(webhookVersion)
+      .where(eq(webhookVersion.version, ep.version))
+      .limit(1)
+
+    if (version?.transforms) {
+      const transforms = version.transforms as Transforms
+      const eventTransforms = transforms[eventType]
+
+      if (eventTransforms) {
+        const parsed = JSON.parse(payload) as Record<string, unknown>
+        const transformed = applyTransforms(parsed, eventTransforms)
+        finalPayload = JSON.stringify(transformed)
+        log.debug({ endpointId: ep.id, version: ep.version, eventType }, "Applied transforms")
+      }
+    }
+  }
+
+  const signature = generateSignature(finalPayload, ep.secret)
   const now = new Date()
 
   try {
@@ -97,7 +159,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         "X-Von-Delivery-Id": deliveryId,
         "X-Von-Event-Id": eventId,
       },
-      body: payload,
+      body: finalPayload,
       signal: AbortSignal.timeout(ep.timeoutMs),
     })
 
