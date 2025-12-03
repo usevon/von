@@ -1,12 +1,12 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withSession } from "@/modules/auth"
+import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@/lib/errors"
 import { EndpointModel } from "./model"
 import { EndpointService } from "./service"
 
 export const endpoints = new Elysia({ prefix: "/endpoints" })
-  .use(withSession)
+  .use(withAuth)
   .post(
     "/",
     async ({ organizationId, body, set }) => {

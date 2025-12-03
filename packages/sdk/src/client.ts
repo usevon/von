@@ -3,6 +3,7 @@ import type { VonConfig } from '@/types'
 import { webhooksMethods } from '@/webhooks'
 import { endpointsMethods } from '@/endpoints'
 import { inboundMethods } from '@/inbound'
+import { versionsMethods } from '@/versions'
 
 const DEFAULT_BASE_URL = 'http://localhost:3000'
 
@@ -13,6 +14,7 @@ export class Von {
   public readonly webhooks: ReturnType<typeof webhooksMethods>
   public readonly endpoints: ReturnType<typeof endpointsMethods>
   public readonly inbound: ReturnType<typeof inboundMethods>
+  public readonly versions: ReturnType<typeof versionsMethods>
 
   constructor(config?: VonConfig) {
     this.baseUrl = config?.baseUrl ?? process.env.VON_BASE_URL ?? DEFAULT_BASE_URL
@@ -21,6 +23,7 @@ export class Von {
     this.webhooks = webhooksMethods(this)
     this.endpoints = endpointsMethods(this)
     this.inbound = inboundMethods(this)
+    this.versions = versionsMethods(this)
   }
 
   private getHeaders(): Record<string, string> {

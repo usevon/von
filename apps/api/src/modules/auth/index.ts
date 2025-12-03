@@ -73,4 +73,31 @@ export const withSession = new Elysia({ name: "session-auth" })
     }
   })
 
+export const withAuth = new Elysia({ name: "combined-auth" })
+  .resolve({ as: "scoped" }, async ({ headers }): Promise<{ organizationId: string; userId: string }> => {
+    const authHeader = headers["authorization"]
+
+    if (authHeader?.startsWith("Bearer ")) {
+      const rawKey = authHeader.slice(7)
+      const result = await betterAuth.api.verifyApiKey({ body: { key: rawKey } })
+
+      if (result.valid && result.key?.organizationId) {
+        return {
+          organizationId: result.key.organizationId,
+          userId: result.key.userId ?? "",
+        }
+      }
+    }
+
+    const data = await betterAuth.api.getSession({ headers: headers as HeadersInit })
+    if (data?.session?.activeOrganizationId) {
+      return {
+        organizationId: data.session.activeOrganizationId,
+        userId: data.user?.id ?? "",
+      }
+    }
+
+    throw new UnauthorizedError("Please sign in or provide a valid API key.")
+  })
+
 export { betterAuth }

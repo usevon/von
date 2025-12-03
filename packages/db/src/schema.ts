@@ -7,6 +7,9 @@ import {
   integer,
   uuid,
   index,
+  date,
+  jsonb,
+  unique,
 } from "drizzle-orm/pg-core"
 
 export const user = pgTable("user", {
@@ -198,6 +201,7 @@ export const endpoint = pgTable(
     description: text("description"),
     secret: text("secret").notNull(),
     enabled: boolean("enabled").default(true).notNull(),
+    version: date("version"),
     retryCount: integer("retry_count").default(3).notNull(),
     timeoutMs: integer("timeout_ms").default(30000).notNull(),
     circuitState: text("circuit_state").default("closed").notNull(),
@@ -333,6 +337,30 @@ export const tunnel = pgTable(
   ]
 )
 
+export const webhookVersion = pgTable(
+  "webhook_version",
+  {
+    id: uuid("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    version: date("version").notNull(),
+    transforms: jsonb("transforms").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("webhook_version_organization_id_idx").on(table.organizationId),
+    unique("webhook_version_org_version_unique").on(
+      table.organizationId,
+      table.version
+    ),
+  ]
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -362,6 +390,7 @@ export const organizationRelations = relations(organization, ({ many }) => ({
   endpoints: many(endpoint),
   events: many(event),
   inboundEndpoints: many(inboundEndpoint),
+  webhookVersions: many(webhookVersion),
 }))
 
 export const memberRelations = relations(member, ({ one }) => ({
@@ -436,5 +465,12 @@ export const inboundDeliveryRelations = relations(inboundDelivery, ({ one }) => 
   inboundEndpoint: one(inboundEndpoint, {
     fields: [inboundDelivery.inboundEndpointId],
     references: [inboundEndpoint.id],
+  }),
+}))
+
+export const webhookVersionRelations = relations(webhookVersion, ({ one }) => ({
+  organization: one(organization, {
+    fields: [webhookVersion.organizationId],
+    references: [organization.id],
   }),
 }))
