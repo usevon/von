@@ -2,29 +2,35 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
 import { generateId } from "@usevon/auth"
-import { InternalServerError, NotFoundError } from "@/lib/errors"
+import { InternalServerError } from "@/lib/errors"
 import type { EndpointModel } from "./model"
 
-type CreateEndpointParams = {
-  organizationId: string
+type EndpointFields = {
   url: string
   description?: string
   enabled?: boolean
+  version?: string | null
   retryCount?: number
   timeoutMs?: number
 }
 
-type UpdateEndpointParams = {
-  organizationId: string
-  endpointId: string
-  url?: string
-  description?: string
-  enabled?: boolean
-  retryCount?: number
-  timeoutMs?: number
-}
+type CreateEndpointParams = EndpointFields & { organizationId: string }
+type UpdateEndpointParams = Partial<EndpointFields> & { organizationId: string; endpointId: string }
 
 const generateSecret = () => `whsec_${generateId()}`
+
+const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint => ({
+  id: e.id,
+  url: e.url,
+  description: e.description,
+  secret: e.secret,
+  enabled: e.enabled,
+  version: e.version,
+  retryCount: e.retryCount,
+  timeoutMs: e.timeoutMs,
+  createdAt: e.createdAt.toISOString(),
+  updatedAt: e.updatedAt.toISOString(),
+})
 
 export abstract class EndpointService {
   static async create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
@@ -40,6 +46,7 @@ export abstract class EndpointService {
           description: params.description ?? null,
           secret: generateSecret(),
           enabled: params.enabled ?? true,
+          version: params.version ?? null,
           retryCount: params.retryCount ?? 3,
           timeoutMs: params.timeoutMs ?? 30000,
           createdAt: now,
@@ -48,12 +55,7 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to create endpoint")
-
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toEndpoint(result[0])
     } catch (error) {
       console.error("Error creating endpoint:", error)
       throw new InternalServerError("Failed to create endpoint")
@@ -72,11 +74,7 @@ export abstract class EndpointService {
         .where(eq(endpoint.organizationId, organizationId))
 
       return {
-        endpoints: endpoints.slice(offset, offset + limit).map((e) => ({
-          ...e,
-          createdAt: e.createdAt.toISOString(),
-          updatedAt: e.updatedAt.toISOString(),
-        })),
+        endpoints: endpoints.slice(offset, offset + limit).map(toEndpoint),
         total: endpoints.length,
       }
     } catch (error) {
@@ -97,11 +95,7 @@ export abstract class EndpointService {
         .limit(1)
 
       if (!result[0]) return null
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toEndpoint(result[0])
     } catch (error) {
       console.error("Error fetching endpoint:", error)
       throw new InternalServerError("Failed to fetch endpoint")
@@ -129,6 +123,7 @@ export abstract class EndpointService {
           url: params.url ?? existing[0].url,
           description: params.description ?? existing[0].description,
           enabled: params.enabled ?? existing[0].enabled,
+          version: params.version !== undefined ? params.version : existing[0].version,
           retryCount: params.retryCount ?? existing[0].retryCount,
           timeoutMs: params.timeoutMs ?? existing[0].timeoutMs,
           updatedAt: new Date(),
@@ -137,12 +132,7 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update endpoint")
-
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toEndpoint(result[0])
     } catch (error) {
       console.error("Error updating endpoint:", error)
       throw new InternalServerError("Failed to update endpoint")

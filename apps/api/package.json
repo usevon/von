@@ -34,6 +34,7 @@
     "postgres": "^3.4.7"
   },
   "devDependencies": {
+    "@elysiajs/eden": "^1.4.5",
     "@types/bun": "latest",
     "@usevon/typescript-config": "workspace:*",
     "typescript": "^5.7.2"

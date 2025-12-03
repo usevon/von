@@ -2,6 +2,7 @@ export type CreateEndpointParams = {
   url: string
   description?: string
   enabled?: boolean
+  version?: string
   retryCount?: number
   timeoutMs?: number
 }
@@ -10,6 +11,7 @@ export type UpdateEndpointParams = {
   url?: string
   description?: string
   enabled?: boolean
+  version?: string | null
   retryCount?: number
   timeoutMs?: number
 }
@@ -20,6 +22,7 @@ export type Endpoint = {
   secret: string
   description: string | null
   enabled: boolean
+  version: string | null
   retryCount: number
   timeoutMs: number
   createdAt: string

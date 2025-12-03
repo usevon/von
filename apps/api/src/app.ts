@@ -10,6 +10,7 @@ import { endpoints } from "@/modules/endpoints"
 import { inbound, inboundPublic } from "@/modules/inbound"
 import { webhooks, webhookEvents } from "@/modules/webhooks"
 import { tunnel, tunnelWs, tunnelPublic } from "@/modules/tunnel"
+import { versions } from "@/modules/versions"
 import {
   UnauthorizedError,
   NotFoundError,
@@ -130,6 +131,7 @@ export const app = new Elysia({
   .use(webhookEvents)
   .use(endpoints)
   .use(inbound)
+  .use(versions)
   .use(tunnel)
   .use(tunnelWs)
   .use(tunnelPublic)
