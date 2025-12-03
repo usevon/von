@@ -1,5 +1,12 @@
 import { treaty } from "@elysiajs/eden"
-import { app } from "../src/app"
+
+if (!process.env.BETTER_AUTH_SECRET) {
+  console.error("ERROR: Missing required environment variables.")
+  console.error("Run tests from apps/api/ directory: cd apps/api && bun test")
+  process.exit(1)
+}
+
+const { app } = await import("../src/app")
 
 export type App = typeof app
 
