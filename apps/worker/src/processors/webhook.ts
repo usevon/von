@@ -15,7 +15,7 @@ type TransformMappings = {
 
 type Transforms = Record<string, TransformMappings>
 
-const applyTransforms = (
+export const applyTransforms = (
   payload: Record<string, unknown>,
   transforms: TransformMappings
 ): Record<string, unknown> => {
