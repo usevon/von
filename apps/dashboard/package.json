@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite",
-    "build": "bun --bun vite build",
+    "dev": "vite",
+    "build": "vite build",
     "start": "bun .output/server/index.mjs",
     "typecheck": "tsc --noEmit",
-    "preview": "bun --bun vite preview"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.5",
