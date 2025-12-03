@@ -4,7 +4,9 @@ import { getApiKey } from "./setup"
 
 describe.skipIf(!getApiKey())("Versions CRUD", () => {
   const apiKey = getApiKey()!
-  const testVersion = `test-${Date.now()}`
+  const offset = Date.now() % 36500
+  const testDate = new Date(2020, 0, 1 + offset)
+  const testVersion = testDate.toISOString().split("T")[0]
   let createdVersion = false
 
   test("POST /versions creates version", async () => {
@@ -26,7 +28,7 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
 
     if (error) throw error
     expect(data.id).toBeDefined()
-    expect(data.version).toBe(testVersion)
+    expect(new Date(data.version).toISOString().split("T")[0]).toBe(testVersion)
     expect(data.transforms["product.updated"].rename).toEqual({ features: "items" })
     createdVersion = true
   })
@@ -50,7 +52,7 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
     })
 
     if (error) throw error
-    expect(data.version).toBe(testVersion)
+    expect(new Date(data.version).toISOString().split("T")[0]).toBe(testVersion)
     expect(data.transforms["product.updated"]).toBeDefined()
   })
 
@@ -89,7 +91,9 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
 
 describe.skipIf(!getApiKey())("Endpoint with Version", () => {
   const apiKey = getApiKey()!
-  const testVersion = `test-endpoint-${Date.now()}`
+  const offset = (Date.now() + 18250) % 36500
+  const testDate = new Date(2020, 0, 1 + offset)
+  const testVersion = testDate.toISOString().split("T")[0]
   let endpointId: string | null = null
 
   test("create version for endpoint test", async () => {
@@ -123,7 +127,7 @@ describe.skipIf(!getApiKey())("Endpoint with Version", () => {
 
     if (error) throw error
     expect(data.id).toBeDefined()
-    expect(data.version).toBe(testVersion)
+    expect(new Date(data.version).toISOString().split("T")[0]).toBe(testVersion)
     endpointId = data.id
   })
 
@@ -135,7 +139,7 @@ describe.skipIf(!getApiKey())("Endpoint with Version", () => {
     })
 
     if (error) throw error
-    expect(data.version).toBe(testVersion)
+    expect(new Date(data.version).toISOString().split("T")[0]).toBe(testVersion)
   })
 
   test("PATCH /endpoints/:id can update version", async () => {

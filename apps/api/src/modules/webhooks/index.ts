@@ -1,11 +1,11 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse } from "@/lib/models"
-import { withApiKey, withSession } from "@/modules/auth"
+import { withAuth } from "@/modules/auth"
 import { WebhookModel } from "./model"
 import { WebhookService } from "./service"
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
-  .use(withSession)
+  .use(withAuth)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
@@ -39,7 +39,7 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   )
 
 export const webhookEvents = new Elysia({ prefix: "/webhooks" })
-  .use(withSession)
+  .use(withAuth)
   .get(
     "/events",
     async ({ organizationId, query }) => {
