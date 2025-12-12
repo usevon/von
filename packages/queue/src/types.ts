@@ -13,6 +13,7 @@ export type WebhookDeliveryJob = {
   payload: string
   eventType: string
   endpoint: DeliveryEndpoint
+  organizationId: string
   requestId?: string
 }
 

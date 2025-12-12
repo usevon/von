@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema"
 import { createConnection, type InboundForwardingJob } from "@usevon/queue"
@@ -19,22 +19,31 @@ const log = createLogger({
   pretty: env.NODE_ENV === "development",
 })
 
+const getInboundDeliveryStmt = db
+  .select()
+  .from(inboundDelivery)
+  .where(eq(inboundDelivery.id, sql.placeholder("id")))
+  .limit(1)
+  .prepare("worker_get_inbound_delivery")
+
+const getInboundEndpointStateStmt = db
+  .select({
+    enabled: inboundEndpoint.enabled,
+    circuitState: inboundEndpoint.circuitState,
+    circuitOpenedAt: inboundEndpoint.circuitOpenedAt,
+    failureCount: inboundEndpoint.failureCount,
+  })
+  .from(inboundEndpoint)
+  .where(eq(inboundEndpoint.id, sql.placeholder("id")))
+  .limit(1)
+  .prepare("worker_get_inbound_endpoint_state")
+
 const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
   const { deliveryId, endpoint: ep, payload, headers, requestId } = job.data
 
-  // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
   const [[deliveryRecord], [endpointState]] = await Promise.all([
-    db.select().from(inboundDelivery).where(eq(inboundDelivery.id, deliveryId)).limit(1),
-    db
-      .select({
-        enabled: inboundEndpoint.enabled,
-        circuitState: inboundEndpoint.circuitState,
-        circuitOpenedAt: inboundEndpoint.circuitOpenedAt,
-        failureCount: inboundEndpoint.failureCount,
-      })
-      .from(inboundEndpoint)
-      .where(eq(inboundEndpoint.id, ep.id))
-      .limit(1),
+    getInboundDeliveryStmt.execute({ id: deliveryId }),
+    getInboundEndpointStateStmt.execute({ id: ep.id }),
   ])
 
   if (!deliveryRecord) {
