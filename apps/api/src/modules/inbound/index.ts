@@ -26,11 +26,7 @@ export const inbound = new Elysia({ prefix: "/inbound" })
     "/",
     async ({ organizationId, query }) => {
       if (!organizationId) return { endpoints: [], total: 0 }
-      return InboundService.getAll({
-        organizationId,
-        limit: query.limit ?? 20,
-        offset: query.offset ?? 0,
-      })
+      return InboundService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
     },
     {
       query: PaginationQuery,

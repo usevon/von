@@ -1,6 +1,7 @@
-import { eq, and } from "drizzle-orm"
+import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
+import type { DeliveryEndpoint } from "@usevon/queue"
 import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
 import type { EndpointModel } from "./model"
 
@@ -65,15 +66,16 @@ export abstract class EndpointService {
     offset: number
   ): Promise<EndpointModel.endpointList> {
     try {
-      const endpoints = await db
-        .select()
-        .from(endpoint)
-        .where(eq(endpoint.organizationId, organizationId))
-
-      return {
-        endpoints: endpoints.slice(offset, offset + limit).map(toEndpoint),
-        total: endpoints.length,
-      }
+      const [endpoints, total] = await Promise.all([
+        db
+          .select()
+          .from(endpoint)
+          .where(eq(endpoint.organizationId, organizationId))
+          .limit(limit)
+          .offset(offset),
+        db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
+      ])
+      return { endpoints: endpoints.map(toEndpoint), total }
     } catch (error) {
       console.error("Error fetching endpoints:", error)
       throw new InternalServerError("Failed to fetch endpoints")
@@ -153,35 +155,22 @@ export abstract class EndpointService {
   static async getEnabledEndpointsForDelivery(
     organizationId: string,
     filterIds?: string[]
-  ): Promise<
-    Array<{
-      id: string
-      url: string
-      secret: string
-      timeoutMs: number
-      retryCount: number
-      version: string | null
-    }>
-  > {
+  ): Promise<DeliveryEndpoint[]> {
     try {
-      const endpoints = await db
-        .select()
+      const conditions = [eq(endpoint.organizationId, organizationId), eq(endpoint.enabled, true)]
+      if (filterIds?.length) conditions.push(inArray(endpoint.id, filterIds))
+
+      return db
+        .select({
+          id: endpoint.id,
+          url: endpoint.url,
+          secret: endpoint.secret,
+          timeoutMs: endpoint.timeoutMs,
+          retryCount: endpoint.retryCount,
+          version: endpoint.version,
+        })
         .from(endpoint)
-        .where(eq(endpoint.organizationId, organizationId))
-
-      let enabled = endpoints.filter((e) => e.enabled)
-      if (filterIds && filterIds.length > 0) {
-        enabled = enabled.filter((e) => filterIds.includes(e.id))
-      }
-
-      return enabled.map((e) => ({
-        id: e.id,
-        url: e.url,
-        secret: e.secret,
-        timeoutMs: e.timeoutMs,
-        retryCount: e.retryCount,
-        version: e.version,
-      }))
+        .where(and(...conditions))
     } catch (error) {
       console.error("Error fetching enabled endpoints:", error)
       throw new InternalServerError("Failed to fetch enabled endpoints")
