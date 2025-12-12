@@ -221,7 +221,9 @@ export abstract class WebhookService {
             secret: string
             timeoutMs: number
             retryCount: number
+            version: string | null
           }
+          requestId?: string
         }
       }> = []
 
