@@ -1,72 +1,29 @@
 import { Worker, Job } from "bullmq"
-import { eq, and } from "drizzle-orm"
-import { createHmac } from "crypto"
+import { eq } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue"
 import { createLogger } from "@usevon/logger/elysia"
+import {
+  hmacSign,
+  applyTransforms,
+  isCircuitOpen,
+  shouldTransitionToHalfOpen,
+  getSuccessUpdate,
+  getFailureUpdate,
+  type Transforms,
+  type CircuitState,
+} from "@usevon/utils"
 import { env } from "@/env"
-
-type TransformMappings = {
-  rename?: Record<string, string>
-  remove?: string[]
-  defaults?: Record<string, unknown>
-}
-
-type Transforms = Record<string, TransformMappings>
-
-export const applyTransforms = (
-  payload: Record<string, unknown>,
-  transforms: TransformMappings
-): Record<string, unknown> => {
-  const result = { ...payload }
-
-  if (transforms.remove) {
-    for (const field of transforms.remove) {
-      delete result[field]
-    }
-  }
-
-  if (transforms.rename) {
-    for (const [from, to] of Object.entries(transforms.rename)) {
-      if (from in result) {
-        result[to] = result[from]
-        delete result[from]
-      }
-    }
-  }
-
-  if (transforms.defaults) {
-    for (const [field, value] of Object.entries(transforms.defaults)) {
-      if (!(field in result)) {
-        result[field] = value
-      }
-    }
-  }
-
-  return result
-}
 
 const log = createLogger({
   level: env.NODE_ENV === "development" ? "debug" : "info",
   pretty: env.NODE_ENV === "development",
 })
 
-const generateSignature = (payload: string, secret: string): string => {
-  const hmac = createHmac("sha256", secret)
-  hmac.update(payload)
-  return hmac.digest("hex")
-}
-
-const CIRCUIT_CONFIG = {
-  failureThreshold: 5,
-  resetTimeoutMs: 300000,
-}
-
 const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
   const { deliveryId, eventId, payload, eventType, endpoint: ep, requestId } = job.data
 
-  // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
   const [[deliveryRecord], [endpointState]] = await Promise.all([
     db.select().from(delivery).where(eq(delivery.id, deliveryId)).limit(1),
     db
@@ -105,23 +62,26 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     return
   }
 
-  if (endpointState.circuitState === "open") {
-    const circuitOpenedAt = endpointState.circuitOpenedAt
-    if (circuitOpenedAt) {
-      const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
-      if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
-        await db
-          .update(delivery)
-          .set({ status: "circuit_open", updatedAt: new Date() })
-          .where(eq(delivery.id, deliveryId))
-        return
-      }
-      await db
-        .update(endpoint)
-        .set({ circuitState: "half_open", updatedAt: new Date() })
-        .where(eq(endpoint.id, ep.id))
-    }
+  const circuitState = {
+    circuitState: endpointState.circuitState as CircuitState,
+    circuitOpenedAt: endpointState.circuitOpenedAt,
+    failureCount: endpointState.failureCount,
+  }
+
+  if (isCircuitOpen(circuitState)) {
+    log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
+    await db
+      .update(delivery)
+      .set({ status: "circuit_open", updatedAt: new Date() })
+      .where(eq(delivery.id, deliveryId))
+    return
+  }
+
+  if (shouldTransitionToHalfOpen(circuitState)) {
+    await db
+      .update(endpoint)
+      .set({ circuitState: "half_open", updatedAt: new Date() })
+      .where(eq(endpoint.id, ep.id))
   }
 
   let finalPayload = payload
@@ -146,7 +106,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
   }
 
-  const signature = generateSignature(finalPayload, ep.secret)
+  const signature = hmacSign(finalPayload, ep.secret)
   const now = new Date()
 
   try {
@@ -166,7 +126,8 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     const responseBody = await response.text().catch(() => null)
 
     if (response.ok) {
-      // Parallel: update delivery + reset circuit breaker
+      const successUpdate = getSuccessUpdate()
+
       await Promise.all([
         db
           .update(delivery)
@@ -182,8 +143,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         db
           .update(endpoint)
           .set({
-            failureCount: 0,
-            circuitState: "closed",
+            ...successUpdate,
             updatedAt: now,
           })
           .where(eq(endpoint.id, ep.id)),
@@ -201,10 +161,8 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    const newFailureCount = endpointState.failureCount + 1
-    const shouldOpenCircuit = newFailureCount >= CIRCUIT_CONFIG.failureThreshold
+    const failureUpdate = getFailureUpdate(endpointState.failureCount)
 
-    // Parallel: update delivery + update endpoint failure state
     await Promise.all([
       db
         .update(delivery)
@@ -215,29 +173,20 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
           updatedAt: now,
         })
         .where(eq(delivery.id, deliveryId)),
-      shouldOpenCircuit
-        ? db
-            .update(endpoint)
-            .set({
-              circuitState: "open",
-              circuitOpenedAt: now,
-              failureCount: newFailureCount,
-              lastFailureAt: now,
-              updatedAt: now,
-            })
-            .where(eq(endpoint.id, ep.id))
-        : db
-            .update(endpoint)
-            .set({
-              failureCount: newFailureCount,
-              lastFailureAt: now,
-              updatedAt: now,
-            })
-            .where(eq(endpoint.id, ep.id)),
+      db
+        .update(endpoint)
+        .set({
+          circuitState: failureUpdate.circuitState,
+          circuitOpenedAt: failureUpdate.shouldOpenCircuit ? now : undefined,
+          failureCount: failureUpdate.failureCount,
+          lastFailureAt: now,
+          updatedAt: now,
+        })
+        .where(eq(endpoint.id, ep.id)),
     ])
 
-    if (shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: newFailureCount, requestId }, "Circuit breaker opened")
+    if (failureUpdate.shouldOpenCircuit) {
+      log.warn({ endpointId: ep.id, failureCount: failureUpdate.failureCount, requestId }, "Circuit breaker opened")
     }
 
     log.error(
