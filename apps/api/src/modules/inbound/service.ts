@@ -2,8 +2,7 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
 import { getInboundForwardingQueue } from "@usevon/queue"
-import { generateId } from "@usevon/auth"
-import { InternalServerError, NotFoundError } from "@/lib/errors"
+import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
 import type { InboundModel } from "./model"
 
 type CreateInboundEndpointParams = {
@@ -43,8 +42,6 @@ type ReceiveWebhookParams = {
   requestId?: string
 }
 
-const generateSecret = () => `whsec_${generateId()}`
-
 export abstract class InboundService {
   static async create(params: CreateInboundEndpointParams): Promise<InboundModel.inboundEndpoint> {
     try {
@@ -53,7 +50,7 @@ export abstract class InboundService {
       const result = await db
         .insert(inboundEndpoint)
         .values({
-          id: crypto.randomUUID(),
+          id: generateId(),
           organizationId: params.organizationId,
           name: params.name ?? null,
           provider: params.provider ?? null,
@@ -205,7 +202,7 @@ export abstract class InboundService {
   static async receive(params: ReceiveWebhookParams): Promise<InboundModel.inboundDelivery> {
     try {
       const now = new Date()
-      const deliveryId = crypto.randomUUID()
+      const deliveryId = generateId()
       const payloadStr = JSON.stringify(params.payload)
       const headersStr = JSON.stringify(params.headers)
 

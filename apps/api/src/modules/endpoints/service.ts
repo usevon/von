@@ -1,8 +1,7 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
-import { generateId } from "@usevon/auth"
-import { InternalServerError } from "@/lib/errors"
+import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
 import type { EndpointModel } from "./model"
 
 type EndpointFields = {
@@ -16,8 +15,6 @@ type EndpointFields = {
 
 type CreateEndpointParams = EndpointFields & { organizationId: string }
 type UpdateEndpointParams = Partial<EndpointFields> & { organizationId: string; endpointId: string }
-
-const generateSecret = () => `whsec_${generateId()}`
 
 const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint => ({
   id: e.id,
@@ -40,7 +37,7 @@ export abstract class EndpointService {
       const result = await db
         .insert(endpoint)
         .values({
-          id: crypto.randomUUID(),
+          id: generateId(),
           organizationId: params.organizationId,
           url: params.url,
           description: params.description ?? null,

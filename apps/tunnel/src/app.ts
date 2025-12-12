@@ -3,7 +3,7 @@ import { cors } from "@elysiajs/cors"
 import { env } from "@/env"
 import { checkDatabaseConnection } from "@usevon/db"
 import { checkRedisConnection } from "@usevon/queue"
-import { UnauthorizedError, BadRequestError } from "@/lib/errors"
+import { UnauthorizedError, BadRequestError } from "@usevon/utils"
 import { tunnelRegister, tunnelWs, tunnelProxy } from "@/modules/tunnel"
 
 export const app = new Elysia({

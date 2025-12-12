@@ -1,9 +1,8 @@
 import { Elysia, t } from "elysia"
-import { createHash } from "crypto"
 import { eq } from "drizzle-orm"
 import { db, tunnel as tunnelTable } from "@usevon/db"
 import { withSession } from "@/modules/auth"
-import { BadRequestError } from "@/lib/errors"
+import { BadRequestError, generateTunnelId, generateId } from "@usevon/utils"
 import { env } from "@/env"
 
 type TunnelConnection = {
@@ -35,13 +34,6 @@ type TunnelResponse = {
 }
 
 const tunnels = new Map<string, TunnelConnection>()
-
-const generateTunnelId = (orgId: string, userId: string, port: number): string => {
-  return createHash("sha256")
-    .update(`${orgId}:${userId}:${port}`)
-    .digest("hex")
-    .slice(0, 12)
-}
 
 const getTunnelUrl = () => {
   return env.TUNNEL_URL || (env.NODE_ENV === "development"
@@ -214,7 +206,7 @@ export const tunnelPublic = new Elysia({ prefix: "/t" })
       : undefined
 
     const tunnelRequest: TunnelRequest = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       method: request.method,
       path,
       headers,

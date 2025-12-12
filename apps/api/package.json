@@ -25,6 +25,7 @@
     "@elysiajs/cors": "^1.1.0",
     "@elysiajs/server-timing": "^1.4.0",
     "@usevon/auth": "workspace:*",
+    "@usevon/utils": "workspace:*",
     "@usevon/db": "workspace:*",
     "@usevon/env": "workspace:*",
     "@usevon/logger": "workspace:*",

@@ -1,4 +1,4 @@
-import { createHash } from "crypto"
+import { generateId } from "@usevon/utils"
 import type { TunnelRequest, TunnelResponse } from "@usevon/tunnel"
 import type { TunnelConnection } from "./model"
 
@@ -6,12 +6,6 @@ const tunnels = new Map<string, TunnelConnection>()
 const orgTunnelCounts = new Map<string, number>()
 
 export abstract class TunnelService {
-  static generateTunnelId(orgId: string, userId: string, port: number): string {
-    return createHash("sha256")
-      .update(`${orgId}:${userId}:${port}`)
-      .digest("hex")
-      .slice(0, 12)
-  }
 
   static getTunnel(tunnelId: string): TunnelConnection | undefined {
     return tunnels.get(tunnelId)
@@ -74,7 +68,7 @@ export abstract class TunnelService {
 
     try {
       const response = await TunnelService.forwardRequest(tunnelId, {
-        id: crypto.randomUUID(),
+        id: generateId(),
         method: request.method,
         path,
         headers,
