@@ -24,7 +24,7 @@ const CIRCUIT_CONFIG = {
 }
 
 const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
-  const { deliveryId, endpoint: ep, payload, headers } = job.data
+  const { deliveryId, endpoint: ep, payload, headers, requestId } = job.data
 
   // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
   const [[deliveryRecord], [endpointState]] = await Promise.all([
@@ -42,22 +42,22 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
   ])
 
   if (!deliveryRecord) {
-    log.warn({ deliveryId }, "Inbound delivery not found, skipping")
+    log.warn({ deliveryId, requestId }, "Inbound delivery not found, skipping")
     return
   }
 
   if (deliveryRecord.status === "forwarded") {
-    log.info({ deliveryId }, "Already forwarded, skipping")
+    log.info({ deliveryId, requestId }, "Already forwarded, skipping")
     return
   }
 
   if (!endpointState) {
-    log.error({ endpointId: ep.id }, "Inbound endpoint not found")
+    log.error({ endpointId: ep.id, requestId }, "Inbound endpoint not found")
     throw new Error(`Inbound endpoint ${ep.id} not found`)
   }
 
   if (!endpointState.enabled) {
-    log.info({ endpointId: ep.id }, "Inbound endpoint disabled, marking as skipped")
+    log.info({ endpointId: ep.id, requestId }, "Inbound endpoint disabled, marking as skipped")
     await db
       .update(inboundDelivery)
       .set({ status: "skipped" })
@@ -70,7 +70,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     if (circuitOpenedAt) {
       const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
       if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped")
+        log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
         await db
           .update(inboundDelivery)
           .set({ status: "circuit_open" })
@@ -127,7 +127,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
       ])
 
       log.info(
-        { deliveryId, status: response.status },
+        { deliveryId, status: response.status, requestId },
         "Inbound webhook forwarded successfully"
       )
     } else {
@@ -173,11 +173,11 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     ])
 
     if (shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: newFailureCount }, "Circuit breaker opened")
+      log.warn({ endpointId: ep.id, failureCount: newFailureCount, requestId }, "Circuit breaker opened")
     }
 
     log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error) },
+      { deliveryId, attempts, maxAttempts, error: String(error), requestId },
       "Inbound forwarding failed"
     )
 
@@ -198,11 +198,11 @@ export const createInboundWorker = () => {
   )
 
   worker.on("completed", (job) => {
-    log.debug({ jobId: job.id }, "Inbound job completed")
+    log.debug({ jobId: job.id, requestId: job.data.requestId }, "Inbound job completed")
   })
 
   worker.on("failed", (job, error) => {
-    log.error({ jobId: job?.id, error: error.message }, "Inbound job failed")
+    log.error({ jobId: job?.id, requestId: job?.data.requestId, error: error.message }, "Inbound job failed")
   })
 
   return worker

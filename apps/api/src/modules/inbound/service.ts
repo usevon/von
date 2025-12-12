@@ -40,6 +40,7 @@ type ReceiveWebhookParams = {
   }
   payload: unknown
   headers: Record<string, string>
+  requestId?: string
 }
 
 const generateSecret = () => `whsec_${generateId()}`
@@ -231,6 +232,7 @@ export abstract class InboundService {
         endpoint: params.endpoint,
         payload: payloadStr,
         headers: headersStr,
+        requestId: params.requestId,
       })
 
       return {
