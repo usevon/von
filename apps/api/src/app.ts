@@ -1,5 +1,7 @@
 import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
+import { ip } from "elysia-ip"
+import { requestID } from "elysia-requestid"
 
 import { env } from "@/env"
 import { checkDatabaseConnection } from "@usevon/db"
@@ -100,6 +102,8 @@ export const app = new Elysia({
     set.status = 500
     return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
   })
+  .use(ip())
+  .use(requestID())
   .onBeforeHandle(async ({ path }) => {
     const skipDelay = path.startsWith("/live") || path.startsWith("/ready") || path.startsWith("/api/auth")
     if (env.NODE_ENV === "development" && !skipDelay) {
