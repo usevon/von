@@ -1,0 +1,4 @@
+{
+  "extends": "@usevon/typescript-config",
+  "include": ["src"]
+}
