@@ -2,14 +2,9 @@ import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
 import open from "open"
-import { loadConfig, saveConfig } from "@/lib/config"
-import {
-  requestDeviceCode,
-  pollDeviceToken,
-  getSession,
-  listOrganizations,
-  setActiveOrganization,
-} from "@/lib/api"
+import { loadConfig, saveConfig, DEFAULT_API_URL, DEFAULT_TUNNEL_URL } from "@/lib/config"
+import { requestDeviceCode, pollDeviceToken, getSession, listOrganizations } from "@/lib/api"
+import { selectAndSetOrganization } from "@/lib/org"
 
 export const login = new Command("login")
   .description("Authenticate with Von")
@@ -22,7 +17,6 @@ export const login = new Command("login")
 
     const config = loadConfig()
 
-    // Check if already logged in
     if (config.token && !options.force) {
       const session = await getSession(config.token).catch(() => null)
       if (session) {
@@ -59,8 +53,8 @@ export const login = new Command("login")
 
       if (instanceType === "hosted") {
         saveConfig({
-          apiUrl: "https://api.usevon.com",
-          tunnelUrl: "https://tunnel.usevon.com",
+          apiUrl: DEFAULT_API_URL,
+          tunnelUrl: DEFAULT_TUNNEL_URL,
         })
       } else if (instanceType === "self-hosted") {
         const apiUrl = await p.text({
@@ -118,7 +112,7 @@ export const login = new Command("login")
       if (!token) {
         s.stop("Authorization failed")
         p.cancel("Failed to get access token")
-        process.exit(1)
+        return
       }
 
       s.stop("Authorized")
@@ -130,7 +124,7 @@ export const login = new Command("login")
       if (!session) {
         s.stop("Failed to get session")
         p.cancel("Could not fetch user session")
-        process.exit(1)
+        return
       }
 
       s.stop(`Logged in as ${pc.cyan(session.user.email)}`)
@@ -141,38 +135,18 @@ export const login = new Command("login")
         p.log.info("No organizations found")
         p.outro(`Create one at ${pc.cyan("app.usevon.com")}`)
         return
-      } else {
-        const orgChoice = await p.select({
-          message: "Select an organization:",
-          options: orgs.map((org) => ({
-            value: org.id,
-            label: org.name,
-            hint: org.slug,
-          })),
-        })
-
-        if (p.isCancel(orgChoice)) {
-          p.log.warn("No organization selected")
-        } else {
-          await setActiveOrganization(token, orgChoice as string)
-          saveConfig({ organizationId: orgChoice as string })
-          const selected = orgs.find((o) => o.id === orgChoice)
-          p.log.success(`Organization set to ${pc.cyan(selected?.name || "Unknown")}`)
-        }
       }
+
+      await selectAndSetOrganization({ orgs, token })
 
       p.outro(pc.green("Ready to use Von CLI!"))
     } catch (err) {
       s.stop("Error")
       p.cancel(`Login failed: ${err instanceof Error ? err.message : "Unknown error"}`)
-      process.exit(1)
     }
   })
 
-const waitForToken = async (
-  deviceCode: string,
-  interval: number
-): Promise<string | null> => {
+const waitForToken = async (deviceCode: string, interval: number): Promise<string | null> => {
   let pollingInterval = interval
 
   while (true) {
@@ -202,5 +176,4 @@ const waitForToken = async (
   }
 }
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
