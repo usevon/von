@@ -1,3 +1,9 @@
+import {
+  hashSha256,
+  hmacSign as baseHmacSign,
+  timingSafeEqual,
+} from "@usevon/utils"
+
 const SIG_LENGTH = 16
 
 const PREFIXES: Record<string, string> = {
@@ -6,25 +12,10 @@ const PREFIXES: Record<string, string> = {
   von_prod_: "prod",
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
-}
-
-export function hashKey(key: string): string {
-  const hasher = new Bun.CryptoHasher("sha256")
-  hasher.update(key)
-  return hasher.digest("hex")
-}
+export { hashSha256 as hashKey }
 
 export function hmacSign(data: string, secret: string): string {
-  const hmac = new Bun.CryptoHasher("sha256", secret)
-  hmac.update(data)
-  return hmac.digest("hex").slice(0, SIG_LENGTH)
+  return baseHmacSign(data, secret).slice(0, SIG_LENGTH)
 }
 
 export function verifySignature(key: string, secret: string): boolean {
