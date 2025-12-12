@@ -1,93 +1,94 @@
-import { loadConfig } from "@/lib/config"
+import { loadConfig } from "./config"
+import type {
+  DeviceCodeResponse,
+  DeviceTokenResponse,
+  UserSession,
+  Organization,
+  TunnelRegistration,
+} from "./types"
 
-type DeviceCodeResponse = {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  verification_uri_complete?: string
-  expires_in: number
-  interval: number
+export type { Organization, TunnelRegistration }
+
+type RequestOptions = {
+  method?: "GET" | "POST"
+  body?: unknown
+  token?: string
+  timeout?: number
 }
 
-type DeviceTokenResponse = {
-  access_token?: string
-  token_type?: string
-  expires_in?: number
-  error?: string
-  error_description?: string
-}
-
-type UserSession = {
-  user: {
-    id: string
-    name: string
-    email: string
-    image?: string
-  }
-  session: {
-    id: string
-    activeOrganizationId?: string
-  }
-}
-
-type Organization = {
-  id: string
-  name: string
-  slug: string
-}
-
-type TunnelRegistrationResponse = {
-  tunnelId: string
-}
-
-type TunnelRegistration = {
-  tunnelId: string
-  tunnelUrl: string
-  wsUrl: string
-}
-
-export const requestDeviceCode = async (
-  clientId: string = "von-cli"
-): Promise<DeviceCodeResponse> => {
+const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
   const config = loadConfig()
-  const url = `${config.apiUrl}/api/auth/device/code`
+  const { method = "GET", body, token, timeout = 30000 } = options
+
+  const headers: Record<string, string> = {}
+  if (token) headers["Authorization"] = `Bearer ${token}`
+  if (body) headers["Content-Type"] = "application/json"
 
   let res: Response
   try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ client_id: clientId }),
+    res = await fetch(`${config.apiUrl}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeout),
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
-      throw new Error(`Could not connect to ${config.apiUrl}\nIs the server running?`)
+      throw new Error(`Could not connect to ${config.apiUrl}`)
     }
-    throw new Error(`Connection failed: ${msg}`)
+    throw new Error(`Request failed: ${msg}`)
   }
 
   if (!res.ok) {
     if (res.status === 404) {
-      throw new Error(`API not found at ${config.apiUrl}\nCheck the URL or try 'von login --local' for local development`)
+      throw new Error(`API not found at ${config.apiUrl}`)
     }
     if (res.status >= 500) {
-      throw new Error(`Server error (${res.status})\nThe Von API may be unavailable`)
+      throw new Error(`Server error (${res.status})`)
     }
-    throw new Error(`Request failed: ${res.status} ${res.statusText}`)
+    throw new Error(`Request failed: ${res.status}`)
   }
 
-  return res.json() as Promise<DeviceCodeResponse>
+  return res.json() as Promise<T>
+}
+
+const tunnelRequest = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
+  const config = loadConfig()
+  const { method = "GET", body, token, timeout = 30000 } = options
+
+  const headers: Record<string, string> = {}
+  if (token) headers["Authorization"] = `Bearer ${token}`
+  if (body) headers["Content-Type"] = "application/json"
+
+  const res = await fetch(`${config.tunnelUrl}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(timeout),
+  })
+
+  if (!res.ok) {
+    const error = (await res.json().catch(() => ({}))) as { message?: string }
+    throw new Error(error.message || "Request failed")
+  }
+
+  return res.json() as Promise<T>
+}
+
+export const requestDeviceCode = (clientId = "von-cli"): Promise<DeviceCodeResponse> => {
+  return request("/api/auth/device/code", {
+    method: "POST",
+    body: { client_id: clientId },
+  })
 }
 
 export const pollDeviceToken = async (
   deviceCode: string,
-  clientId: string = "von-cli"
+  clientId = "von-cli"
 ): Promise<DeviceTokenResponse> => {
   const config = loadConfig()
-  const url = `${config.apiUrl}/api/auth/device/token`
-
-  const res = await fetch(url, {
+  const res = await fetch(`${config.apiUrl}/api/auth/device/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -96,52 +97,31 @@ export const pollDeviceToken = async (
       client_id: clientId,
     }),
   })
-
   return res.json() as Promise<DeviceTokenResponse>
 }
 
-export const getSession = async (token: string): Promise<UserSession | null> => {
-  const config = loadConfig()
-
-  const res = await fetch(`${config.apiUrl}/api/auth/get-session`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-
-  if (!res.ok) return null
-
-  return res.json() as Promise<UserSession>
+export const getSession = (token: string): Promise<UserSession | null> => {
+  return request<UserSession>("/api/auth/get-session", { token }).catch(() => null)
 }
 
-export const listOrganizations = async (token: string): Promise<Organization[]> => {
-  const config = loadConfig()
-
-  const res = await fetch(`${config.apiUrl}/api/auth/organization/list`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
-  })
-
-  if (!res.ok) return []
-
-  const data = await res.json() as Organization[]
-  return data || []
+export const listOrganizations = (token: string): Promise<Organization[]> => {
+  return request<Organization[]>("/api/auth/organization/list", { token }).catch(() => [])
 }
 
 export const setActiveOrganization = async (
   token: string,
   organizationId: string
 ): Promise<boolean> => {
-  const config = loadConfig()
-
-  const res = await fetch(`${config.apiUrl}/api/auth/organization/set-active`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ organizationId }),
-  })
-
-  return res.ok
+  try {
+    await request("/api/auth/organization/set-active", {
+      method: "POST",
+      token,
+      body: { organizationId },
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const registerTunnel = async (
@@ -150,22 +130,11 @@ export const registerTunnel = async (
   organizationId?: string
 ): Promise<TunnelRegistration> => {
   const config = loadConfig()
-
-  const res = await fetch(`${config.tunnelUrl}/register`, {
+  const { tunnelId } = await tunnelRequest<{ tunnelId: string }>("/register", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ port, organizationId }),
+    token,
+    body: { port, organizationId },
   })
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({})) as { message?: string }
-    throw new Error(error.message || "Failed to register tunnel")
-  }
-
-  const { tunnelId } = await res.json() as TunnelRegistrationResponse
 
   const tunnelUrl = `${config.tunnelUrl}/${tunnelId}`
   const wsUrl = config.tunnelUrl

@@ -16,27 +16,27 @@ export const dev = new Command("dev")
 
     if (!options.port || options.port.length === 0) {
       p.log.error("Port is required. Usage: von dev -p <port>")
-      process.exit(1)
+      return
     }
 
-    const ports = options.port.map((p: string) => parseInt(p, 10))
+    const ports = options.port.map((port: string) => parseInt(port, 10))
     for (const port of ports) {
       if (isNaN(port) || port < 1 || port > 65535) {
         p.log.error(`Invalid port number: ${port}`)
-        process.exit(1)
+        return
       }
     }
 
     if (ports.length > 3) {
       p.log.error("Maximum 3 ports allowed per organization")
-      process.exit(1)
+      return
     }
 
     const organizationId = options.org || config.organizationId
 
     if (!organizationId) {
       p.log.error("No organization selected. Run 'von login' or specify --org")
-      process.exit(1)
+      return
     }
 
     const s = p.spinner()
@@ -52,22 +52,20 @@ export const dev = new Command("dev")
 
       s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`)
 
-      console.log()
-      for (const t of tunnels) {
-        console.log(`  ${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`)
-      }
-      console.log()
+      p.note(
+        tunnels.map((t) => `${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`).join("\n"),
+        "Tunnels"
+      )
+
       if (options.verbose) {
-        console.log(pc.dim("  Verbose mode enabled"))
+        p.log.info("Verbose mode enabled")
       }
-      console.log(pc.dim("  Press Ctrl+C to stop"))
-      console.log()
+      p.log.message(pc.dim("Press Ctrl+C to stop\n"))
 
       await connectTunnels(token, tunnels, options.verbose ?? false)
     } catch (err) {
       s.stop("Error")
       p.log.error(`Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`)
-      process.exit(1)
     }
   })
 

@@ -17,6 +17,9 @@ const program = new Command("von")
       p.log.error(msg)
     },
   })
+  .action(() => {
+    program.outputHelp()
+  })
 
 program.addCommand(login)
 program.addCommand(logout)

@@ -15,12 +15,15 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json")
 
 export const getConfigPath = (): string => CONFIG_FILE
 
+export const DEFAULT_API_URL = "https://api.usevon.com"
+export const DEFAULT_TUNNEL_URL = "https://tunnel.usevon.com"
+
 const DEFAULT_CONFIG: VonConfig = {
-  apiUrl: "https://api.usevon.com",
-  tunnelUrl: "https://tunnel.usevon.com",
+  apiUrl: DEFAULT_API_URL,
+  tunnelUrl: DEFAULT_TUNNEL_URL,
 }
 
-export const ensureConfigDir = (): void => {
+const ensureConfigDir = (): void => {
   if (!existsSync(CONFIG_DIR)) {
     mkdirSync(CONFIG_DIR, { recursive: true })
   }
@@ -53,14 +56,11 @@ export const clearConfig = (): void => {
   writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
 }
 
-export function requireAuth(exit?: true): { token: string; config: VonConfig }
-export function requireAuth(exit: false): { token: string; config: VonConfig } | null
-export function requireAuth(exit: boolean = true): { token: string; config: VonConfig } | null {
+export const requireAuth = (): { token: string; config: VonConfig } => {
   const config = loadConfig()
   if (!config.token) {
     p.log.warn("Not logged in, run 'von login' first")
-    if (exit) process.exit(1)
-    return null
+    process.exit(1)
   }
   return { token: config.token, config }
 }

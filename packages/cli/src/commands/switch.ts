@@ -1,8 +1,9 @@
 import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import { saveConfig, requireAuth } from "@/lib/config"
-import { listOrganizations, setActiveOrganization } from "@/lib/api"
+import { requireAuth } from "@/lib/config"
+import { listOrganizations } from "@/lib/api"
+import { selectAndSetOrganization } from "@/lib/org"
 
 export const switchOrg = new Command("switch")
   .description("Switch active organization")
@@ -12,33 +13,25 @@ export const switchOrg = new Command("switch")
     const s = p.spinner()
     s.start("Fetching organizations...")
 
-    let orgs
-    try {
-      orgs = await listOrganizations(token)
-    } catch {
-      s.stop("Error")
-      p.log.error(`Could not connect to ${pc.cyan(config.apiUrl)}`)
-      p.outro("Is the server running?")
-      process.exit(1)
-    }
+    const orgs = await listOrganizations(token)
 
     if (orgs.length === 0) {
       s.stop()
       p.log.info("No organizations found")
       p.outro(`Create one at ${pc.cyan("app.usevon.com")}`)
-      process.exit(1)
+      return
     }
 
     if (orgs.length === 1) {
-      const org = orgs[0]
-      if (org.id === config.organizationId) {
-        s.stop(`Already using ${pc.cyan(org.name)}`)
-        p.outro(`Use ${pc.dim("von switch")} after creating more orgs`)
-      } else {
-        s.stop(`Found ${pc.cyan(org.name)}`)
-        await setActiveOrganization(token, org.id)
-        saveConfig({ organizationId: org.id })
-        p.outro(`Switched to ${pc.cyan(org.name)}`)
+      const [org] = orgs
+      if (org) {
+        if (org.id === config.organizationId) {
+          s.stop(`Already using ${pc.cyan(org.name)}`)
+          p.outro("Create more orgs to switch between them")
+        } else {
+          s.stop(`Found ${pc.cyan(org.name)}`)
+          await selectAndSetOrganization({ orgs, token, currentOrgId: config.organizationId })
+        }
       }
       return
     }
@@ -50,27 +43,10 @@ export const switchOrg = new Command("switch")
       p.log.info(`Current: ${pc.cyan(currentOrg.name)}`)
     }
 
-    const orgChoice = await p.select({
-      message: "Select an organization:",
-      options: orgs.map((org) => ({
-        value: org.id,
-        label: org.name,
-        hint: org.id === config.organizationId ? "current" : org.slug,
-      })),
+    await selectAndSetOrganization({
+      orgs,
+      token,
+      currentOrgId: config.organizationId,
+      exitOnCancel: true,
     })
-
-    if (p.isCancel(orgChoice)) {
-      p.cancel("Cancelled")
-      process.exit(0)
-    }
-
-    const selected = orgs.find((o) => o.id === orgChoice)
-
-    if (orgChoice === config.organizationId) {
-      p.outro(`Already using ${pc.cyan(selected?.name)}`)
-    } else {
-      await setActiveOrganization(token, orgChoice as string)
-      saveConfig({ organizationId: orgChoice as string })
-      p.outro(`Switched to ${pc.cyan(selected?.name)}`)
-    }
   })
