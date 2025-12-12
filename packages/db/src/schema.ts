@@ -163,8 +163,8 @@ export const apikey = pgTable(
   "apikey",
   {
     id: uuid("id").primaryKey(),
-    name: text("name"),
-    start: text("start"),
+    name: text("name").notNull(),
+    start: text("start").notNull(),
     key: text("key").notNull(),
     userId: uuid("user_id")
       .notNull()
@@ -172,11 +172,9 @@ export const apikey = pgTable(
     organizationId: uuid("organization_id").references(() => organization.id, {
       onDelete: "cascade",
     }),
-    environment: text("environment").default("dev"),
+    environment: text("environment").notNull(),
     enabled: boolean("enabled").default(true),
     expiresAt: timestamp("expires_at"),
-    requestCount: integer("request_count").default(0),
-    lastRequest: timestamp("last_request"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

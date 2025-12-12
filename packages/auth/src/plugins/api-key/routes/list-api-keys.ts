@@ -1,43 +1,30 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
-import { z } from "zod"
-import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import type { ApiKey } from "../types"
+import { ERROR_CODES } from "../index"
 
 const API_KEY_TABLE_NAME = "apikey"
 
-export function listApiKeys(_config: { opts: PredefinedApiKeyOptions }) {
+export function listApiKeys() {
   return createAuthEndpoint(
     "/api-key/list",
     {
       method: "GET",
-      query: z.object({
-        userId: z.string().optional(),
-      }).optional(),
     },
     async (ctx) => {
       const session = await getSessionFromCtx(ctx)
-      const authRequired = ctx.request || ctx.headers
-
-      const user =
-        authRequired && !session
-          ? null
-          : session?.user || { id: ctx.query?.userId }
-
-      if (!user?.id) {
+      if (!session) {
         throw new APIError("UNAUTHORIZED", {
-          message: "Unauthorized or invalid session",
+          message: ERROR_CODES.UNAUTHORIZED_SESSION,
         })
       }
 
       const keys = await ctx.context.adapter.findMany<ApiKey>({
         model: API_KEY_TABLE_NAME,
-        where: [{ field: "userId", value: user.id }],
+        where: [{ field: "userId", value: session.user.id }],
         sortBy: { field: "createdAt", direction: "desc" },
       })
 
-      // Remove hashed key from response
-      return ctx.json(
-        keys.map(({ key: _, ...k }) => k)
-      )
+      return ctx.json(keys.map(({ key: _, ...k }) => k))
     }
   )
 }

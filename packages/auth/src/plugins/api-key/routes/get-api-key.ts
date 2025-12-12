@@ -1,10 +1,11 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
 import { z } from "zod"
-import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import type { ApiKey } from "../types"
+import { ERROR_CODES } from "../index"
 
 const API_KEY_TABLE_NAME = "apikey"
 
-export function getApiKey(_config: { opts: PredefinedApiKeyOptions }) {
+export function getApiKey() {
   return createAuthEndpoint(
     "/api-key/get",
     {
@@ -15,11 +16,9 @@ export function getApiKey(_config: { opts: PredefinedApiKeyOptions }) {
     },
     async (ctx) => {
       const session = await getSessionFromCtx(ctx)
-      const authRequired = ctx.request || ctx.headers
-
-      if (authRequired && !session) {
+      if (!session) {
         throw new APIError("UNAUTHORIZED", {
-          message: "Unauthorized or invalid session",
+          message: ERROR_CODES.UNAUTHORIZED_SESSION,
         })
       }
 
@@ -30,14 +29,13 @@ export function getApiKey(_config: { opts: PredefinedApiKeyOptions }) {
 
       if (!apiKey) {
         throw new APIError("NOT_FOUND", {
-          message: "API Key not found",
+          message: ERROR_CODES.KEY_NOT_FOUND,
         })
       }
 
-      // Verify ownership
-      if (session && apiKey.userId !== session.user.id) {
+      if (apiKey.userId !== session.user.id) {
         throw new APIError("FORBIDDEN", {
-          message: "You do not have permission to view this API key",
+          message: "Access denied",
         })
       }
 

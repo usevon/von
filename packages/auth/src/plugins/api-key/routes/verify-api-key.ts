@@ -1,67 +1,25 @@
 import { createAuthEndpoint, APIError } from "better-auth/api"
 import { z } from "zod"
-import type { ApiKey, PredefinedApiKeyOptions } from "../types"
+import type { ApiKey, ResolvedApiKeyOptions } from "../types"
 import { getApiKey, deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
+import { hashKey, verifySignature, hasValidPrefix } from "../crypto"
+import { ERROR_CODES } from "../index"
 
 const API_KEY_TABLE_NAME = "apikey"
 
-export const ERROR_CODES = {
-  INVALID_API_KEY: "Invalid API key.",
-  KEY_DISABLED: "API Key is disabled",
-  KEY_EXPIRED: "API Key has expired",
-} as const
-
-type AuthContext = {
-  adapter: {
-    findOne: <T>(options: {
-      model: string
-      where: Array<{ field: string; value: unknown }>
-    }) => Promise<T | null>
-    update: <T>(options: {
-      model: string
-      where: Array<{ field: string; value: unknown }>
-      update: Partial<T>
-    }) => Promise<T | null>
-    delete: (options: {
-      model: string
-      where: Array<{ field: string; value: unknown }>
-    }) => Promise<void>
-  }
-  logger: {
-    error: (message: string, ...args: unknown[]) => void
-  }
-  secondaryStorage?: {
-    get: (key: string) => Promise<unknown> | unknown
-    set: (key: string, value: string, ttl?: number) => Promise<void | null | unknown> | void
-    delete: (key: string) => Promise<void | null | string> | void
-  } | null
-}
-
-type GenericEndpointContext = {
-  context: AuthContext
-}
-
-// Use Bun.CryptoHasher if available (faster), fallback to Web Crypto
-function defaultKeyHasher(key: string): string | Promise<string> {
-  const g = globalThis as { Bun?: { CryptoHasher?: new (algo: string) => { update(data: string): void; digest(encoding: string): string } } }
-  if (g.Bun?.CryptoHasher) {
-    const hasher = new g.Bun.CryptoHasher("sha256")
-    hasher.update(key)
-    return hasher.digest("hex")
-  }
-  return (async () => {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(key)
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-    const hashArray = new Uint8Array(hashBuffer)
-    const HEX = "0123456789abcdef"
-    let hex = ""
-    for (let i = 0; i < hashArray.length; i++) {
-      const byte = hashArray[i]!
-      hex += HEX[byte >> 4]! + HEX[byte & 0xf]!
+type EndpointContext = {
+  context: {
+    adapter: {
+      findOne: <T>(opts: { model: string; where: { field: string; value: unknown }[] }) => Promise<T | null>
+      delete: (opts: { model: string; where: { field: string; value: unknown }[] }) => Promise<void>
     }
-    return hex
-  })()
+    logger: { error: (msg: string, ...args: unknown[]) => void }
+    secondaryStorage?: {
+      get: (key: string) => Promise<unknown> | unknown
+      set: (key: string, value: string, ttl?: number) => Promise<void | null | unknown> | void
+      delete: (key: string) => Promise<void | null | string> | void
+    } | null
+  }
 }
 
 export async function validateApiKey({
@@ -70,11 +28,10 @@ export async function validateApiKey({
   opts,
 }: {
   hashedKey: string
-  opts: PredefinedApiKeyOptions
-  ctx: GenericEndpointContext
+  opts: ResolvedApiKeyOptions
+  ctx: EndpointContext
 }): Promise<ApiKey> {
-  // Use adapter to get from Redis (if configured) or database
-  const apiKey = await getApiKey(ctx, hashedKey, opts)
+  const apiKey = await getApiKey(ctx as never, hashedKey, opts)
 
   if (!apiKey) {
     throw new APIError("UNAUTHORIZED", {
@@ -92,13 +49,11 @@ export async function validateApiKey({
     const now = Date.now()
     const expiresAt = new Date(apiKey.expiresAt).getTime()
     if (now > expiresAt) {
-      // Delete expired key from database
       try {
         await ctx.context.adapter.delete({
           model: API_KEY_TABLE_NAME,
           where: [{ field: "id", value: apiKey.id }],
         })
-        // Also remove from secondary storage
         await deleteApiKeyFromStorage(ctx, apiKey, opts)
       } catch (error) {
         ctx.context.logger.error("Failed to delete expired API key:", error)
@@ -115,8 +70,10 @@ export async function validateApiKey({
 
 export function verifyApiKey({
   opts,
+  keyLength,
 }: {
-  opts: PredefinedApiKeyOptions
+  opts: ResolvedApiKeyOptions
+  keyLength: number
 }) {
   return createAuthEndpoint(
     "/api-key/verify",
@@ -132,55 +89,53 @@ export function verifyApiKey({
     async (ctx) => {
       const { key } = ctx.body
 
-      // Quick validation: check length first (cheap)
-      if (key.length < opts.defaultKeyLength) {
+      if (key.length < keyLength) {
         return ctx.json({
           valid: false,
-          error: {
-            message: ERROR_CODES.INVALID_API_KEY,
-            code: "KEY_NOT_FOUND" as const,
-          },
+          error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
           key: null,
         })
       }
 
-      // Quick validation: check valid prefix before expensive hash
-      const validPrefixes = ["von_dev_", "von_stg_", "von_prod_"]
-      const hasValidPrefix = validPrefixes.some((p) => key.startsWith(p))
-      if (!hasValidPrefix) {
+      if (!hasValidPrefix(key)) {
         return ctx.json({
           valid: false,
-          error: {
-            message: ERROR_CODES.INVALID_API_KEY,
-            code: "KEY_NOT_FOUND" as const,
-          },
+          error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
           key: null,
         })
       }
 
-      const hashed = opts.disableKeyHashing ? key : await defaultKeyHasher(key)
+      if (opts.signingSecret) {
+        if (!verifySignature(key, opts.signingSecret)) {
+          return ctx.json({
+            valid: false,
+            error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_SIGNATURE" },
+            key: null,
+          })
+        }
+      }
+
+      const hashed = hashKey(key)
 
       try {
-        const apiKey = await validateApiKey({
+        const { key: _hash, ...apiKeyData } = await validateApiKey({
           hashedKey: hashed,
-          ctx: ctx as unknown as GenericEndpointContext,
+          ctx: ctx as never,
           opts,
         })
-
-        const { key: _, ...returningApiKey } = apiKey
 
         return ctx.json({
           valid: true,
           error: null,
-          key: returningApiKey,
+          key: apiKeyData,
         })
       } catch (error) {
         if (error instanceof APIError) {
           return ctx.json({
             valid: false,
             error: {
-              message: (error.body as { message?: string })?.message,
-              code: (error.body as { code?: string })?.code as string,
+              message: (error.body as { message?: string })?.message ?? ERROR_CODES.INVALID_API_KEY,
+              code: "INVALID_KEY",
             },
             key: null,
           })
@@ -188,10 +143,7 @@ export function verifyApiKey({
 
         return ctx.json({
           valid: false,
-          error: {
-            message: ERROR_CODES.INVALID_API_KEY,
-            code: "INVALID_API_KEY" as const,
-          },
+          error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
           key: null,
         })
       }
