@@ -8,9 +8,6 @@ import {
   CardTitle,
   CardPanel,
   InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
   REGEXP_ONLY_DIGITS_AND_CHARS,
 } from '@usevon/ui'
 
@@ -191,26 +188,11 @@ export default function DevicePage() {
             <div className="flex justify-center mb-4">
               <InputOTP
                 maxLength={8}
+                groupSize={4}
                 value={userCode}
                 onChange={setUserCode}
                 pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
                 onComplete={handleVerify}
-                containerClassName="gap-2"
-                render={({ slots }) => (
-                  <>
-                    <InputOTPGroup>
-                      {slots.slice(0, 4).map((slot, i) => (
-                        <InputOTPSlot key={i} {...slot} />
-                      ))}
-                    </InputOTPGroup>
-                    <InputOTPSeparator />
-                    <InputOTPGroup>
-                      {slots.slice(4).map((slot, i) => (
-                        <InputOTPSlot key={i} {...slot} />
-                      ))}
-                    </InputOTPGroup>
-                  </>
-                )}
               />
             </div>
             {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}

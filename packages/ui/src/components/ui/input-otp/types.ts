@@ -4,38 +4,24 @@
  * https://github.com/guilhermerodz/input-otp
  */
 
-export type SlotProps = {
-  isActive: boolean
-  char: string | null
-  placeholderChar: string | null
-  hasFakeCaret: boolean
+import type { Ref } from 'react'
+
+type InputOTPBaseProps = {
+  value?: string
+  defaultValue?: string
+  onChange?: (newValue: string) => unknown
+  maxLength: number
+  groupSize?: number
+  pattern?: string | RegExp
+  onComplete?: (value: string) => unknown
+  disabled?: boolean
+  autoComplete?: string
+  inputMode?: 'text' | 'numeric' | 'tel'
+  className?: string
+  ref?: Ref<HTMLInputElement>
+  onPaste?: React.ClipboardEventHandler<HTMLInputElement>
+  onFocus?: React.FocusEventHandler<HTMLInputElement>
+  onBlur?: React.FocusEventHandler<HTMLInputElement>
 }
 
-export type RenderProps = {
-  slots: SlotProps[]
-  isFocused: boolean
-  isHovering: boolean
-}
-
-type OverrideProps<T, R> = Omit<T, keyof R> & R
-
-type InputOTPBaseProps = OverrideProps<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  {
-    value?: string
-    onChange?: (newValue: string) => unknown
-    maxLength: number
-    textAlign?: 'left' | 'center' | 'right'
-    onComplete?: (value: string) => unknown
-    pasteTransformer?: (pasted: string) => string
-    containerClassName?: string
-  }
->
-
-type InputOTPRenderFn = (props: RenderProps) => React.ReactNode
-
-export type InputOTPProps = InputOTPBaseProps &
-  (
-    | { render: InputOTPRenderFn; children?: never }
-    | { render?: never; children: React.ReactNode }
-  )
+export type InputOTPProps = InputOTPBaseProps
