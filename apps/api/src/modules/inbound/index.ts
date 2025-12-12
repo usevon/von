@@ -102,7 +102,7 @@ export const inbound = new Elysia({ prefix: "/inbound" })
 export const inboundPublic = new Elysia({ prefix: "/in" })
   .post(
     "/:id",
-    async ({ params, body, headers, status }) => {
+    async ({ params, body, headers, status, requestID }) => {
       const endpoint = await InboundService.getByPublicId(params.id)
 
       if (!endpoint) {
@@ -131,6 +131,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         },
         payload: body,
         headers: headerRecord,
+        requestId: requestID,
       })
     },
     {

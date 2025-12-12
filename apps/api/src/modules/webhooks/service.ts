@@ -12,6 +12,7 @@ type CreateEventParams = {
   payload: unknown
   idempotencyKey?: string
   endpointIds?: string[]
+  requestId?: string
 }
 
 type CreateBatchParams = {
@@ -22,6 +23,7 @@ type CreateBatchParams = {
     idempotencyKey?: string
     endpointIds?: string[]
   }>
+  requestId?: string
 }
 
 export abstract class WebhookService {
@@ -105,6 +107,7 @@ export abstract class WebhookService {
               payload: payloadStr,
               eventType: params.eventType,
               endpoint,
+              requestId: params.requestId,
             },
           }
         })
@@ -269,6 +272,7 @@ export abstract class WebhookService {
                 payload: original.payload,
                 eventType: insertedEvent.eventType,
                 endpoint: ep,
+                requestId: params.requestId,
               },
             })
           }
