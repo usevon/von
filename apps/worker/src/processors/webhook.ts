@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq"
-import { eq } from "drizzle-orm"
+import { eq, and, sql } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue"
@@ -21,21 +21,73 @@ const log = createLogger({
   pretty: env.NODE_ENV === "development",
 })
 
+const getDeliveryStmt = db
+  .select()
+  .from(delivery)
+  .where(eq(delivery.id, sql.placeholder("id")))
+  .limit(1)
+  .prepare("worker_get_delivery")
+
+const getEndpointStateStmt = db
+  .select({
+    enabled: endpoint.enabled,
+    circuitState: endpoint.circuitState,
+    circuitOpenedAt: endpoint.circuitOpenedAt,
+    failureCount: endpoint.failureCount,
+  })
+  .from(endpoint)
+  .where(eq(endpoint.id, sql.placeholder("id")))
+  .limit(1)
+  .prepare("worker_get_endpoint_state")
+
+const getVersionStmt = db
+  .select({ transforms: webhookVersion.transforms })
+  .from(webhookVersion)
+  .where(
+    and(
+      eq(webhookVersion.version, sql.placeholder("version")),
+      eq(webhookVersion.organizationId, sql.placeholder("orgId"))
+    )
+  )
+  .limit(1)
+  .prepare("worker_get_version")
+
+type CachedVersion = {
+  transforms: Transforms | null
+  expiresAt: number
+}
+
+const versionCache = new Map<string, CachedVersion>()
+const CACHE_TTL_MS = 60_000
+
+const getVersionTransforms = async (
+  version: string,
+  organizationId: string
+): Promise<Transforms | null> => {
+  const cacheKey = `${organizationId}:${version}`
+  const cached = versionCache.get(cacheKey)
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.transforms
+  }
+
+  const [result] = await getVersionStmt.execute({ version, orgId: organizationId })
+  const transforms = (result?.transforms as Transforms) ?? null
+
+  versionCache.set(cacheKey, {
+    transforms,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  })
+
+  return transforms
+}
+
 const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  const { deliveryId, eventId, payload, eventType, endpoint: ep, requestId } = job.data
+  const { deliveryId, eventId, payload, eventType, endpoint: ep, organizationId, requestId } = job.data
 
   const [[deliveryRecord], [endpointState]] = await Promise.all([
-    db.select().from(delivery).where(eq(delivery.id, deliveryId)).limit(1),
-    db
-      .select({
-        enabled: endpoint.enabled,
-        circuitState: endpoint.circuitState,
-        circuitOpenedAt: endpoint.circuitOpenedAt,
-        failureCount: endpoint.failureCount,
-      })
-      .from(endpoint)
-      .where(eq(endpoint.id, ep.id))
-      .limit(1),
+    getDeliveryStmt.execute({ id: deliveryId }),
+    getEndpointStateStmt.execute({ id: ep.id }),
   ])
 
   if (!deliveryRecord) {
@@ -87,14 +139,9 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
   let finalPayload = payload
 
   if (ep.version) {
-    const [version] = await db
-      .select({ transforms: webhookVersion.transforms })
-      .from(webhookVersion)
-      .where(eq(webhookVersion.version, ep.version))
-      .limit(1)
+    const transforms = await getVersionTransforms(ep.version, organizationId)
 
-    if (version?.transforms) {
-      const transforms = version.transforms as Transforms
+    if (transforms) {
       const eventTransforms = transforms[eventType]
 
       if (eventTransforms) {
