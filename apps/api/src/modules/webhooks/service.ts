@@ -2,7 +2,7 @@ import { eq, and, count, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { event, delivery } from "@usevon/db/schema"
 import { getWebhookDeliveryQueue } from "@usevon/queue"
-import { InternalServerError } from "@/lib/errors"
+import { InternalServerError, generateId } from "@usevon/utils"
 import { EndpointService } from "@/modules/endpoints"
 import type { WebhookModel } from "./model"
 
@@ -54,7 +54,7 @@ export abstract class WebhookService {
       }
 
       const payloadStr = JSON.stringify(params.payload)
-      const eventId = crypto.randomUUID()
+      const eventId = generateId()
 
       const targetEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
         params.organizationId,
@@ -62,7 +62,7 @@ export abstract class WebhookService {
       )
 
       const deliveryData = targetEndpoints.map((ep) => ({
-        id: crypto.randomUUID(),
+        id: generateId(),
         eventId,
         endpointId: ep.id,
         status: "pending",
@@ -179,7 +179,7 @@ export abstract class WebhookService {
         }
 
         newEvents.push({
-          id: crypto.randomUUID(),
+          id: generateId(),
           organizationId: params.organizationId,
           eventType: evt.eventType,
           payload: JSON.stringify(evt.payload),
@@ -221,7 +221,9 @@ export abstract class WebhookService {
             secret: string
             timeoutMs: number
             retryCount: number
+            version: string | null
           }
+          requestId?: string
         }
       }> = []
 
@@ -253,7 +255,7 @@ export abstract class WebhookService {
           }
 
           for (const ep of targetEndpoints) {
-            const deliveryId = crypto.randomUUID()
+            const deliveryId = generateId()
             allDeliveries.push({
               id: deliveryId,
               eventId: insertedEvent.id,

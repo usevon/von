@@ -1,27 +1,23 @@
 import { Worker, Job } from "bullmq"
 import { eq } from "drizzle-orm"
-import { createHmac } from "crypto"
 import { db } from "@usevon/db"
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema"
 import { createConnection, type InboundForwardingJob } from "@usevon/queue"
 import { createLogger } from "@usevon/logger/elysia"
+import {
+  hmacSign,
+  isCircuitOpen,
+  shouldTransitionToHalfOpen,
+  getSuccessUpdate,
+  getFailureUpdate,
+  type CircuitState,
+} from "@usevon/utils"
 import { env } from "@/env"
 
 const log = createLogger({
   level: env.NODE_ENV === "development" ? "debug" : "info",
   pretty: env.NODE_ENV === "development",
 })
-
-const generateSignature = (payload: string, secret: string): string => {
-  const hmac = createHmac("sha256", secret)
-  hmac.update(payload)
-  return hmac.digest("hex")
-}
-
-const CIRCUIT_CONFIG = {
-  failureThreshold: 5,
-  resetTimeoutMs: 300000,
-}
 
 const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
   const { deliveryId, endpoint: ep, payload, headers, requestId } = job.data
@@ -65,27 +61,30 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     return
   }
 
-  if (endpointState.circuitState === "open") {
-    const circuitOpenedAt = endpointState.circuitOpenedAt
-    if (circuitOpenedAt) {
-      const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
-      if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
-        await db
-          .update(inboundDelivery)
-          .set({ status: "circuit_open" })
-          .where(eq(inboundDelivery.id, deliveryId))
-        return
-      }
-      await db
-        .update(inboundEndpoint)
-        .set({ circuitState: "half_open", updatedAt: new Date() })
-        .where(eq(inboundEndpoint.id, ep.id))
-    }
+  const circuitState = {
+    circuitState: endpointState.circuitState as CircuitState,
+    circuitOpenedAt: endpointState.circuitOpenedAt,
+    failureCount: endpointState.failureCount,
+  }
+
+  if (isCircuitOpen(circuitState)) {
+    log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
+    await db
+      .update(inboundDelivery)
+      .set({ status: "circuit_open" })
+      .where(eq(inboundDelivery.id, deliveryId))
+    return
+  }
+
+  if (shouldTransitionToHalfOpen(circuitState)) {
+    await db
+      .update(inboundEndpoint)
+      .set({ circuitState: "half_open", updatedAt: new Date() })
+      .where(eq(inboundEndpoint.id, ep.id))
   }
 
   const originalHeaders: Record<string, string> = headers ? JSON.parse(headers) : {}
-  const signature = generateSignature(payload, ep.secret)
+  const signature = hmacSign(payload, ep.secret)
   const now = new Date()
 
   try {
@@ -103,7 +102,8 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     const responseBody = await response.text().catch(() => null)
 
     if (response.ok) {
-      // Parallel: update delivery + reset circuit breaker
+      const successUpdate = getSuccessUpdate()
+
       await Promise.all([
         db
           .update(inboundDelivery)
@@ -119,8 +119,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         db
           .update(inboundEndpoint)
           .set({
-            failureCount: 0,
-            circuitState: "closed",
+            ...successUpdate,
             updatedAt: now,
           })
           .where(eq(inboundEndpoint.id, ep.id)),
@@ -138,10 +137,8 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    const newFailureCount = endpointState.failureCount + 1
-    const shouldOpenCircuit = newFailureCount >= CIRCUIT_CONFIG.failureThreshold
+    const failureUpdate = getFailureUpdate(endpointState.failureCount)
 
-    // Parallel: update delivery + update endpoint failure state
     await Promise.all([
       db
         .update(inboundDelivery)
@@ -151,29 +148,20 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
           lastAttemptAt: now,
         })
         .where(eq(inboundDelivery.id, deliveryId)),
-      shouldOpenCircuit
-        ? db
-            .update(inboundEndpoint)
-            .set({
-              circuitState: "open",
-              circuitOpenedAt: now,
-              failureCount: newFailureCount,
-              lastFailureAt: now,
-              updatedAt: now,
-            })
-            .where(eq(inboundEndpoint.id, ep.id))
-        : db
-            .update(inboundEndpoint)
-            .set({
-              failureCount: newFailureCount,
-              lastFailureAt: now,
-              updatedAt: now,
-            })
-            .where(eq(inboundEndpoint.id, ep.id)),
+      db
+        .update(inboundEndpoint)
+        .set({
+          circuitState: failureUpdate.circuitState,
+          circuitOpenedAt: failureUpdate.shouldOpenCircuit ? now : undefined,
+          failureCount: failureUpdate.failureCount,
+          lastFailureAt: now,
+          updatedAt: now,
+        })
+        .where(eq(inboundEndpoint.id, ep.id)),
     ])
 
-    if (shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: newFailureCount, requestId }, "Circuit breaker opened")
+    if (failureUpdate.shouldOpenCircuit) {
+      log.warn({ endpointId: ep.id, failureCount: failureUpdate.failureCount, requestId }, "Circuit breaker opened")
     }
 
     log.error(

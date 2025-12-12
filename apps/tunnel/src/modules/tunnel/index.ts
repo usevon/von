@@ -2,7 +2,7 @@ import { Elysia } from "elysia"
 import { createLogger } from "@usevon/logger"
 import type { TunnelResponse } from "@usevon/tunnel"
 import { betterAuth, withSession } from "@/modules/auth"
-import { UnauthorizedError } from "@/lib/errors"
+import { UnauthorizedError, generateTunnelId } from "@usevon/utils"
 import { env } from "@/env"
 import { TunnelModel } from "./model"
 import { TunnelService } from "./service"
@@ -25,7 +25,7 @@ export const tunnelRegister = new Elysia({ prefix: "/register" })
         throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
       }
 
-      const tunnelId = TunnelService.generateTunnelId(organizationId, userId, body.port)
+      const tunnelId = generateTunnelId(organizationId, userId, body.port)
 
       return { tunnelId }
     },

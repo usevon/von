@@ -3,7 +3,7 @@ import { createAuth, type Session, type User } from "@usevon/auth"
 import { getRedisClient } from "@usevon/queue"
 import { db } from "@usevon/db"
 import { env } from "@/env"
-import { UnauthorizedError } from "@/lib/errors"
+import { UnauthorizedError } from "@usevon/utils"
 
 const redis = getRedisClient()
 

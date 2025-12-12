@@ -1,9 +1,10 @@
 import { Elysia } from "elysia"
+import { requestID } from "elysia-requestid"
 import { createAuth, type Auth, type Session, type User } from "@usevon/auth"
 import { getRedisClient } from "@usevon/queue"
 import { db } from "@usevon/db"
 import { env } from "@/env"
-import { UnauthorizedError } from "@/lib/errors"
+import { UnauthorizedError } from "@usevon/utils"
 
 const redis = getRedisClient()
 
@@ -74,6 +75,7 @@ export const withSession = new Elysia({ name: "session-auth" })
   })
 
 export const withAuth = new Elysia({ name: "combined-auth" })
+  .use(requestID())
   .resolve({ as: "scoped" }, async ({ headers }): Promise<{ organizationId: string; userId: string }> => {
     const authHeader = headers["authorization"]
 

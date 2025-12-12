@@ -15,6 +15,7 @@
     "@usevon/env": "workspace:*",
     "@usevon/logger": "workspace:*",
     "@usevon/queue": "workspace:*",
+    "@usevon/utils": "workspace:*",
     "bullmq": "^5.64.1",
     "drizzle-orm": "^0.44.7",
     "ioredis": "^5.8.2",

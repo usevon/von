@@ -15,6 +15,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.1.0",
     "@usevon/auth": "workspace:*",
+    "@usevon/utils": "workspace:*",
     "@usevon/db": "workspace:*",
     "@usevon/env": "workspace:*",
     "@usevon/logger": "workspace:*",

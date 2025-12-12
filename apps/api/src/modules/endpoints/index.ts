@@ -1,7 +1,7 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
-import { BadRequestError } from "@/lib/errors"
+import { BadRequestError } from "@usevon/utils"
 import { EndpointModel } from "./model"
 import { EndpointService } from "./service"
 

@@ -20,7 +20,7 @@ import {
   ForbiddenError,
   ConflictError,
   InternalServerError,
-} from "@/lib/errors"
+} from "@usevon/utils"
 
 const ping = new Elysia({ prefix: "/ping" })
   .use(withApiKey)
