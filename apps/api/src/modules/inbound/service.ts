@@ -5,6 +5,14 @@ import { getInboundForwardingQueue } from "@usevon/queue"
 import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
 import type { InboundModel } from "./model"
 
+type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
+
+const toInboundEndpoint = (e: InboundEndpointRow): InboundModel.inboundEndpoint => ({
+  ...e,
+  createdAt: e.createdAt.toISOString(),
+  updatedAt: e.updatedAt.toISOString(),
+})
+
 type CreateInboundEndpointParams = {
   organizationId: string
   name?: string
@@ -20,12 +28,6 @@ type UpdateInboundEndpointParams = {
   provider?: string
   forwardUrl?: string
   enabled?: boolean
-}
-
-type GetInboundEndpointsParams = {
-  organizationId: string
-  limit: number
-  offset: number
 }
 
 type ReceiveWebhookParams = {
@@ -63,32 +65,29 @@ export abstract class InboundService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to create inbound endpoint")
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toInboundEndpoint(result[0])
     } catch (error) {
       console.error("Error creating inbound endpoint:", error)
       throw new InternalServerError("Failed to create inbound endpoint")
     }
   }
 
-  static async getAll(params: GetInboundEndpointsParams): Promise<InboundModel.inboundEndpointList> {
+  static async getAll(
+    organizationId: string,
+    limit: number,
+    offset: number
+  ): Promise<InboundModel.inboundEndpointList> {
     try {
-      const endpoints = await db
-        .select()
-        .from(inboundEndpoint)
-        .where(eq(inboundEndpoint.organizationId, params.organizationId))
-
-      return {
-        endpoints: endpoints.slice(params.offset, params.offset + params.limit).map((e) => ({
-          ...e,
-          createdAt: e.createdAt.toISOString(),
-          updatedAt: e.updatedAt.toISOString(),
-        })),
-        total: endpoints.length,
-      }
+      const [endpoints, total] = await Promise.all([
+        db
+          .select()
+          .from(inboundEndpoint)
+          .where(eq(inboundEndpoint.organizationId, organizationId))
+          .limit(limit)
+          .offset(offset),
+        db.$count(inboundEndpoint, eq(inboundEndpoint.organizationId, organizationId)),
+      ])
+      return { endpoints: endpoints.map(toInboundEndpoint), total }
     } catch (error) {
       console.error("Error fetching inbound endpoints:", error)
       throw new InternalServerError("Failed to fetch inbound endpoints")
@@ -112,18 +111,14 @@ export abstract class InboundService {
         .limit(1)
 
       if (!result[0]) return null
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toInboundEndpoint(result[0])
     } catch (error) {
       console.error("Error fetching inbound endpoint:", error)
       throw new InternalServerError("Failed to fetch inbound endpoint")
     }
   }
 
-  static async getByPublicId(endpointId: string): Promise<typeof inboundEndpoint.$inferSelect | null> {
+  static async getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
     try {
       const result = await db
         .select()
@@ -169,11 +164,7 @@ export abstract class InboundService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
-      return {
-        ...result[0],
-        createdAt: result[0].createdAt.toISOString(),
-        updatedAt: result[0].updatedAt.toISOString(),
-      }
+      return toInboundEndpoint(result[0])
     } catch (error) {
       console.error("Error updating inbound endpoint:", error)
       throw new InternalServerError("Failed to update inbound endpoint")

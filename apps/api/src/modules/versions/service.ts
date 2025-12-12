@@ -59,15 +59,16 @@ export abstract class VersionService {
     offset: number
   ): Promise<VersionModel.versionList> {
     try {
-      const versions = await db
-        .select()
-        .from(webhookVersion)
-        .where(eq(webhookVersion.organizationId, organizationId))
-
-      return {
-        versions: versions.slice(offset, offset + limit).map(toVersion),
-        total: versions.length,
-      }
+      const [versions, total] = await Promise.all([
+        db
+          .select()
+          .from(webhookVersion)
+          .where(eq(webhookVersion.organizationId, organizationId))
+          .limit(limit)
+          .offset(offset),
+        db.$count(webhookVersion, eq(webhookVersion.organizationId, organizationId)),
+      ])
+      return { versions: versions.map(toVersion), total }
     } catch (error) {
       console.error("Error fetching versions:", error)
       throw new InternalServerError("Failed to fetch versions")

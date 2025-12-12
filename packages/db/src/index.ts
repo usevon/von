@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
-import * as schema from "@/schema"
+import * as schema from "./schema"
 import { env } from "./env"
 
 const client = postgres(env.DATABASE_URL, {
@@ -23,4 +23,4 @@ export async function closeDatabase(): Promise<void> {
   await client.end()
 }
 
-export * from "@/schema"
+export * from "./schema"
