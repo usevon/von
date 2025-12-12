@@ -31,6 +31,8 @@
     "@usevon/queue": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.16",
+    "elysia-ip": "^1.0.10",
+    "elysia-requestid": "^1.0.9",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
