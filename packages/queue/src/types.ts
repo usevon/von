@@ -1,16 +1,18 @@
+export type DeliveryEndpoint = {
+  id: string
+  url: string
+  secret: string
+  timeoutMs: number
+  retryCount: number
+  version: string | null
+}
+
 export type WebhookDeliveryJob = {
   deliveryId: string
   eventId: string
   payload: string
   eventType: string
-  endpoint: {
-    id: string
-    url: string
-    secret: string
-    timeoutMs: number
-    retryCount: number
-    version: string | null
-  }
+  endpoint: DeliveryEndpoint
   requestId?: string
 }
 
