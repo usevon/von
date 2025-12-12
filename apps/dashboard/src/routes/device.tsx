@@ -1,29 +1,59 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useSession, device } from '@/lib/auth/client'
-import { Button, Card, CardHeader, CardTitle, CardPanel } from '@usevon/ui'
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardPanel,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+  REGEXP_ONLY_DIGITS_AND_CHARS,
+} from '@usevon/ui'
 
 export const Route = createFileRoute('/device')({
   component: DevicePage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    user_code: typeof search.user_code === 'string' ? search.user_code : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ user_code: search.user_code }),
+  loader: async ({ deps }) => {
+    if (!deps.user_code) return { prevalidated: null, error: null }
+
+    const formattedCode = deps.user_code.trim().replace(/-/g, '').toUpperCase()
+    const { data, error } = await device({
+      query: { user_code: formattedCode },
+    })
+
+    if (error || !data) return { prevalidated: null, error: 'Invalid or expired code' }
+    return { prevalidated: { userCode: formattedCode }, error: null }
+  },
 })
+
+type Status = 'idle' | 'verifying' | 'processing'
 
 export default function DevicePage() {
   const { data: session, isPending } = useSession()
   const navigate = useNavigate()
-  const [userCode, setUserCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [deviceInfo, setDeviceInfo] = useState<{ userCode: string; clientId?: string } | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const loaderData = Route.useLoaderData()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const [userCode, setUserCode] = useState('')
+  const [error, setError] = useState<string | null>(loaderData.error)
+  const [deviceInfo, setDeviceInfo] = useState<{ userCode: string } | null>(loaderData.prevalidated)
+  const [status, setStatus] = useState<Status>('idle')
+
+  const handleVerify = async (code?: string) => {
+    const codeToVerify = code ?? userCode
+    if (!codeToVerify.trim()) return
+
     setError(null)
-    setIsLoading(true)
+    setStatus('verifying')
 
     try {
-      const formattedCode = userCode.trim().replace(/-/g, '').toUpperCase()
-
+      const formattedCode = codeToVerify.trim().replace(/-/g, '').toUpperCase()
       const { data, error: fetchError } = await device({
         query: { user_code: formattedCode },
       })
@@ -33,17 +63,17 @@ export default function DevicePage() {
         return
       }
 
-      setDeviceInfo({ userCode: formattedCode, clientId: data.clientId })
+      setDeviceInfo({ userCode: formattedCode })
     } catch {
       setError('Invalid or expired code')
     } finally {
-      setIsLoading(false)
+      setStatus('idle')
     }
   }
 
   const handleApprove = async () => {
     if (!deviceInfo) return
-    setIsProcessing(true)
+    setStatus('processing')
 
     try {
       const { error: approveError } = await device.approve({
@@ -61,13 +91,13 @@ export default function DevicePage() {
     } catch {
       setError('Failed to approve device')
     } finally {
-      setIsProcessing(false)
+      setStatus('idle')
     }
   }
 
   const handleDeny = async () => {
     if (!deviceInfo) return
-    setIsProcessing(true)
+    setStatus('processing')
 
     try {
       const { error: denyError } = await device.deny({
@@ -85,7 +115,7 @@ export default function DevicePage() {
     } catch {
       setError('Failed to deny device')
     } finally {
-      setIsProcessing(false)
+      setStatus('idle')
     }
   }
 
@@ -106,13 +136,8 @@ export default function DevicePage() {
             <CardTitle>Sign In Required</CardTitle>
           </CardHeader>
           <CardPanel>
-            <p className="text-gray-600 mb-4">
-              You need to sign in to authorize a device.
-            </p>
-            <Button
-              onClick={() => navigate({ to: '/test-auth', search: { redirect: currentUrl } })}
-              className="w-full"
-            >
+            <p className="text-gray-600 mb-4">You need to sign in to authorize a device.</p>
+            <Button onClick={() => navigate({ to: '/test-auth', search: { redirect: currentUrl } })} className="w-full">
               Sign In
             </Button>
           </CardPanel>
@@ -129,34 +154,18 @@ export default function DevicePage() {
             <CardTitle>Authorize Device</CardTitle>
           </CardHeader>
           <CardPanel>
-            <p className="text-gray-600 mb-4">
-              A device is requesting access to your account.
-            </p>
+            <p className="text-gray-600 mb-4">A device is requesting access to your account.</p>
             <div className="bg-muted rounded-lg p-4 mb-4 text-center">
               <p className="text-sm text-gray-500 mb-1">Device Code</p>
               <p className="text-2xl font-mono font-bold">{deviceInfo.userCode}</p>
-              {deviceInfo.clientId && (
-                <p className="text-sm text-gray-500 mt-2">Client: {deviceInfo.clientId}</p>
-              )}
             </div>
-            {error && (
-              <p className="text-red-500 text-sm mb-4">{error}</p>
-            )}
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
             <div className="flex gap-3">
-              <Button
-                onClick={handleDeny}
-                variant="outline"
-                disabled={isProcessing}
-                className="flex-1"
-              >
+              <Button onClick={handleDeny} variant="outline" disabled={status === 'processing'} className="flex-1">
                 Deny
               </Button>
-              <Button
-                onClick={handleApprove}
-                disabled={isProcessing}
-                className="flex-1"
-              >
-                {isProcessing ? 'Processing...' : 'Approve'}
+              <Button onClick={handleApprove} disabled={status === 'processing'} className="flex-1">
+                {status === 'processing' ? 'Processing...' : 'Approve'}
               </Button>
             </div>
           </CardPanel>
@@ -172,24 +181,41 @@ export default function DevicePage() {
           <CardTitle>Device Authorization</CardTitle>
         </CardHeader>
         <CardPanel>
-          <p className="text-gray-600 mb-4">
-            Enter the code displayed on your device.
-          </p>
-          <form onSubmit={handleSubmit}>
-            <input
-              type="text"
-              value={userCode}
-              onChange={(e) => setUserCode(e.target.value)}
-              placeholder="XXXX-XXXX"
-              maxLength={12}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-center text-xl font-mono tracking-wider mb-4"
-              autoFocus
-            />
-            {error && (
-              <p className="text-red-500 text-sm mb-4">{error}</p>
-            )}
-            <Button type="submit" disabled={isLoading || !userCode.trim()} className="w-full">
-              {isLoading ? 'Verifying...' : 'Continue'}
+          <p className="text-gray-600 mb-4">Enter the code displayed on your device.</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleVerify()
+            }}
+          >
+            <div className="flex justify-center mb-4">
+              <InputOTP
+                maxLength={8}
+                value={userCode}
+                onChange={setUserCode}
+                pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+                onComplete={handleVerify}
+                containerClassName="gap-2"
+                render={({ slots }) => (
+                  <>
+                    <InputOTPGroup>
+                      {slots.slice(0, 4).map((slot, i) => (
+                        <InputOTPSlot key={i} {...slot} />
+                      ))}
+                    </InputOTPGroup>
+                    <InputOTPSeparator />
+                    <InputOTPGroup>
+                      {slots.slice(4).map((slot, i) => (
+                        <InputOTPSlot key={i} {...slot} />
+                      ))}
+                    </InputOTPGroup>
+                  </>
+                )}
+              />
+            </div>
+            {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+            <Button type="submit" disabled={status === 'verifying' || userCode.length < 8} className="w-full">
+              {status === 'verifying' ? 'Verifying...' : 'Continue'}
             </Button>
           </form>
         </CardPanel>
