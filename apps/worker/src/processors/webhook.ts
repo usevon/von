@@ -64,7 +64,7 @@ const CIRCUIT_CONFIG = {
 }
 
 const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  const { deliveryId, eventId, payload, eventType, endpoint: ep } = job.data
+  const { deliveryId, eventId, payload, eventType, endpoint: ep, requestId } = job.data
 
   // Parallel fetch: delivery status (idempotency) + endpoint state (circuit breaker)
   const [[deliveryRecord], [endpointState]] = await Promise.all([
@@ -82,22 +82,22 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
   ])
 
   if (!deliveryRecord) {
-    log.warn({ deliveryId }, "Delivery not found, skipping")
+    log.warn({ deliveryId, requestId }, "Delivery not found, skipping")
     return
   }
 
   if (deliveryRecord.status === "delivered") {
-    log.info({ deliveryId }, "Already delivered, skipping")
+    log.info({ deliveryId, requestId }, "Already delivered, skipping")
     return
   }
 
   if (!endpointState) {
-    log.error({ endpointId: ep.id }, "Endpoint not found")
+    log.error({ endpointId: ep.id, requestId }, "Endpoint not found")
     throw new Error(`Endpoint ${ep.id} not found`)
   }
 
   if (!endpointState.enabled) {
-    log.info({ endpointId: ep.id }, "Endpoint disabled, marking as skipped")
+    log.info({ endpointId: ep.id, requestId }, "Endpoint disabled, marking as skipped")
     await db
       .update(delivery)
       .set({ status: "skipped", updatedAt: new Date() })
@@ -110,7 +110,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     if (circuitOpenedAt) {
       const timeSinceOpen = Date.now() - circuitOpenedAt.getTime()
       if (timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs) {
-        log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped")
+        log.info({ endpointId: ep.id, requestId }, "Circuit breaker open, marking as skipped")
         await db
           .update(delivery)
           .set({ status: "circuit_open", updatedAt: new Date() })
@@ -141,7 +141,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         const parsed = JSON.parse(payload) as Record<string, unknown>
         const transformed = applyTransforms(parsed, eventTransforms)
         finalPayload = JSON.stringify(transformed)
-        log.debug({ endpointId: ep.id, version: ep.version, eventType }, "Applied transforms")
+        log.debug({ endpointId: ep.id, version: ep.version, eventType, requestId }, "Applied transforms")
       }
     }
   }
@@ -190,7 +190,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       ])
 
       log.info(
-        { deliveryId, status: response.status },
+        { deliveryId, status: response.status, requestId },
         "Webhook delivered successfully"
       )
     } else {
@@ -237,11 +237,11 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     ])
 
     if (shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: newFailureCount }, "Circuit breaker opened")
+      log.warn({ endpointId: ep.id, failureCount: newFailureCount, requestId }, "Circuit breaker opened")
     }
 
     log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error) },
+      { deliveryId, attempts, maxAttempts, error: String(error), requestId },
       "Webhook delivery failed"
     )
 
@@ -262,11 +262,11 @@ export const createWebhookWorker = () => {
   )
 
   worker.on("completed", (job) => {
-    log.debug({ jobId: job.id }, "Job completed")
+    log.debug({ jobId: job.id, requestId: job.data.requestId }, "Job completed")
   })
 
   worker.on("failed", (job, error) => {
-    log.error({ jobId: job?.id, error: error.message }, "Job failed")
+    log.error({ jobId: job?.id, requestId: job?.data.requestId, error: error.message }, "Job failed")
   })
 
   return worker
