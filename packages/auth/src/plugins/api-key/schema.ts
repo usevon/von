@@ -8,12 +8,12 @@ export const apiKeySchema = () =>
       fields: {
         name: {
           type: "string",
-          required: false,
+          required: true,
           input: false,
         },
         start: {
           type: "string",
-          required: false,
+          required: true,
           input: false,
         },
         key: {
@@ -38,9 +38,8 @@ export const apiKeySchema = () =>
         },
         environment: {
           type: "string",
-          required: false,
+          required: true,
           input: false,
-          defaultValue: "dev",
         },
         enabled: {
           type: "boolean",
@@ -49,17 +48,6 @@ export const apiKeySchema = () =>
           defaultValue: true,
         },
         expiresAt: {
-          type: "date",
-          required: false,
-          input: false,
-        },
-        requestCount: {
-          type: "number",
-          required: false,
-          input: false,
-          defaultValue: 0,
-        },
-        lastRequest: {
           type: "date",
           required: false,
           input: false,
