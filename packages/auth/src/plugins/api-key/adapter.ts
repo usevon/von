@@ -1,4 +1,4 @@
-import type { ApiKey, ResolvedApiKeyOptions } from "./types"
+import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
 
 export type SecondaryStorage = {
   get: (key: string) => Promise<unknown> | unknown

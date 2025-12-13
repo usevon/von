@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "@usevon/typescript-config",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

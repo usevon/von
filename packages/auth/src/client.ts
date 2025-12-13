@@ -7,7 +7,7 @@
  */
 import { createAuthClient as createBetterAuthClient } from "better-auth/react"
 import { organizationClient, deviceAuthorizationClient } from "better-auth/client/plugins"
-import { apiKeyClient } from "./plugins/api-key/client"
+import { apiKeyClient } from "@/plugins/api-key/client"
 
 export const BEARER_TOKEN_KEY = "von_bearer_token"
 

@@ -1,11 +1,11 @@
-import { loadConfig } from "./config"
+import { loadConfig } from "@/lib/config"
 import type {
   DeviceCodeResponse,
   DeviceTokenResponse,
   UserSession,
   Organization,
   TunnelRegistration,
-} from "./types"
+} from "@/lib/types"
 
 export type { Organization, TunnelRegistration }
 

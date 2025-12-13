@@ -1,8 +1,8 @@
 import type { BetterAuthPlugin } from "better-auth"
-import { createApiKeyRoutes } from "./routes"
-import { apiKeySchema } from "./schema"
-import type { ApiKeyOptions, ResolvedApiKeyOptions } from "./types"
-import { hmacSign } from "./crypto"
+import { createApiKeyRoutes } from "@/plugins/api-key/routes"
+import { apiKeySchema } from "@/plugins/api-key/schema"
+import type { ApiKeyOptions, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
+import { hmacSign } from "@/plugins/api-key/crypto"
 
 const KEY_LENGTH = 64
 const START_LENGTH = 12
@@ -83,4 +83,4 @@ export const apiKey = (options?: ApiKeyOptions) => {
   } satisfies BetterAuthPlugin
 }
 
-export type { ApiKey, ApiKeyOptions } from "./types"
+export type { ApiKey, ApiKeyOptions } from "@/plugins/api-key/types"
