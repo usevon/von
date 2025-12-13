@@ -10,7 +10,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import type { InputOTPProps } from './types'
+import type { InputOTPProps } from '@/components/ui/input-otp/types'
 
 export const InputOTP = (props: InputOTPProps) => {
   const [internalValue, setInternalValue] = React.useState(
