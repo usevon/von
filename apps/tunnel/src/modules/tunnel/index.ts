@@ -1,5 +1,5 @@
 import { Elysia } from "elysia"
-import { createLogger } from "@usevon/logger"
+import { createLogger } from "@usevon/utils/logger"
 import type { TunnelResponse } from "@usevon/tunnel"
 import { betterAuth, withSession } from "@/modules/auth"
 import { UnauthorizedError, generateTunnelId } from "@usevon/utils"

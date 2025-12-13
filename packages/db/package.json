@@ -21,7 +21,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@usevon/env": "workspace:*",
+    "@usevon/utils": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "postgres": "^3.4.7"
   },
