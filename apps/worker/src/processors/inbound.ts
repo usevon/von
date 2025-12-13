@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema"
 import { createConnection, type InboundForwardingJob } from "@usevon/queue"
-import { createLogger } from "@usevon/logger/elysia"
+import { createLogger } from "@usevon/utils/logger/elysia"
 import {
   hmacSign,
   isCircuitOpen,

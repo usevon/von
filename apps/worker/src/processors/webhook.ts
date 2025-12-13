@@ -3,7 +3,7 @@ import { eq, and, sql } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue"
-import { createLogger } from "@usevon/logger/elysia"
+import { createLogger } from "@usevon/utils/logger/elysia"
 import {
   hmacSign,
   applyTransforms,

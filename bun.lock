@@ -19,8 +19,6 @@
         "@elysiajs/server-timing": "^1.4.0",
         "@usevon/auth": "workspace:*",
         "@usevon/db": "workspace:*",
-        "@usevon/env": "workspace:*",
-        "@usevon/logger": "workspace:*",
         "@usevon/queue": "workspace:*",
         "@usevon/utils": "workspace:*",
         "drizzle-orm": "^0.44.7",
@@ -92,8 +90,6 @@
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
         "@usevon/db": "workspace:*",
-        "@usevon/env": "workspace:*",
-        "@usevon/logger": "workspace:*",
         "@usevon/queue": "workspace:*",
         "@usevon/tunnel": "workspace:*",
         "@usevon/utils": "workspace:*",
@@ -111,8 +107,6 @@
       "version": "0.0.1",
       "dependencies": {
         "@usevon/db": "workspace:*",
-        "@usevon/env": "workspace:*",
-        "@usevon/logger": "workspace:*",
         "@usevon/queue": "workspace:*",
         "@usevon/utils": "workspace:*",
         "bullmq": "^5.64.1",
@@ -171,7 +165,7 @@
       "name": "@usevon/db",
       "version": "0.0.1",
       "dependencies": {
-        "@usevon/env": "workspace:*",
+        "@usevon/utils": "workspace:*",
         "drizzle-orm": "^0.44.7",
         "postgres": "^3.4.7",
       },
@@ -182,35 +176,11 @@
         "typescript": "^5.7.2",
       },
     },
-    "packages/env": {
-      "name": "@usevon/env",
-      "version": "0.0.1",
-      "dependencies": {
-        "@t3-oss/env-core": "^0.11.1",
-        "zod": "^3.24.0",
-      },
-      "devDependencies": {
-        "@usevon/typescript-config": "workspace:*",
-        "typescript": "^5.7.2",
-      },
-    },
-    "packages/logger": {
-      "name": "@usevon/logger",
-      "version": "0.0.1",
-      "dependencies": {
-        "pino": "^9.6.0",
-        "pino-pretty": "^13.0.0",
-      },
-      "devDependencies": {
-        "@usevon/typescript-config": "workspace:*",
-        "typescript": "^5.7.2",
-      },
-    },
     "packages/queue": {
       "name": "@usevon/queue",
       "version": "0.0.1",
       "dependencies": {
-        "@usevon/env": "workspace:*",
+        "@usevon/utils": "workspace:*",
         "bullmq": "^5.64.1",
         "ioredis": "^5.8.2",
       },
@@ -295,6 +265,12 @@
     "packages/utils": {
       "name": "@usevon/utils",
       "version": "0.1.0",
+      "dependencies": {
+        "@t3-oss/env-core": "^0.11.1",
+        "pino": "^9.6.0",
+        "pino-pretty": "^13.0.0",
+        "zod": "^3.24.0",
+      },
     },
   },
   "packages": {
@@ -791,10 +767,6 @@
     "@usevon/dashboard": ["@usevon/dashboard@workspace:apps/dashboard"],
 
     "@usevon/db": ["@usevon/db@workspace:packages/db"],
-
-    "@usevon/env": ["@usevon/env@workspace:packages/env"],
-
-    "@usevon/logger": ["@usevon/logger@workspace:packages/logger"],
 
     "@usevon/queue": ["@usevon/queue@workspace:packages/queue"],
 

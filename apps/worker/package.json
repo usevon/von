@@ -12,8 +12,6 @@
   },
   "dependencies": {
     "@usevon/db": "workspace:*",
-    "@usevon/env": "workspace:*",
-    "@usevon/logger": "workspace:*",
     "@usevon/queue": "workspace:*",
     "@usevon/utils": "workspace:*",
     "bullmq": "^5.64.1",

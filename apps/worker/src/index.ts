@@ -1,4 +1,4 @@
-import { createLogger } from "@usevon/logger/elysia"
+import { createLogger } from "@usevon/utils/logger/elysia"
 import { checkRedisConnection } from "@usevon/queue"
 import { checkDatabaseConnection } from "@usevon/db"
 import { createWebhookWorker } from "@/processors/webhook"
