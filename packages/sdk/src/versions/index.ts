@@ -1,2 +1,2 @@
-export * from './types'
-export * from './methods'
+export * from '@/versions/types'
+export * from '@/versions/methods'

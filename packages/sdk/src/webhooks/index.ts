@@ -1,2 +1,2 @@
-export { webhooksMethods } from './methods'
-export * from './types'
+export { webhooksMethods } from '@/webhooks/methods'
+export * from '@/webhooks/types'

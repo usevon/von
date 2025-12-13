@@ -6,7 +6,7 @@ import type {
   WebhookEvent,
   WebhookEventsResponse,
   SendBatchResponse,
-} from './types'
+} from '@/webhooks/types'
 
 export const webhooksMethods = (client: Von) => ({
   send: (params: SendWebhookParams) => {
