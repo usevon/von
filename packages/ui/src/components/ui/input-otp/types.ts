@@ -15,6 +15,7 @@ type InputOTPBaseProps = {
   pattern?: string | RegExp
   onComplete?: (value: string) => unknown
   disabled?: boolean
+  error?: boolean
   autoComplete?: string
   inputMode?: 'text' | 'numeric' | 'tel'
   className?: string

@@ -80,8 +80,10 @@ export const InputOTP = (props: InputOTPProps) => {
                 data-slot="input-otp-slot"
                 data-active={slot.isActive || undefined}
                 className={cn(
-                  'relative flex size-9 items-center justify-center border-y border-r border-input font-mono first:rounded-l-md first:border-l last:rounded-r-md',
-                  slot.isActive && 'z-10 ring-2 ring-ring'
+                  'relative flex size-9 items-center justify-center border-y border-r font-mono first:rounded-l-md first:border-l last:rounded-r-md',
+                  props.error ? 'border-destructive' : 'border-input',
+                  slot.isActive && !props.error && 'z-10 ring-2 ring-ring',
+                  slot.isActive && props.error && 'z-10 ring-2 ring-destructive'
                 )}
               >
                 {slot.char}
