@@ -229,7 +229,7 @@ export const event = pgTable(
   },
   (table) => [
     index("event_organization_id_idx").on(table.organizationId),
-    index("event_idempotency_key_idx").on(table.idempotencyKey),
+    unique("event_org_idempotency_unique").on(table.organizationId, table.idempotencyKey),
   ]
 )
 

@@ -69,9 +69,10 @@ export function updateApiKey({
         })
       }
 
-      await setApiKey(ctx as never, updated, opts)
+      const completeApiKey: ApiKey = { ...apiKey, ...update }
+      await setApiKey(ctx as never, completeApiKey, opts)
 
-      const { key: _, ...safeKey } = updated
+      const { key: _, ...safeKey } = completeApiKey
       return ctx.json(safeKey)
     }
   )

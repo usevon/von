@@ -221,7 +221,7 @@ export abstract class InboundService {
         payload: payloadStr,
         headers: headersStr,
         requestId: params.requestId,
-      })
+      }, { attempts: params.endpoint.retryCount })
 
       return {
         id: delivery.id,

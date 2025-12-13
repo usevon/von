@@ -128,7 +128,7 @@ export abstract class WebhookService {
     if (newEvents.length === 0) return { created: 0, events: results }
 
     const allDeliveries: Array<typeof delivery.$inferInsert> = []
-    const allJobs: Array<{ name: string; data: WebhookDeliveryJob }> = []
+    const allJobs: Array<{ name: string; data: WebhookDeliveryJob; opts?: { attempts?: number } }> = []
 
     for (const evt of newEvents) {
       const targets = evt.endpointIds?.length
@@ -151,6 +151,7 @@ export abstract class WebhookService {
         allJobs.push({
           name: "webhook-delivery",
           data: { deliveryId, eventId: evt.id, payload: payloadStr, eventType: evt.eventType, endpoint: ep, organizationId: params.organizationId, requestId: params.requestId },
+          opts: { attempts: ep.retryCount },
         })
       }
     }

@@ -13,6 +13,7 @@ export type TunnelConnection = {
   pending: Map<string, PendingRequest>
   headers: Record<string, string>
   validationInterval?: ReturnType<typeof setInterval>
+  organizationId: string
 }
 
 export namespace TunnelModel {
