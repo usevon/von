@@ -4,7 +4,7 @@ export const baseConfig: UserConfig = {
   format: 'esm',
   dts: true,
   sourcemap: true,
-  clean: false,
+  clean: true,
 }
 
 export const reactConfig: UserConfig = {

@@ -5,7 +5,7 @@ import type {
   UpdateInboundParams,
   InboundEndpoint,
   InboundEndpointsResponse,
-} from './types'
+} from '@/inbound/types'
 
 export const inboundMethods = (client: Von) => ({
   create: (params: CreateInboundParams) => {

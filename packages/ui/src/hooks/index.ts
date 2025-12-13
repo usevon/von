@@ -1,1 +1,1 @@
-export { useIsMobile } from "./use-mobile"
+export { useIsMobile } from "@/hooks/use-mobile"

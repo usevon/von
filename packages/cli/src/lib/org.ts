@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import { saveConfig } from "./config"
-import { setActiveOrganization, type Organization } from "./api"
+import { saveConfig } from "@/lib/config"
+import { setActiveOrganization, type Organization } from "@/lib/api"
 
 type SelectOrgOptions = {
   orgs: Organization[]

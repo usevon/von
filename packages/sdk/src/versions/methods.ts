@@ -5,7 +5,7 @@ import type {
   UpdateVersionParams,
   WebhookVersion,
   VersionsResponse,
-} from './types'
+} from '@/versions/types'
 
 export const versionsMethods = (client: Von) => ({
   create: (params: CreateVersionParams) => {

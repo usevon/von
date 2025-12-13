@@ -24,8 +24,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun && tsc",
-    "dev": "bun build src/index.ts --outdir dist --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "test": "bun test"
   },
   "devDependencies": {

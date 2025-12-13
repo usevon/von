@@ -5,7 +5,7 @@ import type {
   UpdateEndpointParams,
   Endpoint,
   EndpointsResponse,
-} from './types'
+} from '@/endpoints/types'
 
 export const endpointsMethods = (client: Von) => ({
   create: (params: CreateEndpointParams) => {

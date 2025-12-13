@@ -1,6 +1,6 @@
 import { Queue } from "bullmq"
-import { createConnection } from "./connection"
-import type { WebhookDeliveryJob, InboundForwardingJob } from "./types"
+import { createConnection } from "@/connection"
+import type { WebhookDeliveryJob, InboundForwardingJob } from "@/types"
 
 let webhookDeliveryQueue: Queue<WebhookDeliveryJob> | null = null
 let inboundForwardingQueue: Queue<InboundForwardingJob> | null = null
