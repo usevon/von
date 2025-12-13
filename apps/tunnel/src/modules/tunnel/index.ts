@@ -37,11 +37,30 @@ export const tunnelRegister = new Elysia({ prefix: "/register" })
 
 export const tunnelWs = new Elysia()
   .ws("/ws/:tunnelId", {
-    open(ws) {
+    async open(ws) {
       const tunnelId = ws.data.params.tunnelId
       const authHeader = ws.data.headers?.authorization
 
       if (!authHeader?.startsWith("Bearer ")) {
+        ws.close(4001, "Unauthorized")
+        return
+      }
+
+      const headers: Record<string, string> = {}
+      for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
+        if (value) headers[key] = value
+      }
+
+      // Validate session before accepting connection
+      let organizationId: string
+      try {
+        const session = await betterAuth.api.getSession({ headers: headers as HeadersInit })
+        if (!session?.session?.activeOrganizationId) {
+          ws.close(4001, "Unauthorized")
+          return
+        }
+        organizationId = session.session.activeOrganizationId
+      } catch {
         ws.close(4001, "Unauthorized")
         return
       }
@@ -54,17 +73,13 @@ export const tunnelWs = new Elysia()
         existing.close()
       }
 
-      const headers: Record<string, string> = {}
-      for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
-        if (value) headers[key] = value
-      }
-
       const connection = {
         send: (data: string) => ws.send(data),
         close: () => ws.close(),
         pending: new Map(),
         headers,
         validationInterval: undefined as ReturnType<typeof setInterval> | undefined,
+        organizationId,
       }
 
       // Periodic session validation

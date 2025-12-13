@@ -48,7 +48,9 @@ export class Von {
       body: body ? JSON.stringify(body) : undefined,
     })
 
-    const data = await response.json()
+    const data = await response.json().catch(() => {
+      throw new VonError('Failed to parse response from server', 'INVALID_RESPONSE', response.status || 500)
+    })
 
     if (!response.ok) {
       throw VonError.fromResponse(data, response.status)

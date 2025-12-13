@@ -17,9 +17,20 @@ export abstract class TunnelService {
 
   static setTunnel(tunnelId: string, connection: TunnelConnection): void {
     tunnels.set(tunnelId, connection)
+    const count = orgTunnelCounts.get(connection.organizationId) ?? 0
+    orgTunnelCounts.set(connection.organizationId, count + 1)
   }
 
   static deleteTunnel(tunnelId: string): void {
+    const connection = tunnels.get(tunnelId)
+    if (connection) {
+      const count = orgTunnelCounts.get(connection.organizationId) ?? 0
+      if (count > 1) {
+        orgTunnelCounts.set(connection.organizationId, count - 1)
+      } else {
+        orgTunnelCounts.delete(connection.organizationId)
+      }
+    }
     tunnels.delete(tunnelId)
   }
 

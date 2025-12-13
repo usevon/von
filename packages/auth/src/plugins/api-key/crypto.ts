@@ -20,7 +20,7 @@ export function hmacSign(data: string, secret: string): string {
 
 export function verifySignature(key: string, secret: string): boolean {
   const dotIndex = key.lastIndexOf(".")
-  if (dotIndex === -1) return true
+  if (dotIndex === -1) return false
 
   const prefixMatch = Object.keys(PREFIXES).find((p) => key.startsWith(p))
   if (!prefixMatch) return false

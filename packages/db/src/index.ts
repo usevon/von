@@ -10,12 +10,12 @@ const client = postgres(env.DATABASE_URL, {
 })
 export const db = drizzle(client, { schema })
 
-export async function checkDatabaseConnection(): Promise<{ ok: boolean; url: string }> {
+export async function checkDatabaseConnection(): Promise<{ ok: boolean }> {
   try {
     await client`SELECT 1`
-    return { ok: true, url: env.DATABASE_URL }
+    return { ok: true }
   } catch {
-    return { ok: false, url: env.DATABASE_URL }
+    return { ok: false }
   }
 }
 
