@@ -2,13 +2,13 @@ import useSWR from "swr"
 import type { SWRConfiguration } from "swr"
 import { useVonContext } from "../provider"
 
-type UseFetchOptions<T> = {
+type UseFetchOptions<TRaw, T> = {
   endpoint: string
-  parseData: (data: unknown) => T
+  parseData: (data: TRaw) => T
   swrConfig?: SWRConfiguration
 }
 
-export const useFetch = <T>(options: UseFetchOptions<T>) => {
+export const useFetch = <TRaw, T>(options: UseFetchOptions<TRaw, T>) => {
   const { apiUrl, getCredentials } = useVonContext()
 
   const fetcher = async (url: string) => {
