@@ -45,8 +45,9 @@ describe('Versions Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/versions', expect.objectContaining({
         method: 'POST',
       }))
-      expect(result.version).toBe('2024-06-01')
-      expect(result.transforms['product.updated'].rename).toEqual({ features: 'items' })
+      expect(result.error).toBeNull()
+      expect(result.data?.version).toBe('2024-06-01')
+      expect(result.data?.transforms['product.updated'].rename).toEqual({ features: 'items' })
     })
 
     test('includes transforms with all mapping types', async () => {
@@ -94,8 +95,9 @@ describe('Versions Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/versions', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.versions).toHaveLength(1)
-      expect(result.total).toBe(1)
+      expect(result.error).toBeNull()
+      expect(result.data?.versions).toHaveLength(1)
+      expect(result.data?.total).toBe(1)
     })
 
     test('includes pagination params in query string', async () => {
@@ -125,7 +127,8 @@ describe('Versions Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/versions/2024-06-01', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.version).toBe('2024-06-01')
+      expect(result.error).toBeNull()
+      expect(result.data?.version).toBe('2024-06-01')
     })
   })
 
@@ -148,7 +151,8 @@ describe('Versions Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/versions/2024-06-01', expect.objectContaining({
         method: 'PATCH',
       }))
-      expect(result.transforms['product.updated'].rename).toEqual({ features: 'newItems' })
+      expect(result.error).toBeNull()
+      expect(result.data?.transforms['product.updated'].rename).toEqual({ features: 'newItems' })
     })
   })
 

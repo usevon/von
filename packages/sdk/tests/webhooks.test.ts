@@ -36,8 +36,9 @@ describe('Webhooks Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/webhooks', expect.objectContaining({
         method: 'POST',
       }))
-      expect(result.id).toBe('evt_123')
-      expect(result.eventType).toBe('user.created')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('evt_123')
+      expect(result.data?.eventType).toBe('user.created')
     })
 
     test('includes idempotencyKey and endpointIds when provided', async () => {
@@ -80,8 +81,9 @@ describe('Webhooks Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/webhooks/batch', expect.objectContaining({
         method: 'POST',
       }))
-      expect(result.created).toBe(2)
-      expect(result.events).toHaveLength(2)
+      expect(result.error).toBeNull()
+      expect(result.data?.created).toBe(2)
+      expect(result.data?.events).toHaveLength(2)
     })
   })
 
@@ -101,8 +103,9 @@ describe('Webhooks Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/webhooks/events', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.events).toHaveLength(1)
-      expect(result.total).toBe(1)
+      expect(result.error).toBeNull()
+      expect(result.data?.events).toHaveLength(1)
+      expect(result.data?.total).toBe(1)
     })
 
     test('includes pagination params in query string', async () => {
@@ -133,7 +136,8 @@ describe('Webhooks Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/webhooks/events/evt_123', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.id).toBe('evt_123')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('evt_123')
     })
   })
 })

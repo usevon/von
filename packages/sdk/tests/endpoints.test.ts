@@ -39,8 +39,9 @@ describe('Endpoints Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/endpoints', expect.objectContaining({
         method: 'POST',
       }))
-      expect(result.id).toBe('ep_123')
-      expect(result.url).toBe('https://example.com/webhook')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('ep_123')
+      expect(result.data?.url).toBe('https://example.com/webhook')
     })
 
     test('includes optional params in body', async () => {
@@ -78,8 +79,9 @@ describe('Endpoints Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/endpoints', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.endpoints).toHaveLength(1)
-      expect(result.total).toBe(1)
+      expect(result.error).toBeNull()
+      expect(result.data?.endpoints).toHaveLength(1)
+      expect(result.data?.total).toBe(1)
     })
 
     test('includes pagination params in query string', async () => {
@@ -113,7 +115,8 @@ describe('Endpoints Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/endpoints/ep_123', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.id).toBe('ep_123')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('ep_123')
     })
   })
 
@@ -141,8 +144,9 @@ describe('Endpoints Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/endpoints/ep_123', expect.objectContaining({
         method: 'PATCH',
       }))
-      expect(result.url).toBe('https://example.com/webhook-updated')
-      expect(result.enabled).toBe(false)
+      expect(result.error).toBeNull()
+      expect(result.data?.url).toBe('https://example.com/webhook-updated')
+      expect(result.data?.enabled).toBe(false)
     })
   })
 
