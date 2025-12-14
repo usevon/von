@@ -41,10 +41,15 @@
     "./logger/elysia": {
       "types": "./dist/logger-elysia.d.ts",
       "default": "./dist/logger-elysia.js"
+    },
+    "./fetch": {
+      "types": "./dist/fetch/index.d.ts",
+      "default": "./dist/fetch/index.js"
     }
   },
   "scripts": {
-    "build": "tsdown"
+    "build": "tsdown",
+    "test": "bun test"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.11.1",
