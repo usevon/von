@@ -2,18 +2,49 @@
   "name": "@usevon/utils",
   "version": "0.1.0",
   "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./crypto": "./src/crypto.ts",
-    "./errors": "./src/errors.ts",
-    "./circuit-breaker": "./src/circuit-breaker.ts",
-    "./ids": "./src/ids.ts",
-    "./transforms": "./src/transforms.ts",
-    "./env": "./src/env.ts",
-    "./logger": "./src/logger.ts",
-    "./logger/elysia": "./src/logger-elysia.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./crypto": {
+      "types": "./dist/crypto.d.ts",
+      "default": "./dist/crypto.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./circuit-breaker": {
+      "types": "./dist/circuit-breaker.d.ts",
+      "default": "./dist/circuit-breaker.js"
+    },
+    "./ids": {
+      "types": "./dist/ids.d.ts",
+      "default": "./dist/ids.js"
+    },
+    "./transforms": {
+      "types": "./dist/transforms.d.ts",
+      "default": "./dist/transforms.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./dist/env.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "default": "./dist/logger.js"
+    },
+    "./logger/elysia": {
+      "types": "./dist/logger-elysia.d.ts",
+      "default": "./dist/logger-elysia.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.11.1",

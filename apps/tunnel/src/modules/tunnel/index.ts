@@ -4,8 +4,8 @@ import type { TunnelResponse } from "@usevon/tunnel"
 import { betterAuth, withSession } from "@/modules/auth"
 import { UnauthorizedError, generateTunnelId } from "@usevon/utils"
 import { env } from "@/env"
-import { TunnelModel } from "./model"
-import { TunnelService } from "./service"
+import { TunnelModel } from "@/modules/tunnel/model"
+import { TunnelService } from "@/modules/tunnel/service"
 
 const log = createLogger({ name: "tunnel" })
 

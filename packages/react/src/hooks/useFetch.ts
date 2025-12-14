@@ -1,6 +1,6 @@
 import useSWR from "swr"
 import type { SWRConfiguration } from "swr"
-import { useVonContext } from "../provider"
+import { useVonContext } from "@/provider"
 
 type UseFetchOptions<TRaw, T> = {
   endpoint: string

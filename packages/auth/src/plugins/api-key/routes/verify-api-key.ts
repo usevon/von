@@ -1,9 +1,9 @@
 import { createAuthEndpoint, APIError } from "better-auth/api"
 import { z } from "zod"
-import type { ApiKey, ResolvedApiKeyOptions } from "../types"
-import { getApiKey, deleteApiKey as deleteApiKeyFromStorage } from "../adapter"
-import { hashKey, verifySignature, hasValidPrefix } from "../crypto"
-import { ERROR_CODES } from "../index"
+import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
+import { getApiKey, deleteApiKey as deleteApiKeyFromStorage } from "@/plugins/api-key/adapter"
+import { hashKey, verifySignature, hasValidPrefix } from "@/plugins/api-key/crypto"
+import { ERROR_CODES } from "@/plugins/api-key"
 
 const API_KEY_TABLE_NAME = "apikey"
 

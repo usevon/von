@@ -5,7 +5,7 @@ import { getWebhookDeliveryQueue } from "@usevon/queue"
 import type { WebhookDeliveryJob } from "@usevon/queue"
 import { InternalServerError, generateId } from "@usevon/utils"
 import { EndpointService } from "@/modules/endpoints"
-import type { WebhookModel } from "./model"
+import type { WebhookModel } from "@/modules/webhooks/model"
 
 type EventRow = typeof event.$inferSelect
 type DeliveryRow = typeof delivery.$inferSelect

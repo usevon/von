@@ -1,8 +1,8 @@
 import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
 import { z } from "zod"
-import type { ApiKey, ResolvedApiKeyOptions } from "../types"
-import { setApiKey } from "../adapter"
-import { ERROR_CODES } from "../index"
+import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
+import { setApiKey } from "@/plugins/api-key/adapter"
+import { ERROR_CODES } from "@/plugins/api-key"
 
 const API_KEY_TABLE_NAME = "apikey"
 

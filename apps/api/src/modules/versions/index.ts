@@ -2,8 +2,8 @@ import { Elysia, t } from "elysia"
 import { PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@usevon/utils"
-import { VersionModel } from "./model"
-import { VersionService } from "./service"
+import { VersionModel } from "@/modules/versions/model"
+import { VersionService } from "@/modules/versions/service"
 
 const VersionParam = t.Object({
   version: t.String(),

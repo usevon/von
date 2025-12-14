@@ -2,8 +2,8 @@ import { Elysia, t } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@usevon/utils"
-import { InboundModel } from "./model"
-import { InboundService } from "./service"
+import { InboundModel } from "@/modules/inbound/model"
+import { InboundService } from "@/modules/inbound/service"
 
 export const inbound = new Elysia({ prefix: "/inbound" })
   .use(withAuth)
