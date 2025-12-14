@@ -12,7 +12,7 @@ type InboundEndpoint = {
 }
 
 export const useInbound = () => {
-  const result = useFetch<InboundEndpoint[]>({
+  const result = useFetch<{ endpoints: InboundEndpoint[] }, InboundEndpoint[]>({
     endpoint: "inbound",
     parseData: (data: { endpoints: InboundEndpoint[] }) => data.endpoints ?? [],
   })

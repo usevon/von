@@ -10,7 +10,7 @@ type WebhookEvent = {
 }
 
 export const useWebhooks = () => {
-  const result = useFetch<WebhookEvent[]>({
+  const result = useFetch<{ events: WebhookEvent[] }, WebhookEvent[]>({
     endpoint: "webhooks/events",
     parseData: (data: { events: WebhookEvent[] }) => data.events ?? [],
   })

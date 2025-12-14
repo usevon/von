@@ -13,7 +13,7 @@ type Endpoint = {
 }
 
 export const useEndpoints = () => {
-  const result = useFetch<Endpoint[]>({
+  const result = useFetch<{ endpoints: Endpoint[] }, Endpoint[]>({
     endpoint: "endpoints",
     parseData: (data: { endpoints: Endpoint[] }) => data.endpoints ?? [],
   })
