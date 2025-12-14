@@ -3,7 +3,7 @@ import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
 import type { DeliveryEndpoint } from "@usevon/queue"
 import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
-import type { EndpointModel } from "./model"
+import type { EndpointModel } from "@/modules/endpoints/model"
 
 type EndpointFields = {
   url: string

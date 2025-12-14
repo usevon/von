@@ -2,8 +2,8 @@ import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@usevon/utils"
-import { EndpointModel } from "./model"
-import { EndpointService } from "./service"
+import { EndpointModel } from "@/modules/endpoints/model"
+import { EndpointService } from "@/modules/endpoints/service"
 
 export const endpoints = new Elysia({ prefix: "/endpoints" })
   .use(withAuth)

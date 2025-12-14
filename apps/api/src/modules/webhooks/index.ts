@@ -1,8 +1,8 @@
 import { Elysia } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
-import { WebhookModel } from "./model"
-import { WebhookService } from "./service"
+import { WebhookModel } from "@/modules/webhooks/model"
+import { WebhookService } from "@/modules/webhooks/service"
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(withAuth)

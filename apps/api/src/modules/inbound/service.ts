@@ -3,7 +3,7 @@ import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
 import { getInboundForwardingQueue } from "@usevon/queue"
 import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
-import type { InboundModel } from "./model"
+import type { InboundModel } from "@/modules/inbound/model"
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
 

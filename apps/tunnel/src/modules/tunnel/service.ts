@@ -1,6 +1,6 @@
 import { generateId } from "@usevon/utils"
 import type { TunnelRequest, TunnelResponse } from "@usevon/tunnel"
-import type { TunnelConnection } from "./model"
+import type { TunnelConnection } from "@/modules/tunnel/model"
 
 const tunnels = new Map<string, TunnelConnection>()
 const orgTunnelCounts = new Map<string, number>()
