@@ -28,6 +28,9 @@
     "dev": "tsdown --watch",
     "test": "bun test"
   },
+  "dependencies": {
+    "@usevon/utils": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.0.0",

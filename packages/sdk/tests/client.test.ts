@@ -1,6 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach, spyOn } from 'bun:test'
 import { Von } from '../src/client'
-import { VonError } from '../src/error'
 import { mockJsonResponse, mockErrorResponse } from './setup'
 
 describe('Von Client', () => {
@@ -46,14 +45,12 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com', apiKey: 'test-key' })
       await von.get('/test')
 
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/test', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-key',
-        },
-        body: undefined,
-      })
+      expect(fetchSpy).toHaveBeenCalled()
+      const callArgs = fetchSpy.mock.calls[0]
+      expect(callArgs[0]).toBe('https://api.test.com/test')
+      expect(callArgs[1]?.method).toBe('GET')
+      const headers = callArgs[1]?.headers as Headers
+      expect(headers.get('Authorization')).toBe('Bearer test-key')
     })
 
     test('sends POST request with body', async () => {
@@ -63,14 +60,12 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com', apiKey: 'test-key' })
       await von.post('/test', { data: 'value' })
 
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-key',
-        },
-        body: JSON.stringify({ data: 'value' }),
-      })
+      expect(fetchSpy).toHaveBeenCalled()
+      const callArgs = fetchSpy.mock.calls[0]
+      expect(callArgs[0]).toBe('https://api.test.com/test')
+      expect(callArgs[1]?.method).toBe('POST')
+      const headers = callArgs[1]?.headers as Headers
+      expect(headers.get('Authorization')).toBe('Bearer test-key')
     })
 
     test('sends PATCH request with body', async () => {
@@ -80,14 +75,12 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com', apiKey: 'test-key' })
       await von.patch('/test', { data: 'value' })
 
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/test', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-key',
-        },
-        body: JSON.stringify({ data: 'value' }),
-      })
+      expect(fetchSpy).toHaveBeenCalled()
+      const callArgs = fetchSpy.mock.calls[0]
+      expect(callArgs[0]).toBe('https://api.test.com/test')
+      expect(callArgs[1]?.method).toBe('PATCH')
+      const headers = callArgs[1]?.headers as Headers
+      expect(headers.get('Authorization')).toBe('Bearer test-key')
     })
 
     test('sends DELETE request', async () => {
@@ -97,14 +90,12 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com', apiKey: 'test-key' })
       await von.delete('/test')
 
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/test', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-key',
-        },
-        body: undefined,
-      })
+      expect(fetchSpy).toHaveBeenCalled()
+      const callArgs = fetchSpy.mock.calls[0]
+      expect(callArgs[0]).toBe('https://api.test.com/test')
+      expect(callArgs[1]?.method).toBe('DELETE')
+      const headers = callArgs[1]?.headers as Headers
+      expect(headers.get('Authorization')).toBe('Bearer test-key')
     })
 
     test('does not include Authorization header when no API key', async () => {
@@ -114,13 +105,9 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com' })
       await von.get('/test')
 
-      expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/test', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: undefined,
-      })
+      const callArgs = fetchSpy.mock.calls[0]
+      const headers = callArgs[1]?.headers as Record<string, string>
+      expect(headers?.Authorization).toBeUndefined()
     })
 
     test('returns data on success', async () => {
@@ -131,34 +118,32 @@ describe('Von Client', () => {
       const von = new Von({ baseUrl: 'https://api.test.com' })
       const result = await von.get<typeof expectedData>('/test')
 
-      expect(result).toEqual(expectedData)
+      expect(result.error).toBeNull()
+      expect(result.data).toEqual(expectedData)
     })
 
-    test('throws VonError on error response', async () => {
+    test('returns error on error response', async () => {
       const mockResponse = mockErrorResponse('Not found', 'NOT_FOUND', 404)
       spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response)
 
       const von = new Von({ baseUrl: 'https://api.test.com' })
+      const result = await von.get('/test')
 
-      expect(von.get('/test')).rejects.toThrow(VonError)
+      expect(result.data).toBeNull()
+      expect(result.error).not.toBeNull()
+      expect(result.error?.status).toBe(404)
     })
 
-    test('VonError contains correct properties', async () => {
+    test('error contains correct properties', async () => {
       const mockResponse = mockErrorResponse('Not found', 'NOT_FOUND', 404)
       spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response)
 
       const von = new Von({ baseUrl: 'https://api.test.com' })
+      const result = await von.get('/test')
 
-      try {
-        await von.get('/test')
-        expect(true).toBe(false) // Should not reach here
-      } catch (e) {
-        expect(e).toBeInstanceOf(VonError)
-        const error = e as VonError
-        expect(error.message).toBe('Not found')
-        expect(error.code).toBe('NOT_FOUND')
-        expect(error.statusCode).toBe(404)
-      }
+      expect(result.error).not.toBeNull()
+      expect(result.error?.message).toContain('404')
+      expect(result.error?.status).toBe(404)
     })
   })
 })

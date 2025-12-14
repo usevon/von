@@ -39,8 +39,9 @@ describe('Inbound Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/inbound', expect.objectContaining({
         method: 'POST',
       }))
-      expect(result.id).toBe('in_123')
-      expect(result.name).toBe('Stripe Webhooks')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('in_123')
+      expect(result.data?.name).toBe('Stripe Webhooks')
     })
   })
 
@@ -60,8 +61,9 @@ describe('Inbound Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/inbound', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.inboundEndpoints).toHaveLength(1)
-      expect(result.total).toBe(1)
+      expect(result.error).toBeNull()
+      expect(result.data?.inboundEndpoints).toHaveLength(1)
+      expect(result.data?.total).toBe(1)
     })
 
     test('includes pagination params in query string', async () => {
@@ -94,7 +96,8 @@ describe('Inbound Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/inbound/in_123', expect.objectContaining({
         method: 'GET',
       }))
-      expect(result.id).toBe('in_123')
+      expect(result.error).toBeNull()
+      expect(result.data?.id).toBe('in_123')
     })
   })
 
@@ -121,8 +124,9 @@ describe('Inbound Methods', () => {
       expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/inbound/in_123', expect.objectContaining({
         method: 'PATCH',
       }))
-      expect(result.name).toBe('Updated Stripe Webhooks')
-      expect(result.enabled).toBe(false)
+      expect(result.error).toBeNull()
+      expect(result.data?.name).toBe('Updated Stripe Webhooks')
+      expect(result.data?.enabled).toBe(false)
     })
   })
 

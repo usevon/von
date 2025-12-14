@@ -1,4 +1,4 @@
-import { VonError } from '@/error'
+import { vonFetch, type VonFetchResponse, type RetryOptions, type FetchHooks } from '@usevon/utils'
 import type { VonConfig } from '@/types'
 import { webhooksMethods } from '@/webhooks'
 import { endpointsMethods } from '@/endpoints'
@@ -10,6 +10,9 @@ const DEFAULT_BASE_URL = 'http://localhost:3000'
 export class Von {
   private readonly baseUrl: string
   private readonly apiKey?: string
+  private readonly retry?: RetryOptions
+  private readonly hooks?: Omit<FetchHooks, 'onSuccess' | 'onError'>
+  private readonly timeout?: number
 
   public readonly webhooks: ReturnType<typeof webhooksMethods>
   public readonly endpoints: ReturnType<typeof endpointsMethods>
@@ -19,6 +22,9 @@ export class Von {
   constructor(config?: VonConfig) {
     this.baseUrl = config?.baseUrl ?? process.env.VON_BASE_URL ?? DEFAULT_BASE_URL
     this.apiKey = config?.apiKey ?? process.env.VON_API_KEY
+    this.retry = config?.retry
+    this.hooks = config?.hooks
+    this.timeout = config?.timeout
 
     this.webhooks = webhooksMethods(this)
     this.endpoints = endpointsMethods(this)
@@ -27,9 +33,7 @@ export class Von {
   }
 
   private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
+    const headers: Record<string, string> = {}
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`
     }
@@ -40,38 +44,30 @@ export class Von {
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown
-  ): Promise<T> {
-    const url = `${this.baseUrl}${path}`
-    const response = await fetch(url, {
+  ): Promise<VonFetchResponse<T>> {
+    return vonFetch<T>(`${this.baseUrl}${path}`, {
       method,
       headers: this.getHeaders(),
-      body: body ? JSON.stringify(body) : undefined,
+      body,
+      retry: this.retry,
+      timeout: this.timeout,
+      ...this.hooks,
     })
-
-    const data = await response.json().catch(() => {
-      throw new VonError('Failed to parse response from server', 'INVALID_RESPONSE', response.status || 500)
-    })
-
-    if (!response.ok) {
-      throw VonError.fromResponse(data, response.status)
-    }
-
-    return data as T
   }
 
-  async get<T>(path: string): Promise<T> {
+  async get<T>(path: string): Promise<VonFetchResponse<T>> {
     return this.request<T>('GET', path)
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
     return this.request<T>('POST', path, body)
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<T> {
+  async patch<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
     return this.request<T>('PATCH', path, body)
   }
 
-  async delete<T>(path: string): Promise<T> {
+  async delete<T>(path: string): Promise<VonFetchResponse<T>> {
     return this.request<T>('DELETE', path)
   }
 }
