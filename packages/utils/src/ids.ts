@@ -1,4 +1,4 @@
-import { hashSha256 } from "./crypto"
+import { hashSha256 } from "@/crypto"
 
 export function generateId(): string {
   return crypto.randomUUID()

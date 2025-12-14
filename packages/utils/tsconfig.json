@@ -1,4 +1,10 @@
 {
   "extends": "@usevon/typescript-config",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
   "include": ["src"]
 }
