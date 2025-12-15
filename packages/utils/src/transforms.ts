@@ -1,3 +1,11 @@
+export const toISODates = <T extends { createdAt: Date; updatedAt?: Date }>(
+  row: T
+): Omit<T, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt?: string } => ({
+  ...row,
+  createdAt: row.createdAt.toISOString(),
+  ...(row.updatedAt && { updatedAt: row.updatedAt.toISOString() }),
+})
+
 export type TransformMappings = {
   rename?: Record<string, string>
   remove?: string[]

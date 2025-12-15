@@ -2,16 +2,14 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
 import { getInboundForwardingQueue } from "@usevon/queue"
-import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
+import { InternalServerError, generateSecret, generateId, toISODates } from "@usevon/utils"
+import { log } from "@/lib/logger"
 import type { InboundModel } from "@/modules/inbound/model"
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
 
-const toInboundEndpoint = (e: InboundEndpointRow): InboundModel.inboundEndpoint => ({
-  ...e,
-  createdAt: e.createdAt.toISOString(),
-  updatedAt: e.updatedAt.toISOString(),
-})
+const toInboundEndpoint = (e: InboundEndpointRow): InboundModel.inboundEndpoint =>
+  toISODates(e) as InboundModel.inboundEndpoint
 
 type CreateInboundEndpointParams = {
   organizationId: string
@@ -66,7 +64,7 @@ export abstract class InboundService {
       if (!result[0]) throw new Error("Failed to create inbound endpoint")
       return toInboundEndpoint(result[0])
     } catch (error) {
-      console.error("Error creating inbound endpoint:", error)
+      log.error({ error }, "Error creating inbound endpoint")
       throw new InternalServerError("Failed to create inbound endpoint")
     }
   }
@@ -88,7 +86,7 @@ export abstract class InboundService {
       ])
       return { endpoints: endpoints.map(toInboundEndpoint), total }
     } catch (error) {
-      console.error("Error fetching inbound endpoints:", error)
+      log.error({ error }, "Error fetching inbound endpoints")
       throw new InternalServerError("Failed to fetch inbound endpoints")
     }
   }
@@ -112,7 +110,7 @@ export abstract class InboundService {
       if (!result[0]) return null
       return toInboundEndpoint(result[0])
     } catch (error) {
-      console.error("Error fetching inbound endpoint:", error)
+      log.error({ error }, "Error fetching inbound endpoint")
       throw new InternalServerError("Failed to fetch inbound endpoint")
     }
   }
@@ -128,7 +126,7 @@ export abstract class InboundService {
       if (!result[0]) return null
       return result[0]
     } catch (error) {
-      console.error("Error fetching inbound endpoint by public ID:", error)
+      log.error({ error }, "Error fetching inbound endpoint by public ID")
       throw new InternalServerError("Failed to fetch inbound endpoint")
     }
   }
@@ -165,7 +163,7 @@ export abstract class InboundService {
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
       return toInboundEndpoint(result[0])
     } catch (error) {
-      console.error("Error updating inbound endpoint:", error)
+      log.error({ error }, "Error updating inbound endpoint")
       throw new InternalServerError("Failed to update inbound endpoint")
     }
   }
@@ -184,7 +182,7 @@ export abstract class InboundService {
 
       return result.length > 0
     } catch (error) {
-      console.error("Error deleting inbound endpoint:", error)
+      log.error({ error }, "Error deleting inbound endpoint")
       throw new InternalServerError("Failed to delete inbound endpoint")
     }
   }
@@ -231,7 +229,7 @@ export abstract class InboundService {
         createdAt: delivery.createdAt.toISOString(),
       }
     } catch (error) {
-      console.error("Error receiving webhook:", error)
+      log.error({ error }, "Error receiving webhook")
       throw new InternalServerError("Failed to receive webhook")
     }
   }
