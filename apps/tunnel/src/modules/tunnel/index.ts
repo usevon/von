@@ -20,12 +20,15 @@ export const tunnelRegister = new Elysia()
         throw new UnauthorizedError("No active organization")
       }
 
-      const currentCount = TunnelService.getOrgTunnelCount(organizationId)
-      if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
-        throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
-      }
-
       const tunnelId = generateTunnelId(organizationId, userId, body.port)
+
+      // Allow re-registration of existing tunnels (for takeover), only limit new ones
+      if (!TunnelService.hasTunnel(tunnelId)) {
+        const currentCount = TunnelService.getOrgTunnelCount(organizationId)
+        if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
+          throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
+        }
+      }
 
       return { tunnelId }
     },
