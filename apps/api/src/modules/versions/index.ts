@@ -1,7 +1,8 @@
 import { Elysia, t } from "elysia"
 import { PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
-import { BadRequestError } from "@usevon/utils"
+import { requireOrg } from "@/lib/require-org"
+import { NotFoundError } from "@usevon/utils"
 import { VersionModel } from "@/modules/versions/model"
 import { VersionService } from "@/modules/versions/service"
 
@@ -11,10 +12,10 @@ const VersionParam = t.Object({
 
 export const versions = new Elysia({ prefix: "/versions" })
   .use(withAuth)
+  .use(requireOrg)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
-      if (!organizationId) throw new BadRequestError("No active organization")
       set.status = 201
       return VersionService.create({
         organizationId,
@@ -29,7 +30,6 @@ export const versions = new Elysia({ prefix: "/versions" })
   .get(
     "/",
     async ({ organizationId, query }) => {
-      if (!organizationId) return { versions: [], total: 0 }
       return VersionService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
     },
     {
@@ -39,14 +39,9 @@ export const versions = new Elysia({ prefix: "/versions" })
   )
   .get(
     "/:version",
-    async ({ organizationId, params, status }) => {
-      if (!organizationId) return status(404, { error: "Version not found" })
+    async ({ organizationId, params }) => {
       const version = await VersionService.getByVersion(organizationId, params.version)
-
-      if (!version) {
-        return status(404, { error: "Version not found" })
-      }
-
+      if (!version) throw new NotFoundError("Version not found")
       return version
     },
     {
@@ -59,18 +54,13 @@ export const versions = new Elysia({ prefix: "/versions" })
   )
   .patch(
     "/:version",
-    async ({ organizationId, params, body, status }) => {
-      if (!organizationId) return status(404, { error: "Version not found" })
+    async ({ organizationId, params, body }) => {
       const version = await VersionService.update({
         organizationId,
         version: params.version,
         ...body,
       })
-
-      if (!version) {
-        return status(404, { error: "Version not found" })
-      }
-
+      if (!version) throw new NotFoundError("Version not found")
       return version
     },
     {
@@ -84,10 +74,8 @@ export const versions = new Elysia({ prefix: "/versions" })
   )
   .delete(
     "/:version",
-    async ({ organizationId, params, status }) => {
-      if (!organizationId) return status(404, { error: "Version not found" })
+    async ({ organizationId, params }) => {
       await VersionService.delete(organizationId, params.version)
-
       return { success: true }
     },
     {

@@ -1,17 +1,18 @@
 import { Elysia, t } from "elysia"
 import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
 import { withAuth } from "@/modules/auth"
-import { BadRequestError } from "@usevon/utils"
+import { requireOrg } from "@/lib/require-org"
+import { NotFoundError } from "@usevon/utils"
 import { InboundModel } from "@/modules/inbound/model"
 import { InboundService } from "@/modules/inbound/service"
 import { rateLimit } from "@/lib/rate-limit"
 
 export const inbound = new Elysia({ prefix: "/inbound" })
   .use(withAuth)
+  .use(requireOrg)
   .post(
     "/",
     async ({ organizationId, body, set }) => {
-      if (!organizationId) throw new BadRequestError("No active organization")
       set.status = 201
       return InboundService.create({
         organizationId,
@@ -26,7 +27,6 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   .get(
     "/",
     async ({ organizationId, query }) => {
-      if (!organizationId) return { endpoints: [], total: 0 }
       return InboundService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
     },
     {
@@ -36,14 +36,9 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   )
   .get(
     "/:id",
-    async ({ organizationId, params, status }) => {
-      if (!organizationId) return status(404, { error: "Inbound endpoint not found" })
+    async ({ organizationId, params }) => {
       const endpoint = await InboundService.getById(organizationId, params.id)
-
-      if (!endpoint) {
-        return status(404, { error: "Inbound endpoint not found" })
-      }
-
+      if (!endpoint) throw new NotFoundError("Inbound endpoint not found")
       return endpoint
     },
     {
@@ -56,18 +51,13 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   )
   .patch(
     "/:id",
-    async ({ organizationId, params, body, status }) => {
-      if (!organizationId) return status(404, { error: "Inbound endpoint not found" })
+    async ({ organizationId, params, body }) => {
       const endpoint = await InboundService.update({
         organizationId,
         endpointId: params.id,
         ...body,
       })
-
-      if (!endpoint) {
-        return status(404, { error: "Inbound endpoint not found" })
-      }
-
+      if (!endpoint) throw new NotFoundError("Inbound endpoint not found")
       return endpoint
     },
     {
@@ -81,10 +71,8 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   )
   .delete(
     "/:id",
-    async ({ organizationId, params, status }) => {
-      if (!organizationId) return status(404, { error: "Inbound endpoint not found" })
+    async ({ organizationId, params }) => {
       await InboundService.delete(organizationId, params.id)
-
       return { success: true }
     },
     {
