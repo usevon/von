@@ -36,6 +36,7 @@ export type Organization = {
 
 export type TunnelRegistration = {
   tunnelId: string
+  secret: string
   tunnelUrl: string
   wsUrl: string
 }
