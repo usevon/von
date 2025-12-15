@@ -4,6 +4,7 @@ import { withAuth } from "@/modules/auth"
 import { BadRequestError } from "@usevon/utils"
 import { InboundModel } from "@/modules/inbound/model"
 import { InboundService } from "@/modules/inbound/service"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const inbound = new Elysia({ prefix: "/inbound" })
   .use(withAuth)
@@ -96,6 +97,7 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   )
 
 export const inboundPublic = new Elysia({ prefix: "/in" })
+  .use(rateLimit({ windowMs: 60000, max: 100, keyPrefix: "rl:inbound" }))
   .post(
     "/:id",
     async ({ params, body, headers, status, requestID }) => {
