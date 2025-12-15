@@ -41,7 +41,6 @@ type ReceiveWebhookParams = {
   }
   payload: unknown
   headers: Record<string, string>
-  requestId?: string
 }
 
 export abstract class InboundService {
@@ -220,13 +219,6 @@ export abstract class InboundService {
         endpoint: params.endpoint,
         payload: payloadStr,
         headers: headersStr,
-        requestId: params.requestId,
-      }, {
-        attempts: params.endpoint.retryCount,
-        backoff: {
-          type: "exponential",
-          delay: 5000,
-        },
       })
 
       return {

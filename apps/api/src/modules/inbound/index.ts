@@ -100,7 +100,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
   .use(rateLimit({ windowMs: 60000, max: 100, keyPrefix: "rl:inbound" }))
   .post(
     "/:id",
-    async ({ params, body, headers, status, requestID }) => {
+    async ({ params, body, headers, status }) => {
       const endpoint = await InboundService.getByPublicId(params.id)
 
       if (!endpoint) {
@@ -129,7 +129,6 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         },
         payload: body,
         headers: headerRecord,
-        requestId: requestID,
       })
     },
     {

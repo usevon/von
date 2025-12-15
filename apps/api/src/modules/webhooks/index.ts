@@ -8,7 +8,7 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(withAuth)
   .post(
     "/",
-    async ({ organizationId, body, set, requestID }) => {
+    async ({ organizationId, body, set }) => {
       set.status = 201
       return WebhookService.createEvent({
         organizationId,
@@ -16,7 +16,6 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
         payload: body.payload,
         idempotencyKey: body.idempotencyKey,
         endpointIds: body.endpointIds,
-        requestId: requestID,
       })
     },
     {
@@ -26,12 +25,11 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   )
   .post(
     "/batch",
-    async ({ organizationId, body, set, requestID }) => {
+    async ({ organizationId, body, set }) => {
       set.status = 201
       return WebhookService.createBatch({
         organizationId,
         events: body.events,
-        requestId: requestID,
       })
     },
     {

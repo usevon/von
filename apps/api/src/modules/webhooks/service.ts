@@ -37,7 +37,6 @@ type CreateEventParams = {
   payload: unknown
   idempotencyKey?: string
   endpointIds?: string[]
-  requestId?: string
 }
 
 type CreateBatchParams = {
@@ -48,7 +47,6 @@ type CreateBatchParams = {
     idempotencyKey?: string
     endpointIds?: string[]
   }>
-  requestId?: string
 }
 
 export abstract class WebhookService {
@@ -78,7 +76,6 @@ export abstract class WebhookService {
           endpointIds: params.endpointIds,
         },
       ],
-      requestId: params.requestId,
     })
     const created = result.events[0]
     if (!created) throw new InternalServerError("Failed to create webhook event")
@@ -128,7 +125,7 @@ export abstract class WebhookService {
     if (newEvents.length === 0) return { created: 0, events: results }
 
     const allDeliveries: Array<typeof delivery.$inferInsert> = []
-    const allJobs: Array<{ name: string; data: WebhookDeliveryJob; opts?: { attempts?: number } }> = []
+    const allJobs: Array<{ name: string; data: WebhookDeliveryJob }> = []
 
     for (const evt of newEvents) {
       const targets = evt.endpointIds?.length
@@ -150,14 +147,7 @@ export abstract class WebhookService {
         })
         allJobs.push({
           name: "webhook-delivery",
-          data: { deliveryId, eventId: evt.id, payload: payloadStr, eventType: evt.eventType, endpoint: ep, organizationId: params.organizationId, requestId: params.requestId },
-          opts: {
-            attempts: ep.retryCount,
-            backoff: {
-              type: "exponential",
-              delay: 5000,
-            },
-          },
+          data: { deliveryId, eventId: evt.id, payload: payloadStr, eventType: evt.eventType, endpoint: ep, organizationId: params.organizationId },
         })
       }
     }
