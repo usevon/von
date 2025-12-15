@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
 import { getRedisClient } from "@usevon/queue"
+import { hashSha256 } from "@usevon/utils"
 
 const redis = getRedisClient()
 const IDEMPOTENCY_TTL = 60 * 60 * 24 // 24 hours
@@ -7,14 +8,6 @@ const IDEMPOTENCY_TTL = 60 * 60 * 24 // 24 hours
 type CachedResponse = {
   status: number
   body: unknown
-}
-
-const hashAuthHeader = async (auth: string): Promise<string> => {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(auth)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("")
 }
 
 export const idempotency = () =>
@@ -31,8 +24,7 @@ export const idempotency = () =>
         return {}
       }
 
-      const authHeader = request.headers.get("authorization") ?? ""
-      const authScope = await hashAuthHeader(authHeader)
+      const authScope = hashSha256(request.headers.get("authorization") ?? "").slice(0, 16)
       const cacheKey = `idempotency:${authScope}:${idempotencyKey}`
       const cached = await redis.get(cacheKey)
 
