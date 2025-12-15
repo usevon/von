@@ -151,7 +151,13 @@ export abstract class WebhookService {
         allJobs.push({
           name: "webhook-delivery",
           data: { deliveryId, eventId: evt.id, payload: payloadStr, eventType: evt.eventType, endpoint: ep, organizationId: params.organizationId, requestId: params.requestId },
-          opts: { attempts: ep.retryCount },
+          opts: {
+            attempts: ep.retryCount,
+            backoff: {
+              type: "exponential",
+              delay: 5000,
+            },
+          },
         })
       }
     }

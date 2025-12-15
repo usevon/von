@@ -153,15 +153,18 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
   }
 
-  const signature = hmacSign(finalPayload, ep.secret)
   const now = new Date()
+  const timestamp = Math.floor(now.getTime() / 1000)
+  const signedPayload = `${timestamp}.${finalPayload}`
+  const signature = hmacSign(signedPayload, ep.secret)
 
   try {
     const response = await fetch(ep.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Von-Signature": signature,
+        "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+        "X-Von-Timestamp": String(timestamp),
         "X-Von-Event-Type": eventType,
         "X-Von-Delivery-Id": deliveryId,
         "X-Von-Event-Id": eventId,

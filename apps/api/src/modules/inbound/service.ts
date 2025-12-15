@@ -221,7 +221,13 @@ export abstract class InboundService {
         payload: payloadStr,
         headers: headersStr,
         requestId: params.requestId,
-      }, { attempts: params.endpoint.retryCount })
+      }, {
+        attempts: params.endpoint.retryCount,
+        backoff: {
+          type: "exponential",
+          delay: 5000,
+        },
+      })
 
       return {
         id: delivery.id,
