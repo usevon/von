@@ -9,12 +9,12 @@ type RateLimitOptions = {
   keyPrefix?: string
 }
 
-const getClientIp = (request: Request, ip?: string): string => {
+const getClientIp = (request: Request): string => {
   const forwarded = request.headers.get("x-forwarded-for")
   if (forwarded) {
     return forwarded.split(",")[0]?.trim() ?? "unknown"
   }
-  return ip ?? "unknown"
+  return "unknown"
 }
 
 export const rateLimit = (options: RateLimitOptions) => {
@@ -22,8 +22,8 @@ export const rateLimit = (options: RateLimitOptions) => {
   const windowSeconds = Math.ceil(windowMs / 1000)
 
   return new Elysia({ name: "rate-limit" })
-    .derive(async ({ request, set, ip }) => {
-      const clientIp = getClientIp(request, ip)
+    .derive(async ({ request, set }) => {
+      const clientIp = getClientIp(request)
       const key = `${keyPrefix}:${clientIp}`
 
       const current = await redis.incr(key)

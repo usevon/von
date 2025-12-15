@@ -1,9 +1,8 @@
 import { Elysia } from "elysia"
 import { cors } from "@elysiajs/cors"
-import { ip } from "elysia-ip"
-import { requestID } from "elysia-requestid"
 
 import { env } from "@/env"
+import { idempotency } from "@/lib/idempotency"
 import { checkDatabaseConnection } from "@usevon/db"
 import { checkRedisConnection } from "@usevon/queue"
 
@@ -38,8 +37,6 @@ const getCorsOrigins = () => {
 
 const corsMiddleware = cors({ origin: getCorsOrigins() })
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 const browserRoutes = new Elysia()
   .use(corsMiddleware)
   .use(auth)
@@ -48,6 +45,7 @@ export const app = new Elysia({
   name: "von-api",
   aot: true,
   normalize: true,
+  nativeStaticResponse: true,
 })
   .error({
     UnauthorizedError,
@@ -57,6 +55,7 @@ export const app = new Elysia({
     ConflictError,
     InternalServerError,
   })
+  .use(idempotency())
   .onError(({ code, error, set }) => {
     if (code === "UnauthorizedError") {
       set.status = 401
@@ -98,17 +97,9 @@ export const app = new Elysia({
       return { error: "Not found" }
     }
 
-    console.error({ code, error })
+    console.error({ code, error: "message" in error ? error.message : String(error) })
     set.status = 500
     return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
-  })
-  .use(ip())
-  .use(requestID())
-  .onBeforeHandle(async ({ path }) => {
-    const skipDelay = path.startsWith("/live") || path.startsWith("/ready") || path.startsWith("/api/auth")
-    if (env.NODE_ENV === "development" && !skipDelay) {
-      await delay(500)
-    }
   })
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {
