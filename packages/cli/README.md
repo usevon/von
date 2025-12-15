@@ -65,6 +65,16 @@ von dev -p 3000 -p 4000      # Multiple ports (max 3)
 von dev -p 3000 -v           # Verbose mode (show headers/body)
 ```
 
+### `von rotate`
+
+Rotate tunnel secret to invalidate the current URL if compromised.
+
+```bash
+von rotate -p 3000           # Rotate secret for port 3000
+```
+
+If the tunnel is currently active, the CLI will display the new URL automatically.
+
 ## Configuration
 
 Stored in `~/.von/config.json`:
