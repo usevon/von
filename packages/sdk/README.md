@@ -19,29 +19,32 @@ const von = new Von({
 })
 
 // Send a webhook
-const event = await von.webhooks.send({
+const { data, error } = await von.webhooks.send({
   eventType: 'order.created',
   payload: { orderId: '123', amount: 99.99 },
 })
 
-console.log(event.id) // evt_xxx
+if (error) {
+  console.error(error.message)
+  return
+}
+
+console.log(data.id) // evt_xxx
 ```
 
 ## Webhooks
 
 ```typescript
 // Send a single webhook
-const event = await von.webhooks.send({
+const { data, error } = await von.webhooks.send({
   eventType: 'user.created',
   payload: { userId: '123' },
-  // optional
-  idempotencyKey: 'user-123-created',
   // optional - sends to specific endpoints
   endpointIds: ['ep_xxx'],
 })
 
 // Send multiple webhooks
-const batch = await von.webhooks.sendBatch({
+const { data: batch } = await von.webhooks.sendBatch({
   events: [
     { eventType: 'order.created', payload: { orderId: '1' } },
     { eventType: 'order.created', payload: { orderId: '2' } },
@@ -49,17 +52,17 @@ const batch = await von.webhooks.sendBatch({
 })
 
 // List webhook events
-const { events, total } = await von.webhooks.list({ limit: 10, offset: 0 })
+const { data: events } = await von.webhooks.list({ limit: 10, offset: 0 })
 
 // Get a specific event
-const event = await von.webhooks.get('evt_xxx')
+const { data: event } = await von.webhooks.get('evt_xxx')
 ```
 
 ## Endpoints
 
 ```typescript
 // Create an endpoint
-const endpoint = await von.endpoints.create({
+const { data: endpoint } = await von.endpoints.create({
   url: 'https://myapp.com/webhooks',
   description: 'Production webhook endpoint',
   retryCount: 5,
@@ -67,13 +70,13 @@ const endpoint = await von.endpoints.create({
 })
 
 // List endpoints
-const { endpoints, total } = await von.endpoints.list()
+const { data } = await von.endpoints.list()
 
 // Get an endpoint
-const endpoint = await von.endpoints.get('ep_xxx')
+const { data: endpoint } = await von.endpoints.get('ep_xxx')
 
 // Update an endpoint
-const updated = await von.endpoints.update('ep_xxx', {
+const { data: updated } = await von.endpoints.update('ep_xxx', {
   enabled: false,
 })
 
@@ -87,20 +90,20 @@ Receive webhooks from third-party services (Stripe, GitHub, etc.) through Von.
 
 ```typescript
 // Create an inbound endpoint
-const inbound = await von.inbound.create({
+const { data: inbound } = await von.inbound.create({
   name: 'Stripe Webhooks',
   provider: 'stripe',
   forwardUrl: 'https://myapp.com/stripe',
 })
 
 // List inbound endpoints
-const { inboundEndpoints, total } = await von.inbound.list()
+const { data } = await von.inbound.list()
 
 // Get an inbound endpoint
-const inbound = await von.inbound.get('in_xxx')
+const { data: inbound } = await von.inbound.get('in_xxx')
 
 // Update an inbound endpoint
-const updated = await von.inbound.update('in_xxx', {
+const { data: updated } = await von.inbound.update('in_xxx', {
   enabled: false,
 })
 
@@ -108,48 +111,89 @@ const updated = await von.inbound.update('in_xxx', {
 await von.inbound.delete('in_xxx')
 ```
 
-## Error Handling
+## Versions
 
-The SDK throws `VonError` on API errors:
+Manage webhook payload versioning with field transforms.
 
 ```typescript
-import { Von, VonError } from '@usevon/sdk'
+// Create a version
+const { data: version } = await von.versions.create({
+  version: '2024-06-01',
+  transforms: {
+    'product.updated': {
+      rename: { features: 'items' },
+      remove: ['internalField'],
+      defaults: { legacyField: null },
+    },
+  },
+})
 
-try {
-  await von.endpoints.get('invalid-id')
-} catch (e) {
-  if (e instanceof VonError) {
-    console.error(e.message)    // "Endpoint not found"
-    console.error(e.code)       // "NOT_FOUND"
-    console.error(e.statusCode) // 404
-  }
+// List versions
+const { data } = await von.versions.list()
+
+// Get a version
+const { data: version } = await von.versions.get('2024-06-01')
+
+// Update a version
+const { data: updated } = await von.versions.update('2024-06-01', {
+  transforms: { 'product.updated': { rename: { features: 'newItems' } } },
+})
+
+// Delete a version
+await von.versions.delete('2024-06-01')
+```
+
+## Error Handling
+
+All methods return `{ data, error }` instead of throwing exceptions.
+
+```typescript
+const { data, error } = await von.endpoints.get('invalid-id')
+
+if (error) {
+  console.error(error.message)    // "Request failed with status 404"
+  console.error(error.status)     // 404
+  console.error(error.statusText) // "Not Found"
+  return
 }
+
+console.log(data.url)
 ```
 
 ## Configuration
 
 ```typescript
 const von = new Von({
-  // defaults to http://localhost:3000
   baseUrl: 'https://api.usevon.com',
-  // or set VON_API_KEY env var
   apiKey: 'von_prod_xxx',
+  retry: {
+    type: 'exponential',
+    attempts: 3,
+    baseDelay: 1000,
+    maxDelay: 10000,
+  },
+  timeout: 30000,
 })
-
-// Environment variables
-// VON_BASE_URL - API base URL
-// VON_API_KEY  - API key
 ```
+
+Environment variables can be used instead of passing config directly:
+
+```bash
+VON_BASE_URL=https://api.usevon.com
+VON_API_KEY=von_prod_xxx
+```
+
+POST, PUT, and PATCH requests are automatically idempotent with a unique key generated per request and responses cached server-side for 24 hours.
 
 ## Testing
 
-See the [test suite](./tests) for more examples:
+See the [tests](./tests) for more examples:
 
 - [client.test.ts](./tests/client.test.ts) - Client initialization and request handling
 - [webhooks.test.ts](./tests/webhooks.test.ts) - Webhook operations
 - [endpoints.test.ts](./tests/endpoints.test.ts) - Endpoint management
 - [inbound.test.ts](./tests/inbound.test.ts) - Inbound endpoint management
-- [error.test.ts](./tests/error.test.ts) - Error handling
+- [versions.test.ts](./tests/versions.test.ts) - Version management
 
 ```bash
 bun test
