@@ -1,4 +1,4 @@
-export { hashSha256, hmacSign, timingSafeEqual, verifyHmac } from "@/crypto"
+export { hashSha256, hmacSign, timingSafeEqual, verifyHmac, randomHex } from "@/crypto"
 
 export {
   UnauthorizedError,
@@ -19,7 +19,7 @@ export {
   type CircuitBreakerState,
 } from "@/circuit-breaker"
 
-export { generateId, generateSecret, generateTunnelId } from "@/ids"
+export { generateId, generateSecret, generateTunnelId, generateTunnelSecret } from "@/ids"
 
 export { toISODates, applyTransforms, type TransformMappings, type Transforms } from "@/transforms"
 
