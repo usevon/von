@@ -38,6 +38,16 @@ export abstract class TunnelService {
     return orgTunnelCounts.get(orgId) ?? 0
   }
 
+  static getActiveTunnels(organizationId: string): string[] {
+    const active: string[] = []
+    for (const [id, conn] of tunnels) {
+      if (conn.organizationId === organizationId) {
+        active.push(id)
+      }
+    }
+    return active
+  }
+
   static forwardRequest(
     tunnelId: string,
     request: TunnelRequest,

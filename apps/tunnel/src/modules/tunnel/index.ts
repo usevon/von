@@ -11,27 +11,39 @@ const log = createLogger({ name: "tunnel" })
 
 const SESSION_VALIDATION_INTERVAL_MS = 30_000
 
-export const tunnelRegister = new Elysia({ prefix: "/register" })
+export const tunnelRegister = new Elysia()
   .use(withSession)
   .post(
-    "/",
+    "/register",
     async ({ body, organizationId, userId }) => {
       if (!organizationId) {
         throw new UnauthorizedError("No active organization")
       }
 
-      const currentCount = TunnelService.getOrgTunnelCount(organizationId)
-      if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
-        throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
-      }
-
       const tunnelId = generateTunnelId(organizationId, userId, body.port)
+
+      // Allow re-registration of existing tunnels (for takeover), only limit new ones
+      if (!TunnelService.hasTunnel(tunnelId)) {
+        const currentCount = TunnelService.getOrgTunnelCount(organizationId)
+        if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
+          throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
+        }
+      }
 
       return { tunnelId }
     },
     {
       body: TunnelModel.registerBody,
       response: TunnelModel.registerResponse,
+    }
+  )
+  .get(
+    "/tunnels",
+    async ({ organizationId }) => {
+      if (!organizationId) {
+        throw new UnauthorizedError("No active organization")
+      }
+      return { tunnels: TunnelService.getActiveTunnels(organizationId) }
     }
   )
 
