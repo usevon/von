@@ -11,7 +11,6 @@ export default defineConfig({
     "src/transforms.ts",
     "src/env.ts",
     "src/logger.ts",
-    "src/logger-elysia.ts",
     "src/fetch/index.ts",
   ],
   outDir: "dist",

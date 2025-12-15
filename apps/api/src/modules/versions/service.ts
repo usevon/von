@@ -1,16 +1,8 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { webhookVersion } from "@usevon/db/schema"
-import { InternalServerError, generateId } from "@usevon/utils"
+import { InternalServerError, generateId, type TransformMappings, type Transforms } from "@usevon/utils"
 import type { VersionModel } from "@/modules/versions/model"
-
-type TransformMappings = {
-  rename?: Record<string, string>
-  remove?: string[]
-  defaults?: Record<string, unknown>
-}
-
-type Transforms = Record<string, TransformMappings>
 
 type VersionFields = {
   version: string
