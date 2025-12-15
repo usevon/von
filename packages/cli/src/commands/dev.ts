@@ -43,11 +43,11 @@ export const dev = new Command("dev")
     s.start("Registering tunnel(s)...")
 
     try {
-      const tunnels: Array<{ port: number; tunnelUrl: string; wsUrl: string }> = []
+      const tunnels: Array<{ port: number; tunnelId: string; tunnelUrl: string; wsUrl: string }> = []
 
       for (const port of ports) {
-        const { tunnelUrl, wsUrl } = await registerTunnel(token, port, organizationId)
-        tunnels.push({ port, tunnelUrl, wsUrl })
+        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(token, port, organizationId)
+        tunnels.push({ port, tunnelId, tunnelUrl, wsUrl })
       }
 
       s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`)
@@ -62,23 +62,27 @@ export const dev = new Command("dev")
       }
       p.log.message(pc.dim("Press Ctrl+C to stop\n"))
 
-      await connectTunnels(token, tunnels, options.verbose ?? false)
+      await connectTunnels(token, tunnels, options.verbose ?? false, config.tunnelUrl)
     } catch (err) {
       s.stop("Error")
       p.log.error(`Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
   })
 
-type TunnelInfo = { port: number; tunnelUrl: string; wsUrl: string }
+type TunnelInfo = { port: number; tunnelId: string; tunnelUrl: string; wsUrl: string }
 
 const connectTunnels = async (
   token: string,
   tunnels: TunnelInfo[],
-  verbose: boolean
+  verbose: boolean,
+  tunnelBaseUrl: string
 ): Promise<void> => {
   return new Promise((_, reject) => {
     let isShuttingDown = false
     let configWatcher: FSWatcher | null = null
+
+    // Map port to tunnelId for secret rotation
+    const portToTunnelId = new Map(tunnels.map((t) => [t.port, t.tunnelId]))
 
     const manager = new TunnelManager(token, {
       verbose,
@@ -91,6 +95,16 @@ const connectTunnels = async (
       },
       onMaxRetries: (port) => {
         reject(new Error(`${port} max reconnection attempts reached`))
+      },
+      onSecretRotated: (port, newSecret) => {
+        const tunnelId = portToTunnelId.get(port)
+        if (tunnelId) {
+          const newUrl = `${tunnelBaseUrl}/${tunnelId}-${newSecret}`
+          console.log()
+          console.log(pc.yellow(`  Secret rotated for port ${port}`))
+          console.log(pc.cyan(`  New URL: ${newUrl}`))
+          console.log()
+        }
       },
     })
 

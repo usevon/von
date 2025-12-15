@@ -57,6 +57,7 @@ export abstract class TunnelService {
     const connection = tunnels.get(tunnelId)
     if (connection) {
       connection.secret = newSecret
+      connection.send(JSON.stringify({ type: "secret_rotated", secret: newSecret }))
       return true
     }
     return false
