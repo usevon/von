@@ -4,6 +4,7 @@ import type { TunnelRequest, TunnelResponse } from "./types"
 export type TunnelClientEvents = {
   request: (req: TunnelRequest) => Promise<TunnelResponse>
   takeover?: () => void
+  secretRotated?: (newSecret: string) => void
   connect?: (isReconnect: boolean) => void
   disconnect?: (willReconnect: boolean, attempt?: number, maxAttempts?: number) => void
 }
@@ -86,6 +87,12 @@ export class TunnelClient {
         this.shouldReconnect = false
         this.events.takeover?.()
         this.ws?.close()
+        return
+      }
+
+      // Secret was rotated - notify caller
+      if (msg.type === "secret_rotated") {
+        this.events.secretRotated?.(msg.secret)
         return
       }
 

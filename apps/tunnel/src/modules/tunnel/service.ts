@@ -48,6 +48,21 @@ export abstract class TunnelService {
     return active
   }
 
+  static validateSecret(tunnelId: string, secret: string): boolean {
+    const connection = tunnels.get(tunnelId)
+    return connection?.secret === secret
+  }
+
+  static updateSecret(tunnelId: string, newSecret: string): boolean {
+    const connection = tunnels.get(tunnelId)
+    if (connection) {
+      connection.secret = newSecret
+      connection.send(JSON.stringify({ type: "secret_rotated", secret: newSecret }))
+      return true
+    }
+    return false
+  }
+
   static forwardRequest(
     tunnelId: string,
     request: TunnelRequest,

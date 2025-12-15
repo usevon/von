@@ -2,10 +2,12 @@ import { Elysia } from "elysia"
 import { createLogger } from "@usevon/utils/logger"
 import type { TunnelResponse } from "@usevon/tunnel"
 import { betterAuth, withSession } from "@/modules/auth"
-import { UnauthorizedError, generateTunnelId } from "@usevon/utils"
+import { UnauthorizedError, generateTunnelId, generateTunnelSecret } from "@usevon/utils"
 import { env } from "@/env"
 import { TunnelModel } from "@/modules/tunnel/model"
 import { TunnelService } from "@/modules/tunnel/service"
+import { db, eq } from "@usevon/db"
+import { tunnel } from "@usevon/db/schema"
 
 const log = createLogger({ name: "tunnel" })
 
@@ -22,19 +24,61 @@ export const tunnelRegister = new Elysia()
 
       const tunnelId = generateTunnelId(organizationId, userId, body.port)
 
-      // Allow re-registration of existing tunnels (for takeover), only limit new ones
-      if (!TunnelService.hasTunnel(tunnelId)) {
-        const currentCount = TunnelService.getOrgTunnelCount(organizationId)
-        if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
-          throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
-        }
+      // Check if tunnel exists in DB
+      const [existing] = await db.select().from(tunnel).where(eq(tunnel.id, tunnelId)).limit(1)
+
+      if (existing) {
+        return { tunnelId, secret: existing.secret }
       }
 
-      return { tunnelId }
+      // New tunnel - check limit
+      const currentCount = TunnelService.getOrgTunnelCount(organizationId)
+      if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
+        throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
+      }
+
+      // Generate secret and save to DB
+      const secret = generateTunnelSecret()
+      await db.insert(tunnel).values({
+        id: tunnelId,
+        secret,
+        organizationId,
+        userId,
+        port: body.port,
+      })
+
+      return { tunnelId, secret }
     },
     {
       body: TunnelModel.registerBody,
       response: TunnelModel.registerResponse,
+    }
+  )
+  .post(
+    "/rotate/:tunnelId",
+    async ({ params, organizationId, userId }) => {
+      if (!organizationId) {
+        throw new UnauthorizedError("No active organization")
+      }
+
+      // Verify tunnel belongs to this user/org
+      const [existing] = await db.select().from(tunnel).where(eq(tunnel.id, params.tunnelId)).limit(1)
+
+      if (!existing || existing.organizationId !== organizationId || existing.userId !== userId) {
+        throw new UnauthorizedError("Tunnel not found")
+      }
+
+      // Generate new secret
+      const secret = generateTunnelSecret()
+      await db.update(tunnel).set({ secret }).where(eq(tunnel.id, params.tunnelId))
+
+      // Update in-memory connection if active
+      TunnelService.updateSecret(params.tunnelId, secret)
+
+      return { secret }
+    },
+    {
+      response: TunnelModel.rotateResponse,
     }
   )
   .get(
@@ -77,12 +121,19 @@ export const tunnelWs = new Elysia()
         return
       }
 
+      // Fetch tunnel secret from DB
+      const [tunnelRecord] = await db.select().from(tunnel).where(eq(tunnel.id, tunnelId)).limit(1)
+      if (!tunnelRecord) {
+        ws.close(4001, "Tunnel not found")
+        return
+      }
+
       // Close existing connection if tunnel is being taken over
-      const existing = TunnelService.getTunnel(tunnelId)
-      if (existing) {
-        if (existing.validationInterval) clearInterval(existing.validationInterval)
-        existing.send(JSON.stringify({ type: "takeover" }))
-        existing.close()
+      const existingConn = TunnelService.getTunnel(tunnelId)
+      if (existingConn) {
+        if (existingConn.validationInterval) clearInterval(existingConn.validationInterval)
+        existingConn.send(JSON.stringify({ type: "takeover" }))
+        existingConn.close()
       }
 
       const connection = {
@@ -92,6 +143,7 @@ export const tunnelWs = new Elysia()
         headers,
         validationInterval: undefined as ReturnType<typeof setInterval> | undefined,
         organizationId,
+        secret: tunnelRecord.secret,
       }
 
       // Periodic session validation
@@ -162,13 +214,32 @@ export const tunnelWs = new Elysia()
     },
   })
 
+const parseTunnelParam = (param: string): { tunnelId: string; secret: string } | null => {
+  const lastDash = param.lastIndexOf("-")
+  if (lastDash === -1) return null
+  return {
+    tunnelId: param.slice(0, lastDash),
+    secret: param.slice(lastDash + 1),
+  }
+}
+
 export const tunnelProxy = new Elysia()
-  .all("/:tunnelId/*", ({ params, request, set }) => {
-    const path = new URL(request.url).pathname.replace(`/${params.tunnelId}`, "") || "/"
-    return TunnelService.handleProxy(params.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], path)
+  .all("/:tunnelIdWithSecret/*", ({ params, request, set }) => {
+    const parsed = parseTunnelParam(params.tunnelIdWithSecret)
+    if (!parsed || !TunnelService.validateSecret(parsed.tunnelId, parsed.secret)) {
+      set.status = 401
+      return { error: "Invalid tunnel" }
+    }
+    const path = new URL(request.url).pathname.replace(`/${params.tunnelIdWithSecret}`, "") || "/"
+    return TunnelService.handleProxy(parsed.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], path)
   })
-  .all("/:tunnelId", ({ params, request, set }) =>
-    TunnelService.handleProxy(params.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], "/")
-  )
+  .all("/:tunnelIdWithSecret", ({ params, request, set }) => {
+    const parsed = parseTunnelParam(params.tunnelIdWithSecret)
+    if (!parsed || !TunnelService.validateSecret(parsed.tunnelId, parsed.secret)) {
+      set.status = 401
+      return { error: "Invalid tunnel" }
+    }
+    return TunnelService.handleProxy(parsed.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], "/")
+  })
 
 export { TunnelModel, TunnelService }

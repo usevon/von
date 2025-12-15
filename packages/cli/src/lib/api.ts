@@ -130,16 +130,26 @@ export const registerTunnel = async (
   organizationId?: string
 ): Promise<TunnelRegistration> => {
   const config = loadConfig()
-  const { tunnelId } = await tunnelRequest<{ tunnelId: string }>("/register", {
+  const { tunnelId, secret } = await tunnelRequest<{ tunnelId: string; secret: string }>("/register", {
     method: "POST",
     token,
     body: { port, organizationId },
   })
 
-  const tunnelUrl = `${config.tunnelUrl}/${tunnelId}`
+  const tunnelUrl = `${config.tunnelUrl}/${tunnelId}-${secret}`
   const wsUrl = config.tunnelUrl
     .replace("http://", "ws://")
     .replace("https://", "wss://") + `/ws/${tunnelId}`
 
-  return { tunnelId, tunnelUrl, wsUrl }
+  return { tunnelId, secret, tunnelUrl, wsUrl }
+}
+
+export const rotateTunnel = async (
+  token: string,
+  tunnelId: string
+): Promise<{ secret: string }> => {
+  return tunnelRequest<{ secret: string }>(`/rotate/${tunnelId}`, {
+    method: "POST",
+    token,
+  })
 }

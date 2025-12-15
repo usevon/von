@@ -318,6 +318,7 @@ export const tunnel = pgTable(
   "tunnel",
   {
     id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

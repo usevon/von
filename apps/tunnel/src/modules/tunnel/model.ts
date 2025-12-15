@@ -14,6 +14,7 @@ export type TunnelConnection = {
   headers: Record<string, string>
   validationInterval?: ReturnType<typeof setInterval>
   organizationId: string
+  secret: string
 }
 
 export namespace TunnelModel {
@@ -25,7 +26,14 @@ export namespace TunnelModel {
 
   export const registerResponse = t.Object({
     tunnelId: t.String(),
+    secret: t.String(),
   })
 
   export type registerResponse = typeof registerResponse.static
+
+  export const rotateResponse = t.Object({
+    secret: t.String(),
+  })
+
+  export type rotateResponse = typeof rotateResponse.static
 }

@@ -1,13 +1,25 @@
 export function hashSha256(data: string): string {
-  const hasher = new Bun.CryptoHasher("sha256")
-  hasher.update(data)
-  return hasher.digest("hex")
+  // Use Bun's fast hasher if available, otherwise fall back to Node.js crypto
+  if (typeof Bun !== "undefined") {
+    const hasher = new Bun.CryptoHasher("sha256")
+    hasher.update(data)
+    return hasher.digest("hex")
+  }
+  // Node.js fallback
+  const nodeCrypto = require("crypto")
+  return nodeCrypto.createHash("sha256").update(data).digest("hex")
 }
 
 export function hmacSign(data: string, secret: string): string {
-  const hmac = new Bun.CryptoHasher("sha256", secret)
-  hmac.update(data)
-  return hmac.digest("hex")
+  // Use Bun's fast hasher if available, otherwise fall back to Node.js crypto
+  if (typeof Bun !== "undefined") {
+    const hmac = new Bun.CryptoHasher("sha256", secret)
+    hmac.update(data)
+    return hmac.digest("hex")
+  }
+  // Node.js fallback
+  const nodeCrypto = require("crypto")
+  return nodeCrypto.createHmac("sha256", secret).update(data).digest("hex")
 }
 
 export function timingSafeEqual(a: string, b: string): boolean {
@@ -22,4 +34,10 @@ export function timingSafeEqual(a: string, b: string): boolean {
 export function verifyHmac(data: string, signature: string, secret: string): boolean {
   const expected = hmacSign(data, secret)
   return timingSafeEqual(expected, signature)
+}
+
+export function randomHex(bytes: number): string {
+  const array = new Uint8Array(bytes)
+  crypto.getRandomValues(array)
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("")
 }
