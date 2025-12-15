@@ -4,10 +4,8 @@ import { env } from "@/env"
 import { checkDatabaseConnection } from "@usevon/db"
 import { checkRedisConnection } from "@usevon/queue"
 import { UnauthorizedError, BadRequestError } from "@usevon/utils"
-import { createLogger } from "@usevon/utils/logger"
+import { errorHandler } from "@/lib/error-handler"
 import { tunnelRegister, tunnelWs, tunnelProxy } from "@/modules/tunnel"
-
-const log = createLogger({ name: "tunnel" })
 
 export const app = new Elysia({
   name: "von-tunnel",
@@ -17,23 +15,7 @@ export const app = new Elysia({
 })
   .error({ UnauthorizedError, BadRequestError })
   .use(cors())
-  .onError(({ code, error, set }) => {
-    if (code === "UnauthorizedError") {
-      set.status = 401
-      return { error: error.message }
-    }
-    if (code === "BadRequestError") {
-      set.status = 400
-      return { error: error.message }
-    }
-    if (code === "VALIDATION") {
-      set.status = 400
-      return { error: "message" in error ? error.message : "Validation failed" }
-    }
-    log.error({ code, error: error.message }, "error")
-    set.status = 500
-    return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
-  })
+  .use(errorHandler(env.NODE_ENV === "production"))
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {
     const [db, redis] = await Promise.all([
