@@ -24,3 +24,4 @@ export async function closeDatabase(): Promise<void> {
 }
 
 export * from "@/schema"
+export { eq, and, or, inArray, sql } from "drizzle-orm"
