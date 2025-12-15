@@ -6,6 +6,7 @@ export type TunnelManagerOptions = {
   verbose?: boolean
   onTakeover?: (port: number) => void
   onMaxRetries?: (port: number) => void
+  onSecretRotated?: (port: number, newSecret: string) => void
 }
 
 export type TunnelOptions = {
@@ -69,6 +70,7 @@ export class TunnelManager {
   private verbose: boolean
   private onTakeover?: (port: number) => void
   private onMaxRetries?: (port: number) => void
+  private onSecretRotated?: (port: number, newSecret: string) => void
 
   constructor(
     private token: string,
@@ -77,6 +79,7 @@ export class TunnelManager {
     this.verbose = options.verbose ?? false
     this.onTakeover = options.onTakeover
     this.onMaxRetries = options.onMaxRetries
+    this.onSecretRotated = options.onSecretRotated
   }
 
   addTunnel(port: number, wsUrl: string, options: TunnelOptions = {}): void {
@@ -125,6 +128,10 @@ export class TunnelManager {
         entry.state = "disconnected"
         this.tunnels.delete(port)
         this.onTakeover?.(port)
+      },
+
+      secretRotated: (newSecret) => {
+        this.onSecretRotated?.(port, newSecret)
       },
 
       connect: (isReconnect) => {
