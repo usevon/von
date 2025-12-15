@@ -1,6 +1,6 @@
 # @usevon/api
 
-REST API server for Von webhooks infrastructure, built with Elysia.
+REST API server for Von webhooks infrastructure, built with Elysia. Endpoints require authentication via API key (`Authorization: Bearer von_prod_xxx`) or session cookie.
 
 ## Running Locally
 
@@ -43,48 +43,35 @@ BETTER_AUTH_URL=http://localhost:8080
 
 | Method | Path | Description |
 |--------|------|-------------|
+| **Health** | | |
 | GET | /live | Liveness check |
 | GET | /ready | Readiness check |
-| | | |
+| **Auth** | | |
+| * | /api/auth/* | better-auth endpoints |
+| **Webhooks** | | |
 | POST | /webhooks | Send a webhook |
 | POST | /webhooks/batch | Send multiple webhooks |
 | GET | /webhooks/events | List webhook events |
 | GET | /webhooks/events/:id | Get a webhook event |
-| | | |
+| **Endpoints** | | |
 | POST | /endpoints | Create an endpoint |
 | GET | /endpoints | List endpoints |
 | GET | /endpoints/:id | Get an endpoint |
 | PATCH | /endpoints/:id | Update an endpoint |
 | DELETE | /endpoints/:id | Delete an endpoint |
-| | | |
+| **Inbound** | | |
 | POST | /inbound | Create an inbound endpoint |
 | GET | /inbound | List inbound endpoints |
 | GET | /inbound/:id | Get an inbound endpoint |
 | PATCH | /inbound/:id | Update an inbound endpoint |
 | DELETE | /inbound/:id | Delete an inbound endpoint |
 | POST | /in/:slug | Receive inbound webhook (public) |
-| | | |
+| **Versions** | | |
 | POST | /versions | Create a version |
 | GET | /versions | List versions |
 | GET | /versions/:version | Get a version |
 | PATCH | /versions/:version | Update a version |
 | DELETE | /versions/:version | Delete a version |
-| | | |
-| * | /api/auth/* | better-auth endpoints |
-
-## Authentication
-
-API endpoints require authentication via API key or session cookie.
-
-### API Key
-
-```bash
-curl -H "Authorization: Bearer von_prod_xxx" https://api.usevon.com/webhooks
-```
-
-### Session Cookie
-
-Session-based auth is used by the dashboard. Cookies are set automatically by better-auth.
 
 ## License
 
