@@ -3,7 +3,7 @@ import { eq, and, sql } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema"
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue"
-import { createLogger } from "@usevon/utils/logger/elysia"
+import { createLogger } from "@usevon/utils/logger"
 import {
   hmacSign,
   applyTransforms,
@@ -153,15 +153,18 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
   }
 
-  const signature = hmacSign(finalPayload, ep.secret)
   const now = new Date()
+  const timestamp = Math.floor(now.getTime() / 1000)
+  const signedPayload = `${timestamp}.${finalPayload}`
+  const signature = hmacSign(signedPayload, ep.secret)
 
   try {
     const response = await fetch(ep.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Von-Signature": signature,
+        "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+        "X-Von-Timestamp": String(timestamp),
         "X-Von-Event-Type": eventType,
         "X-Von-Delivery-Id": deliveryId,
         "X-Von-Event-Id": eventId,

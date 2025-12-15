@@ -1,9 +1,10 @@
 import { Elysia, t } from "elysia"
 import { eq } from "drizzle-orm"
 import { db, tunnel as tunnelTable } from "@usevon/db"
-import { withSession } from "@/modules/auth"
+import { withSession, betterAuth } from "@/modules/auth"
 import { BadRequestError, generateTunnelId, generateId } from "@usevon/utils"
 import { env } from "@/env"
+import { rateLimit } from "@/lib/rate-limit"
 
 type TunnelConnection = {
   organizationId: string
@@ -87,7 +88,7 @@ export const tunnel = new Elysia({ prefix: "/api/tunnel" })
 
 export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
   .ws("/ws/:tunnelId", {
-    open(ws) {
+    async open(ws) {
       const tunnelId = ws.data.params.tunnelId
       const authHeader = ws.data.headers?.authorization
 
@@ -96,9 +97,17 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
         return
       }
 
+      const rawKey = authHeader.slice(7)
+      const result = await betterAuth.api.verifyApiKey({ body: { key: rawKey } })
+
+      if (!result.valid || !result.key?.organizationId) {
+        ws.close(4001, "Invalid API key")
+        return
+      }
+
       tunnels.set(tunnelId, {
-        organizationId: "",
-        userId: "",
+        organizationId: result.key.organizationId,
+        userId: result.key.userId ?? "",
         port: 0,
         createdAt: new Date(),
         send: (data) => ws.send(data),
@@ -182,6 +191,7 @@ const forwardRequest = (
 }
 
 export const tunnelPublic = new Elysia({ prefix: "/t" })
+  .use(rateLimit({ windowMs: 60000, max: 200, keyPrefix: "rl:tunnel" }))
   .all("/:tunnelId/*", async ({ params, request, set }) => {
     const tunnelId = params.tunnelId
     const connection = tunnels.get(tunnelId)
