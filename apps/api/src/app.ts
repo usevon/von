@@ -3,6 +3,7 @@ import { cors } from "@elysiajs/cors"
 
 import { env } from "@/env"
 import { idempotency } from "@/lib/idempotency"
+import { errorHandler } from "@/lib/error-handler"
 import { checkDatabaseConnection } from "@usevon/db"
 import { checkRedisConnection } from "@usevon/queue"
 
@@ -56,51 +57,7 @@ export const app = new Elysia({
     InternalServerError,
   })
   .use(idempotency())
-  .onError(({ code, error, set }) => {
-    if (code === "UnauthorizedError") {
-      set.status = 401
-      return { error: error.message }
-    }
-
-    if (code === "NotFoundError") {
-      set.status = 404
-      return { error: error.message }
-    }
-
-    if (code === "BadRequestError") {
-      set.status = 400
-      return { error: error.message }
-    }
-
-    if (code === "ForbiddenError") {
-      set.status = 403
-      return { error: error.message }
-    }
-
-    if (code === "ConflictError") {
-      set.status = 409
-      return { error: error.message }
-    }
-
-    if (code === "InternalServerError") {
-      set.status = 500
-      return { error: env.NODE_ENV === "production" ? "Internal server error" : error.message }
-    }
-
-    if (code === "VALIDATION") {
-      set.status = 400
-      return { error: "message" in error ? error.message : "Validation failed" }
-    }
-
-    if (code === "NOT_FOUND") {
-      set.status = 404
-      return { error: "Not found" }
-    }
-
-    console.error({ code, error: "message" in error ? error.message : String(error) })
-    set.status = 500
-    return { error: env.NODE_ENV === "production" ? "Internal server error" : String(error) }
-  })
+  .use(errorHandler(env.NODE_ENV === "production"))
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {
     const [db, redis] = await Promise.all([
