@@ -1,7 +1,8 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { webhookVersion } from "@usevon/db/schema"
-import { InternalServerError, generateId, type TransformMappings, type Transforms } from "@usevon/utils"
+import { InternalServerError, generateId, toISODates, type TransformMappings, type Transforms } from "@usevon/utils"
+import { log } from "@/lib/logger"
 import type { VersionModel } from "@/modules/versions/model"
 
 type VersionFields = {
@@ -13,11 +14,8 @@ type CreateVersionParams = VersionFields & { organizationId: string }
 type UpdateVersionParams = Pick<VersionFields, "transforms"> & { organizationId: string; version: string }
 
 const toVersion = (v: typeof webhookVersion.$inferSelect): VersionModel.webhookVersion => ({
-  id: v.id,
-  version: v.version,
+  ...toISODates(v),
   transforms: v.transforms as Transforms,
-  createdAt: v.createdAt.toISOString(),
-  updatedAt: v.updatedAt.toISOString(),
 })
 
 export abstract class VersionService {
@@ -40,7 +38,7 @@ export abstract class VersionService {
       if (!result[0]) throw new Error("Failed to create version")
       return toVersion(result[0])
     } catch (error) {
-      console.error("Error creating version:", error)
+      log.error({ error }, "Error creating version")
       throw new InternalServerError("Failed to create version")
     }
   }
@@ -62,7 +60,7 @@ export abstract class VersionService {
       ])
       return { versions: versions.map(toVersion), total }
     } catch (error) {
-      console.error("Error fetching versions:", error)
+      log.error({ error }, "Error fetching versions")
       throw new InternalServerError("Failed to fetch versions")
     }
   }
@@ -86,7 +84,7 @@ export abstract class VersionService {
       if (!result[0]) return null
       return toVersion(result[0])
     } catch (error) {
-      console.error("Error fetching version:", error)
+      log.error({ error }, "Error fetching version")
       throw new InternalServerError("Failed to fetch version")
     }
   }
@@ -118,7 +116,7 @@ export abstract class VersionService {
       if (!result[0]) throw new Error("Failed to update version")
       return toVersion(result[0])
     } catch (error) {
-      console.error("Error updating version:", error)
+      log.error({ error }, "Error updating version")
       throw new InternalServerError("Failed to update version")
     }
   }
@@ -137,7 +135,7 @@ export abstract class VersionService {
 
       return result.length > 0
     } catch (error) {
-      console.error("Error deleting version:", error)
+      log.error({ error }, "Error deleting version")
       throw new InternalServerError("Failed to delete version")
     }
   }

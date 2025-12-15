@@ -2,7 +2,8 @@ import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
 import type { DeliveryEndpoint } from "@usevon/queue"
-import { InternalServerError, generateSecret, generateId } from "@usevon/utils"
+import { InternalServerError, generateSecret, generateId, toISODates } from "@usevon/utils"
+import { log } from "@/lib/logger"
 import type { EndpointModel } from "@/modules/endpoints/model"
 
 type EndpointFields = {
@@ -17,18 +18,8 @@ type EndpointFields = {
 type CreateEndpointParams = EndpointFields & { organizationId: string }
 type UpdateEndpointParams = Partial<EndpointFields> & { organizationId: string; endpointId: string }
 
-const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint => ({
-  id: e.id,
-  url: e.url,
-  description: e.description,
-  secret: e.secret,
-  enabled: e.enabled,
-  version: e.version,
-  retryCount: e.retryCount,
-  timeoutMs: e.timeoutMs,
-  createdAt: e.createdAt.toISOString(),
-  updatedAt: e.updatedAt.toISOString(),
-})
+const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint =>
+  toISODates(e) as EndpointModel.endpoint
 
 export abstract class EndpointService {
   static async create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
@@ -55,7 +46,7 @@ export abstract class EndpointService {
       if (!result[0]) throw new Error("Failed to create endpoint")
       return toEndpoint(result[0])
     } catch (error) {
-      console.error("Error creating endpoint:", error)
+      log.error({ error }, "Error creating endpoint")
       throw new InternalServerError("Failed to create endpoint")
     }
   }
@@ -77,7 +68,7 @@ export abstract class EndpointService {
       ])
       return { endpoints: endpoints.map(toEndpoint), total }
     } catch (error) {
-      console.error("Error fetching endpoints:", error)
+      log.error({ error }, "Error fetching endpoints")
       throw new InternalServerError("Failed to fetch endpoints")
     }
   }
@@ -96,7 +87,7 @@ export abstract class EndpointService {
       if (!result[0]) return null
       return toEndpoint(result[0])
     } catch (error) {
-      console.error("Error fetching endpoint:", error)
+      log.error({ error }, "Error fetching endpoint")
       throw new InternalServerError("Failed to fetch endpoint")
     }
   }
@@ -133,7 +124,7 @@ export abstract class EndpointService {
       if (!result[0]) throw new Error("Failed to update endpoint")
       return toEndpoint(result[0])
     } catch (error) {
-      console.error("Error updating endpoint:", error)
+      log.error({ error }, "Error updating endpoint")
       throw new InternalServerError("Failed to update endpoint")
     }
   }
@@ -147,7 +138,7 @@ export abstract class EndpointService {
 
       return result.length > 0
     } catch (error) {
-      console.error("Error deleting endpoint:", error)
+      log.error({ error }, "Error deleting endpoint")
       throw new InternalServerError("Failed to delete endpoint")
     }
   }
@@ -172,7 +163,7 @@ export abstract class EndpointService {
         .from(endpoint)
         .where(and(...conditions))
     } catch (error) {
-      console.error("Error fetching enabled endpoints:", error)
+      log.error({ error }, "Error fetching enabled endpoints")
       throw new InternalServerError("Failed to fetch enabled endpoints")
     }
   }

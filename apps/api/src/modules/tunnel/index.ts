@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db, tunnel as tunnelTable } from "@usevon/db"
 import { withSession, betterAuth } from "@/modules/auth"
 import { BadRequestError, generateTunnelId, generateId } from "@usevon/utils"
+import { log } from "@/lib/logger"
 import { env } from "@/env"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -118,7 +119,7 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
         .set({ status: "active", lastPingAt: new Date() })
         .where(eq(tunnelTable.id, tunnelId))
         .execute()
-        .catch(console.error)
+        .catch((error) => log.error({ error, tunnelId }, "Failed to update tunnel status"))
     },
     message(ws, message) {
       const tunnelId = ws.data.params.tunnelId
@@ -141,7 +142,7 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
         } else if (ArrayBuffer.isView(message)) {
           response = JSON.parse(new TextDecoder().decode(message))
         } else {
-          console.error("[tunnel] Unknown message type:", typeof message, message)
+          log.error({ messageType: typeof message }, "Unknown tunnel message type")
           return
         }
         const pending = connection.pendingRequests.get(response.requestId)
@@ -151,7 +152,7 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
           connection.pendingRequests.delete(response.requestId)
         }
       } catch (e) {
-        console.error("Failed to parse tunnel response:", e)
+        log.error({ error: e }, "Failed to parse tunnel response")
       }
     },
     close(ws) {
@@ -170,7 +171,7 @@ export const tunnelWs = new Elysia({ prefix: "/api/tunnel" })
         .set({ status: "disconnected" })
         .where(eq(tunnelTable.id, tunnelId))
         .execute()
-        .catch(console.error)
+        .catch((error) => log.error({ error, tunnelId }, "Failed to update tunnel disconnect status"))
     },
   })
 
