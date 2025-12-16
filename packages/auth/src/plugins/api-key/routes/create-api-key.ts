@@ -49,7 +49,7 @@ export function createApiKey({
       })
       if (existingKeys.length >= maxKeysPerUser) {
         throw new APIError("TOO_MANY_REQUESTS", {
-          message: `Maximum of ${maxKeysPerUser} API keys allowed per user`,
+          message: ERROR_CODES.MAX_KEYS_EXCEEDED,
         })
       }
 
@@ -57,7 +57,7 @@ export function createApiKey({
         const expiresInDays = expiresIn / (60 * 60 * 24)
         if (expiresInDays > maxExpiresDays) {
           throw new APIError("BAD_REQUEST", {
-            message: `Expiration cannot exceed ${maxExpiresDays} days`,
+            message: ERROR_CODES.EXPIRATION_TOO_LONG,
           })
         }
       }

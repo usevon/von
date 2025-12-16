@@ -36,6 +36,10 @@ export const ERROR_CODES = {
   KEY_DISABLED: "API Key is disabled",
   KEY_EXPIRED: "API Key has expired",
   INVALID_API_KEY: "Invalid API key.",
+  MAX_KEYS_EXCEEDED: "Maximum API keys limit reached",
+  NAME_TOO_SHORT: "API key name must be at least 1 character",
+  NAME_TOO_LONG: "API key name exceeds maximum length",
+  EXPIRATION_TOO_LONG: "Expiration exceeds maximum allowed days",
 } as const
 
 export const API_KEY_TABLE_NAME = "apikey"
