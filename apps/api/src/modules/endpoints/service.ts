@@ -2,7 +2,7 @@ import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
 import type { DeliveryEndpoint } from "@usevon/queue"
-import { generateSecret, generateId, toISODates } from "@usevon/utils"
+import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
 import { withServiceError } from "@/lib/service-utils"
 import type { EndpointModel } from "@/modules/endpoints/model"
 
@@ -24,6 +24,10 @@ const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint =>
 export abstract class EndpointService {
   static async create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
     return withServiceError(async () => {
+      if (!isValidWebhookUrl(params.url)) {
+        throw new BadRequestError("Invalid webhook URL: must be http(s) and not target private networks")
+      }
+
       const now = new Date()
 
       const result = await db
@@ -84,6 +88,10 @@ export abstract class EndpointService {
 
   static async update(params: UpdateEndpointParams): Promise<EndpointModel.endpoint | null> {
     return withServiceError(async () => {
+      if (params.url && !isValidWebhookUrl(params.url)) {
+        throw new BadRequestError("Invalid webhook URL: must be http(s) and not target private networks")
+      }
+
       const existing = await db
         .select()
         .from(endpoint)

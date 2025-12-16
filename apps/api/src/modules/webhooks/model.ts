@@ -1,8 +1,10 @@
 import { t } from "elysia"
 
+const eventTypePattern = "^[a-zA-Z0-9._-]+$"
+
 export namespace WebhookModel {
   export const sendBody = t.Object({
-    eventType: t.String(),
+    eventType: t.String({ maxLength: 100, pattern: eventTypePattern }),
     payload: t.Unknown(),
     idempotencyKey: t.Optional(t.String()),
     endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
@@ -13,7 +15,7 @@ export namespace WebhookModel {
   export const sendBatchBody = t.Object({
     events: t.Array(
       t.Object({
-        eventType: t.String(),
+        eventType: t.String({ maxLength: 100, pattern: eventTypePattern }),
         payload: t.Unknown(),
         idempotencyKey: t.Optional(t.String()),
         endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
