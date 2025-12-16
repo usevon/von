@@ -50,6 +50,21 @@ export function createApiKey({
         }
       }
 
+      if (organizationId) {
+        const membership = await ctx.context.adapter.findOne<{ id: string }>({
+          model: "member",
+          where: [
+            { field: "userId", value: session.user.id },
+            { field: "organizationId", value: organizationId },
+          ],
+        })
+        if (!membership) {
+          throw new APIError("FORBIDDEN", {
+            message: "Not a member of this organization",
+          })
+        }
+      }
+
       const key = await keyGenerator(environment)
       const hashed = hashKey(key)
       const start = key.substring(0, startLength)
