@@ -108,13 +108,6 @@ export const login = new Command("login")
       s.start("Waiting for authorization...")
 
       const token = await waitForToken(deviceData.device_code, deviceData.interval)
-
-      if (!token) {
-        s.stop("Authorization failed")
-        p.cancel("Failed to get access token")
-        return
-      }
-
       s.stop("Authorized")
       saveConfig({ token })
 
@@ -146,11 +139,11 @@ export const login = new Command("login")
     }
   })
 
-const waitForToken = async (deviceCode: string, interval: number): Promise<string | null> => {
+const waitForToken = async (deviceCode: string, interval: number): Promise<string> => {
   let pollingInterval = interval
 
   while (true) {
-    await sleep(pollingInterval * 1000)
+    await new Promise((r) => setTimeout(r, pollingInterval * 1000))
 
     const result = await pollDeviceToken(deviceCode)
 
@@ -175,5 +168,3 @@ const waitForToken = async (deviceCode: string, interval: number): Promise<strin
     }
   }
 }
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
