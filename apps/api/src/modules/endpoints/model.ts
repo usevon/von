@@ -3,9 +3,9 @@ import { t } from "elysia"
 export namespace EndpointModel {
   export const createBody = t.Object({
     url: t.String({ format: "uri" }),
-    description: t.Optional(t.String()),
+    description: t.Optional(t.String({ maxLength: 500 })),
     enabled: t.Optional(t.Boolean({ default: true })),
-    version: t.Optional(t.String()),
+    version: t.Optional(t.String({ maxLength: 50 })),
     retryCount: t.Optional(t.Number({ default: 3, minimum: 0, maximum: 10 })),
     timeoutMs: t.Optional(t.Number({ default: 30000, minimum: 1000, maximum: 60000 })),
   })
@@ -14,9 +14,9 @@ export namespace EndpointModel {
 
   export const updateBody = t.Object({
     url: t.Optional(t.String({ format: "uri" })),
-    description: t.Optional(t.String()),
+    description: t.Optional(t.String({ maxLength: 500 })),
     enabled: t.Optional(t.Boolean()),
-    version: t.Optional(t.Union([t.String(), t.Null()])),
+    version: t.Optional(t.Union([t.String({ maxLength: 50 }), t.Null()])),
     retryCount: t.Optional(t.Number({ minimum: 0, maximum: 10 })),
     timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60000 })),
   })
