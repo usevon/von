@@ -3,7 +3,7 @@ import { db } from "@usevon/db"
 import { event, delivery } from "@usevon/db/schema"
 import { getWebhookDeliveryQueue } from "@usevon/queue"
 import type { WebhookDeliveryJob } from "@usevon/queue"
-import { InternalServerError, generateId, toISODates } from "@usevon/utils"
+import { InternalServerError, BadRequestError, generateId, toISODates } from "@usevon/utils"
 import { EndpointService } from "@/modules/endpoints"
 import type { WebhookModel } from "@/modules/webhooks/model"
 
@@ -83,6 +83,12 @@ export abstract class WebhookService {
   }
 
   static async createBatch(params: CreateBatchParams): Promise<WebhookModel.batchResult> {
+    for (const evt of params.events) {
+      if (JSON.stringify(evt.payload).length > 1_000_000) {
+        throw new BadRequestError("Payload exceeds 1MB limit")
+      }
+    }
+
     const now = new Date()
     const nowIso = now.toISOString()
     const idempotencyKeys = params.events.map((e) => e.idempotencyKey).filter((k): k is string => !!k)
