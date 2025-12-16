@@ -9,12 +9,6 @@ import type { EndpointModel } from "@/modules/endpoints/model"
 const redis = getRedisClient()
 const CACHE_TTL = 300 // 5 minutes
 
-const getCacheKey = (orgId: string) => `endpoints:enabled:${orgId}`
-
-const invalidateCache = async (orgId: string) => {
-  await redis.del(getCacheKey(orgId))
-}
-
 type EndpointFields = {
   url: string
   description?: string
@@ -57,7 +51,9 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to create endpoint")
-      await invalidateCache(params.organizationId)
+      if (params.enabled !== false) {
+        await redis.del(`endpoints:${params.organizationId}`)
+      }
       return toEndpoint(result[0])
     }, "creating endpoint")
   }
@@ -130,7 +126,10 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update endpoint")
-      await invalidateCache(params.organizationId)
+      // Only invalidate if endpoint is/was enabled or enabled status is changing
+      if (existing[0].enabled || params.enabled !== undefined) {
+        await redis.del(`endpoints:${params.organizationId}`)
+      }
       return toEndpoint(result[0])
     }, "updating endpoint")
   }
@@ -143,7 +142,7 @@ export abstract class EndpointService {
         .returning({ id: endpoint.id })
 
       if (result.length > 0) {
-        await invalidateCache(organizationId)
+        await redis.del(`endpoints:${organizationId}`)
       }
       return result.length > 0
     }, "deleting endpoint")
@@ -156,8 +155,7 @@ export abstract class EndpointService {
     return withServiceError(async () => {
       // Only use cache when no filterIds (full list)
       if (!filterIds?.length) {
-        const cacheKey = getCacheKey(organizationId)
-        const cached = await redis.get(cacheKey)
+        const cached = await redis.get(`endpoints:${organizationId}`)
         if (cached) {
           return JSON.parse(cached) as DeliveryEndpoint[]
         }
@@ -180,7 +178,7 @@ export abstract class EndpointService {
 
       // Cache only full list results
       if (!filterIds?.length) {
-        await redis.setex(getCacheKey(organizationId), CACHE_TTL, JSON.stringify(result))
+        await redis.setex(`endpoints:${organizationId}`, CACHE_TTL, JSON.stringify(result))
       }
 
       return result
