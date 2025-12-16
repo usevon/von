@@ -3,7 +3,6 @@ import { cors } from "@elysiajs/cors"
 
 import { env } from "@/env"
 import { idempotency } from "@/lib/idempotency"
-import { errorHandler } from "@/lib/error-handler"
 import { checkDatabaseConnection } from "@usevon/db"
 import { checkRedisConnection } from "@usevon/queue"
 
@@ -56,7 +55,23 @@ export const app = new Elysia({
     InternalServerError,
   })
   .use(idempotency())
-  .use(errorHandler(env.NODE_ENV === "production"))
+  .onError(({ code, error, set }) => {
+    const statusMap: Record<string, number> = {
+      UnauthorizedError: 401, NotFoundError: 404, BadRequestError: 400,
+      ForbiddenError: 403, ConflictError: 409, InternalServerError: 500,
+      VALIDATION: 400, NOT_FOUND: 404,
+    }
+    const status = statusMap[code]
+    const isProd = env.NODE_ENV === "production"
+    const message = "message" in error ? error.message : String(error)
+    if (status) {
+      set.status = status
+      return { error: status === 500 && isProd ? "Internal server error" : message }
+    }
+    console.error({ code, error: message })
+    set.status = 500
+    return { error: isProd ? "Internal server error" : String(error) }
+  })
   .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
   .get("/ready", async ({ set }) => {
     const [db, redis] = await Promise.all([
