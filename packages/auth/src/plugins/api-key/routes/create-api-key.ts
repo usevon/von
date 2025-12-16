@@ -13,12 +13,14 @@ export function createApiKey({
   startLength,
   maxNameLength,
   maxExpiresDays,
+  maxKeysPerUser,
 }: {
   keyGenerator: (environment: string) => Promise<string>
   opts: ResolvedApiKeyOptions
   startLength: number
   maxNameLength: number
   maxExpiresDays: number
+  maxKeysPerUser: number
 }) {
   return createAuthEndpoint(
     "/api-key/create",
@@ -38,6 +40,16 @@ export function createApiKey({
       if (!session) {
         throw new APIError("UNAUTHORIZED", {
           message: ERROR_CODES.UNAUTHORIZED_SESSION,
+        })
+      }
+
+      const existingKeys = await ctx.context.adapter.findMany<{ id: string }>({
+        model: API_KEY_TABLE_NAME,
+        where: [{ field: "userId", value: session.user.id }],
+      })
+      if (existingKeys.length >= maxKeysPerUser) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: `Maximum of ${maxKeysPerUser} API keys allowed per user`,
         })
       }
 

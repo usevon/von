@@ -8,6 +8,7 @@ const KEY_LENGTH = 64
 const START_LENGTH = 12
 const MAX_NAME_LENGTH = 64
 const MAX_EXPIRES_DAYS = 365
+const MAX_KEYS_PER_USER = 20
 
 function generateRandomString(length: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -66,6 +67,7 @@ export const apiKey = (options?: ApiKeyOptions) => {
     startLength: START_LENGTH,
     maxNameLength: MAX_NAME_LENGTH,
     maxExpiresDays: MAX_EXPIRES_DAYS,
+    maxKeysPerUser: MAX_KEYS_PER_USER,
   })
 
   return {
