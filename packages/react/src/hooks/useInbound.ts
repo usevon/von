@@ -1,6 +1,6 @@
-import { useFetch } from "@/hooks/useFetch"
+import { createResource } from "@/hooks/useResource"
 
-type InboundEndpoint = {
+export type InboundEndpoint = {
   id: string
   name: string | null
   provider: string | null
@@ -11,20 +11,6 @@ type InboundEndpoint = {
   updatedAt: string
 }
 
-export const useInbound = () => {
-  const result = useFetch<{ endpoints: InboundEndpoint[] }, InboundEndpoint[]>({
-    endpoint: "inbound",
-    parseData: (data: { endpoints: InboundEndpoint[] }) => data.endpoints ?? [],
-  })
+type InboundResponse = { endpoints: InboundEndpoint[] }
 
-  return {
-    endpoints: result.data ?? [],
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    error: result.error,
-    refresh: result.refresh,
-    mutate: result.mutate,
-  }
-}
-
-export type { InboundEndpoint }
+export const useInbound = createResource<InboundResponse, InboundEndpoint>("inbound", "endpoints")
