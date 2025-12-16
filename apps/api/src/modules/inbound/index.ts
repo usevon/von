@@ -84,11 +84,18 @@ export const inbound = new Elysia({ prefix: "/inbound" })
     }
   )
 
+const MAX_PAYLOAD_SIZE = 1_000_000 // 1MB
+
 export const inboundPublic = new Elysia({ prefix: "/in" })
   .use(rateLimit({ windowMs: 60000, max: 100, keyPrefix: "rl:inbound" }))
   .post(
     "/:id",
     async ({ params, body, headers, status }) => {
+      const payloadSize = JSON.stringify(body).length
+      if (payloadSize > MAX_PAYLOAD_SIZE) {
+        return status(413, { error: "Payload exceeds 1MB limit" })
+      }
+
       const endpoint = await InboundService.getByPublicId(params.id)
 
       if (!endpoint) {
@@ -126,6 +133,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         200: InboundModel.inboundDelivery,
         403: ErrorResponse,
         404: ErrorResponse,
+        413: ErrorResponse,
       },
     }
   )
