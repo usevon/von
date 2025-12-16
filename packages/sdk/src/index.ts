@@ -6,3 +6,5 @@ export * from '@/webhooks/types'
 export * from '@/endpoints/types'
 export * from '@/inbound/types'
 export * from '@/versions/types'
+
+export { verifyWebhook, WebhookVerificationError } from '@/webhooks/verify'
