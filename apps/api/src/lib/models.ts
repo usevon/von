@@ -1,8 +1,8 @@
 import { t, type Static } from "elysia"
 
 export const PaginationQuery = t.Object({
-  limit: t.Optional(t.Numeric({ default: 20 })),
-  offset: t.Optional(t.Numeric({ default: 0 })),
+  limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
+  offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
 })
 
 export const IdParam = t.Object({

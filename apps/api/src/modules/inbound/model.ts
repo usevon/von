@@ -2,8 +2,8 @@ import { t } from "elysia"
 
 export namespace InboundModel {
   export const createEndpointBody = t.Object({
-    name: t.Optional(t.String()),
-    provider: t.Optional(t.String()),
+    name: t.Optional(t.String({ maxLength: 255 })),
+    provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.String({ format: "uri" }),
     enabled: t.Optional(t.Boolean({ default: true })),
   })
@@ -11,8 +11,8 @@ export namespace InboundModel {
   export type createEndpointBody = typeof createEndpointBody.static
 
   export const updateEndpointBody = t.Object({
-    name: t.Optional(t.String()),
-    provider: t.Optional(t.String()),
+    name: t.Optional(t.String({ maxLength: 255 })),
+    provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.Optional(t.String({ format: "uri" })),
     enabled: t.Optional(t.Boolean()),
   })

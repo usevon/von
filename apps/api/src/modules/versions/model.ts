@@ -10,7 +10,7 @@ const transforms = t.Record(t.String(), transformMappings)
 
 export namespace VersionModel {
   export const createBody = t.Object({
-    version: t.String(),
+    version: t.String({ maxLength: 50 }),
     transforms: transforms,
   })
 
