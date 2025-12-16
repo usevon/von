@@ -196,7 +196,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
             attempts: deliveryRecord.attempts + 1,
             lastAttemptAt: now,
             responseStatus: response.status,
-            responseBody: responseBody?.slice(0, 1000) ?? null,
+            responseBody: responseBody?.slice(0, 200) ?? null,
             updatedAt: now,
           })
           .where(eq(delivery.id, deliveryId)),

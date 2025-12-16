@@ -93,15 +93,18 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
   }
 
   const originalHeaders: Record<string, string> = headers ? JSON.parse(headers) : {}
-  const signature = hmacSign(payload, ep.secret)
   const now = new Date()
+  const timestamp = Math.floor(now.getTime() / 1000)
+  const signedPayload = `${timestamp}.${payload}`
+  const signature = hmacSign(signedPayload, ep.secret)
 
   try {
     const response = await fetch(ep.forwardUrl, {
       method: "POST",
       headers: {
         ...originalHeaders,
-        "X-Von-Signature": signature,
+        "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+        "X-Von-Timestamp": String(timestamp),
         "X-Von-Inbound-Delivery-Id": deliveryId,
       },
       body: payload,
@@ -122,7 +125,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
             lastAttemptAt: now,
             forwardedAt: now,
             responseStatus: response.status,
-            responseBody: responseBody?.slice(0, 1000) ?? null,
+            responseBody: responseBody?.slice(0, 200) ?? null,
           })
           .where(eq(inboundDelivery.id, deliveryId)),
         db
