@@ -193,7 +193,7 @@ export const createInboundWorker = () => {
     processInboundForwarding,
     {
       connection: createConnection(),
-      concurrency: 200,
+      concurrency: env.WORKER_CONCURRENCY,
     }
   )
 

@@ -266,7 +266,7 @@ export const createWebhookWorker = () => {
     processWebhookDelivery,
     {
       connection: createConnection(),
-      concurrency: 200,
+      concurrency: env.WORKER_CONCURRENCY,
     }
   )
 
