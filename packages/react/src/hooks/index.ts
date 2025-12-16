@@ -1,4 +1,3 @@
-export { useFetch } from "@/hooks/useFetch"
 export { useWebhooks } from "@/hooks/useWebhooks"
 export { useEndpoints } from "@/hooks/useEndpoints"
 export { useInbound } from "@/hooks/useInbound"
