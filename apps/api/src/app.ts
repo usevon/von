@@ -40,12 +40,25 @@ const browserRoutes = new Elysia()
   .use(corsMiddleware)
   .use(auth)
 
+const securityHeaders = new Elysia({ name: "security-headers" }).onAfterHandle(
+  ({ set }) => {
+    set.headers["X-Content-Type-Options"] = "nosniff"
+    set.headers["X-Frame-Options"] = "DENY"
+    set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if (env.NODE_ENV === "production") {
+      set.headers["Strict-Transport-Security"] =
+        "max-age=31536000; includeSubDomains"
+    }
+  }
+)
+
 export const app = new Elysia({
   name: "von-api",
   aot: true,
   normalize: true,
   nativeStaticResponse: true,
 })
+  .use(securityHeaders)
   .error({
     UnauthorizedError,
     NotFoundError,
