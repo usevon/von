@@ -41,6 +41,10 @@
     "./fetch": {
       "types": "./dist/fetch/index.d.ts",
       "default": "./dist/fetch/index.js"
+    },
+    "./elysia": {
+      "types": "./dist/elysia/error-handler.d.ts",
+      "default": "./dist/elysia/error-handler.js"
     }
   },
   "scripts": {
