@@ -9,7 +9,7 @@ type RateLimitOptions = {
   keyPrefix?: string
 }
 
-const getClientIp = (request: Request): string => {
+export const getClientIp = (request: Request): string => {
   const forwarded = request.headers.get("x-forwarded-for")
   if (forwarded) {
     const ips = forwarded.split(",").map((ip) => ip.trim())
@@ -59,7 +59,7 @@ export const userRateLimit = (options: RateLimitOptions) => {
   const windowSeconds = Math.ceil(windowMs / 1000)
 
   return new Elysia({ name: "user-rate-limit" })
-    .derive(async ({ set, userId }: { set: { status?: number; headers: Record<string, string> }; userId?: string }) => {
+    .derive(async ({ set, userId }: { set: { status?: number | string; headers: Record<string, string> }; userId?: string }) => {
       if (!userId) return { userRateLimited: false }
 
       const key = `${keyPrefix}:${userId}`
