@@ -183,8 +183,6 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       signal: AbortSignal.timeout(ep.timeoutMs),
     })
 
-    const responseBody = await response.text().catch(() => null)
-
     if (response.ok) {
       const successUpdate = getSuccessUpdate()
 
@@ -196,7 +194,6 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
             attempts: deliveryRecord.attempts + 1,
             lastAttemptAt: now,
             responseStatus: response.status,
-            responseBody: responseBody?.slice(0, 200) ?? null,
             updatedAt: now,
           })
           .where(eq(delivery.id, deliveryId)),
@@ -214,6 +211,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         "Webhook delivered successfully"
       )
     } else {
+      const responseBody = await response.text().catch(() => null)
       throw new Error(`HTTP ${response.status}: ${responseBody?.slice(0, 200)}`)
     }
   } catch (error) {

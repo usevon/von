@@ -111,8 +111,6 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
       signal: AbortSignal.timeout(ep.timeoutMs),
     })
 
-    const responseBody = await response.text().catch(() => null)
-
     if (response.ok) {
       const successUpdate = getSuccessUpdate()
 
@@ -125,7 +123,6 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
             lastAttemptAt: now,
             forwardedAt: now,
             responseStatus: response.status,
-            responseBody: responseBody?.slice(0, 200) ?? null,
           })
           .where(eq(inboundDelivery.id, deliveryId)),
         db
@@ -142,6 +139,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         "Inbound webhook forwarded successfully"
       )
     } else {
+      const responseBody = await response.text().catch(() => null)
       throw new Error(`HTTP ${response.status}: ${responseBody?.slice(0, 200)}`)
     }
   } catch (error) {
