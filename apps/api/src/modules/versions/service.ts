@@ -1,8 +1,8 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { webhookVersion } from "@usevon/db/schema"
-import { InternalServerError, generateId, toISODates, type TransformMappings, type Transforms } from "@usevon/utils"
-import { log } from "@/lib/logger"
+import { generateId, toISODates, type Transforms } from "@usevon/utils"
+import { withServiceError } from "@/lib/service-utils"
 import type { VersionModel } from "@/modules/versions/model"
 
 type VersionFields = {
@@ -13,14 +13,20 @@ type VersionFields = {
 type CreateVersionParams = VersionFields & { organizationId: string }
 type UpdateVersionParams = Pick<VersionFields, "transforms"> & { organizationId: string; version: string }
 
-const toVersion = (v: typeof webhookVersion.$inferSelect): VersionModel.webhookVersion => ({
-  ...toISODates(v),
-  transforms: v.transforms as Transforms,
-})
+const toVersion = (v: typeof webhookVersion.$inferSelect): VersionModel.webhookVersion => {
+  const dates = toISODates(v)
+  return {
+    id: v.id,
+    version: v.version,
+    transforms: v.transforms as Transforms,
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt!,
+  }
+}
 
 export abstract class VersionService {
   static async create(params: CreateVersionParams): Promise<VersionModel.webhookVersion> {
-    try {
+    return withServiceError(async () => {
       const now = new Date()
 
       const result = await db
@@ -37,10 +43,7 @@ export abstract class VersionService {
 
       if (!result[0]) throw new Error("Failed to create version")
       return toVersion(result[0])
-    } catch (error) {
-      log.error({ error }, "Error creating version")
-      throw new InternalServerError("Failed to create version")
-    }
+    }, "creating version")
   }
 
   static async getAll(
@@ -48,7 +51,7 @@ export abstract class VersionService {
     limit: number,
     offset: number
   ): Promise<VersionModel.versionList> {
-    try {
+    return withServiceError(async () => {
       const [versions, total] = await Promise.all([
         db
           .select()
@@ -59,17 +62,14 @@ export abstract class VersionService {
         db.$count(webhookVersion, eq(webhookVersion.organizationId, organizationId)),
       ])
       return { versions: versions.map(toVersion), total }
-    } catch (error) {
-      log.error({ error }, "Error fetching versions")
-      throw new InternalServerError("Failed to fetch versions")
-    }
+    }, "fetching versions")
   }
 
   static async getByVersion(
     organizationId: string,
     version: string
   ): Promise<VersionModel.webhookVersion | null> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .select()
         .from(webhookVersion)
@@ -81,16 +81,12 @@ export abstract class VersionService {
         )
         .limit(1)
 
-      if (!result[0]) return null
-      return toVersion(result[0])
-    } catch (error) {
-      log.error({ error }, "Error fetching version")
-      throw new InternalServerError("Failed to fetch version")
-    }
+      return result[0] ? toVersion(result[0]) : null
+    }, "fetching version")
   }
 
   static async update(params: UpdateVersionParams): Promise<VersionModel.webhookVersion | null> {
-    try {
+    return withServiceError(async () => {
       const existing = await db
         .select()
         .from(webhookVersion)
@@ -115,14 +111,11 @@ export abstract class VersionService {
 
       if (!result[0]) throw new Error("Failed to update version")
       return toVersion(result[0])
-    } catch (error) {
-      log.error({ error }, "Error updating version")
-      throw new InternalServerError("Failed to update version")
-    }
+    }, "updating version")
   }
 
   static async delete(organizationId: string, version: string): Promise<boolean> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .delete(webhookVersion)
         .where(
@@ -134,9 +127,6 @@ export abstract class VersionService {
         .returning({ id: webhookVersion.id })
 
       return result.length > 0
-    } catch (error) {
-      log.error({ error }, "Error deleting version")
-      throw new InternalServerError("Failed to delete version")
-    }
+    }, "deleting version")
   }
 }

@@ -2,8 +2,8 @@ import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
 import type { DeliveryEndpoint } from "@usevon/queue"
-import { InternalServerError, generateSecret, generateId, toISODates } from "@usevon/utils"
-import { log } from "@/lib/logger"
+import { generateSecret, generateId, toISODates } from "@usevon/utils"
+import { withServiceError } from "@/lib/service-utils"
 import type { EndpointModel } from "@/modules/endpoints/model"
 
 type EndpointFields = {
@@ -23,7 +23,7 @@ const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint =>
 
 export abstract class EndpointService {
   static async create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
-    try {
+    return withServiceError(async () => {
       const now = new Date()
 
       const result = await db
@@ -45,10 +45,7 @@ export abstract class EndpointService {
 
       if (!result[0]) throw new Error("Failed to create endpoint")
       return toEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error creating endpoint")
-      throw new InternalServerError("Failed to create endpoint")
-    }
+    }, "creating endpoint")
   }
 
   static async getAll(
@@ -56,7 +53,7 @@ export abstract class EndpointService {
     limit: number,
     offset: number
   ): Promise<EndpointModel.endpointList> {
-    try {
+    return withServiceError(async () => {
       const [endpoints, total] = await Promise.all([
         db
           .select()
@@ -67,33 +64,26 @@ export abstract class EndpointService {
         db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
       ])
       return { endpoints: endpoints.map(toEndpoint), total }
-    } catch (error) {
-      log.error({ error }, "Error fetching endpoints")
-      throw new InternalServerError("Failed to fetch endpoints")
-    }
+    }, "fetching endpoints")
   }
 
   static async getById(
     organizationId: string,
     endpointId: string
   ): Promise<EndpointModel.endpoint | null> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .select()
         .from(endpoint)
         .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
         .limit(1)
 
-      if (!result[0]) return null
-      return toEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error fetching endpoint")
-      throw new InternalServerError("Failed to fetch endpoint")
-    }
+      return result[0] ? toEndpoint(result[0]) : null
+    }, "fetching endpoint")
   }
 
   static async update(params: UpdateEndpointParams): Promise<EndpointModel.endpoint | null> {
-    try {
+    return withServiceError(async () => {
       const existing = await db
         .select()
         .from(endpoint)
@@ -123,31 +113,25 @@ export abstract class EndpointService {
 
       if (!result[0]) throw new Error("Failed to update endpoint")
       return toEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error updating endpoint")
-      throw new InternalServerError("Failed to update endpoint")
-    }
+    }, "updating endpoint")
   }
 
   static async delete(organizationId: string, endpointId: string): Promise<boolean> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .delete(endpoint)
         .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
         .returning({ id: endpoint.id })
 
       return result.length > 0
-    } catch (error) {
-      log.error({ error }, "Error deleting endpoint")
-      throw new InternalServerError("Failed to delete endpoint")
-    }
+    }, "deleting endpoint")
   }
 
   static async getEnabledEndpointsForDelivery(
     organizationId: string,
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
-    try {
+    return withServiceError(async () => {
       const conditions = [eq(endpoint.organizationId, organizationId), eq(endpoint.enabled, true)]
       if (filterIds?.length) conditions.push(inArray(endpoint.id, filterIds))
 
@@ -162,9 +146,6 @@ export abstract class EndpointService {
         })
         .from(endpoint)
         .where(and(...conditions))
-    } catch (error) {
-      log.error({ error }, "Error fetching enabled endpoints")
-      throw new InternalServerError("Failed to fetch enabled endpoints")
-    }
+    }, "fetching enabled endpoints")
   }
 }

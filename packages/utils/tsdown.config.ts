@@ -12,7 +12,6 @@ export default defineConfig({
     "src/env.ts",
     "src/logger.ts",
     "src/fetch/index.ts",
-    "src/elysia/error-handler.ts",
   ],
   outDir: "dist",
 })

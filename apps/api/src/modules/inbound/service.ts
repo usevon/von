@@ -2,8 +2,8 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
 import { getInboundForwardingQueue } from "@usevon/queue"
-import { InternalServerError, generateSecret, generateId, toISODates } from "@usevon/utils"
-import { log } from "@/lib/logger"
+import { generateSecret, generateId, toISODates } from "@usevon/utils"
+import { withServiceError } from "@/lib/service-utils"
 import type { InboundModel } from "@/modules/inbound/model"
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
@@ -43,7 +43,7 @@ type ReceiveWebhookParams = {
 
 export abstract class InboundService {
   static async create(params: CreateInboundEndpointParams): Promise<InboundModel.inboundEndpoint> {
-    try {
+    return withServiceError(async () => {
       const now = new Date()
 
       const result = await db
@@ -63,10 +63,7 @@ export abstract class InboundService {
 
       if (!result[0]) throw new Error("Failed to create inbound endpoint")
       return toInboundEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error creating inbound endpoint")
-      throw new InternalServerError("Failed to create inbound endpoint")
-    }
+    }, "creating inbound endpoint")
   }
 
   static async getAll(
@@ -74,7 +71,7 @@ export abstract class InboundService {
     limit: number,
     offset: number
   ): Promise<InboundModel.inboundEndpointList> {
-    try {
+    return withServiceError(async () => {
       const [endpoints, total] = await Promise.all([
         db
           .select()
@@ -85,17 +82,14 @@ export abstract class InboundService {
         db.$count(inboundEndpoint, eq(inboundEndpoint.organizationId, organizationId)),
       ])
       return { endpoints: endpoints.map(toInboundEndpoint), total }
-    } catch (error) {
-      log.error({ error }, "Error fetching inbound endpoints")
-      throw new InternalServerError("Failed to fetch inbound endpoints")
-    }
+    }, "fetching inbound endpoints")
   }
 
   static async getById(
     organizationId: string,
     endpointId: string
   ): Promise<InboundModel.inboundEndpoint | null> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .select()
         .from(inboundEndpoint)
@@ -107,34 +101,26 @@ export abstract class InboundService {
         )
         .limit(1)
 
-      if (!result[0]) return null
-      return toInboundEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error fetching inbound endpoint")
-      throw new InternalServerError("Failed to fetch inbound endpoint")
-    }
+      return result[0] ? toInboundEndpoint(result[0]) : null
+    }, "fetching inbound endpoint")
   }
 
   static async getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .select()
         .from(inboundEndpoint)
         .where(eq(inboundEndpoint.id, endpointId))
         .limit(1)
 
-      if (!result[0]) return null
-      return result[0]
-    } catch (error) {
-      log.error({ error }, "Error fetching inbound endpoint by public ID")
-      throw new InternalServerError("Failed to fetch inbound endpoint")
-    }
+      return result[0] ?? null
+    }, "fetching inbound endpoint")
   }
 
   static async update(
     params: UpdateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint | null> {
-    try {
+    return withServiceError(async () => {
       const existing = await db
         .select()
         .from(inboundEndpoint)
@@ -162,14 +148,11 @@ export abstract class InboundService {
 
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
       return toInboundEndpoint(result[0])
-    } catch (error) {
-      log.error({ error }, "Error updating inbound endpoint")
-      throw new InternalServerError("Failed to update inbound endpoint")
-    }
+    }, "updating inbound endpoint")
   }
 
   static async delete(organizationId: string, endpointId: string): Promise<boolean> {
-    try {
+    return withServiceError(async () => {
       const result = await db
         .delete(inboundEndpoint)
         .where(
@@ -181,14 +164,11 @@ export abstract class InboundService {
         .returning({ id: inboundEndpoint.id })
 
       return result.length > 0
-    } catch (error) {
-      log.error({ error }, "Error deleting inbound endpoint")
-      throw new InternalServerError("Failed to delete inbound endpoint")
-    }
+    }, "deleting inbound endpoint")
   }
 
   static async receive(params: ReceiveWebhookParams): Promise<InboundModel.inboundDelivery> {
-    try {
+    return withServiceError(async () => {
       const now = new Date()
       const deliveryId = generateId()
       const payloadStr = JSON.stringify(params.payload)
@@ -228,9 +208,6 @@ export abstract class InboundService {
         responseStatus: delivery.responseStatus,
         createdAt: delivery.createdAt.toISOString(),
       }
-    } catch (error) {
-      log.error({ error }, "Error receiving webhook")
-      throw new InternalServerError("Failed to receive webhook")
-    }
+    }, "receiving webhook")
   }
 }
