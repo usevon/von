@@ -9,12 +9,6 @@ import type { InboundModel } from "@/modules/inbound/model"
 const redis = getRedisClient()
 const CACHE_TTL = 300 // 5 minutes
 
-const getCacheKey = (id: string) => `inbound:public:${id}`
-
-const invalidateCache = async (id: string) => {
-  await redis.del(getCacheKey(id))
-}
-
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
 
 const toInboundEndpoint = (e: InboundEndpointRow): InboundModel.inboundEndpoint =>
@@ -120,8 +114,7 @@ export abstract class InboundService {
 
   static async getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
     return withServiceError(async () => {
-      const cacheKey = getCacheKey(endpointId)
-      const cached = await redis.get(cacheKey)
+      const cached = await redis.get(`inbound:${endpointId}`)
       if (cached) {
         return JSON.parse(cached) as InboundEndpointRow
       }
@@ -133,7 +126,7 @@ export abstract class InboundService {
         .limit(1)
 
       if (result[0]) {
-        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result[0]))
+        await redis.setex(`inbound:${endpointId}`, CACHE_TTL, JSON.stringify(result[0]))
       }
 
       return result[0] ?? null
@@ -174,7 +167,7 @@ export abstract class InboundService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
-      await invalidateCache(params.endpointId)
+      await redis.del(`inbound:${params.endpointId}`)
       return toInboundEndpoint(result[0])
     }, "updating inbound endpoint")
   }
@@ -192,7 +185,7 @@ export abstract class InboundService {
         .returning({ id: inboundEndpoint.id })
 
       if (result.length > 0) {
-        await invalidateCache(endpointId)
+        await redis.del(`inbound:${endpointId}`)
       }
       return result.length > 0
     }, "deleting inbound endpoint")
