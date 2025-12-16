@@ -1,6 +1,6 @@
-import { useFetch } from "@/hooks/useFetch"
+import { createResource } from "@/hooks/useResource"
 
-type WebhookEvent = {
+export type WebhookEvent = {
   id: string
   eventType: string
   payload: unknown
@@ -9,20 +9,6 @@ type WebhookEvent = {
   createdAt: string
 }
 
-export const useWebhooks = () => {
-  const result = useFetch<{ events: WebhookEvent[] }, WebhookEvent[]>({
-    endpoint: "webhooks/events",
-    parseData: (data: { events: WebhookEvent[] }) => data.events ?? [],
-  })
+type WebhooksResponse = { events: WebhookEvent[] }
 
-  return {
-    events: result.data ?? [],
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    error: result.error,
-    refresh: result.refresh,
-    mutate: result.mutate,
-  }
-}
-
-export type { WebhookEvent }
+export const useWebhooks = createResource<WebhooksResponse, WebhookEvent>("webhooks/events", "events")
