@@ -1,10 +1,19 @@
 import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { endpoint } from "@usevon/db/schema"
-import type { DeliveryEndpoint } from "@usevon/queue"
+import { getRedisClient, type DeliveryEndpoint } from "@usevon/queue"
 import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
 import { withServiceError } from "@/lib/service-utils"
 import type { EndpointModel } from "@/modules/endpoints/model"
+
+const redis = getRedisClient()
+const CACHE_TTL = 300 // 5 minutes
+
+const getCacheKey = (orgId: string) => `endpoints:enabled:${orgId}`
+
+const invalidateCache = async (orgId: string) => {
+  await redis.del(getCacheKey(orgId))
+}
 
 type EndpointFields = {
   url: string
@@ -48,6 +57,7 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to create endpoint")
+      await invalidateCache(params.organizationId)
       return toEndpoint(result[0])
     }, "creating endpoint")
   }
@@ -120,6 +130,7 @@ export abstract class EndpointService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update endpoint")
+      await invalidateCache(params.organizationId)
       return toEndpoint(result[0])
     }, "updating endpoint")
   }
@@ -131,6 +142,9 @@ export abstract class EndpointService {
         .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
         .returning({ id: endpoint.id })
 
+      if (result.length > 0) {
+        await invalidateCache(organizationId)
+      }
       return result.length > 0
     }, "deleting endpoint")
   }
@@ -140,10 +154,19 @@ export abstract class EndpointService {
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
     return withServiceError(async () => {
+      // Only use cache when no filterIds (full list)
+      if (!filterIds?.length) {
+        const cacheKey = getCacheKey(organizationId)
+        const cached = await redis.get(cacheKey)
+        if (cached) {
+          return JSON.parse(cached) as DeliveryEndpoint[]
+        }
+      }
+
       const conditions = [eq(endpoint.organizationId, organizationId), eq(endpoint.enabled, true)]
       if (filterIds?.length) conditions.push(inArray(endpoint.id, filterIds))
 
-      return db
+      const result = await db
         .select({
           id: endpoint.id,
           url: endpoint.url,
@@ -154,6 +177,13 @@ export abstract class EndpointService {
         })
         .from(endpoint)
         .where(and(...conditions))
+
+      // Cache only full list results
+      if (!filterIds?.length) {
+        await redis.setex(getCacheKey(organizationId), CACHE_TTL, JSON.stringify(result))
+      }
+
+      return result
     }, "fetching enabled endpoints")
   }
 }

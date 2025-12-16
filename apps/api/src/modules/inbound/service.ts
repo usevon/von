@@ -1,10 +1,19 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
-import { getInboundForwardingQueue } from "@usevon/queue"
+import { getRedisClient, getInboundForwardingQueue } from "@usevon/queue"
 import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
 import { withServiceError } from "@/lib/service-utils"
 import type { InboundModel } from "@/modules/inbound/model"
+
+const redis = getRedisClient()
+const CACHE_TTL = 300 // 5 minutes
+
+const getCacheKey = (id: string) => `inbound:public:${id}`
+
+const invalidateCache = async (id: string) => {
+  await redis.del(getCacheKey(id))
+}
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
 
@@ -111,11 +120,21 @@ export abstract class InboundService {
 
   static async getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
     return withServiceError(async () => {
+      const cacheKey = getCacheKey(endpointId)
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        return JSON.parse(cached) as InboundEndpointRow
+      }
+
       const result = await db
         .select()
         .from(inboundEndpoint)
         .where(eq(inboundEndpoint.id, endpointId))
         .limit(1)
+
+      if (result[0]) {
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result[0]))
+      }
 
       return result[0] ?? null
     }, "fetching inbound endpoint")
@@ -155,6 +174,7 @@ export abstract class InboundService {
         .returning()
 
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
+      await invalidateCache(params.endpointId)
       return toInboundEndpoint(result[0])
     }, "updating inbound endpoint")
   }
@@ -171,6 +191,9 @@ export abstract class InboundService {
         )
         .returning({ id: inboundEndpoint.id })
 
+      if (result.length > 0) {
+        await invalidateCache(endpointId)
+      }
       return result.length > 0
     }, "deleting inbound endpoint")
   }
