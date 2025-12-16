@@ -13,12 +13,14 @@ export function createApiKey({
   startLength,
   maxNameLength,
   maxExpiresDays,
+  maxKeysPerUser,
 }: {
   keyGenerator: (environment: string) => Promise<string>
   opts: ResolvedApiKeyOptions
   startLength: number
   maxNameLength: number
   maxExpiresDays: number
+  maxKeysPerUser: number
 }) {
   return createAuthEndpoint(
     "/api-key/create",
@@ -41,11 +43,21 @@ export function createApiKey({
         })
       }
 
+      const existingKeys = await ctx.context.adapter.findMany<{ id: string }>({
+        model: API_KEY_TABLE_NAME,
+        where: [{ field: "userId", value: session.user.id }],
+      })
+      if (existingKeys.length >= maxKeysPerUser) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: ERROR_CODES.MAX_KEYS_EXCEEDED,
+        })
+      }
+
       if (expiresIn) {
         const expiresInDays = expiresIn / (60 * 60 * 24)
         if (expiresInDays > maxExpiresDays) {
           throw new APIError("BAD_REQUEST", {
-            message: `Expiration cannot exceed ${maxExpiresDays} days`,
+            message: ERROR_CODES.EXPIRATION_TOO_LONG,
           })
         }
       }

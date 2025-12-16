@@ -13,6 +13,7 @@ export function createApiKeyRoutes({
   startLength,
   maxNameLength,
   maxExpiresDays,
+  maxKeysPerUser,
 }: {
   keyGenerator: (environment: string) => Promise<string>
   opts: ResolvedApiKeyOptions
@@ -20,9 +21,10 @@ export function createApiKeyRoutes({
   startLength: number
   maxNameLength: number
   maxExpiresDays: number
+  maxKeysPerUser: number
 }) {
   return {
-    createApiKey: createApiKey({ keyGenerator, opts, startLength, maxNameLength, maxExpiresDays }),
+    createApiKey: createApiKey({ keyGenerator, opts, startLength, maxNameLength, maxExpiresDays, maxKeysPerUser }),
     verifyApiKey: verifyApiKey({ opts, keyLength }),
     getApiKey: getApiKey(),
     updateApiKey: updateApiKey({ opts, maxNameLength }),

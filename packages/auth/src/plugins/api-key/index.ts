@@ -8,6 +8,7 @@ const KEY_LENGTH = 64
 const START_LENGTH = 12
 const MAX_NAME_LENGTH = 64
 const MAX_EXPIRES_DAYS = 365
+const MAX_KEYS_PER_USER = 20
 
 function generateRandomString(length: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -35,6 +36,10 @@ export const ERROR_CODES = {
   KEY_DISABLED: "API Key is disabled",
   KEY_EXPIRED: "API Key has expired",
   INVALID_API_KEY: "Invalid API key.",
+  MAX_KEYS_EXCEEDED: "Maximum API keys limit reached",
+  NAME_TOO_SHORT: "API key name must be at least 1 character",
+  NAME_TOO_LONG: "API key name exceeds maximum length",
+  EXPIRATION_TOO_LONG: "Expiration exceeds maximum allowed days",
 } as const
 
 export const API_KEY_TABLE_NAME = "apikey"
@@ -66,6 +71,7 @@ export const apiKey = (options?: ApiKeyOptions) => {
     startLength: START_LENGTH,
     maxNameLength: MAX_NAME_LENGTH,
     maxExpiresDays: MAX_EXPIRES_DAYS,
+    maxKeysPerUser: MAX_KEYS_PER_USER,
   })
 
   return {
