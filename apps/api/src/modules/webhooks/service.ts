@@ -158,27 +158,49 @@ export abstract class WebhookService {
       }
     }
 
-    await db.transaction(async (tx) => {
-      await tx.insert(event).values(
-        newEvents.map((e) => ({
-          id: e.id,
-          organizationId: params.organizationId,
-          eventType: e.eventType,
-          payload: JSON.stringify(e.payload),
-          idempotencyKey: e.idempotencyKey,
-          createdAt: now,
-        }))
-      )
-      if (allDeliveries.length > 0) await tx.insert(delivery).values(allDeliveries)
+    const insertedIds = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(event)
+        .values(
+          newEvents.map((e) => ({
+            id: e.id,
+            organizationId: params.organizationId,
+            eventType: e.eventType,
+            payload: JSON.stringify(e.payload),
+            idempotencyKey: e.idempotencyKey,
+            createdAt: now,
+          }))
+        )
+        .onConflictDoNothing({ target: [event.organizationId, event.idempotencyKey] })
+        .returning({ id: event.id })
+
+      const insertedIdSet = new Set(inserted.map((e) => e.id))
+      const deliveriesToInsert = allDeliveries.filter((d) => insertedIdSet.has(d.eventId))
+      if (deliveriesToInsert.length > 0) await tx.insert(delivery).values(deliveriesToInsert)
+      return insertedIdSet
     })
 
-    if (allJobs.length > 0) await getWebhookDeliveryQueue().addBulk(allJobs)
-
-    for (const e of newEvents) {
-      results.push({ id: e.id, eventType: e.eventType, payload: e.payload, idempotencyKey: e.idempotencyKey, status: "pending", createdAt: nowIso })
+    const jobsToEnqueue = allJobs.filter((j) => insertedIds.has(j.data.eventId))
+    if (jobsToEnqueue.length > 0) {
+      try {
+        await getWebhookDeliveryQueue().addBulk(jobsToEnqueue)
+      } catch (err) {
+        const failedDeliveryIds = jobsToEnqueue.map((j) => j.data.deliveryId)
+        await db
+          .update(delivery)
+          .set({ status: "failed", updatedAt: new Date() })
+          .where(inArray(delivery.id, failedDeliveryIds))
+        throw new InternalServerError("Failed to enqueue webhook deliveries")
+      }
     }
 
-    return { created: newEvents.length, events: results }
+    for (const e of newEvents) {
+      if (insertedIds.has(e.id)) {
+        results.push({ id: e.id, eventType: e.eventType, payload: e.payload, idempotencyKey: e.idempotencyKey, status: "pending", createdAt: nowIso })
+      }
+    }
+
+    return { created: insertedIds.size, events: results }
   }
 
   static async getEvents(
