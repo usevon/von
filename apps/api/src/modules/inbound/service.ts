@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@usevon/db"
 import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
 import { getInboundForwardingQueue } from "@usevon/queue"
-import { generateSecret, generateId, toISODates } from "@usevon/utils"
+import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
 import { withServiceError } from "@/lib/service-utils"
 import type { InboundModel } from "@/modules/inbound/model"
 
@@ -44,6 +44,10 @@ type ReceiveWebhookParams = {
 export abstract class InboundService {
   static async create(params: CreateInboundEndpointParams): Promise<InboundModel.inboundEndpoint> {
     return withServiceError(async () => {
+      if (!isValidWebhookUrl(params.forwardUrl)) {
+        throw new BadRequestError("Invalid forward URL - must be a valid public HTTP(S) URL")
+      }
+
       const now = new Date()
 
       const result = await db
@@ -121,6 +125,10 @@ export abstract class InboundService {
     params: UpdateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint | null> {
     return withServiceError(async () => {
+      if (params.forwardUrl && !isValidWebhookUrl(params.forwardUrl)) {
+        throw new BadRequestError("Invalid forward URL - must be a valid public HTTP(S) URL")
+      }
+
       const existing = await db
         .select()
         .from(inboundEndpoint)
