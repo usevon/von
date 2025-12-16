@@ -28,10 +28,10 @@ const getCorsOrigins = () => {
   if (env.NODE_ENV === "development") {
     return ["http://localhost:5173", "http://localhost:5174"]
   }
-  if (env.CORS_ORIGINS) {
-    return env.CORS_ORIGINS.split(",").map((o) => o.trim())
+  if (!env.CORS_ORIGINS) {
+    throw new Error("CORS_ORIGINS required in production")
   }
-  return []
+  return env.CORS_ORIGINS.split(",").map((o) => o.trim())
 }
 
 const corsMiddleware = cors({ origin: getCorsOrigins() })
