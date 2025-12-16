@@ -1,4 +1,4 @@
-import { generateId } from "@usevon/utils"
+import { generateId, timingSafeEqual } from "@usevon/utils"
 import type { TunnelRequest, TunnelResponse } from "@usevon/tunnel"
 import type { TunnelConnection } from "@/modules/tunnel/model"
 
@@ -50,7 +50,7 @@ export abstract class TunnelService {
 
   static validateSecret(tunnelId: string, secret: string): boolean {
     const connection = tunnels.get(tunnelId)
-    return connection?.secret === secret
+    return connection ? timingSafeEqual(connection.secret, secret) : false
   }
 
   static updateSecret(tunnelId: string, newSecret: string): boolean {
