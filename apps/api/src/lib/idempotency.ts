@@ -24,7 +24,12 @@ export const idempotency = () =>
         return {}
       }
 
-      const authScope = hashSha256(request.headers.get("authorization") ?? "").slice(0, 16)
+      const authHeader = request.headers.get("authorization")
+      if (!authHeader) {
+        return {}
+      }
+
+      const authScope = hashSha256(authHeader).slice(0, 16)
       const cacheKey = `idempotency:${authScope}:${idempotencyKey}`
       const cached = await redis.get(cacheKey)
 
