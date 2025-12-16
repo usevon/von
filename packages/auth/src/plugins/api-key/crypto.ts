@@ -4,7 +4,7 @@ import {
   timingSafeEqual,
 } from "@usevon/utils"
 
-const SIG_LENGTH = 16
+const SIG_LENGTH = 32
 
 const PREFIXES: Record<string, string> = {
   von_dev_: "dev",

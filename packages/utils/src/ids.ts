@@ -13,5 +13,5 @@ export function generateTunnelId(orgId: string, userId: string, port: number): s
 }
 
 export function generateTunnelSecret(): string {
-  return randomHex(4)
+  return randomHex(16)
 }
