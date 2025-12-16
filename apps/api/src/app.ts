@@ -25,7 +25,7 @@ const ping = new Elysia({ prefix: "/ping" })
   .get("/", () => ({ ok: true }))
 
 const getCorsOrigins = () => {
-  if (env.NODE_ENV === "development") {
+  if (env.NODE_ENV !== "production") {
     return ["http://localhost:5173", "http://localhost:5174"]
   }
   if (!env.CORS_ORIGINS) {
