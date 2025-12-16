@@ -145,7 +145,17 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       const eventTransforms = transforms[eventType]
 
       if (eventTransforms) {
-        const parsed = JSON.parse(payload) as Record<string, unknown>
+        let parsed: Record<string, unknown>
+        try {
+          parsed = JSON.parse(payload) as Record<string, unknown>
+        } catch {
+          log.error({ deliveryId, payload: payload.slice(0, 100) }, "Invalid JSON payload")
+          await db
+            .update(delivery)
+            .set({ status: "failed", updatedAt: new Date() })
+            .where(eq(delivery.id, deliveryId))
+          return
+        }
         const transformed = applyTransforms(parsed, eventTransforms)
         finalPayload = JSON.stringify(transformed)
         log.debug({ endpointId: ep.id, version: ep.version, eventType }, "Applied transforms")
