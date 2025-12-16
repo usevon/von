@@ -59,6 +59,7 @@ type CachedVersion = {
 
 const versionCache = new Map<string, CachedVersion>()
 const CACHE_TTL_MS = 60_000
+const CACHE_MAX_SIZE = 1000
 
 const getVersionTransforms = async (
   version: string,
@@ -73,6 +74,12 @@ const getVersionTransforms = async (
 
   const [result] = await getVersionStmt.execute({ version, orgId: organizationId })
   const transforms = (result?.transforms as Transforms) ?? null
+
+  // LRU eviction: remove oldest entry if cache is full
+  if (versionCache.size >= CACHE_MAX_SIZE) {
+    const oldestKey = versionCache.keys().next().value
+    if (oldestKey) versionCache.delete(oldestKey)
+  }
 
   versionCache.set(cacheKey, {
     transforms,

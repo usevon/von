@@ -24,11 +24,8 @@ export function hmacSign(data: string, secret: string): string {
 
 export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
+  const nodeCrypto = require("crypto")
+  return nodeCrypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
 }
 
 export function verifyHmac(data: string, signature: string, secret: string): boolean {
