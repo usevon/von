@@ -1,8 +1,8 @@
 import { Command } from "commander"
 import * as p from "@clack/prompts"
 import pc from "picocolors"
-import { requireAuth, loadConfig } from "@/lib/config"
-import { rotateTunnel } from "@/lib/api"
+import { requireAuth } from "@/lib/config"
+import { rotateTunnel, getSession } from "@/lib/api"
 import { generateTunnelId } from "@usevon/utils"
 
 export const rotate = new Command("rotate")
@@ -32,8 +32,6 @@ export const rotate = new Command("rotate")
     s.start("Rotating tunnel secret...")
 
     try {
-      // We need to get the userId from the session to generate the tunnelId
-      const { getSession } = await import("@/lib/api")
       const session = await getSession(token)
       if (!session) {
         s.stop("Error")
