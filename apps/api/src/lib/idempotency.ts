@@ -3,7 +3,7 @@ import { getRedisClient } from "@usevon/queue"
 import { hashSha256 } from "@usevon/utils"
 
 const redis = getRedisClient()
-const IDEMPOTENCY_TTL = 60 * 60 * 24 // 24 hours
+const IDEMPOTENCY_TTL = 60 * 5 // 5 minutes
 
 type CachedResponse = {
   status: number
