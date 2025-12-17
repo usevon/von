@@ -98,11 +98,20 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
   const signedPayload = `${timestamp}.${payload}`
   const signature = hmacSign(signedPayload, ep.secret)
 
+  // Filter out headers that could override security-sensitive values
+  const BLOCKED_HEADERS = ["x-von-signature", "x-von-timestamp", "x-von-inbound-delivery-id", "authorization", "host"]
+  const safeHeaders: Record<string, string> = {}
+  for (const [key, value] of Object.entries(originalHeaders)) {
+    if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
+      safeHeaders[key] = value
+    }
+  }
+
   try {
     const response = await fetch(ep.forwardUrl, {
       method: "POST",
       headers: {
-        ...originalHeaders,
+        ...safeHeaders,
         "X-Von-Signature": `t=${timestamp},v1=${signature}`,
         "X-Von-Timestamp": String(timestamp),
         "X-Von-Inbound-Delivery-Id": deliveryId,
@@ -139,8 +148,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         "Inbound webhook forwarded successfully"
       )
     } else {
-      const responseBody = await response.text().catch(() => null)
-      throw new Error(`HTTP ${response.status}: ${responseBody?.slice(0, 200)}`)
+      throw new Error(`HTTP ${response.status}`)
     }
   } catch (error) {
     const attempts = deliveryRecord.attempts + 1
@@ -175,7 +183,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     }
 
     log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error) },
+      { deliveryId, attempts, maxAttempts, error: String(error).slice(0, 200) },
       "Inbound forwarding failed"
     )
 

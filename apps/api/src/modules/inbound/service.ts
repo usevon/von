@@ -163,7 +163,12 @@ export abstract class InboundService {
           enabled: params.enabled ?? existing[0].enabled,
           updatedAt: new Date(),
         })
-        .where(eq(inboundEndpoint.id, params.endpointId))
+        .where(
+          and(
+            eq(inboundEndpoint.id, params.endpointId),
+            eq(inboundEndpoint.organizationId, params.organizationId)
+          )
+        )
         .returning()
 
       if (!result[0]) throw new Error("Failed to update inbound endpoint")
