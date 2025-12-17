@@ -40,12 +40,29 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
         })
       }
 
+      // If key belongs to an organization, verify user is still a member
+      if (apiKey.organizationId) {
+        const membership = await ctx.context.adapter.findOne<{ id: string }>({
+          model: "member",
+          where: [
+            { field: "userId", value: session.user.id },
+            { field: "organizationId", value: apiKey.organizationId },
+          ],
+        })
+        if (!membership) {
+          throw new APIError("FORBIDDEN", {
+            message: "Not a member of this organization",
+          })
+        }
+      }
+
+      // Delete from cache first, then DB (Fix #10: atomic cache invalidation)
+      await deleteApiKeyFromStorage(ctx as never, apiKey, opts)
+
       await ctx.context.adapter.delete({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: ctx.body.keyId }],
       })
-
-      await deleteApiKeyFromStorage(ctx as never, apiKey, opts)
 
       return ctx.json({ success: true })
     }
