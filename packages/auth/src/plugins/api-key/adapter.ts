@@ -75,6 +75,9 @@ function calculateTTL(apiKey: ApiKey): number | undefined {
     if (ttlSeconds > 0) {
       return ttlSeconds
     }
+    // Key is already expired - return 1 second TTL to allow cache entry
+    // but ensure it expires quickly rather than being cached indefinitely
+    return 1
   }
   return undefined
 }
