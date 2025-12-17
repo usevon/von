@@ -10,10 +10,13 @@ type RateLimitOptions = {
 }
 
 export const getClientIp = (request: Request): string => {
+  const cfIp = request.headers.get("cf-connecting-ip")
+  if (cfIp) return cfIp
+
   const forwarded = request.headers.get("x-forwarded-for")
   if (forwarded) {
     const ips = forwarded.split(",").map((ip) => ip.trim())
-    return ips[ips.length - 1] ?? "unknown"
+    return ips[0] ?? "unknown"
   }
   return "unknown"
 }
@@ -59,7 +62,7 @@ export const userRateLimit = (options: RateLimitOptions) => {
   const windowSeconds = Math.ceil(windowMs / 1000)
 
   return new Elysia({ name: "user-rate-limit" })
-    .derive(async ({ set, userId }: { set: { status?: number | string; headers: Record<string, string> }; userId?: string }) => {
+    .derive(async ({ set, userId }: { set: { status?: number | string; headers: Record<string, string | number> }; userId?: string }) => {
       if (!userId) return { userRateLimited: false }
 
       const key = `${keyPrefix}:${userId}`
