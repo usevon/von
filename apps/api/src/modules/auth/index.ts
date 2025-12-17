@@ -13,6 +13,7 @@ const betterAuth: Auth = createAuth(db, {
   trustedOrigins: env.NODE_ENV === "development"
     ? ["http://localhost:5174"]
     : [],
+  deviceVerificationUri: env.DASHBOARD_URL ? `${env.DASHBOARD_URL}/device` : undefined,
   secondaryStorage: {
     get: async (key) => await redis.get(key),
     set: async (key, value, ttl) => {

@@ -19,6 +19,7 @@ export type CreateAuthOptions = {
   secret: string
   baseURL?: string
   trustedOrigins?: string[]
+  deviceVerificationUri?: string
   /**
    * Secondary storage for API key caching (Redis).
    * Enables faster API key lookups by caching in Redis with DB fallback.
@@ -67,7 +68,7 @@ export const createAuth = (
         customStorage: options.secondaryStorage,
       }),
       deviceAuthorization({
-        verificationUri: "http://localhost:5174/device",
+        verificationUri: options.deviceVerificationUri ?? "http://localhost:5174/device",
         expiresIn: "30m",
         interval: "5s",
       }),
