@@ -10,7 +10,7 @@ import {
   isCircuitOpen,
   shouldTransitionToHalfOpen,
   getSuccessUpdate,
-  getFailureUpdate,
+  CIRCUIT_CONFIG,
   type Transforms,
   type CircuitState,
 } from "@usevon/utils"
@@ -226,9 +226,9 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    const failureUpdate = getFailureUpdate(endpointState.failureCount)
-
-    await Promise.all([
+    // Atomic circuit breaker update - increment failureCount and conditionally open circuit
+    const threshold = CIRCUIT_CONFIG.failureThreshold
+    const [, [endpointResult]] = await Promise.all([
       db
         .update(delivery)
         .set({
@@ -241,17 +241,18 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
       db
         .update(endpoint)
         .set({
-          circuitState: failureUpdate.circuitState,
-          circuitOpenedAt: failureUpdate.shouldOpenCircuit ? now : undefined,
-          failureCount: failureUpdate.failureCount,
+          failureCount: sql`${endpoint.failureCount} + 1`,
+          circuitState: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${endpoint.circuitState} END`,
+          circuitOpenedAt: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} AND ${endpoint.circuitState} != 'open' THEN ${now} ELSE ${endpoint.circuitOpenedAt} END`,
           lastFailureAt: now,
           updatedAt: now,
         })
-        .where(eq(endpoint.id, ep.id)),
+        .where(eq(endpoint.id, ep.id))
+        .returning({ failureCount: endpoint.failureCount, circuitState: endpoint.circuitState }),
     ])
 
-    if (failureUpdate.shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: failureUpdate.failureCount }, "Circuit breaker opened")
+    if (endpointResult?.circuitState === "open" && endpointResult.failureCount === threshold) {
+      log.warn({ endpointId: ep.id, failureCount: endpointResult.failureCount }, "Circuit breaker opened")
     }
 
     log.error(
