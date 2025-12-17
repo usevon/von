@@ -89,30 +89,16 @@ export function verifyApiKey({
     async (ctx) => {
       const { key } = ctx.body
 
-      if (key.length < keyLength) {
+      const lengthValid = key.length >= keyLength
+      const prefixValid = hasValidPrefix(key)
+      const signatureValid = opts.signingSecret ? verifySignature(key, opts.signingSecret) : true
+
+      if (!lengthValid || !prefixValid || !signatureValid) {
         return ctx.json({
           valid: false,
           error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
           key: null,
         })
-      }
-
-      if (!hasValidPrefix(key)) {
-        return ctx.json({
-          valid: false,
-          error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
-          key: null,
-        })
-      }
-
-      if (opts.signingSecret) {
-        if (!verifySignature(key, opts.signingSecret)) {
-          return ctx.json({
-            valid: false,
-            error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_SIGNATURE" },
-            key: null,
-          })
-        }
       }
 
       const hashed = hashKey(key)
