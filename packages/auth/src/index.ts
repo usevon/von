@@ -36,6 +36,12 @@ export const createAuth = (
     secret: options.secret,
     baseURL: options.baseURL,
     trustedOrigins: options.trustedOrigins,
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 100,
+      storage: "memory",
+    },
     emailAndPassword: {
       enabled: true,
     },
