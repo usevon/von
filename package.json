@@ -14,7 +14,7 @@
     "dev": "turbo dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "bun test packages/ apps/worker/"
   },
   "devDependencies": {
     "elysia": "^1.4.16",
