@@ -122,15 +122,17 @@ pm2 save && pm2 startup
 ## Testing
 
 ```bash
-# Run all tests
-bun test
+# Unit tests (from root)
+bun run test
 
-# Run tests for a specific package
-bun test --cwd apps/api
-bun test --cwd apps/tunnel
+# Package-specific tests
 bun test --cwd packages/sdk
-```
+bun test --cwd apps/worker
 
+# Integration tests (requires env vars)
+cd apps/api && bun test tests/integration
+cd apps/tunnel && bun test tests/integration
+```
 
 ## Contributing
 
