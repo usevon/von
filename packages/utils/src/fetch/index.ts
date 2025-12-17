@@ -100,6 +100,15 @@ const createFetchError = (
   cause,
 })
 
+// Strip sensitive headers from request context for error handlers
+const sanitizeContext = (context: RequestContext): RequestContext => {
+  const sanitizedHeaders = new Headers(context.headers)
+  sanitizedHeaders.delete("Authorization")
+  sanitizedHeaders.delete("X-Api-Key")
+  sanitizedHeaders.delete("Cookie")
+  return { ...context, headers: sanitizedHeaders }
+}
+
 export const vonFetch = async <T>(
   url: string,
   options: VonFetchOptions<T> = {}
@@ -142,7 +151,7 @@ export const vonFetch = async <T>(
       )
 
       if (options.onError) {
-        await options.onError({ request: context, response, error: lastError })
+        await options.onError({ request: sanitizeContext(context), response, error: lastError })
       }
 
       if (retryStrategy && (await retryStrategy.shouldAttemptRetry(attempt, response))) {
@@ -166,7 +175,7 @@ export const vonFetch = async <T>(
 
       if (options.onError) {
         await options.onError({
-          request: context,
+          request: sanitizeContext(context),
           response: null,
           error: lastError,
         })
