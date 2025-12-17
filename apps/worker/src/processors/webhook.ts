@@ -255,7 +255,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     }
 
     log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error) },
+      { deliveryId, attempts, maxAttempts, error: String(error).slice(0, 200) },
       "Webhook delivery failed"
     )
 
