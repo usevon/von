@@ -24,7 +24,11 @@ export function verifyWebhook<T = unknown>(
   let signature: string | null = null
 
   for (const part of parts) {
-    const [key, value] = part.split('=')
+    const trimmed = part.trim()
+    const eqIndex = trimmed.indexOf('=')
+    if (eqIndex === -1) continue
+    const key = trimmed.slice(0, eqIndex)
+    const value = trimmed.slice(eqIndex + 1)
     if (key === 't') timestamp = parseInt(value, 10)
     if (key === 'v1') signature = value
   }
@@ -34,6 +38,12 @@ export function verifyWebhook<T = unknown>(
   }
 
   const now = Math.floor(Date.now() / 1000)
+
+  // Reject future timestamps (with 60s grace for clock skew)
+  if (timestamp > now + 60) {
+    throw new WebhookVerificationError('Webhook timestamp in future')
+  }
+
   if (now - timestamp > maxAge) {
     throw new WebhookVerificationError('Webhook timestamp too old')
   }
