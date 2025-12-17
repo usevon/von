@@ -9,7 +9,7 @@ import {
   isCircuitOpen,
   shouldTransitionToHalfOpen,
   getSuccessUpdate,
-  getFailureUpdate,
+  CIRCUIT_CONFIG,
   type CircuitState,
 } from "@usevon/utils"
 import { env } from "@/env"
@@ -155,9 +155,9 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     const maxAttempts = ep.retryCount
     const isFinalAttempt = attempts >= maxAttempts
 
-    const failureUpdate = getFailureUpdate(endpointState.failureCount)
-
-    await Promise.all([
+    // Atomic circuit breaker update - increment failureCount and conditionally open circuit
+    const threshold = CIRCUIT_CONFIG.failureThreshold
+    const [, [endpointResult]] = await Promise.all([
       db
         .update(inboundDelivery)
         .set({
@@ -169,17 +169,18 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
       db
         .update(inboundEndpoint)
         .set({
-          circuitState: failureUpdate.circuitState,
-          circuitOpenedAt: failureUpdate.shouldOpenCircuit ? now : undefined,
-          failureCount: failureUpdate.failureCount,
+          failureCount: sql`${inboundEndpoint.failureCount} + 1`,
+          circuitState: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${inboundEndpoint.circuitState} END`,
+          circuitOpenedAt: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} AND ${inboundEndpoint.circuitState} != 'open' THEN ${now} ELSE ${inboundEndpoint.circuitOpenedAt} END`,
           lastFailureAt: now,
           updatedAt: now,
         })
-        .where(eq(inboundEndpoint.id, ep.id)),
+        .where(eq(inboundEndpoint.id, ep.id))
+        .returning({ failureCount: inboundEndpoint.failureCount, circuitState: inboundEndpoint.circuitState }),
     ])
 
-    if (failureUpdate.shouldOpenCircuit) {
-      log.warn({ endpointId: ep.id, failureCount: failureUpdate.failureCount }, "Circuit breaker opened")
+    if (endpointResult?.circuitState === "open" && endpointResult.failureCount === threshold) {
+      log.warn({ endpointId: ep.id, failureCount: endpointResult.failureCount }, "Circuit breaker opened")
     }
 
     log.error(
