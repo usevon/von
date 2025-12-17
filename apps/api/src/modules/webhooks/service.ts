@@ -60,9 +60,12 @@ export abstract class WebhookService {
     .prepare("get_event")
 
   private static getDeliveriesStmt = db
-    .select()
+    .select({ delivery })
     .from(delivery)
-    .where(eq(delivery.eventId, sql.placeholder("eventId")))
+    .innerJoin(event, eq(delivery.eventId, event.id))
+    .where(
+      and(eq(delivery.eventId, sql.placeholder("eventId")), eq(event.organizationId, sql.placeholder("orgId")))
+    )
     .prepare("get_deliveries")
 
   static async createEvent(params: CreateEventParams): Promise<WebhookModel.event> {
@@ -226,8 +229,8 @@ export abstract class WebhookService {
     return result ? toEvent(result) : null
   }
 
-  static async getDeliveries(eventId: string): Promise<WebhookModel.delivery[]> {
-    const rows = await this.getDeliveriesStmt.execute({ eventId })
-    return rows.map(toDelivery)
+  static async getDeliveries(organizationId: string, eventId: string): Promise<WebhookModel.delivery[]> {
+    const rows = await this.getDeliveriesStmt.execute({ eventId, orgId: organizationId })
+    return rows.map((r) => toDelivery(r.delivery))
   }
 }

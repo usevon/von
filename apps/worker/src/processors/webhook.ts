@@ -218,8 +218,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         "Webhook delivered successfully"
       )
     } else {
-      const responseBody = await response.text().catch(() => null)
-      throw new Error(`HTTP ${response.status}: ${responseBody?.slice(0, 200)}`)
+      throw new Error(`HTTP ${response.status}`)
     }
   } catch (error) {
     const attempts = deliveryRecord.attempts + 1

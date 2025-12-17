@@ -23,3 +23,31 @@ If the issue is confirmed, we will release a patch as soon as possible. Once a p
 ## Supported Versions
 
 We only support the latest version of Von. Older versions are not supported.
+
+## Security Measures
+
+### Authentication
+
+- API keys with environment prefixes (`von_dev_`, `von_stg_`, `von_prod_`)
+- HMAC-SHA256 signed keys with timing-safe verification
+- SHA256 hashed storage (keys never retrievable)
+- Session-based auth with better-auth
+
+### Webhook Security
+
+- HMAC-SHA256 signatures on all deliveries
+- Timestamp validation (5-minute replay window)
+- SSRF protection (private IP/hostname blocklist)
+- Circuit breaker pattern for endpoint reliability
+
+### Data Protection
+
+- Organization-scoped data access
+- Parameterized queries (Drizzle ORM)
+- No raw SQL
+
+### Infrastructure
+
+- Security headers (HSTS, X-Frame-Options, X-Content-Type-Options)
+- Rate limiting (IP + user-based via Redis)
+- Redis-backed idempotency with database constraints
