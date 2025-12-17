@@ -101,6 +101,14 @@ export function createApiKey({
 
       await setApiKey(ctx as never, apiKey, opts)
 
+      // Audit log
+      ctx.context.logger.info("API key created", {
+        userId: session.user.id,
+        keyId: apiKey.id,
+        environment,
+        organizationId: organizationId ?? null,
+      })
+
       return ctx.json({
         ...apiKey,
         key,

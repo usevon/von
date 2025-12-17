@@ -64,6 +64,13 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
         where: [{ field: "id", value: ctx.body.keyId }],
       })
 
+      // Audit log
+      ctx.context.logger.info("API key deleted", {
+        userId: session.user.id,
+        keyId: apiKey.id,
+        organizationId: apiKey.organizationId ?? null,
+      })
+
       return ctx.json({ success: true })
     }
   )
