@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import * as p from "@clack/prompts";
+import { log } from "@clack/prompts";
 
 export type VonConfig = {
   apiUrl: string;
@@ -67,7 +67,7 @@ export const clearConfig = (): void => {
 export const requireAuth = (): { token: string; config: VonConfig } => {
   const config = loadConfig();
   if (!config.token) {
-    p.log.warn("Not logged in, run 'von login' first");
+    log.warn("Not logged in, run 'von login' first");
     process.exit(1);
   }
   return { token: config.token, config };

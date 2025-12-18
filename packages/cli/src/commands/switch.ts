@@ -1,4 +1,4 @@
-import * as p from "@clack/prompts";
+import { log, outro, spinner } from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
 import { listOrganizations } from "@/lib/api";
@@ -10,15 +10,15 @@ export const switchOrg = new Command("switch")
   .action(async () => {
     const { token, config } = requireAuth();
 
-    const s = p.spinner();
+    const s = spinner();
     s.start("Fetching organizations...");
 
     const orgs = await listOrganizations(token);
 
     if (orgs.length === 0) {
       s.stop();
-      p.log.info("No organizations found");
-      p.outro(`Create one at ${pc.cyan("app.usevon.com")}`);
+      log.info("No organizations found");
+      outro(`Create one at ${pc.cyan("app.usevon.com")}`);
       return;
     }
 
@@ -27,7 +27,7 @@ export const switchOrg = new Command("switch")
       if (org) {
         if (org.id === config.organizationId) {
           s.stop(`Already using ${pc.cyan(org.name)}`);
-          p.outro("Create more orgs to switch between them");
+          outro("Create more orgs to switch between them");
         } else {
           s.stop(`Found ${pc.cyan(org.name)}`);
           await selectAndSetOrganization({
@@ -44,7 +44,7 @@ export const switchOrg = new Command("switch")
 
     const currentOrg = orgs.find((o) => o.id === config.organizationId);
     if (currentOrg) {
-      p.log.info(`Current: ${pc.cyan(currentOrg.name)}`);
+      log.info(`Current: ${pc.cyan(currentOrg.name)}`);
     }
 
     await selectAndSetOrganization({

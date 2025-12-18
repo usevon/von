@@ -35,6 +35,7 @@ function TestAuthPage() {
   const [log, setLog] = useState<string[]>([]);
   const prevSessionRef = useRef(data);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const sessionStatus = isPending ? "Loading..." : data ? "Authenticated" : "Not authenticated";
 
   useEffect(() => {
     if (prevSessionRef.current && !data && !isPending) {
@@ -192,8 +193,7 @@ function TestAuthPage() {
 
       <div className="mb-5 rounded-lg bg-muted p-4">
         <h3 className="mb-2 font-semibold text-lg">
-          Session Status:{" "}
-          {isPending ? "Loading..." : data ? "Authenticated" : "Not authenticated"}
+          Session Status: {sessionStatus}
         </h3>
         <pre className="overflow-auto text-xs">
           {JSON.stringify(data, null, 2)}

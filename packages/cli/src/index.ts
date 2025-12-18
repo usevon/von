@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import * as p from "@clack/prompts";
+import { log } from "@clack/prompts";
 import { Command } from "commander";
 import { dev } from "@/commands/dev";
 import { login } from "@/commands/login";
@@ -17,7 +17,7 @@ const program = new Command("von")
   .configureOutput({
     outputError: (str) => {
       const msg = str.replace(ERROR_PREFIX, "").trim();
-      p.log.error(msg);
+      log.error(msg);
     },
   })
   .action(() => {

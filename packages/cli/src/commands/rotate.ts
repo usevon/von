@@ -1,4 +1,4 @@
-import * as p from "@clack/prompts";
+import { log, note, spinner } from "@clack/prompts";
 import { generateTunnelId } from "@usevon/utils";
 import { Command } from "commander";
 import pc from "picocolors";
@@ -12,30 +12,30 @@ export const rotate = new Command("rotate")
     const { token, config } = requireAuth();
 
     if (!options.port) {
-      p.log.error("Port is required. Usage: von rotate -p <port>");
+      log.error("Port is required. Usage: von rotate -p <port>");
       return;
     }
 
     const port = Number.parseInt(options.port, 10);
     if (Number.isNaN(port) || port < 1 || port > 65_535) {
-      p.log.error(`Invalid port number: ${options.port}`);
+      log.error(`Invalid port number: ${options.port}`);
       return;
     }
 
     const organizationId = config.organizationId;
     if (!organizationId) {
-      p.log.error("No organization selected. Run 'von login' or 'von switch'");
+      log.error("No organization selected. Run 'von login' or 'von switch'");
       return;
     }
 
-    const s = p.spinner();
+    const s = spinner();
     s.start("Rotating tunnel secret...");
 
     try {
       const session = await getSession(token);
       if (!session) {
         s.stop("Error");
-        p.log.error("Session expired, run 'von login' to re-authenticate");
+        log.error("Session expired, run 'von login' to re-authenticate");
         return;
       }
 
@@ -45,14 +45,14 @@ export const rotate = new Command("rotate")
       s.stop("Secret rotated");
 
       const tunnelUrl = `${config.tunnelUrl}/${tunnelId}-${secret}`;
-      p.note(
+      note(
         `${pc.dim("Port:")}   ${pc.magenta(port.toString())}\n${pc.dim("URL:")}    ${pc.cyan(tunnelUrl)}`,
         "New Tunnel URL"
       );
-      p.log.success("Old URLs will no longer work");
+      log.success("Old URLs will no longer work");
     } catch (err) {
       s.stop("Error");
-      p.log.error(
+      log.error(
         `Failed to rotate tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
       );
     }

@@ -1,5 +1,5 @@
 import { type FSWatcher, watch } from "node:fs";
-import * as p from "@clack/prompts";
+import { log, note, spinner } from "@clack/prompts";
 import { TunnelManager } from "@usevon/tunnel";
 import { Command } from "commander";
 import pc from "picocolors";
@@ -18,31 +18,31 @@ export const dev = new Command("dev")
     const { token, config } = requireAuth();
 
     if (!options.port || options.port.length === 0) {
-      p.log.error("Port is required. Usage: von dev -p <port>");
+      log.error("Port is required. Usage: von dev -p <port>");
       return;
     }
 
     const ports = options.port.map((port: string) => Number.parseInt(port, 10));
     for (const port of ports) {
       if (Number.isNaN(port) || port < 1 || port > 65_535) {
-        p.log.error(`Invalid port number: ${port}`);
+        log.error(`Invalid port number: ${port}`);
         return;
       }
     }
 
     if (ports.length > 3) {
-      p.log.error("Maximum 3 ports allowed per organization");
+      log.error("Maximum 3 ports allowed per organization");
       return;
     }
 
     const organizationId = options.org || config.organizationId;
 
     if (!organizationId) {
-      p.log.error("No organization selected. Run 'von login' or specify --org");
+      log.error("No organization selected. Run 'von login' or specify --org");
       return;
     }
 
-    const s = p.spinner();
+    const s = spinner();
     s.start("Registering tunnel(s)...");
 
     try {
@@ -64,7 +64,7 @@ export const dev = new Command("dev")
 
       s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`);
 
-      p.note(
+      note(
         tunnels
           .map((t) => `${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`)
           .join("\n"),
@@ -72,9 +72,9 @@ export const dev = new Command("dev")
       );
 
       if (options.verbose) {
-        p.log.info("Verbose mode enabled");
+        log.info("Verbose mode enabled");
       }
-      p.log.message(pc.dim("Press Ctrl+C to stop\n"));
+      log.message(pc.dim("Press Ctrl+C to stop\n"));
 
       await connectTunnels(
         token,
@@ -84,7 +84,7 @@ export const dev = new Command("dev")
       );
     } catch (err) {
       s.stop("Error");
-      p.log.error(
+      log.error(
         `Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
       );
     }

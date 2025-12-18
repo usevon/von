@@ -1,4 +1,4 @@
-import * as p from "@clack/prompts";
+import { cancel, isCancel, log, select } from "@clack/prompts";
 import pc from "picocolors";
 import { type Organization, setActiveOrganization } from "@/lib/api";
 import { saveConfig } from "@/lib/config";
@@ -13,7 +13,7 @@ type SelectOrgOptions = {
 export const selectAndSetOrganization = async (
   options: SelectOrgOptions
 ): Promise<boolean> => {
-  const choice = await p.select({
+  const choice = await select({
     message: "Select an organization:",
     options: options.orgs.map((org) => ({
       value: org.id,
@@ -22,9 +22,9 @@ export const selectAndSetOrganization = async (
     })),
   });
 
-  if (p.isCancel(choice)) {
+  if (isCancel(choice)) {
     if (options.exitOnCancel) {
-      p.cancel("Cancelled");
+      cancel("Cancelled");
       process.exit(0);
     }
     return false;
@@ -32,13 +32,13 @@ export const selectAndSetOrganization = async (
 
   if (choice === options.currentOrgId) {
     const name = options.orgs.find((o) => o.id === choice)?.name;
-    p.log.info(`Already using ${pc.cyan(name)}`);
+    log.info(`Already using ${pc.cyan(name)}`);
     return true;
   }
 
   await setActiveOrganization(options.token, choice as string);
   saveConfig({ organizationId: choice as string });
   const selected = options.orgs.find((o) => o.id === choice);
-  p.log.success(`Organization set to ${pc.cyan(selected?.name)}`);
+  log.success(`Organization set to ${pc.cyan(selected?.name)}`);
   return true;
 };

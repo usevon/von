@@ -1,4 +1,4 @@
-import * as p from "@clack/prompts";
+import { cancel, intro, isCancel, log, note, outro, select, spinner, text } from "@clack/prompts";
 import { Command } from "commander";
 import open from "open";
 import pc from "picocolors";
@@ -23,15 +23,15 @@ export const login = new Command("login")
   .option("--tunnel-url <url>", "Custom tunnel URL")
   .option("-f, --force", "Force re-login even if already authenticated")
   .action(async (options) => {
-    p.intro(pc.cyan("Von CLI Login"));
+    intro(pc.cyan("Von CLI Login"));
 
     const config = loadConfig();
 
     if (config.token && !options.force) {
       const session = await getSession(config.token).catch(() => null);
       if (session) {
-        p.log.info(`Already logged in as ${pc.cyan(session.user.email)}`);
-        p.outro(`Use ${pc.dim("von login --force")} to re-authenticate`);
+        log.info(`Already logged in as ${pc.cyan(session.user.email)}`);
+        outro(`Use ${pc.dim("von login --force")} to re-authenticate`);
         return;
       }
     }
@@ -41,14 +41,14 @@ export const login = new Command("login")
         apiUrl: "http://localhost:8080",
         tunnelUrl: "http://localhost:8081",
       });
-      p.log.info("Using local development URLs");
+      log.info("Using local development URLs");
     } else if (options.apiUrl) {
       saveConfig({
         apiUrl: options.apiUrl,
         tunnelUrl: options.tunnelUrl || options.apiUrl,
       });
     } else {
-      const instanceType = await p.select({
+      const instanceType = await select({
         message: "How are you connecting to Von?",
         options: [
           {
@@ -60,8 +60,8 @@ export const login = new Command("login")
         ],
       });
 
-      if (p.isCancel(instanceType)) {
-        p.cancel("Login cancelled");
+      if (isCancel(instanceType)) {
+        cancel("Login cancelled");
         process.exit(0);
       }
 
@@ -71,7 +71,7 @@ export const login = new Command("login")
           tunnelUrl: DEFAULT_TUNNEL_URL,
         });
       } else if (instanceType === "self-hosted") {
-        const apiUrl = await p.text({
+        const apiUrl = await text({
           message: "API URL:",
           placeholder: "http://localhost:8080",
           validate: (v) => {
@@ -84,12 +84,12 @@ export const login = new Command("login")
           },
         });
 
-        if (p.isCancel(apiUrl)) {
-          p.cancel("Login cancelled");
+        if (isCancel(apiUrl)) {
+          cancel("Login cancelled");
           process.exit(0);
         }
 
-        const tunnelUrl = await p.text({
+        const tunnelUrl = await text({
           message: "Tunnel URL:",
           placeholder: "http://localhost:8080",
           initialValue: apiUrl as string,
@@ -103,8 +103,8 @@ export const login = new Command("login")
           },
         });
 
-        if (p.isCancel(tunnelUrl)) {
-          p.cancel("Login cancelled");
+        if (isCancel(tunnelUrl)) {
+          cancel("Login cancelled");
           process.exit(0);
         }
 
@@ -115,14 +115,14 @@ export const login = new Command("login")
       }
     }
 
-    const s = p.spinner();
+    const s = spinner();
     s.start("Requesting device authorization...");
 
     try {
       const deviceData = await requestDeviceCode();
       s.stop("Device code received");
 
-      p.note(
+      note(
         `Code: ${pc.bold(pc.cyan(deviceData.user_code))}\n\nOpening browser to: ${deviceData.verification_uri}`,
         "Enter this code in your browser"
       );
@@ -145,7 +145,7 @@ export const login = new Command("login")
       const session = await getSession(token);
       if (!session) {
         s.stop("Failed to get session");
-        p.cancel("Could not fetch user session");
+        cancel("Could not fetch user session");
         return;
       }
 
@@ -154,17 +154,17 @@ export const login = new Command("login")
       const orgs = await listOrganizations(token);
 
       if (orgs.length === 0) {
-        p.log.info("No organizations found");
-        p.outro(`Create one at ${pc.cyan("app.usevon.com")}`);
+        log.info("No organizations found");
+        outro(`Create one at ${pc.cyan("app.usevon.com")}`);
         return;
       }
 
       await selectAndSetOrganization({ orgs, token });
 
-      p.outro(pc.green("Ready to use Von CLI!"));
+      outro(pc.green("Ready to use Von CLI!"));
     } catch (err) {
       s.stop("Error");
-      p.cancel(
+      cancel(
         `Login failed: ${err instanceof Error ? err.message : "Unknown error"}`
       );
     }

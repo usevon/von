@@ -60,7 +60,8 @@ const Navbar = () => {
       <div>
         {isPending ? (
           <span className="text-gray-400">Loading...</span>
-        ) : session ? (
+        ) : null}
+        {!isPending && session ? (
           <div className="flex items-center gap-3">
             <span className="text-gray-600">{session.user.email}</span>
             <button
@@ -71,9 +72,10 @@ const Navbar = () => {
               Sign Out
             </button>
           </div>
-        ) : (
+        ) : null}
+        {!isPending && !session ? (
           <span className="text-gray-400">Not logged in</span>
-        )}
+        ) : null}
       </div>
     </nav>
   );

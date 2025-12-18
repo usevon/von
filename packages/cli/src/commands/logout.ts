@@ -1,4 +1,4 @@
-import * as p from "@clack/prompts";
+import { log } from "@clack/prompts";
 import { Command } from "commander";
 import { clearConfig, loadConfig } from "@/lib/config";
 
@@ -7,9 +7,9 @@ export const logout = new Command("logout")
   .action(() => {
     const config = loadConfig();
     if (!config.token) {
-      p.log.warn("Not logged in");
+      log.warn("Not logged in");
       return;
     }
     clearConfig();
-    p.log.success("Logged out");
+    log.success("Logged out");
   });
