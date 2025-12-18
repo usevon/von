@@ -202,6 +202,7 @@ export const endpoint = pgTable(
     version: date("version"),
     retryCount: integer("retry_count").default(3).notNull(),
     timeoutMs: integer("timeout_ms").default(30_000).notNull(),
+    events: text("events").array(),
     circuitState: text("circuit_state").default("closed").notNull(),
     failureCount: integer("failure_count").default(0).notNull(),
     lastFailureAt: timestamp("last_failure_at"),

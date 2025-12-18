@@ -5,6 +5,7 @@ export type DeliveryEndpoint = {
   timeoutMs: number;
   retryCount: number;
   version: string | null;
+  events: string[] | null;
 };
 
 export type WebhookDeliveryJob = {

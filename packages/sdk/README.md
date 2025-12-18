@@ -67,6 +67,7 @@ const { data: endpoint } = await von.endpoints.create({
   description: 'Production webhook endpoint',
   retryCount: 5,
   timeoutMs: 30000,
+  events: ['order.*', 'payment.failed'], // optional - filter by event type
 })
 
 // List endpoints

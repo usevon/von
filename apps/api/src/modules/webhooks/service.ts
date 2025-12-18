@@ -6,6 +6,7 @@ import {
   BadRequestError,
   generateId,
   InternalServerError,
+  matchesEventType,
 } from "@usevon/utils";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { EndpointService } from "@/modules/endpoints/service";
@@ -68,6 +69,7 @@ type DeliveryEndpoint = {
   timeoutMs: number;
   retryCount: number;
   version: string | null;
+  events: string[] | null;
 };
 
 type BuildDeliveriesParams = {
@@ -85,9 +87,13 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
   const allJobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
 
   for (const evt of newEvents) {
-    const targets = evt.endpointIds?.length
+    const candidates = evt.endpointIds?.length
       ? evt.endpointIds.flatMap((id) => endpointsById.get(id) ?? [])
       : allEndpoints;
+
+    const targets = candidates.filter((ep) =>
+      matchesEventType(evt.eventType, ep.events)
+    );
 
     const payloadStr = JSON.stringify(evt.payload);
     for (const ep of targets) {

@@ -5,6 +5,7 @@ export type CreateEndpointParams = {
   version?: string;
   retryCount?: number;
   timeoutMs?: number;
+  events?: string[];
 };
 
 export type UpdateEndpointParams = {
@@ -14,6 +15,7 @@ export type UpdateEndpointParams = {
   version?: string | null;
   retryCount?: number;
   timeoutMs?: number;
+  events?: string[] | null;
 };
 
 export type Endpoint = {
@@ -25,6 +27,7 @@ export type Endpoint = {
   version: string | null;
   retryCount: number;
   timeoutMs: number;
+  events: string[] | null;
   createdAt: string;
   updatedAt: string;
 };
