@@ -1,3 +1,3 @@
-import { createLogger } from "@usevon/utils/logger"
+import { createLogger } from "@usevon/utils/logger";
 
-export const log = createLogger({ name: "api" })
+export const log = createLogger({ name: "api" });

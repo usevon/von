@@ -1,31 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSession } from "@/lib/auth/client";
 import { useWebhooks } from "@usevon/react/hooks";
-import { Webhook, Building2 } from "lucide-react";
-import { SendWebhookDialog } from "@/components/send-webhook-dialog";
 import {
   Button,
   Card,
   CardPanel,
   Empty,
+  EmptyContent,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
   Spinner,
 } from "@usevon/ui";
+import { Building2, Webhook } from "lucide-react";
+import { SendWebhookDialog } from "@/components/send-webhook-dialog";
+import { useSession } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
 });
+
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  completed: "bg-green-100 text-green-800",
+  failed: "bg-red-100 text-red-800",
+};
 
 export default function WebhooksPage() {
   const { data } = useSession();
   const { session, user } = data ?? {};
   const { events, isLoading, isRefreshing, error, refresh } = useWebhooks();
 
-  const isDisabled = !user || !session?.activeOrganizationId;
+  const isDisabled = !(user && session?.activeOrganizationId);
 
   const renderContent = () => {
     if (!user) {
@@ -36,7 +42,9 @@ export default function WebhooksPage() {
               <Webhook className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>Please sign in to view webhook events.</EmptyDescription>
+            <EmptyDescription>
+              Please sign in to view webhook events.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       );
@@ -50,7 +58,9 @@ export default function WebhooksPage() {
               <Building2 className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>No organization</EmptyTitle>
-            <EmptyDescription>Create an organization to start sending webhooks.</EmptyDescription>
+            <EmptyDescription>
+              Create an organization to start sending webhooks.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button>Create Organization</Button>
@@ -67,7 +77,9 @@ export default function WebhooksPage() {
               <Spinner className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Loading webhook events...</EmptyTitle>
-            <EmptyDescription>Fetching your recent webhook activity.</EmptyDescription>
+            <EmptyDescription>
+              Fetching your recent webhook activity.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button disabled>Send Test</Button>
@@ -78,7 +90,7 @@ export default function WebhooksPage() {
 
     if (error) {
       return (
-        <div className="p-4 bg-red-100 text-red-700 rounded">
+        <div className="rounded bg-red-100 p-4 text-red-700">
           Error: {error.message}
         </div>
       );
@@ -92,7 +104,9 @@ export default function WebhooksPage() {
               <Webhook className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>No webhook events</EmptyTitle>
-            <EmptyDescription>Send a test webhook or use the API to get started.</EmptyDescription>
+            <EmptyDescription>
+              Send a test webhook or use the API to get started.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <SendWebhookDialog onSent={refresh} />
@@ -106,24 +120,21 @@ export default function WebhooksPage() {
         {events.map((event) => (
           <Card key={event.id}>
             <CardPanel>
-              <div className="flex justify-between items-start mb-2">
+              <div className="mb-2 flex items-start justify-between">
                 <span className="font-semibold">{event.eventType}</span>
                 <span
-                  className={`px-2 py-1 text-xs rounded ${event.status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : event.status === "completed"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                    }`}
+                  className={`rounded px-2 py-1 text-xs ${statusColors[event.status] ?? statusColors.failed}`}
                 >
                   {event.status}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">ID: {event.id}</p>
-              <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+              <p className="mb-2 text-muted-foreground text-xs">
+                ID: {event.id}
+              </p>
+              <pre className="overflow-auto rounded bg-muted p-2 text-xs">
                 {JSON.stringify(event.payload, null, 2)}
               </pre>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="mt-2 text-muted-foreground text-xs">
                 {new Date(event.createdAt).toLocaleString()}
               </p>
             </CardPanel>
@@ -135,11 +146,18 @@ export default function WebhooksPage() {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Webhook Events</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-bold text-2xl">Webhook Events</h1>
         <div className="flex gap-2">
-          <SendWebhookDialog disabled={isLoading || isDisabled} onSent={refresh} />
-          <Button onClick={refresh} disabled={isLoading || isRefreshing || isDisabled} variant="secondary">
+          <SendWebhookDialog
+            disabled={isLoading || isDisabled}
+            onSent={refresh}
+          />
+          <Button
+            disabled={isLoading || isRefreshing || isDisabled}
+            onClick={refresh}
+            variant="secondary"
+          >
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>

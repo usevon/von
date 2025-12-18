@@ -1,24 +1,23 @@
-import { mock } from 'bun:test'
+import { mock } from "bun:test";
 
 export type MockResponse = {
-  ok: boolean
-  status: number
-  statusText: string
-  headers: Headers
-  json: () => Promise<unknown>
-}
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Headers;
+  json: () => Promise<unknown>;
+};
 
-export const mockFetch = (response: MockResponse) => {
-  return mock(() => Promise.resolve(response))
-}
+export const mockFetch = (response: MockResponse) =>
+  mock(() => Promise.resolve(response));
 
 export const mockJsonResponse = <T>(data: T, status = 200): MockResponse => ({
   ok: status >= 200 && status < 300,
   status,
-  statusText: status === 200 ? 'OK' : 'Error',
-  headers: new Headers({ 'Content-Type': 'application/json' }),
+  statusText: status === 200 ? "OK" : "Error",
+  headers: new Headers({ "Content-Type": "application/json" }),
   json: () => Promise.resolve(data),
-})
+});
 
 export const mockErrorResponse = (
   error: string,
@@ -27,7 +26,7 @@ export const mockErrorResponse = (
 ): MockResponse => ({
   ok: false,
   status,
-  statusText: 'Error',
-  headers: new Headers({ 'Content-Type': 'application/json' }),
+  statusText: "Error",
+  headers: new Headers({ "Content-Type": "application/json" }),
   json: () => Promise.resolve({ error, code }),
-})
+});

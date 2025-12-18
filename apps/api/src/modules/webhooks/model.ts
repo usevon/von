@@ -1,6 +1,6 @@
-import { t } from "elysia"
+import { t } from "elysia";
 
-const eventTypePattern = "^[a-zA-Z0-9._-]+$"
+const eventTypePattern = "^[a-zA-Z0-9._-]+$";
 
 export namespace WebhookModel {
   export const sendBody = t.Object({
@@ -8,9 +8,9 @@ export namespace WebhookModel {
     payload: t.Unknown(),
     idempotencyKey: t.Optional(t.String()),
     endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
-  })
+  });
 
-  export type sendBody = typeof sendBody.static
+  export type sendBody = typeof sendBody.static;
 
   export const sendBatchBody = t.Object({
     events: t.Array(
@@ -21,9 +21,9 @@ export namespace WebhookModel {
         endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
       })
     ),
-  })
+  });
 
-  export type sendBatchBody = typeof sendBatchBody.static
+  export type sendBatchBody = typeof sendBatchBody.static;
 
   export const event = t.Object({
     id: t.String({ format: "uuid" }),
@@ -32,23 +32,23 @@ export namespace WebhookModel {
     idempotencyKey: t.Union([t.String(), t.Null()]),
     status: t.String(),
     createdAt: t.String(),
-  })
+  });
 
-  export type event = typeof event.static
+  export type event = typeof event.static;
 
   export const eventList = t.Object({
     events: t.Array(event),
     total: t.Number(),
-  })
+  });
 
-  export type eventList = typeof eventList.static
+  export type eventList = typeof eventList.static;
 
   export const batchResult = t.Object({
     created: t.Number(),
     events: t.Array(event),
-  })
+  });
 
-  export type batchResult = typeof batchResult.static
+  export type batchResult = typeof batchResult.static;
 
   export const delivery = t.Object({
     id: t.String({ format: "uuid" }),
@@ -60,7 +60,7 @@ export namespace WebhookModel {
     lastAttemptAt: t.Union([t.String(), t.Null()]),
     responseStatus: t.Union([t.Number(), t.Null()]),
     createdAt: t.String(),
-  })
+  });
 
-  export type delivery = typeof delivery.static
+  export type delivery = typeof delivery.static;
 }

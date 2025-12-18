@@ -1,75 +1,101 @@
-import { Command } from "commander"
-import * as p from "@clack/prompts"
-import pc from "picocolors"
-import { watch, type FSWatcher } from "node:fs"
-import { TunnelManager } from "@usevon/tunnel"
-import { requireAuth, loadConfig, getConfigPath } from "@/lib/config"
-import { registerTunnel } from "@/lib/api"
+import { type FSWatcher, watch } from "node:fs";
+import * as p from "@clack/prompts";
+import { TunnelManager } from "@usevon/tunnel";
+import { Command } from "commander";
+import pc from "picocolors";
+import { registerTunnel } from "@/lib/api";
+import { getConfigPath, loadConfig, requireAuth } from "@/lib/config";
 
 export const dev = new Command("dev")
   .description("Start dev tunnel for local webhook testing")
   .option("-p, --port <port...>", "Local port(s) to forward to (max 3)")
-  .option("-o, --org <orgId>", "Organization ID (uses active org if not specified)")
+  .option(
+    "-o, --org <orgId>",
+    "Organization ID (uses active org if not specified)"
+  )
   .option("-v, --verbose", "Show detailed request/response info")
   .action(async (options) => {
-    const { token, config } = requireAuth()
+    const { token, config } = requireAuth();
 
     if (!options.port || options.port.length === 0) {
-      p.log.error("Port is required. Usage: von dev -p <port>")
-      return
+      p.log.error("Port is required. Usage: von dev -p <port>");
+      return;
     }
 
-    const ports = options.port.map((port: string) => parseInt(port, 10))
+    const ports = options.port.map((port: string) => Number.parseInt(port, 10));
     for (const port of ports) {
-      if (isNaN(port) || port < 1 || port > 65535) {
-        p.log.error(`Invalid port number: ${port}`)
-        return
+      if (Number.isNaN(port) || port < 1 || port > 65_535) {
+        p.log.error(`Invalid port number: ${port}`);
+        return;
       }
     }
 
     if (ports.length > 3) {
-      p.log.error("Maximum 3 ports allowed per organization")
-      return
+      p.log.error("Maximum 3 ports allowed per organization");
+      return;
     }
 
-    const organizationId = options.org || config.organizationId
+    const organizationId = options.org || config.organizationId;
 
     if (!organizationId) {
-      p.log.error("No organization selected. Run 'von login' or specify --org")
-      return
+      p.log.error("No organization selected. Run 'von login' or specify --org");
+      return;
     }
 
-    const s = p.spinner()
-    s.start("Registering tunnel(s)...")
+    const s = p.spinner();
+    s.start("Registering tunnel(s)...");
 
     try {
-      const tunnels: Array<{ port: number; tunnelId: string; tunnelUrl: string; wsUrl: string }> = []
+      const tunnels: Array<{
+        port: number;
+        tunnelId: string;
+        tunnelUrl: string;
+        wsUrl: string;
+      }> = [];
 
       for (const port of ports) {
-        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(token, port, organizationId)
-        tunnels.push({ port, tunnelId, tunnelUrl, wsUrl })
+        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(
+          token,
+          port,
+          organizationId
+        );
+        tunnels.push({ port, tunnelId, tunnelUrl, wsUrl });
       }
 
-      s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`)
+      s.stop(`${tunnels.length} tunnel${tunnels.length > 1 ? "s" : ""} ready`);
 
       p.note(
-        tunnels.map((t) => `${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`).join("\n"),
+        tunnels
+          .map((t) => `${pc.magenta(t.port.toString())}  ${t.tunnelUrl}`)
+          .join("\n"),
         "Tunnels"
-      )
+      );
 
       if (options.verbose) {
-        p.log.info("Verbose mode enabled")
+        p.log.info("Verbose mode enabled");
       }
-      p.log.message(pc.dim("Press Ctrl+C to stop\n"))
+      p.log.message(pc.dim("Press Ctrl+C to stop\n"));
 
-      await connectTunnels(token, tunnels, options.verbose ?? false, config.tunnelUrl)
+      await connectTunnels(
+        token,
+        tunnels,
+        options.verbose ?? false,
+        config.tunnelUrl
+      );
     } catch (err) {
-      s.stop("Error")
-      p.log.error(`Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`)
+      s.stop("Error");
+      p.log.error(
+        `Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
     }
-  })
+  });
 
-type TunnelInfo = { port: number; tunnelId: string; tunnelUrl: string; wsUrl: string }
+type TunnelInfo = {
+  port: number;
+  tunnelId: string;
+  tunnelUrl: string;
+  wsUrl: string;
+};
 
 const connectTunnels = async (
   token: string,
@@ -78,71 +104,75 @@ const connectTunnels = async (
   tunnelBaseUrl: string
 ): Promise<void> => {
   return new Promise((_, reject) => {
-    let isShuttingDown = false
-    let configWatcher: FSWatcher | null = null
+    let isShuttingDown = false;
+    let configWatcher: FSWatcher | null = null;
 
     // Map port to tunnelId for secret rotation
-    const portToTunnelId = new Map(tunnels.map((t) => [t.port, t.tunnelId]))
+    const portToTunnelId = new Map(tunnels.map((t) => [t.port, t.tunnelId]));
 
     const manager = new TunnelManager(token, {
       verbose,
       onTakeover: () => {
         if (manager.activeTunnels === 0) {
-          console.log()
-          console.log(pc.dim("  all tunnels taken over, exiting..."))
-          process.exit(0)
+          console.log();
+          console.log(pc.dim("  all tunnels taken over, exiting..."));
+          process.exit(0);
         }
       },
       onMaxRetries: (port) => {
-        reject(new Error(`${port} max reconnection attempts reached`))
+        reject(new Error(`${port} max reconnection attempts reached`));
       },
       onSecretRotated: (port, newSecret) => {
-        const tunnelId = portToTunnelId.get(port)
+        const tunnelId = portToTunnelId.get(port);
         if (tunnelId) {
-          const newUrl = `${tunnelBaseUrl}/${tunnelId}-${newSecret}`
-          console.log()
-          console.log(pc.yellow(`  Secret rotated for port ${port}`))
-          console.log(pc.cyan(`  New URL: ${newUrl}`))
-          console.log()
+          const newUrl = `${tunnelBaseUrl}/${tunnelId}-${newSecret}`;
+          console.log();
+          console.log(pc.yellow(`  Secret rotated for port ${port}`));
+          console.log(pc.cyan(`  New URL: ${newUrl}`));
+          console.log();
         }
       },
-    })
+    });
 
     const shutdown = (reason?: string) => {
-      if (isShuttingDown) return
-      isShuttingDown = true
-      configWatcher?.close()
-      console.log()
-      console.log(pc.dim(`  ${reason ?? "closing"}...`))
-      manager.terminate()
-      process.exit(0)
-    }
+      if (isShuttingDown) {
+        return;
+      }
+      isShuttingDown = true;
+      configWatcher?.close();
+      console.log();
+      console.log(pc.dim(`  ${reason ?? "closing"}...`));
+      manager.terminate();
+      process.exit(0);
+    };
 
     // Watch config file for logout
-    const configPath = getConfigPath()
+    const configPath = getConfigPath();
     configWatcher = watch(configPath, () => {
-      const newConfig = loadConfig()
+      const newConfig = loadConfig();
       if (!newConfig?.token) {
-        shutdown("logged out, closing tunnels")
+        shutdown("logged out, closing tunnels");
       }
-    })
+    });
 
     if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true)
-      process.stdin.resume()
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
       process.stdin.on("data", (data) => {
-        if (data[0] === 0x03) shutdown()
-      })
+        if (data[0] === 0x03) {
+          shutdown();
+        }
+      });
     }
 
-    process.on("SIGINT", shutdown)
-    process.on("SIGTERM", shutdown)
-    process.on("exit", () => configWatcher?.close())
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    process.on("exit", () => configWatcher?.close());
 
     for (const tunnel of tunnels) {
-      manager.addTunnel(tunnel.port, tunnel.wsUrl)
+      manager.addTunnel(tunnel.port, tunnel.wsUrl);
     }
 
-    manager.connect()
-  })
-}
+    manager.connect();
+  });
+};

@@ -1,75 +1,80 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useSession } from '@/lib/auth/client'
-import { api } from '@/lib/api'
-import { useInbound } from '@usevon/react/hooks'
-import { Download, Building2 } from 'lucide-react'
-import { CreateInboundDialog } from '@/components/create-inbound-dialog'
+import { createFileRoute } from "@tanstack/react-router";
+import { useInbound } from "@usevon/react/hooks";
 import {
   AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogPopup,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
   AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
   Button,
   Card,
   CardPanel,
   Empty,
+  EmptyContent,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
   Spinner,
-} from '@usevon/ui'
+} from "@usevon/ui";
+import { Building2, Download } from "lucide-react";
+import { CreateInboundDialog } from "@/components/create-inbound-dialog";
+import { api } from "@/lib/api";
+import { useSession } from "@/lib/auth/client";
 
-export const Route = createFileRoute('/inbound')({
+export const Route = createFileRoute("/inbound")({
   component: InboundPage,
-})
+});
 
 export default function InboundPage() {
-  const { data } = useSession()
-  const { session, user } = data ?? {}
-  const { endpoints, isLoading, isRefreshing, error, refresh, mutate } = useInbound()
+  const { data } = useSession();
+  const { session, user } = data ?? {};
+  const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
+    useInbound();
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
     mutate(
-      endpoints.map(e => e.id === id ? { ...e, enabled: !currentEnabled } : e),
+      endpoints.map((e) =>
+        e.id === id ? { ...e, enabled: !currentEnabled } : e
+      ),
       { revalidate: false }
-    )
+    );
 
-    const { error } = await api.inbound({ id }).patch(
-      { enabled: !currentEnabled },
-      { fetch: { credentials: 'include' } }
-    )
+    const { error: toggleError } = await api
+      .inbound({ id })
+      .patch(
+        { enabled: !currentEnabled },
+        { fetch: { credentials: "include" } }
+      );
 
-    if (error) {
-      console.error('Error toggling inbound endpoint:', error)
+    if (toggleError) {
+      console.error("Error toggling inbound endpoint:", toggleError);
     }
 
-    mutate()
-  }
+    mutate();
+  };
 
   const deleteEndpoint = async (id: string) => {
     mutate(
-      endpoints.filter(e => e.id !== id),
+      endpoints.filter((e) => e.id !== id),
       { revalidate: false }
-    )
+    );
 
-    const { error } = await api.inbound({ id }).delete(null, {
-      fetch: { credentials: 'include' },
-    })
+    const { error: deleteError } = await api.inbound({ id }).delete(null, {
+      fetch: { credentials: "include" },
+    });
 
-    if (error) {
-      console.error('Error deleting inbound endpoint:', error)
+    if (deleteError) {
+      console.error("Error deleting inbound endpoint:", deleteError);
     }
 
-    mutate()
-  }
+    mutate();
+  };
 
-  const isDisabled = !user || !session?.activeOrganizationId
+  const isDisabled = !(user && session?.activeOrganizationId);
 
   const renderContent = () => {
     if (!user) {
@@ -80,10 +85,12 @@ export default function InboundPage() {
               <Download className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>Please sign in to manage inbound endpoints.</EmptyDescription>
+            <EmptyDescription>
+              Please sign in to manage inbound endpoints.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      )
+      );
     }
 
     if (!session?.activeOrganizationId) {
@@ -94,13 +101,15 @@ export default function InboundPage() {
               <Building2 className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>No organization</EmptyTitle>
-            <EmptyDescription>Create an organization to manage inbound endpoints.</EmptyDescription>
+            <EmptyDescription>
+              Create an organization to manage inbound endpoints.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button>Create Organization</Button>
           </EmptyContent>
         </Empty>
-      )
+      );
     }
 
     if (isLoading) {
@@ -111,21 +120,23 @@ export default function InboundPage() {
               <Spinner className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Loading inbound endpoints...</EmptyTitle>
-            <EmptyDescription>Fetching your inbound endpoints.</EmptyDescription>
+            <EmptyDescription>
+              Fetching your inbound endpoints.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button disabled>Create Inbound Endpoint</Button>
           </EmptyContent>
         </Empty>
-      )
+      );
     }
 
     if (error) {
       return (
-        <div className="p-4 bg-red-100 text-red-700 rounded">
+        <div className="rounded bg-red-100 p-4 text-red-700">
           Error: {error.message}
         </div>
-      )
+      );
     }
 
     if (endpoints.length === 0) {
@@ -136,13 +147,15 @@ export default function InboundPage() {
               <Download className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>No inbound endpoints</EmptyTitle>
-            <EmptyDescription>Create an inbound endpoint to get started.</EmptyDescription>
+            <EmptyDescription>
+              Create an inbound endpoint to get started.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <CreateInboundDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
-      )
+      );
     }
 
     return (
@@ -150,52 +163,65 @@ export default function InboundPage() {
         {endpoints.map((endpoint) => (
           <Card key={endpoint.id}>
             <CardPanel>
-              <div className="flex justify-between items-start mb-4">
+              <div className="mb-4 flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <span className="font-semibold">
-                      {endpoint.name || 'Unnamed endpoint'}
+                      {endpoint.name || "Unnamed endpoint"}
                     </span>
-                    {endpoint.provider && (
-                      <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+                    {endpoint.provider ? (
+                      <span className="rounded bg-blue-100 px-2 py-1 text-blue-800 text-xs">
                         {endpoint.provider}
                       </span>
-                    )}
+                    ) : null}
                     <span
-                      className={`px-2 py-1 text-xs rounded ${endpoint.enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                        }`}
+                      className={`rounded px-2 py-1 text-xs ${
+                        endpoint.enabled
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
                     >
-                      {endpoint.enabled ? 'Enabled' : 'Disabled'}
+                      {endpoint.enabled ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">Forwards to: {endpoint.forwardUrl}</p>
+                  <p className="text-muted-foreground text-sm">
+                    Forwards to: {endpoint.forwardUrl}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => toggleEndpoint(endpoint.id, endpoint.enabled)}
-                    variant="outline"
+                    onClick={() =>
+                      toggleEndpoint(endpoint.id, endpoint.enabled)
+                    }
                     size="sm"
+                    variant="outline"
                   >
-                    {endpoint.enabled ? 'Disable' : 'Enable'}
+                    {endpoint.enabled ? "Disable" : "Enable"}
                   </Button>
                   <AlertDialog>
-                    <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
+                    <AlertDialogTrigger
+                      render={<Button size="sm" variant="destructive" />}
+                    >
                       Delete
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Inbound Endpoint</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Delete Inbound Endpoint
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this inbound endpoint? This action cannot be undone.
+                          Are you sure you want to delete this inbound endpoint?
+                          This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogClose render={<Button variant="outline" />}>
                           Cancel
                         </AlertDialogClose>
-                        <Button variant="destructive" onClick={() => deleteEndpoint(endpoint.id)}>
+                        <Button
+                          onClick={() => deleteEndpoint(endpoint.id)}
+                          variant="destructive"
+                        >
                           Delete
                         </Button>
                       </AlertDialogFooter>
@@ -203,13 +229,15 @@ export default function InboundPage() {
                   </AlertDialog>
                 </div>
               </div>
-              <div className="bg-muted p-4 rounded mb-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Public Inbound URL:</p>
-                <code className="text-xs bg-background px-2 py-1 rounded block">
-                  {window.location.protocol}//{window.location.host}/in/{endpoint.id}
+              <div className="mb-4 rounded bg-muted p-4">
+                <p className="mb-2 font-medium text-muted-foreground text-xs">
+                  Public Inbound URL:
+                </p>
+                <code className="block rounded bg-background px-2 py-1 text-xs">
+                  {window.location.origin}/in/{endpoint.id}
                 </code>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
                 <div>
                   <span className="font-medium">ID:</span> {endpoint.id}
                 </div>
@@ -217,7 +245,7 @@ export default function InboundPage() {
                   <span className="font-medium">Secret:</span> {endpoint.secret}
                 </div>
                 <div className="col-span-2">
-                  <span className="font-medium">Created:</span>{' '}
+                  <span className="font-medium">Created:</span>{" "}
                   {new Date(endpoint.createdAt).toLocaleString()}
                 </div>
               </div>
@@ -225,21 +253,28 @@ export default function InboundPage() {
           </Card>
         ))}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Inbound Endpoints</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-bold text-2xl">Inbound Endpoints</h1>
         <div className="flex gap-2">
-          <CreateInboundDialog onCreated={refresh} disabled={isLoading || isDisabled} />
-          <Button onClick={refresh} disabled={isLoading || isRefreshing || isDisabled} variant="secondary">
+          <CreateInboundDialog
+            disabled={isLoading || isDisabled}
+            onCreated={refresh}
+          />
+          <Button
+            disabled={isLoading || isRefreshing || isDisabled}
+            onClick={refresh}
+            variant="secondary"
+          >
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>
       {renderContent()}
     </div>
-  )
+  );
 }

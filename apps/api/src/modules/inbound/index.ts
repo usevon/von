@@ -1,23 +1,28 @@
-import { Elysia, t } from "elysia"
-import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withAuth } from "@/modules/auth"
-import { requireOrg } from "@/lib/require-org"
-import { NotFoundError } from "@usevon/utils"
-import { InboundModel } from "@/modules/inbound/model"
-import { InboundService } from "@/modules/inbound/service"
-import { rateLimit } from "@/lib/rate-limit"
+import { NotFoundError } from "@usevon/utils";
+import { Elysia, t } from "elysia";
+import {
+  ErrorResponse,
+  IdParam,
+  PaginationQuery,
+  SuccessResponse,
+} from "@/lib/models";
+import { rateLimit } from "@/lib/rate-limit";
+import { requireOrg } from "@/lib/require-org";
+import { withAuth } from "@/modules/auth";
+import { InboundModel } from "@/modules/inbound/model";
+import { InboundService } from "@/modules/inbound/service";
 
 export const inbound = new Elysia({ prefix: "/inbound" })
   .use(withAuth)
   .use(requireOrg)
   .post(
     "/",
-    async ({ organizationId, body, set }) => {
-      set.status = 201
+    ({ organizationId, body, set }) => {
+      set.status = 201;
       return InboundService.create({
         organizationId,
         ...body,
-      })
+      });
     },
     {
       body: InboundModel.createEndpointBody,
@@ -26,9 +31,12 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   )
   .get(
     "/",
-    async ({ organizationId, query }) => {
-      return InboundService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
-    },
+    ({ organizationId, query }) =>
+      InboundService.getAll(
+        organizationId,
+        query.limit ?? 20,
+        query.offset ?? 0
+      ),
     {
       query: PaginationQuery,
       response: InboundModel.inboundEndpointList,
@@ -37,9 +45,11 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   .get(
     "/:id",
     async ({ organizationId, params }) => {
-      const endpoint = await InboundService.getById(organizationId, params.id)
-      if (!endpoint) throw new NotFoundError("Inbound endpoint not found")
-      return endpoint
+      const endpoint = await InboundService.getById(organizationId, params.id);
+      if (!endpoint) {
+        throw new NotFoundError("Inbound endpoint not found");
+      }
+      return endpoint;
     },
     {
       params: IdParam,
@@ -56,9 +66,11 @@ export const inbound = new Elysia({ prefix: "/inbound" })
         organizationId,
         endpointId: params.id,
         ...body,
-      })
-      if (!endpoint) throw new NotFoundError("Inbound endpoint not found")
-      return endpoint
+      });
+      if (!endpoint) {
+        throw new NotFoundError("Inbound endpoint not found");
+      }
+      return endpoint;
     },
     {
       params: IdParam,
@@ -72,8 +84,8 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   .delete(
     "/:id",
     async ({ organizationId, params }) => {
-      await InboundService.delete(organizationId, params.id)
-      return { success: true }
+      await InboundService.delete(organizationId, params.id);
+      return { success: true };
     },
     {
       params: IdParam,
@@ -82,34 +94,34 @@ export const inbound = new Elysia({ prefix: "/inbound" })
         404: ErrorResponse,
       },
     }
-  )
+  );
 
-const MAX_PAYLOAD_SIZE = 1_000_000 // 1MB
+const MAX_PAYLOAD_SIZE = 1_000_000; // 1MB
 
 export const inboundPublic = new Elysia({ prefix: "/in" })
-  .use(rateLimit({ windowMs: 60000, max: 100, keyPrefix: "rl:inbound" }))
+  .use(rateLimit({ windowMs: 60_000, max: 100, keyPrefix: "rl:inbound" }))
   .post(
     "/:id",
     async ({ params, body, headers, status }) => {
-      const payloadSize = JSON.stringify(body).length
+      const payloadSize = JSON.stringify(body).length;
       if (payloadSize > MAX_PAYLOAD_SIZE) {
-        return status(413, { error: "Payload exceeds 1MB limit" })
+        return status(413, { error: "Payload exceeds 1MB limit" });
       }
 
-      const endpoint = await InboundService.getByPublicId(params.id)
+      const endpoint = await InboundService.getByPublicId(params.id);
 
       if (!endpoint) {
-        return status(404, { error: "Endpoint not found" })
+        return status(404, { error: "Endpoint not found" });
       }
 
       if (!endpoint.enabled) {
-        return status(403, { error: "Endpoint is disabled" })
+        return status(403, { error: "Endpoint is disabled" });
       }
 
-      const headerRecord: Record<string, string> = {}
+      const headerRecord: Record<string, string> = {};
       for (const [key, value] of Object.entries(headers)) {
         if (typeof value === "string") {
-          headerRecord[key] = value
+          headerRecord[key] = value;
         }
       }
 
@@ -124,7 +136,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         },
         payload: body,
         headers: headerRecord,
-      })
+      });
     },
     {
       params: IdParam,
@@ -136,6 +148,4 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         413: ErrorResponse,
       },
     }
-  )
-
-export { InboundModel, InboundService }
+  );

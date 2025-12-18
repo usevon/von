@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test"
-import { client } from "../setup"
-import { getApiKey } from "./setup"
+import { describe, expect, test } from "bun:test";
+import { client } from "../setup";
+import { getApiKey } from "./setup";
 
-const apiKey = getApiKey()
+const apiKey = getApiKey();
 
 describe.skipIf(!apiKey)("Webhooks", () => {
   test("POST /webhooks sends webhook event", async () => {
@@ -14,20 +14,24 @@ describe.skipIf(!apiKey)("Webhooks", () => {
       {
         headers: { authorization: `Bearer ${apiKey}` },
       }
-    )
+    );
 
-    if (error) throw error
-    expect(data.id).toBeDefined()
-    expect(data.eventType).toBe("user.created")
-  })
+    if (error) {
+      throw error;
+    }
+    expect(data.id).toBeDefined();
+    expect(data.eventType).toBe("user.created");
+  });
 
   test("GET /webhooks/events returns event list", async () => {
     const { data, error } = await client.webhooks.events.get({
       headers: { authorization: `Bearer ${apiKey}` },
-    })
+    });
 
-    if (error) throw error
-    expect(data.events).toBeDefined()
-    expect(Array.isArray(data.events)).toBe(true)
-  })
-})
+    if (error) {
+      throw error;
+    }
+    expect(data.events).toBeDefined();
+    expect(Array.isArray(data.events)).toBe(true);
+  });
+});

@@ -1,7 +1,7 @@
-import { drizzle } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
-import * as schema from "@/schema"
-import { env } from "@/env"
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { env } from "@/env";
+import * as schema from "@/schema";
 
 const client = postgres(env.DATABASE_URL, {
   max: 20,
@@ -10,21 +10,21 @@ const client = postgres(env.DATABASE_URL, {
   connection: {
     statement_timeout: "30s",
   },
-})
-export const db = drizzle(client, { schema })
+});
+export const db = drizzle(client, { schema });
 
 export async function checkDatabaseConnection(): Promise<{ ok: boolean }> {
   try {
-    await client`SELECT 1`
-    return { ok: true }
+    await client`SELECT 1`;
+    return { ok: true };
   } catch {
-    return { ok: false }
+    return { ok: false };
   }
 }
 
 export async function closeDatabase(): Promise<void> {
-  await client.end()
+  await client.end();
 }
 
-export * from "@/schema"
-export { eq, and, or, inArray, sql } from "drizzle-orm"
+export { and, eq, inArray, or, sql } from "drizzle-orm";
+export * from "@/schema";

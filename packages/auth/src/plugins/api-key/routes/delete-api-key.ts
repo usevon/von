@@ -1,10 +1,14 @@
-import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
-import { z } from "zod"
-import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
-import { deleteApiKey as deleteApiKeyFromStorage } from "@/plugins/api-key/adapter"
-import { ERROR_CODES } from "@/plugins/api-key"
+import {
+  APIError,
+  createAuthEndpoint,
+  getSessionFromCtx,
+} from "better-auth/api";
+import { z } from "zod";
+import { ERROR_CODES } from "@/plugins/api-key";
+import { deleteApiKey as deleteApiKeyFromStorage } from "@/plugins/api-key/adapter";
+import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
-const API_KEY_TABLE_NAME = "apikey"
+const API_KEY_TABLE_NAME = "apikey";
 
 export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
   return createAuthEndpoint(
@@ -16,28 +20,28 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
       }),
     },
     async (ctx) => {
-      const session = await getSessionFromCtx(ctx)
+      const session = await getSessionFromCtx(ctx);
       if (!session) {
         throw new APIError("UNAUTHORIZED", {
           message: ERROR_CODES.UNAUTHORIZED_SESSION,
-        })
+        });
       }
 
       const apiKey = await ctx.context.adapter.findOne<ApiKey>({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: ctx.body.keyId }],
-      })
+      });
 
       if (!apiKey) {
         throw new APIError("NOT_FOUND", {
           message: ERROR_CODES.KEY_NOT_FOUND,
-        })
+        });
       }
 
       if (apiKey.userId !== session.user.id) {
         throw new APIError("FORBIDDEN", {
           message: "Access denied",
-        })
+        });
       }
 
       // If key belongs to an organization, verify user is still a member
@@ -48,30 +52,30 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
             { field: "userId", value: session.user.id },
             { field: "organizationId", value: apiKey.organizationId },
           ],
-        })
+        });
         if (!membership) {
           throw new APIError("FORBIDDEN", {
             message: "Not a member of this organization",
-          })
+          });
         }
       }
 
       // Delete from cache first, then DB (Fix #10: atomic cache invalidation)
-      await deleteApiKeyFromStorage(ctx as never, apiKey, opts)
+      await deleteApiKeyFromStorage(ctx as never, apiKey, opts);
 
       await ctx.context.adapter.delete({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: ctx.body.keyId }],
-      })
+      });
 
       // Audit log
       ctx.context.logger.info("API key deleted", {
         userId: session.user.id,
         keyId: apiKey.id,
         organizationId: apiKey.organizationId ?? null,
-      })
+      });
 
-      return ctx.json({ success: true })
+      return ctx.json({ success: true });
     }
-  )
+  );
 }

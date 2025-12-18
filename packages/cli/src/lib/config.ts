@@ -1,68 +1,74 @@
-import { homedir } from "node:os"
-import { join } from "node:path"
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
-import * as p from "@clack/prompts"
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import * as p from "@clack/prompts";
 
 export type VonConfig = {
-  apiUrl: string
-  tunnelUrl: string
-  token?: string
-  organizationId?: string
-}
+  apiUrl: string;
+  tunnelUrl: string;
+  token?: string;
+  organizationId?: string;
+};
 
-const CONFIG_DIR = join(homedir(), ".von")
-const CONFIG_FILE = join(CONFIG_DIR, "config.json")
+const CONFIG_DIR = join(homedir(), ".von");
+const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
-export const getConfigPath = (): string => CONFIG_FILE
+export const getConfigPath = (): string => CONFIG_FILE;
 
-export const DEFAULT_API_URL = "https://api.usevon.com"
-export const DEFAULT_TUNNEL_URL = "https://tunnel.usevon.com"
+export const DEFAULT_API_URL = "https://api.usevon.com";
+export const DEFAULT_TUNNEL_URL = "https://tunnel.usevon.com";
 
 const DEFAULT_CONFIG: VonConfig = {
   apiUrl: DEFAULT_API_URL,
   tunnelUrl: DEFAULT_TUNNEL_URL,
-}
+};
 
 const ensureConfigDir = (): void => {
   if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true })
+    mkdirSync(CONFIG_DIR, { recursive: true });
   }
-}
+};
 
 export const loadConfig = (): VonConfig => {
-  ensureConfigDir()
+  ensureConfigDir();
 
   if (!existsSync(CONFIG_FILE)) {
-    return { ...DEFAULT_CONFIG }
+    return { ...DEFAULT_CONFIG };
   }
 
   try {
-    const raw = readFileSync(CONFIG_FILE, "utf-8")
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) }
+    const raw = readFileSync(CONFIG_FILE, "utf-8");
+    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch {
-    return { ...DEFAULT_CONFIG }
+    return { ...DEFAULT_CONFIG };
   }
-}
+};
 
 export const saveConfig = (config: Partial<VonConfig>): void => {
-  ensureConfigDir()
-  const current = loadConfig()
-  const updated = { ...current, ...config }
-  writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2))
-  chmodSync(CONFIG_FILE, 0o600)
-}
+  ensureConfigDir();
+  const current = loadConfig();
+  const updated = { ...current, ...config };
+  writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2));
+  chmodSync(CONFIG_FILE, 0o600);
+};
 
 export const clearConfig = (): void => {
-  ensureConfigDir()
-  writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
-  chmodSync(CONFIG_FILE, 0o600)
-}
+  ensureConfigDir();
+  writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
+  chmodSync(CONFIG_FILE, 0o600);
+};
 
 export const requireAuth = (): { token: string; config: VonConfig } => {
-  const config = loadConfig()
+  const config = loadConfig();
   if (!config.token) {
-    p.log.warn("Not logged in, run 'von login' first")
-    process.exit(1)
+    p.log.warn("Not logged in, run 'von login' first");
+    process.exit(1);
   }
-  return { token: config.token, config }
-}
+  return { token: config.token, config };
+};

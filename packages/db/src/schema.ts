@@ -1,16 +1,16 @@
-import { relations } from "drizzle-orm"
+import { relations } from "drizzle-orm";
 import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
-  boolean,
-  integer,
-  uuid,
-  index,
-  date,
-  jsonb,
   unique,
-} from "drizzle-orm/pg-core"
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: uuid("id").primaryKey(),
@@ -23,7 +23,7 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-})
+});
 
 export const session = pgTable(
   "session",
@@ -43,7 +43,7 @@ export const session = pgTable(
     activeOrganizationId: uuid("active_organization_id"),
   },
   (table) => [index("session_user_id_idx").on(table.userId)]
-)
+);
 
 export const account = pgTable(
   "account",
@@ -67,7 +67,7 @@ export const account = pgTable(
       .notNull(),
   },
   (table) => [index("account_user_id_idx").on(table.userId)]
-)
+);
 
 export const verification = pgTable(
   "verification",
@@ -83,7 +83,7 @@ export const verification = pgTable(
       .notNull(),
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)]
-)
+);
 
 export const organization = pgTable("organization", {
   id: uuid("id").primaryKey(),
@@ -92,7 +92,7 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
   createdAt: timestamp("created_at").notNull(),
   metadata: text("metadata"),
-})
+});
 
 export const member = pgTable(
   "member",
@@ -111,7 +111,7 @@ export const member = pgTable(
     index("member_organization_id_idx").on(table.organizationId),
     index("member_user_id_idx").on(table.userId),
   ]
-)
+);
 
 export const invitation = pgTable(
   "invitation",
@@ -132,7 +132,7 @@ export const invitation = pgTable(
     index("invitation_organization_id_idx").on(table.organizationId),
     index("invitation_email_idx").on(table.email),
   ]
-)
+);
 
 export const deviceCode = pgTable(
   "device_code",
@@ -157,7 +157,7 @@ export const deviceCode = pgTable(
     index("device_code_device_code_idx").on(table.deviceCode),
     index("device_code_user_code_idx").on(table.userCode),
   ]
-)
+);
 
 export const apikey = pgTable(
   "apikey",
@@ -186,7 +186,7 @@ export const apikey = pgTable(
     index("apikey_user_id_idx").on(table.userId),
     index("apikey_organization_id_idx").on(table.organizationId),
   ]
-)
+);
 
 export const endpoint = pgTable(
   "endpoint",
@@ -201,7 +201,7 @@ export const endpoint = pgTable(
     enabled: boolean("enabled").default(true).notNull(),
     version: date("version"),
     retryCount: integer("retry_count").default(3).notNull(),
-    timeoutMs: integer("timeout_ms").default(30000).notNull(),
+    timeoutMs: integer("timeout_ms").default(30_000).notNull(),
     circuitState: text("circuit_state").default("closed").notNull(),
     failureCount: integer("failure_count").default(0).notNull(),
     lastFailureAt: timestamp("last_failure_at"),
@@ -213,7 +213,7 @@ export const endpoint = pgTable(
       .notNull(),
   },
   (table) => [index("endpoint_organization_id_idx").on(table.organizationId)]
-)
+);
 
 export const event = pgTable(
   "event",
@@ -229,9 +229,12 @@ export const event = pgTable(
   },
   (table) => [
     index("event_organization_id_idx").on(table.organizationId),
-    unique("event_org_idempotency_unique").on(table.organizationId, table.idempotencyKey),
+    unique("event_org_idempotency_unique").on(
+      table.organizationId,
+      table.idempotencyKey
+    ),
   ]
-)
+);
 
 export const delivery = pgTable(
   "delivery",
@@ -260,7 +263,7 @@ export const delivery = pgTable(
     index("delivery_endpoint_id_idx").on(table.endpointId),
     index("delivery_status_idx").on(table.status),
   ]
-)
+);
 
 export const inboundEndpoint = pgTable(
   "inbound_endpoint",
@@ -275,7 +278,7 @@ export const inboundEndpoint = pgTable(
     forwardUrl: text("forward_url").notNull(),
     enabled: boolean("enabled").default(true).notNull(),
     retryCount: integer("retry_count").default(3).notNull(),
-    timeoutMs: integer("timeout_ms").default(30000).notNull(),
+    timeoutMs: integer("timeout_ms").default(30_000).notNull(),
     circuitState: text("circuit_state").default("closed").notNull(),
     failureCount: integer("failure_count").default(0).notNull(),
     lastFailureAt: timestamp("last_failure_at"),
@@ -289,7 +292,7 @@ export const inboundEndpoint = pgTable(
   (table) => [
     index("inbound_endpoint_organization_id_idx").on(table.organizationId),
   ]
-)
+);
 
 export const inboundDelivery = pgTable(
   "inbound_delivery",
@@ -312,7 +315,7 @@ export const inboundDelivery = pgTable(
     index("inbound_delivery_endpoint_id_idx").on(table.inboundEndpointId),
     index("inbound_delivery_status_idx").on(table.status),
   ]
-)
+);
 
 export const tunnel = pgTable(
   "tunnel",
@@ -334,7 +337,7 @@ export const tunnel = pgTable(
     index("tunnel_organization_id_idx").on(table.organizationId),
     index("tunnel_user_id_idx").on(table.userId),
   ]
-)
+);
 
 export const webhookVersion = pgTable(
   "webhook_version",
@@ -358,7 +361,7 @@ export const webhookVersion = pgTable(
       table.version
     ),
   ]
-)
+);
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
@@ -366,21 +369,21 @@ export const userRelations = relations(user, ({ many }) => ({
   members: many(member),
   invitations: many(invitation),
   apikeys: many(apikey),
-}))
+}));
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
     fields: [session.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(member),
@@ -390,7 +393,7 @@ export const organizationRelations = relations(organization, ({ many }) => ({
   events: many(event),
   inboundEndpoints: many(inboundEndpoint),
   webhookVersions: many(webhookVersion),
-}))
+}));
 
 export const memberRelations = relations(member, ({ one }) => ({
   organization: one(organization, {
@@ -401,7 +404,7 @@ export const memberRelations = relations(member, ({ one }) => ({
     fields: [member.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const invitationRelations = relations(invitation, ({ one }) => ({
   organization: one(organization, {
@@ -412,7 +415,7 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     fields: [invitation.inviterId],
     references: [user.id],
   }),
-}))
+}));
 
 export const apikeyRelations = relations(apikey, ({ one }) => ({
   user: one(user, {
@@ -423,7 +426,7 @@ export const apikeyRelations = relations(apikey, ({ one }) => ({
     fields: [apikey.organizationId],
     references: [organization.id],
   }),
-}))
+}));
 
 export const endpointRelations = relations(endpoint, ({ one, many }) => ({
   organization: one(organization, {
@@ -431,7 +434,7 @@ export const endpointRelations = relations(endpoint, ({ one, many }) => ({
     references: [organization.id],
   }),
   deliveries: many(delivery),
-}))
+}));
 
 export const eventRelations = relations(event, ({ one, many }) => ({
   organization: one(organization, {
@@ -439,7 +442,7 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     references: [organization.id],
   }),
   deliveries: many(delivery),
-}))
+}));
 
 export const deliveryRelations = relations(delivery, ({ one }) => ({
   event: one(event, {
@@ -450,26 +453,32 @@ export const deliveryRelations = relations(delivery, ({ one }) => ({
     fields: [delivery.endpointId],
     references: [endpoint.id],
   }),
-}))
+}));
 
-export const inboundEndpointRelations = relations(inboundEndpoint, ({ one, many }) => ({
-  organization: one(organization, {
-    fields: [inboundEndpoint.organizationId],
-    references: [organization.id],
-  }),
-  deliveries: many(inboundDelivery),
-}))
+export const inboundEndpointRelations = relations(
+  inboundEndpoint,
+  ({ one, many }) => ({
+    organization: one(organization, {
+      fields: [inboundEndpoint.organizationId],
+      references: [organization.id],
+    }),
+    deliveries: many(inboundDelivery),
+  })
+);
 
-export const inboundDeliveryRelations = relations(inboundDelivery, ({ one }) => ({
-  inboundEndpoint: one(inboundEndpoint, {
-    fields: [inboundDelivery.inboundEndpointId],
-    references: [inboundEndpoint.id],
-  }),
-}))
+export const inboundDeliveryRelations = relations(
+  inboundDelivery,
+  ({ one }) => ({
+    inboundEndpoint: one(inboundEndpoint, {
+      fields: [inboundDelivery.inboundEndpointId],
+      references: [inboundEndpoint.id],
+    }),
+  })
+);
 
 export const webhookVersionRelations = relations(webhookVersion, ({ one }) => ({
   organization: one(organization, {
     fields: [webhookVersion.organizationId],
     references: [organization.id],
   }),
-}))
+}));

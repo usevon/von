@@ -1,14 +1,14 @@
-import pino from "pino"
-import pinoPretty from "pino-pretty"
-import type { Logger } from "pino"
+import type { Logger } from "pino";
+import pino from "pino";
+import pinoPretty from "pino-pretty";
 
-export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace"
+export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace";
 
 export type LoggerOptions = {
-  level?: LogLevel
-  name?: string
-  pretty?: boolean
-}
+  level?: LogLevel;
+  name?: string;
+  pretty?: boolean;
+};
 
 const REDACT_PATHS = [
   "*.token",
@@ -23,11 +23,11 @@ const REDACT_PATHS = [
   "*.refresh_token",
   "headers.authorization",
   "headers.cookie",
-]
+];
 
 export const createLogger = (options: LoggerOptions = {}): Logger => {
-  const usePretty = options.pretty ?? process.env.NODE_ENV === "development"
-  const stream = usePretty ? pinoPretty({ colorize: true }) : undefined
+  const usePretty = options.pretty ?? process.env.NODE_ENV === "development";
+  const stream = usePretty ? pinoPretty({ colorize: true }) : undefined;
 
   return pino(
     {
@@ -36,9 +36,9 @@ export const createLogger = (options: LoggerOptions = {}): Logger => {
       redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
     },
     stream
-  )
-}
+  );
+};
 
-export const logger = createLogger({ name: "von" })
+export const logger = createLogger({ name: "von" });
 
-export type { Logger }
+export type { Logger };

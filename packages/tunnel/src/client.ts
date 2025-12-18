@@ -1,17 +1,21 @@
-import * as WebSocket from "ws"
-import type { TunnelRequest, TunnelResponse } from "./types"
+import * as WebSocket from "ws";
+import type { TunnelRequest, TunnelResponse } from "./types";
 
 export type TunnelClientEvents = {
-  request: (req: TunnelRequest) => Promise<TunnelResponse>
-  takeover?: () => void
-  secretRotated?: (newSecret: string) => void
-  connect?: (isReconnect: boolean) => void
-  disconnect?: (willReconnect: boolean, attempt?: number, maxAttempts?: number) => void
-}
+  request: (req: TunnelRequest) => Promise<TunnelResponse>;
+  takeover?: () => void;
+  secretRotated?: (newSecret: string) => void;
+  connect?: (isReconnect: boolean) => void;
+  disconnect?: (
+    willReconnect: boolean,
+    attempt?: number,
+    maxAttempts?: number
+  ) => void;
+};
 
 export type TunnelClientOptions = {
-  maxRetries?: number
-}
+  maxRetries?: number;
+};
 
 /**
  * WebSocket client for CLI tunnel connections.
@@ -43,81 +47,91 @@ export type TunnelClientOptions = {
  * ```
  */
 export class TunnelClient {
-  private ws: WebSocket.WebSocket | null = null
-  private reconnectAttempts = 0
-  private maxReconnects: number
-  private pingInterval: ReturnType<typeof setInterval> | null = null
-  private shouldReconnect = true
-  private hasConnectedOnce = false
+  private ws: WebSocket.WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private readonly maxReconnects: number;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private shouldReconnect = true;
+  private hasConnectedOnce = false;
 
   constructor(
-    private wsUrl: string,
-    private token: string,
-    private events: TunnelClientEvents,
+    private readonly wsUrl: string,
+    private readonly token: string,
+    private readonly events: TunnelClientEvents,
     options: TunnelClientOptions = {}
   ) {
-    this.maxReconnects = options.maxRetries ?? 5
+    this.maxReconnects = options.maxRetries ?? 5;
   }
 
   /**
    * Connect to the tunnel server
    */
   connect(): void {
-    if (!this.shouldReconnect) return
+    if (!this.shouldReconnect) {
+      return;
+    }
 
     this.ws = new WebSocket.WebSocket(this.wsUrl, {
       headers: { Authorization: `Bearer ${this.token}` },
-    })
+    });
 
     // Connection established - reset state and start heartbeat
     this.ws.on("open", () => {
-      const isReconnect = this.hasConnectedOnce
-      this.hasConnectedOnce = true
-      this.reconnectAttempts = 0
-      this.events.connect?.(isReconnect)
-      this.startPing()
-    })
+      const isReconnect = this.hasConnectedOnce;
+      this.hasConnectedOnce = true;
+      this.reconnectAttempts = 0;
+      this.events.connect?.(isReconnect);
+      this.startPing();
+    });
 
     // Handle incoming messages from tunnel server
     this.ws.on("message", async (data: WebSocket.RawData) => {
-      const msg = JSON.parse(data.toString())
+      const msg = JSON.parse(data.toString());
 
       // Another CLI took over - stop reconnecting
       if (msg.type === "takeover") {
-        this.shouldReconnect = false
-        this.events.takeover?.()
-        this.ws?.close()
-        return
+        this.shouldReconnect = false;
+        this.events.takeover?.();
+        this.ws?.close();
+        return;
       }
 
       // Secret was rotated - notify caller
       if (msg.type === "secret_rotated") {
-        this.events.secretRotated?.(msg.secret)
-        return
+        this.events.secretRotated?.(msg.secret);
+        return;
       }
 
       // Forward request to local server and send response back
-      const res = await this.events.request(msg as TunnelRequest)
-      this.ws?.send(JSON.stringify(res))
-    })
+      const res = await this.events.request(msg as TunnelRequest);
+      this.ws?.send(JSON.stringify(res));
+    });
 
     // Handle disconnection with exponential backoff reconnect
     this.ws.on("close", () => {
-      this.stopPing()
-      if (!this.shouldReconnect) return
+      this.stopPing();
+      if (!this.shouldReconnect) {
+        return;
+      }
 
       if (this.reconnectAttempts < this.maxReconnects) {
-        this.reconnectAttempts++
-        const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30000)
-        this.events.disconnect?.(true, this.reconnectAttempts, this.maxReconnects)
-        setTimeout(() => this.connect(), delay)
+        this.reconnectAttempts += 1;
+        const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30_000);
+        this.events.disconnect?.(
+          true,
+          this.reconnectAttempts,
+          this.maxReconnects
+        );
+        setTimeout(() => this.connect(), delay);
       } else {
-        this.events.disconnect?.(false)
+        this.events.disconnect?.(false);
       }
-    })
+    });
 
     // Errors trigger close event, no special handling needed
-    this.ws.on("error", () => {})
+    this.ws.on("error", () => {
+      // Intentionally empty - errors trigger close event
+    });
   }
 
   /**
@@ -125,9 +139,9 @@ export class TunnelClient {
    * Will not attempt to reconnect.
    */
   disconnect(): void {
-    this.shouldReconnect = false
-    this.stopPing()
-    this.ws?.close()
+    this.shouldReconnect = false;
+    this.stopPing();
+    this.ws?.close();
   }
 
   /**
@@ -135,29 +149,29 @@ export class TunnelClient {
    * Use for immediate shutdown without waiting for close handshake.
    */
   terminate(): void {
-    this.shouldReconnect = false
-    this.stopPing()
-    this.ws?.terminate()
+    this.shouldReconnect = false;
+    this.stopPing();
+    this.ws?.terminate();
   }
 
   /**
    * Start ping/pong heartbeat to detect stale connections
    */
   private startPing(): void {
-    let pongReceived = true
+    let pongReceived = true;
 
     this.pingInterval = setInterval(() => {
       if (!pongReceived) {
-        this.ws?.terminate()
-        return
+        this.ws?.terminate();
+        return;
       }
-      pongReceived = false
-      this.ws?.ping()
-    }, 5000)
+      pongReceived = false;
+      this.ws?.ping();
+    }, 5000);
 
     this.ws?.on("pong", () => {
-      pongReceived = true
-    })
+      pongReceived = true;
+    });
   }
 
   /**
@@ -165,8 +179,8 @@ export class TunnelClient {
    */
   private stopPing(): void {
     if (this.pingInterval) {
-      clearInterval(this.pingInterval)
-      this.pingInterval = null
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
   }
 }

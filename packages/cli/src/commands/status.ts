@@ -1,26 +1,26 @@
-import { Command } from "commander"
-import * as p from "@clack/prompts"
-import pc from "picocolors"
-import { loadConfig } from "@/lib/config"
-import { getSession, listOrganizations } from "@/lib/api"
+import * as p from "@clack/prompts";
+import { Command } from "commander";
+import pc from "picocolors";
+import { getSession, listOrganizations } from "@/lib/api";
+import { loadConfig } from "@/lib/config";
 
 export const status = new Command("status")
   .description("Show current status")
   .action(async () => {
-    const config = loadConfig()
+    const config = loadConfig();
     if (!config.token) {
-      p.log.warn("Not logged in")
-      return
+      p.log.warn("Not logged in");
+      return;
     }
 
-    const session = await getSession(config.token)
+    const session = await getSession(config.token);
     if (!session) {
-      p.log.warn("Session expired, run 'von login' to re-authenticate")
-      return
+      p.log.warn("Session expired, run 'von login' to re-authenticate");
+      return;
     }
 
-    const orgs = await listOrganizations(config.token)
-    const currentOrg = orgs.find((o) => o.id === config.organizationId)
+    const orgs = await listOrganizations(config.token);
+    const currentOrg = orgs.find((o) => o.id === config.organizationId);
 
     p.note(
       [
@@ -29,6 +29,6 @@ export const status = new Command("status")
         `${pc.dim("API:")}          ${pc.dim(config.apiUrl)}`,
       ].join("\n"),
       "Status"
-    )
-    p.outro(`Use ${pc.dim("von logout")} to sign out`)
-  })
+    );
+    p.outro(`Use ${pc.dim("von logout")} to sign out`);
+  });

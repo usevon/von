@@ -10,7 +10,14 @@
     "directory": "packages/react"
   },
   "homepage": "https://usevon.com",
-  "keywords": ["webhooks", "react", "hooks", "typescript", "swr", "webhook-management"],
+  "keywords": [
+    "webhooks",
+    "react",
+    "hooks",
+    "typescript",
+    "swr",
+    "webhook-management"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

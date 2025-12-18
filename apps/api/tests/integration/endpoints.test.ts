@@ -1,10 +1,12 @@
-import { describe, expect, test } from "bun:test"
-import { client } from "../setup"
-import { getApiKey } from "./setup"
+import { describe, expect, test } from "bun:test";
+import { client } from "../setup";
+import { getApiKey } from "./setup";
+
+const WHSEC_PREFIX_REGEX = /^whsec_/;
 
 describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
-  const apiKey = getApiKey()!
-  let createdEndpointId: string | null = null
+  const apiKey = getApiKey() ?? "";
+  let createdEndpointId: string | null = null;
 
   test("POST /endpoints creates endpoint", async () => {
     const { data, error } = await client.endpoints.post(
@@ -15,60 +17,82 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
       {
         headers: { authorization: `Bearer ${apiKey}` },
       }
-    )
+    );
 
-    if (error) throw error
-    expect(data.id).toBeDefined()
-    expect(data.url).toBe("https://example.com/webhook")
-    expect(data.secret).toMatch(/^whsec_/)
-    createdEndpointId = data.id
-  })
+    if (error) {
+      throw error;
+    }
+    expect(data.id).toBeDefined();
+    expect(data.url).toBe("https://example.com/webhook");
+    expect(data.secret).toMatch(WHSEC_PREFIX_REGEX);
+    createdEndpointId = data.id;
+  });
 
   test("GET /endpoints returns list", async () => {
     const { data, error } = await client.endpoints.get({
       headers: { authorization: `Bearer ${apiKey}` },
-    })
+    });
 
-    if (error) throw error
-    expect(data.endpoints).toBeDefined()
-    expect(Array.isArray(data.endpoints)).toBe(true)
-    expect(data.total).toBeGreaterThanOrEqual(0)
-  })
+    if (error) {
+      throw error;
+    }
+    expect(data.endpoints).toBeDefined();
+    expect(Array.isArray(data.endpoints)).toBe(true);
+    expect(data.total).toBeGreaterThanOrEqual(0);
+  });
 
   test("GET /endpoints/:id returns endpoint", async () => {
-    if (!createdEndpointId) return
+    if (!createdEndpointId) {
+      return;
+    }
 
-    const { data, error } = await client.endpoints({ id: createdEndpointId }).get({
-      headers: { authorization: `Bearer ${apiKey}` },
-    })
+    const { data, error } = await client
+      .endpoints({ id: createdEndpointId })
+      .get({
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
 
-    if (error) throw error
-    expect(data.id).toBe(createdEndpointId)
-  })
+    if (error) {
+      throw error;
+    }
+    expect(data.id).toBe(createdEndpointId);
+  });
 
   test("PATCH /endpoints/:id updates endpoint", async () => {
-    if (!createdEndpointId) return
+    if (!createdEndpointId) {
+      return;
+    }
 
-    const { data, error } = await client.endpoints({ id: createdEndpointId }).patch(
-      { enabled: false },
-      {
-        headers: { authorization: `Bearer ${apiKey}` },
-      }
-    )
+    const { data, error } = await client
+      .endpoints({ id: createdEndpointId })
+      .patch(
+        { enabled: false },
+        {
+          headers: { authorization: `Bearer ${apiKey}` },
+        }
+      );
 
-    if (error) throw error
-    expect(data.enabled).toBe(false)
-  })
+    if (error) {
+      throw error;
+    }
+    expect(data.enabled).toBe(false);
+  });
 
   test("DELETE /endpoints/:id deletes endpoint", async () => {
-    if (!createdEndpointId) return
+    if (!createdEndpointId) {
+      return;
+    }
 
-    const { data, error } = await client.endpoints({ id: createdEndpointId }).delete(null, {
-      headers: { authorization: `Bearer ${apiKey}` },
-    })
+    const { data, error } = await client
+      .endpoints({ id: createdEndpointId })
+      .delete(null, {
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
 
-    if (error) throw error
-    expect(data.success).toBe(true)
-    createdEndpointId = null
-  })
-})
+    if (error) {
+      throw error;
+    }
+    expect(data.success).toBe(true);
+    createdEndpointId = null;
+  });
+});

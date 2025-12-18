@@ -1,43 +1,49 @@
-import IORedis from "ioredis"
-import { env } from "@/env"
+import IORedis from "ioredis";
+import { env } from "@/env";
 
 export type ConnectionOptions = {
-  url?: string
-  maxRetriesPerRequest?: number | null
-}
+  url?: string;
+  maxRetriesPerRequest?: number | null;
+};
 
 function getUrl(options: ConnectionOptions = {}) {
-  return options.url ?? env.REDIS_URL ?? "redis://localhost:6379"
+  return options.url ?? env.REDIS_URL ?? "redis://localhost:6379";
 }
 
-export async function checkRedisConnection(options: ConnectionOptions = {}): Promise<{ ok: boolean; url: string }> {
-  const url = getUrl(options)
+export async function checkRedisConnection(
+  options: ConnectionOptions = {}
+): Promise<{ ok: boolean; url: string }> {
+  const url = getUrl(options);
   const redis = new IORedis(url, {
     maxRetriesPerRequest: 1,
     retryStrategy: () => null,
     lazyConnect: true,
-  })
+  });
 
-  redis.on("error", () => {})
+  redis.on("error", () => {
+    // Suppress connection errors during health check
+  });
 
   try {
-    await redis.connect()
-    await redis.ping()
-    await redis.quit()
-    return { ok: true, url }
+    await redis.connect();
+    await redis.ping();
+    await redis.quit();
+    return { ok: true, url };
   } catch {
-    await redis.quit().catch(() => {})
-    return { ok: false, url }
+    await redis.quit().catch(() => {
+      // Ignore quit errors during cleanup
+    });
+    return { ok: false, url };
   }
 }
 
 export function createConnection(options: ConnectionOptions = {}) {
   return new IORedis(getUrl(options), {
     maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
-  })
+  });
 }
 
-let sharedClient: IORedis | null = null
+let sharedClient: IORedis | null = null;
 
 export function getRedisClient(options: ConnectionOptions = {}): IORedis {
   if (!sharedClient) {
@@ -45,15 +51,17 @@ export function getRedisClient(options: ConnectionOptions = {}): IORedis {
       maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
       enableReadyCheck: true,
       lazyConnect: false,
-    })
-    sharedClient.on("error", () => {})
+    });
+    sharedClient.on("error", () => {
+      // Handled elsewhere - prevent unhandled rejection
+    });
   }
-  return sharedClient
+  return sharedClient;
 }
 
 export async function closeRedis(): Promise<void> {
   if (sharedClient) {
-    await sharedClient.quit()
-    sharedClient = null
+    await sharedClient.quit();
+    sharedClient = null;
   }
 }

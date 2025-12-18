@@ -1,17 +1,21 @@
-import { createAuthEndpoint, APIError, getSessionFromCtx } from "better-auth/api"
-import { z } from "zod"
-import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types"
-import { setApiKey } from "@/plugins/api-key/adapter"
-import { ERROR_CODES } from "@/plugins/api-key"
+import {
+  APIError,
+  createAuthEndpoint,
+  getSessionFromCtx,
+} from "better-auth/api";
+import { z } from "zod";
+import { ERROR_CODES } from "@/plugins/api-key";
+import { setApiKey } from "@/plugins/api-key/adapter";
+import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
-const API_KEY_TABLE_NAME = "apikey"
+const API_KEY_TABLE_NAME = "apikey";
 
 export function updateApiKey({
   opts,
   maxNameLength,
 }: {
-  opts: ResolvedApiKeyOptions
-  maxNameLength: number
+  opts: ResolvedApiKeyOptions;
+  maxNameLength: number;
 }) {
   return createAuthEndpoint(
     "/api-key/update",
@@ -24,56 +28,60 @@ export function updateApiKey({
       }),
     },
     async (ctx) => {
-      const session = await getSessionFromCtx(ctx)
+      const session = await getSessionFromCtx(ctx);
       if (!session) {
         throw new APIError("UNAUTHORIZED", {
           message: ERROR_CODES.UNAUTHORIZED_SESSION,
-        })
+        });
       }
 
-      const { keyId, name, enabled } = ctx.body
+      const { keyId, name, enabled } = ctx.body;
 
       const apiKey = await ctx.context.adapter.findOne<ApiKey>({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: keyId }],
-      })
+      });
 
       if (!apiKey) {
         throw new APIError("NOT_FOUND", {
           message: ERROR_CODES.KEY_NOT_FOUND,
-        })
+        });
       }
 
       if (apiKey.userId !== session.user.id) {
         throw new APIError("FORBIDDEN", {
           message: "Access denied",
-        })
+        });
       }
 
       const update: Partial<ApiKey> = {
         updatedAt: new Date(),
-      }
+      };
 
-      if (name !== undefined) update.name = name
-      if (enabled !== undefined) update.enabled = enabled
+      if (name !== undefined) {
+        update.name = name;
+      }
+      if (enabled !== undefined) {
+        update.enabled = enabled;
+      }
 
       const updated = await ctx.context.adapter.update<ApiKey>({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: keyId }],
         update,
-      })
+      });
 
       if (!updated) {
         throw new APIError("INTERNAL_SERVER_ERROR", {
           message: "Failed to update API key",
-        })
+        });
       }
 
-      const completeApiKey: ApiKey = { ...apiKey, ...update }
-      await setApiKey(ctx as never, completeApiKey, opts)
+      const completeApiKey: ApiKey = { ...apiKey, ...update };
+      await setApiKey(ctx as never, completeApiKey, opts);
 
-      const { key: _, ...safeKey } = completeApiKey
-      return ctx.json(safeKey)
+      const { key: _, ...safeKey } = completeApiKey;
+      return ctx.json(safeKey);
     }
-  )
+  );
 }

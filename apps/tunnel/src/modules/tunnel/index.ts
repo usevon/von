@@ -1,17 +1,21 @@
-import { Elysia } from "elysia"
-import { createLogger } from "@usevon/utils/logger"
-import type { TunnelResponse } from "@usevon/tunnel"
-import { betterAuth, withSession } from "@/modules/auth"
-import { UnauthorizedError, generateTunnelId, generateTunnelSecret } from "@usevon/utils"
-import { env } from "@/env"
-import { TunnelModel } from "@/modules/tunnel/model"
-import { TunnelService } from "@/modules/tunnel/service"
-import { db, eq } from "@usevon/db"
-import { tunnel } from "@usevon/db/schema"
+import { db, eq } from "@usevon/db";
+import { tunnel } from "@usevon/db/schema";
+import type { TunnelResponse } from "@usevon/tunnel";
+import {
+  generateTunnelId,
+  generateTunnelSecret,
+  UnauthorizedError,
+} from "@usevon/utils";
+import { createLogger } from "@usevon/utils/logger";
+import { Elysia } from "elysia";
+import { env } from "@/env";
+import { betterAuth, withSession } from "@/modules/auth";
+import { TunnelModel } from "@/modules/tunnel/model";
+import { TunnelService } from "@/modules/tunnel/service";
 
-const log = createLogger({ name: "tunnel" })
+const log = createLogger({ name: "tunnel" });
 
-const SESSION_VALIDATION_INTERVAL_MS = 30_000
+const SESSION_VALIDATION_INTERVAL_MS = 30_000;
 
 export const tunnelRegister = new Elysia()
   .use(withSession)
@@ -19,35 +23,41 @@ export const tunnelRegister = new Elysia()
     "/register",
     async ({ body, organizationId, userId }) => {
       if (!organizationId) {
-        throw new UnauthorizedError("No active organization")
+        throw new UnauthorizedError("No active organization");
       }
 
-      const tunnelId = generateTunnelId(organizationId, userId, body.port)
+      const tunnelId = generateTunnelId(organizationId, userId, body.port);
 
       // Check if tunnel exists in DB
-      const [existing] = await db.select().from(tunnel).where(eq(tunnel.id, tunnelId)).limit(1)
+      const [existing] = await db
+        .select()
+        .from(tunnel)
+        .where(eq(tunnel.id, tunnelId))
+        .limit(1);
 
       if (existing) {
-        return { tunnelId, secret: existing.secret }
+        return { tunnelId, secret: existing.secret };
       }
 
       // New tunnel - check limit
-      const currentCount = TunnelService.getOrgTunnelCount(organizationId)
+      const currentCount = TunnelService.getOrgTunnelCount(organizationId);
       if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
-        throw new UnauthorizedError(`Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`)
+        throw new UnauthorizedError(
+          `Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`
+        );
       }
 
       // Generate secret and save to DB
-      const secret = generateTunnelSecret()
+      const secret = generateTunnelSecret();
       await db.insert(tunnel).values({
         id: tunnelId,
         secret,
         organizationId,
         userId,
         port: body.port,
-      })
+      });
 
-      return { tunnelId, secret }
+      return { tunnelId, secret };
     },
     {
       body: TunnelModel.registerBody,
@@ -58,188 +68,243 @@ export const tunnelRegister = new Elysia()
     "/rotate/:tunnelId",
     async ({ params, organizationId, userId }) => {
       if (!organizationId) {
-        throw new UnauthorizedError("No active organization")
+        throw new UnauthorizedError("No active organization");
       }
 
       // Verify tunnel belongs to this user/org
-      const [existing] = await db.select().from(tunnel).where(eq(tunnel.id, params.tunnelId)).limit(1)
+      const [existing] = await db
+        .select()
+        .from(tunnel)
+        .where(eq(tunnel.id, params.tunnelId))
+        .limit(1);
 
-      if (!existing || existing.organizationId !== organizationId || existing.userId !== userId) {
-        throw new UnauthorizedError("Tunnel not found")
+      if (
+        !existing ||
+        existing.organizationId !== organizationId ||
+        existing.userId !== userId
+      ) {
+        throw new UnauthorizedError("Tunnel not found");
       }
 
       // Generate new secret
-      const secret = generateTunnelSecret()
-      await db.update(tunnel).set({ secret }).where(eq(tunnel.id, params.tunnelId))
+      const secret = generateTunnelSecret();
+      await db
+        .update(tunnel)
+        .set({ secret })
+        .where(eq(tunnel.id, params.tunnelId));
 
       // Update in-memory connection if active
-      TunnelService.updateSecret(params.tunnelId, secret)
+      TunnelService.updateSecret(params.tunnelId, secret);
 
-      return { secret }
+      return { secret };
     },
     {
       response: TunnelModel.rotateResponse,
     }
   )
-  .get(
-    "/tunnels",
-    async ({ organizationId }) => {
-      if (!organizationId) {
-        throw new UnauthorizedError("No active organization")
-      }
-      return { tunnels: TunnelService.getActiveTunnels(organizationId) }
+  .get("/tunnels", async ({ organizationId }) => {
+    if (!organizationId) {
+      throw new UnauthorizedError("No active organization");
     }
-  )
+    return { tunnels: TunnelService.getActiveTunnels(organizationId) };
+  });
 
-export const tunnelWs = new Elysia()
-  .ws("/ws/:tunnelId", {
-    async open(ws) {
-      const tunnelId = ws.data.params.tunnelId
-      const authHeader = ws.data.headers?.authorization
+export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
+  async open(ws) {
+    const tunnelId = ws.data.params.tunnelId;
+    const authHeader = ws.data.headers?.authorization;
 
-      if (!authHeader?.startsWith("Bearer ")) {
-        ws.close(4001, "Unauthorized")
-        return
+    if (!authHeader?.startsWith("Bearer ")) {
+      ws.close(4001, "Unauthorized");
+      return;
+    }
+
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
+      if (value) {
+        headers[key] = value;
       }
+    }
 
-      const headers: Record<string, string> = {}
-      for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
-        if (value) headers[key] = value
+    // Validate session before accepting connection
+    let organizationId: string;
+    try {
+      const session = await betterAuth.api.getSession({
+        headers: headers as HeadersInit,
+      });
+      if (!session?.session?.activeOrganizationId) {
+        ws.close(4001, "Unauthorized");
+        return;
       }
+      organizationId = session.session.activeOrganizationId;
+    } catch {
+      ws.close(4001, "Unauthorized");
+      return;
+    }
 
-      // Validate session before accepting connection
-      let organizationId: string
+    // Fetch tunnel secret from DB
+    const [tunnelRecord] = await db
+      .select()
+      .from(tunnel)
+      .where(eq(tunnel.id, tunnelId))
+      .limit(1);
+    if (!tunnelRecord) {
+      ws.close(4001, "Tunnel not found");
+      return;
+    }
+
+    // Close existing connection if tunnel is being taken over
+    const existingConn = TunnelService.getTunnel(tunnelId);
+    if (existingConn) {
+      if (existingConn.validationInterval) {
+        clearInterval(existingConn.validationInterval);
+      }
+      existingConn.send(JSON.stringify({ type: "takeover" }));
+      existingConn.close();
+    }
+
+    const connection = {
+      send: (data: string) => ws.send(data),
+      close: () => ws.close(),
+      pending: new Map(),
+      headers,
+      validationInterval: undefined as
+        | ReturnType<typeof setInterval>
+        | undefined,
+      organizationId,
+      secret: tunnelRecord.secret,
+    };
+
+    // Periodic session validation
+    connection.validationInterval = setInterval(async () => {
       try {
-        const session = await betterAuth.api.getSession({ headers: headers as HeadersInit })
-        if (!session?.session?.activeOrganizationId) {
-          ws.close(4001, "Unauthorized")
-          return
-        }
-        organizationId = session.session.activeOrganizationId
-      } catch {
-        ws.close(4001, "Unauthorized")
-        return
-      }
-
-      // Fetch tunnel secret from DB
-      const [tunnelRecord] = await db.select().from(tunnel).where(eq(tunnel.id, tunnelId)).limit(1)
-      if (!tunnelRecord) {
-        ws.close(4001, "Tunnel not found")
-        return
-      }
-
-      // Close existing connection if tunnel is being taken over
-      const existingConn = TunnelService.getTunnel(tunnelId)
-      if (existingConn) {
-        if (existingConn.validationInterval) clearInterval(existingConn.validationInterval)
-        existingConn.send(JSON.stringify({ type: "takeover" }))
-        existingConn.close()
-      }
-
-      const connection = {
-        send: (data: string) => ws.send(data),
-        close: () => ws.close(),
-        pending: new Map(),
-        headers,
-        validationInterval: undefined as ReturnType<typeof setInterval> | undefined,
-        organizationId,
-        secret: tunnelRecord.secret,
-      }
-
-      // Periodic session validation
-      connection.validationInterval = setInterval(async () => {
-        try {
-          const session = await betterAuth.api.getSession({ headers: headers as HeadersInit })
-          if (!session) {
-            log.info(`Session expired: ${tunnelId}`)
-            if (connection.validationInterval) clearInterval(connection.validationInterval)
-            ws.close(4001, "Session expired")
+        const session = await betterAuth.api.getSession({
+          headers: headers as HeadersInit,
+        });
+        if (!session) {
+          log.info(`Session expired: ${tunnelId}`);
+          if (connection.validationInterval) {
+            clearInterval(connection.validationInterval);
           }
-        } catch {
-          log.info(`Session validation failed: ${tunnelId}`)
-          if (connection.validationInterval) clearInterval(connection.validationInterval)
-          ws.close(4001, "Session expired")
+          ws.close(4001, "Session expired");
         }
-      }, SESSION_VALIDATION_INTERVAL_MS)
-
-      TunnelService.setTunnel(tunnelId, connection)
-
-      log.info(`Connected: ${tunnelId}`)
-    },
-    message(ws, message) {
-      const tunnelId = ws.data.params.tunnelId
-      const connection = TunnelService.getTunnel(tunnelId)
-      if (!connection) return
-
-      try {
-        let response: TunnelResponse
-
-        if (typeof message === "object" && message !== null && "requestId" in message) {
-          response = message as TunnelResponse
-        } else if (typeof message === "string") {
-          response = JSON.parse(message)
-        } else if (message instanceof ArrayBuffer) {
-          response = JSON.parse(new TextDecoder().decode(message))
-        } else if (ArrayBuffer.isView(message)) {
-          response = JSON.parse(new TextDecoder().decode(message))
-        } else {
-          log.error(`Unknown message type: ${typeof message}`)
-          return
+      } catch {
+        log.info(`Session validation failed: ${tunnelId}`);
+        if (connection.validationInterval) {
+          clearInterval(connection.validationInterval);
         }
-
-        const pending = connection.pending.get(response.requestId)
-        if (pending) {
-          clearTimeout(pending.timeout)
-          pending.resolve(response)
-          connection.pending.delete(response.requestId)
-        }
-      } catch (e) {
-        log.error(`Failed to parse response: ${e}`)
+        ws.close(4001, "Session expired");
       }
-    },
-    close(ws) {
-      const tunnelId = ws.data.params.tunnelId
-      const connection = TunnelService.getTunnel(tunnelId)
+    }, SESSION_VALIDATION_INTERVAL_MS);
 
-      if (connection) {
-        if (connection.validationInterval) clearInterval(connection.validationInterval)
-        for (const pending of connection.pending.values()) {
-          clearTimeout(pending.timeout)
-          pending.reject(new Error("Tunnel closed"))
-        }
-        TunnelService.deleteTunnel(tunnelId)
+    TunnelService.setTunnel(tunnelId, connection);
+
+    log.info(`Connected: ${tunnelId}`);
+  },
+  message(ws, message) {
+    const tunnelId = ws.data.params.tunnelId;
+    const connection = TunnelService.getTunnel(tunnelId);
+    if (!connection) {
+      return;
+    }
+
+    try {
+      let response: TunnelResponse;
+
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        "requestId" in message
+      ) {
+        response = message as TunnelResponse;
+      } else if (typeof message === "string") {
+        response = JSON.parse(message);
+      } else if (message instanceof ArrayBuffer) {
+        response = JSON.parse(new TextDecoder().decode(message));
+      } else if (ArrayBuffer.isView(message)) {
+        response = JSON.parse(new TextDecoder().decode(message));
+      } else {
+        log.error(`Unknown message type: ${typeof message}`);
+        return;
       }
 
-      log.info(`Disconnected: ${tunnelId}`)
-    },
-  })
+      const pending = connection.pending.get(response.requestId);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        pending.resolve(response);
+        connection.pending.delete(response.requestId);
+      }
+    } catch (e) {
+      log.error(`Failed to parse response: ${e}`);
+    }
+  },
+  close(ws) {
+    const tunnelId = ws.data.params.tunnelId;
+    const connection = TunnelService.getTunnel(tunnelId);
 
-const parseTunnelParam = (param: string): { tunnelId: string; secret: string } | null => {
-  const lastDash = param.lastIndexOf("-")
-  if (lastDash === -1) return null
+    if (connection) {
+      if (connection.validationInterval) {
+        clearInterval(connection.validationInterval);
+      }
+      for (const pending of connection.pending.values()) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error("Tunnel closed"));
+      }
+      TunnelService.deleteTunnel(tunnelId);
+    }
+
+    log.info(`Disconnected: ${tunnelId}`);
+  },
+});
+
+const parseTunnelParam = (
+  param: string
+): { tunnelId: string; secret: string } | null => {
+  const lastDash = param.lastIndexOf("-");
+  if (lastDash === -1) {
+    return null;
+  }
   return {
     tunnelId: param.slice(0, lastDash),
     secret: param.slice(lastDash + 1),
-  }
-}
+  };
+};
 
 export const tunnelProxy = new Elysia()
   .all("/:tunnelIdWithSecret/*", ({ params, request, set }) => {
-    const parsed = parseTunnelParam(params.tunnelIdWithSecret)
-    if (!parsed || !TunnelService.validateSecret(parsed.tunnelId, parsed.secret)) {
-      set.status = 401
-      return { error: "Invalid tunnel" }
+    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+    if (
+      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
+    ) {
+      set.status = 401;
+      return { error: "Invalid tunnel" };
     }
-    const path = new URL(request.url).pathname.replace(`/${params.tunnelIdWithSecret}`, "") || "/"
-    return TunnelService.handleProxy(parsed.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], path)
+    const path =
+      new URL(request.url).pathname.replace(
+        `/${params.tunnelIdWithSecret}`,
+        ""
+      ) || "/";
+    return TunnelService.handleProxy(
+      parsed.tunnelId,
+      request,
+      set as Parameters<typeof TunnelService.handleProxy>[2],
+      path
+    );
   })
   .all("/:tunnelIdWithSecret", ({ params, request, set }) => {
-    const parsed = parseTunnelParam(params.tunnelIdWithSecret)
-    if (!parsed || !TunnelService.validateSecret(parsed.tunnelId, parsed.secret)) {
-      set.status = 401
-      return { error: "Invalid tunnel" }
+    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+    if (
+      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
+    ) {
+      set.status = 401;
+      return { error: "Invalid tunnel" };
     }
-    return TunnelService.handleProxy(parsed.tunnelId, request, set as Parameters<typeof TunnelService.handleProxy>[2], "/")
-  })
+    return TunnelService.handleProxy(
+      parsed.tunnelId,
+      request,
+      set as Parameters<typeof TunnelService.handleProxy>[2],
+      "/"
+    );
+  });
 
-export { TunnelModel, TunnelService }
+export { TunnelModel, TunnelService };

@@ -1,33 +1,35 @@
-import useSWR from "swr"
-import { useVonContext } from "@/provider"
+import useSWR from "swr";
+import { useVonContext } from "@/provider";
 
-export const createResource = <TResponse extends Record<string, unknown>, TItem>(
-  endpoint: string,
-  dataKey: keyof TResponse
-) => {
-  return () => {
-    const { apiUrl, getCredentials } = useVonContext()
+export const createResource =
+  <TResponse extends Record<string, unknown>, TItem>(
+    endpoint: string,
+    dataKey: keyof TResponse
+  ) =>
+  () => {
+    const { apiUrl, getCredentials } = useVonContext();
 
     const fetcher = async (url: string) => {
-      const creds = await getCredentials()
+      const creds = await getCredentials();
       const response = await fetch(url, {
-        headers: creds.type === "bearer"
-          ? { Authorization: `Bearer ${creds.token}` }
-          : undefined,
+        headers:
+          creds.type === "bearer"
+            ? { Authorization: `Bearer ${creds.token}` }
+            : undefined,
         credentials: creds.type === "cookie" ? "include" : undefined,
-      })
+      });
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${endpoint}`)
+        throw new Error(`Failed to fetch ${endpoint}`);
       }
-      const data = await response.json() as TResponse
-      return (data[dataKey] as TItem[]) ?? []
-    }
+      const data = (await response.json()) as TResponse;
+      return (data[dataKey] as TItem[]) ?? [];
+    };
 
     const { data, error, isLoading, isValidating, mutate } = useSWR(
       `${apiUrl}/${endpoint}`,
       fetcher,
       { revalidateOnFocus: false }
-    )
+    );
 
     return {
       data: data ?? [],
@@ -36,6 +38,5 @@ export const createResource = <TResponse extends Record<string, unknown>, TItem>
       error,
       refresh: () => mutate(),
       mutate,
-    }
-  }
-}
+    };
+  };

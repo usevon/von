@@ -1,9 +1,8 @@
 import { mergeProps } from "@base-ui-components/react/merge-props";
 import { useRender } from "@base-ui-components/react/use-render";
-import type * as React from "react";
-
-import { cn } from "@/lib/utils";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
+import type * as React from "react";
+import { cn } from "@/lib/utils";
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;
@@ -14,7 +13,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
     <ol
       className={cn(
         "flex flex-wrap items-center gap-1.5 break-words text-muted-foreground text-sm sm:gap-2.5",
-        className,
+        className
       )}
       data-slot="breadcrumb-list"
       {...props}

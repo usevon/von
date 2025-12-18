@@ -1,14 +1,16 @@
-import type { Von } from "@/client"
-import { createCrudMethods } from "@/factory"
+import type { Von } from "@/client";
 import type {
   CreateEndpointParams,
-  UpdateEndpointParams,
   Endpoint,
   EndpointsResponse,
-} from "@/endpoints/types"
+  UpdateEndpointParams,
+} from "@/endpoints/types";
+import { createCrudMethods } from "@/factory";
 
 export const endpointsMethods = (client: Von) =>
-  createCrudMethods<CreateEndpointParams, UpdateEndpointParams, Endpoint, EndpointsResponse>(
-    client,
-    "endpoints"
-  )
+  createCrudMethods<
+    CreateEndpointParams,
+    UpdateEndpointParams,
+    Endpoint,
+    EndpointsResponse
+  >(client, "endpoints");

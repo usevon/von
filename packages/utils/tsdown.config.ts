@@ -1,4 +1,4 @@
-import { defineConfig, baseConfig } from "@usevon/typescript-config/tsdown"
+import { baseConfig, defineConfig } from "@usevon/typescript-config/tsdown";
 
 export default defineConfig({
   ...baseConfig,
@@ -14,4 +14,4 @@ export default defineConfig({
     "src/fetch/index.ts",
   ],
   outDir: "dist",
-})
+});
