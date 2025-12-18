@@ -1,6 +1,6 @@
 # @usevon/sdk
 
-TypeScript SDK for Von webhooks infrastructure.
+TypeScript SDK for Von webhooks infrastructure. Built on Eden Treaty for end-to-end type safety.
 
 ## Installation
 
@@ -19,7 +19,7 @@ const von = new Von({
 })
 
 // Send a webhook
-const { data, error } = await von.webhooks.send({
+const { data, error } = await von.webhooks.post({
   eventType: 'order.created',
   payload: { orderId: '123', amount: 99.99 },
 })
@@ -36,7 +36,7 @@ console.log(data.id) // evt_xxx
 
 ```typescript
 // Send a single webhook
-const { data, error } = await von.webhooks.send({
+const { data, error } = await von.webhooks.post({
   eventType: 'user.created',
   payload: { userId: '123' },
   // optional - sends to specific endpoints
@@ -44,7 +44,7 @@ const { data, error } = await von.webhooks.send({
 })
 
 // Send multiple webhooks
-const { data: batch } = await von.webhooks.sendBatch({
+const { data: batch } = await von.webhooks.batch.post({
   events: [
     { eventType: 'order.created', payload: { orderId: '1' } },
     { eventType: 'order.created', payload: { orderId: '2' } },
@@ -52,17 +52,17 @@ const { data: batch } = await von.webhooks.sendBatch({
 })
 
 // List webhook events
-const { data: events } = await von.webhooks.list({ limit: 10, offset: 0 })
+const { data: events } = await von.webhooks.get({ query: { limit: 10, offset: 0 } })
 
 // Get a specific event
-const { data: event } = await von.webhooks.get('evt_xxx')
+const { data: event } = await von.webhooks['evt_xxx'].get()
 ```
 
 ## Endpoints
 
 ```typescript
 // Create an endpoint
-const { data: endpoint } = await von.endpoints.create({
+const { data: endpoint } = await von.endpoints.post({
   url: 'https://myapp.com/webhooks',
   description: 'Production webhook endpoint',
   retryCount: 5,
@@ -71,18 +71,18 @@ const { data: endpoint } = await von.endpoints.create({
 })
 
 // List endpoints
-const { data } = await von.endpoints.list()
+const { data } = await von.endpoints.get()
 
 // Get an endpoint
-const { data: endpoint } = await von.endpoints.get('ep_xxx')
+const { data: endpoint } = await von.endpoints['ep_xxx'].get()
 
 // Update an endpoint
-const { data: updated } = await von.endpoints.update('ep_xxx', {
+const { data: updated } = await von.endpoints['ep_xxx'].patch({
   enabled: false,
 })
 
 // Delete an endpoint
-await von.endpoints.delete('ep_xxx')
+await von.endpoints['ep_xxx'].delete()
 ```
 
 ## Inbound
@@ -91,25 +91,25 @@ Receive webhooks from third-party services (Stripe, GitHub, etc.) through Von.
 
 ```typescript
 // Create an inbound endpoint
-const { data: inbound } = await von.inbound.create({
+const { data: inbound } = await von.inbound.post({
   name: 'Stripe Webhooks',
   provider: 'stripe',
   forwardUrl: 'https://myapp.com/stripe',
 })
 
 // List inbound endpoints
-const { data } = await von.inbound.list()
+const { data } = await von.inbound.get()
 
 // Get an inbound endpoint
-const { data: inbound } = await von.inbound.get('in_xxx')
+const { data: inbound } = await von.inbound['in_xxx'].get()
 
 // Update an inbound endpoint
-const { data: updated } = await von.inbound.update('in_xxx', {
+const { data: updated } = await von.inbound['in_xxx'].patch({
   enabled: false,
 })
 
 // Delete an inbound endpoint
-await von.inbound.delete('in_xxx')
+await von.inbound['in_xxx'].delete()
 ```
 
 ## Versions
@@ -118,7 +118,7 @@ Manage webhook payload versioning with field transforms.
 
 ```typescript
 // Create a version
-const { data: version } = await von.versions.create({
+const { data: version } = await von.versions.post({
   version: '2024-06-01',
   transforms: {
     'product.updated': {
@@ -130,31 +130,54 @@ const { data: version } = await von.versions.create({
 })
 
 // List versions
-const { data } = await von.versions.list()
+const { data } = await von.versions.get()
 
 // Get a version
-const { data: version } = await von.versions.get('2024-06-01')
+const { data: version } = await von.versions['2024-06-01'].get()
 
 // Update a version
-const { data: updated } = await von.versions.update('2024-06-01', {
+const { data: updated } = await von.versions['2024-06-01'].patch({
   transforms: { 'product.updated': { rename: { features: 'newItems' } } },
 })
 
 // Delete a version
-await von.versions.delete('2024-06-01')
+await von.versions['2024-06-01'].delete()
+```
+
+## Webhook Verification
+
+Verify incoming webhooks from Von in your application:
+
+```typescript
+import { verifyWebhook, WebhookVerificationError } from '@usevon/sdk'
+
+app.post('/webhooks', async (req) => {
+  const payload = await req.text()
+  const signature = req.headers.get('x-von-signature')
+
+  try {
+    const event = verifyWebhook(payload, signature, process.env.WEBHOOK_SECRET)
+    console.log(event.type, event.data)
+    return new Response('OK')
+  } catch (err) {
+    if (err instanceof WebhookVerificationError) {
+      return new Response('Invalid signature', { status: 401 })
+    }
+    throw err
+  }
+})
 ```
 
 ## Error Handling
 
-All methods return `{ data, error }` instead of throwing exceptions.
+All methods return `{ data, error, status, response }` instead of throwing exceptions.
 
 ```typescript
-const { data, error } = await von.endpoints.get('invalid-id')
+const { data, error, status } = await von.endpoints['invalid-id'].get()
 
 if (error) {
-  console.error(error.message)    // "Request failed with status 404"
-  console.error(error.status)     // 404
-  console.error(error.statusText) // "Not Found"
+  console.error(error.message)  // Error message from server
+  console.error(status)         // HTTP status code (e.g., 404)
   return
 }
 
@@ -167,13 +190,6 @@ console.log(data.url)
 const von = new Von({
   baseUrl: 'https://api.usevon.com',
   apiKey: 'von_prod_xxx',
-  retry: {
-    type: 'exponential',
-    attempts: 3,
-    baseDelay: 1000,
-    maxDelay: 10000,
-  },
-  timeout: 30000,
 })
 ```
 
@@ -182,22 +198,6 @@ Environment variables can be used instead of passing config directly:
 ```bash
 VON_BASE_URL=https://api.usevon.com
 VON_API_KEY=von_prod_xxx
-```
-
-POST, PUT, and PATCH requests are automatically idempotent with a unique key generated per request and responses cached server-side for 24 hours.
-
-## Testing
-
-See the [tests](./tests) for more examples:
-
-- [client.test.ts](./tests/client.test.ts) - Client initialization and request handling
-- [webhooks.test.ts](./tests/webhooks.test.ts) - Webhook operations
-- [endpoints.test.ts](./tests/endpoints.test.ts) - Endpoint management
-- [inbound.test.ts](./tests/inbound.test.ts) - Inbound endpoint management
-- [versions.test.ts](./tests/versions.test.ts) - Version management
-
-```bash
-bun test
 ```
 
 ## License
