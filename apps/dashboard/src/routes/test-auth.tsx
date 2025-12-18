@@ -143,6 +143,7 @@ function TestAuthPage() {
     addLog("Creating API key...");
     const { data: result, error: createKeyError } = await apiKey.create({
       name: "test-api-key",
+      environment: "dev",
       organizationId: orgId,
     });
     if (createKeyError) {
