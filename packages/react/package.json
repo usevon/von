@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "dev": "tsdown --watch"
+    "dev": "tsdown && tsdown --watch --no-clean"
   },
   "dependencies": {
     "@usevon/auth": "workspace:*",

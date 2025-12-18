@@ -11,7 +11,7 @@ export type WebhookEvent = {
 
 type WebhooksResponse = { events: WebhookEvent[] };
 
-export const useWebhooks = createResource<WebhooksResponse, WebhookEvent>(
+export const useWebhooks = createResource<WebhooksResponse, WebhookEvent, "events">(
   "webhooks/events",
   "events"
 );

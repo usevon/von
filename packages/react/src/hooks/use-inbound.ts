@@ -13,7 +13,7 @@ export type InboundEndpoint = {
 
 type InboundResponse = { endpoints: InboundEndpoint[] };
 
-export const useInbound = createResource<InboundResponse, InboundEndpoint>(
+export const useInbound = createResource<InboundResponse, InboundEndpoint, "endpoints">(
   "inbound",
   "endpoints"
 );

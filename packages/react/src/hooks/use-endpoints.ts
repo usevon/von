@@ -14,7 +14,7 @@ export type Endpoint = {
 
 type EndpointsResponse = { endpoints: Endpoint[] };
 
-export const useEndpoints = createResource<EndpointsResponse, Endpoint>(
+export const useEndpoints = createResource<EndpointsResponse, Endpoint, "endpoints">(
   "endpoints",
   "endpoints"
 );
