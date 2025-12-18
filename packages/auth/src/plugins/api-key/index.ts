@@ -45,6 +45,10 @@ export const ERROR_CODES = {
 export const API_KEY_TABLE_NAME = "apikey"
 
 export const apiKey = (options?: ApiKeyOptions) => {
+  if (!options?.signingSecret && process.env.NODE_ENV === "production") {
+    throw new Error("API key signingSecret is required in production")
+  }
+
   const opts: ResolvedApiKeyOptions = {
     storage: options?.storage ?? "database",
     fallbackToDatabase: options?.fallbackToDatabase ?? false,

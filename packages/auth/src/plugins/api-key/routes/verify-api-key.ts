@@ -92,10 +92,6 @@ export function verifyApiKey({
       const lengthValid = key.length >= keyLength
       const prefixValid = hasValidPrefix(key)
 
-      // Signature validation is required in production - log warning if not configured
-      if (!opts.signingSecret && process.env.NODE_ENV === "production") {
-        ctx.context.logger.error("API key signing secret not configured in production - keys are not cryptographically signed")
-      }
       const signatureValid = opts.signingSecret ? verifySignature(key, opts.signingSecret) : true
 
       if (!lengthValid || !prefixValid || !signatureValid) {
