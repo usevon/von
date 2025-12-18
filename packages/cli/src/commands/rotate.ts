@@ -34,7 +34,7 @@ export const rotate = new Command("rotate")
     try {
       const session = await getSession(token);
       if (!session) {
-        s.stop("Error");
+        s.stop("");
         log.error("Session expired, run 'von login' to re-authenticate");
         return;
       }
@@ -51,7 +51,7 @@ export const rotate = new Command("rotate")
       );
       log.success("Old URLs will no longer work");
     } catch (err) {
-      s.stop("Error");
+      s.stop("");
       log.error(
         `Failed to rotate tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
       );
