@@ -1,6 +1,6 @@
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import * as p from "@clack/prompts"
 
 export type VonConfig = {
@@ -49,11 +49,13 @@ export const saveConfig = (config: Partial<VonConfig>): void => {
   const current = loadConfig()
   const updated = { ...current, ...config }
   writeFileSync(CONFIG_FILE, JSON.stringify(updated, null, 2))
+  chmodSync(CONFIG_FILE, 0o600)
 }
 
 export const clearConfig = (): void => {
   ensureConfigDir()
   writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2))
+  chmodSync(CONFIG_FILE, 0o600)
 }
 
 export const requireAuth = (): { token: string; config: VonConfig } => {

@@ -50,7 +50,10 @@ export abstract class TunnelService {
 
   static validateSecret(tunnelId: string, secret: string): boolean {
     const connection = tunnels.get(tunnelId)
-    return connection ? timingSafeEqual(connection.secret, secret) : false
+    // Always perform timing-safe comparison to prevent timing attacks that reveal tunnel existence
+    const secretToCompare = connection?.secret ?? "0".repeat(32)
+    const isValid = timingSafeEqual(secretToCompare, secret)
+    return connection ? isValid : false
   }
 
   static updateSecret(tunnelId: string, newSecret: string): boolean {
