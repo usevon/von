@@ -360,45 +360,6 @@ export const webhookVersion = pgTable(
   ]
 )
 
-export const auditLog = pgTable(
-  "audit_log",
-  {
-    id: uuid("id").primaryKey(),
-    organizationId: uuid("organization_id").references(() => organization.id, {
-      onDelete: "cascade",
-    }),
-    userId: uuid("user_id").references(() => user.id, { onDelete: "set null" }),
-    eventType: text("event_type").notNull(),
-    resourceType: text("resource_type"),
-    resourceId: text("resource_id"),
-    metadata: text("metadata"),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("audit_log_organization_id_idx").on(table.organizationId),
-    index("audit_log_user_id_idx").on(table.userId),
-    index("audit_log_event_type_idx").on(table.eventType),
-    index("audit_log_created_at_idx").on(table.createdAt),
-  ]
-)
-
-export const apikeyScope = pgTable(
-  "apikey_scope",
-  {
-    id: uuid("id").primaryKey(),
-    apikeyId: uuid("apikey_id")
-      .notNull()
-      .references(() => apikey.id, { onDelete: "cascade" }),
-    scope: text("scope").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("apikey_scope_apikey_id_idx").on(table.apikeyId),
-  ]
-)
-
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -510,23 +471,5 @@ export const webhookVersionRelations = relations(webhookVersion, ({ one }) => ({
   organization: one(organization, {
     fields: [webhookVersion.organizationId],
     references: [organization.id],
-  }),
-}))
-
-export const auditLogRelations = relations(auditLog, ({ one }) => ({
-  organization: one(organization, {
-    fields: [auditLog.organizationId],
-    references: [organization.id],
-  }),
-  user: one(user, {
-    fields: [auditLog.userId],
-    references: [user.id],
-  }),
-}))
-
-export const apikeyScopeRelations = relations(apikeyScope, ({ one }) => ({
-  apikey: one(apikey, {
-    fields: [apikeyScope.apikeyId],
-    references: [apikey.id],
   }),
 }))

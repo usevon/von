@@ -8,8 +8,6 @@ import { betterAuth } from "better-auth/minimal"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { organization, bearer, deviceAuthorization } from "better-auth/plugins"
 import { apiKey } from "@/plugins/api-key"
-import { accessControl } from "@/plugins/access-control"
-import type { AccessControlOptions } from "@/plugins/access-control"
 
 export type SecondaryStorage = {
   get: (key: string) => Promise<string | null> | string | null
@@ -27,10 +25,6 @@ export type CreateAuthOptions = {
    * Enables faster API key lookups by caching in Redis with DB fallback.
    */
   secondaryStorage: SecondaryStorage
-  /**
-   * Access control and audit logging configuration.
-   */
-  accessControl?: AccessControlOptions
 }
 
 export const createAuth = (
@@ -74,7 +68,6 @@ export const createAuth = (
     plugins: [
       bearer(),
       organization(),
-      accessControl(options.accessControl),
       apiKey({
         storage: "secondary-storage",
         fallbackToDatabase: true,
@@ -118,8 +111,5 @@ export type User = Session["user"]
 
 export { apiKey } from "@/plugins/api-key"
 export type { ApiKeyOptions, ApiKey } from "@/plugins/api-key"
-
-export { accessControl, SCOPES, hasScope, expandScopes, createRequireScope } from "@/plugins/access-control"
-export type { AccessControlOptions, AuditEventType, AuditLog, ApiKeyScope } from "@/plugins/access-control"
 
 export const generateId = () => crypto.randomUUID()
