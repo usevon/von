@@ -10,6 +10,7 @@ export namespace EndpointModel {
     timeoutMs: t.Optional(
       t.Number({ default: 30_000, minimum: 1000, maximum: 60_000 })
     ),
+    events: t.Optional(t.Array(t.String({ maxLength: 100 }))),
   });
 
   export type createBody = typeof createBody.static;
@@ -21,6 +22,9 @@ export namespace EndpointModel {
     version: t.Optional(t.Union([t.String({ maxLength: 50 }), t.Null()])),
     retryCount: t.Optional(t.Number({ minimum: 0, maximum: 10 })),
     timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60_000 })),
+    events: t.Optional(
+      t.Union([t.Array(t.String({ maxLength: 100 })), t.Null()])
+    ),
   });
 
   export type updateBody = typeof updateBody.static;
@@ -34,6 +38,7 @@ export namespace EndpointModel {
     version: t.Union([t.String(), t.Null()]),
     retryCount: t.Number(),
     timeoutMs: t.Number(),
+    events: t.Union([t.Array(t.String()), t.Null()]),
     createdAt: t.String(),
     updatedAt: t.String(),
   });

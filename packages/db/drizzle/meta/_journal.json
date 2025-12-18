@@ -8,6 +8,13 @@
       "when": 1764177510868,
       "tag": "0000_organic_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766079480549,
+      "tag": "0001_familiar_zombie",
+      "breakpoints": true
     }
   ]
 }

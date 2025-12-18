@@ -22,6 +22,7 @@ type EndpointFields = {
   version?: string | null;
   retryCount?: number;
   timeoutMs?: number;
+  events?: string[] | null;
 };
 
 type CreateEndpointParams = EndpointFields & { organizationId: string };
@@ -45,6 +46,7 @@ const buildUpdateSet = (
   version: params.version !== undefined ? params.version : existing.version,
   retryCount: params.retryCount ?? existing.retryCount,
   timeoutMs: params.timeoutMs ?? existing.timeoutMs,
+  events: params.events !== undefined ? params.events : existing.events,
   updatedAt: new Date(),
 });
 
@@ -71,6 +73,7 @@ export abstract class EndpointService {
           version: params.version ?? null,
           retryCount: params.retryCount ?? 3,
           timeoutMs: params.timeoutMs ?? 30_000,
+          events: params.events ?? null,
           createdAt: now,
           updatedAt: now,
         })
@@ -215,6 +218,7 @@ export abstract class EndpointService {
           timeoutMs: endpoint.timeoutMs,
           retryCount: endpoint.retryCount,
           version: endpoint.version,
+          events: endpoint.events,
         })
         .from(endpoint)
         .where(and(...conditions));

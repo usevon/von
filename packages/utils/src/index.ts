@@ -54,3 +54,4 @@ export {
   toISODates,
 } from "@/transforms";
 export { isValidWebhookUrl } from "@/validation";
+export { matchesEventType } from "@/webhook";
