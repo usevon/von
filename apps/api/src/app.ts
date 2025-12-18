@@ -1,14 +1,5 @@
 import { cors } from "@elysiajs/cors";
-import { checkDatabaseConnection } from "@usevon/db";
-import { checkRedisConnection } from "@usevon/queue";
-import {
-  BadRequestError,
-  ConflictError,
-  ForbiddenError,
-  InternalServerError,
-  NotFoundError,
-  UnauthorizedError,
-} from "@usevon/utils";
+import { vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
@@ -55,57 +46,8 @@ export const app = new Elysia({
   nativeStaticResponse: true,
 })
   .use(securityHeaders)
-  .error({
-    UnauthorizedError,
-    NotFoundError,
-    BadRequestError,
-    ForbiddenError,
-    ConflictError,
-    InternalServerError,
-  })
+  .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
   .use(idempotency())
-  .onError(({ code, error, set }) => {
-    const statusMap: Record<string, number> = {
-      UnauthorizedError: 401,
-      NotFoundError: 404,
-      BadRequestError: 400,
-      ForbiddenError: 403,
-      ConflictError: 409,
-      InternalServerError: 500,
-      VALIDATION: 400,
-      NOT_FOUND: 404,
-    };
-    const status = statusMap[code];
-    const isProd = env.NODE_ENV === "production";
-    const message = "message" in error ? error.message : String(error);
-    if (status) {
-      set.status = status;
-      return {
-        error: status === 500 && isProd ? "Internal server error" : message,
-      };
-    }
-    console.error({ code, error: message });
-    set.status = 500;
-    return { error: isProd ? "Internal server error" : String(error) };
-  })
-  .get("/live", () => ({ status: "ok", uptime: process.uptime() }))
-  .get("/ready", async ({ set }) => {
-    const [db, redis] = await Promise.all([
-      checkDatabaseConnection(),
-      checkRedisConnection(),
-    ]);
-
-    const ok = db.ok && redis.ok;
-    set.status = ok ? 200 : 503;
-
-    return {
-      status: ok ? "ok" : "degraded",
-      services: {
-        database: db.ok ? "ok" : "unavailable",
-        redis: redis.ok ? "ok" : "unavailable",
-      },
-    };
-  })
   .use(browserRoutes)
   .use(ping)
   .use(inboundPublic)
