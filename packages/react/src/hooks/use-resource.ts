@@ -2,9 +2,9 @@ import useSWR from "swr";
 import { useVonContext } from "@/provider";
 
 export const createResource =
-  <TResponse extends Record<string, unknown>, TItem>(
+  <TResponse extends Record<string, unknown>, TItem, K extends string>(
     endpoint: string,
-    dataKey: keyof TResponse
+    dataKey: K & keyof TResponse
   ) =>
   () => {
     const { apiUrl, getCredentials } = useVonContext();
@@ -32,11 +32,19 @@ export const createResource =
     );
 
     return {
-      data: data ?? [],
+      [dataKey]: data ?? [],
       isLoading,
       isRefreshing: isValidating && !isLoading,
       error,
       refresh: () => mutate(),
       mutate,
+    } as {
+      [P in K]: TItem[];
+    } & {
+      isLoading: boolean;
+      isRefreshing: boolean;
+      error: Error | undefined;
+      refresh: () => void;
+      mutate: typeof mutate;
     };
   };

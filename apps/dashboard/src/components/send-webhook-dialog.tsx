@@ -44,7 +44,7 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
   );
   const { endpoints, isLoading: endpointsLoading } = useEndpoints();
 
-  const enabledEndpoints = endpoints.filter((e) => e.enabled);
+  const enabledEndpoints = (endpoints ?? []).filter((e) => e.enabled);
   const hasNoEndpoints = !endpointsLoading && enabledEndpoints.length === 0;
 
   const getPlaceholderLabel = () => {

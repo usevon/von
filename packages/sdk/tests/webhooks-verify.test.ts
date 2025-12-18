@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { hmacSign } from "@usevon/utils";
-import {
-  verifyWebhook,
-  WebhookVerificationError,
-} from "../src/webhooks/verify";
+import { verifyWebhook, WebhookVerificationError } from "../src";
 
 const createSignature = (
   payload: string,
