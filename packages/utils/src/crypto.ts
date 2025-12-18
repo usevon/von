@@ -24,7 +24,12 @@ export function hmacSign(data: string, secret: string): string {
 
 export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  // Bun has crypto.timingSafeEqual globally, Node.js needs require('crypto')
+  if (typeof Bun !== "undefined") {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  }
+  const nodeCrypto = require("crypto")
+  return nodeCrypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
 }
 
 export function verifyHmac(data: string, signature: string, secret: string): boolean {
