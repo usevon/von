@@ -1,8 +1,6 @@
-import {
-  hmacSign as baseHmacSign,
-  hashSha256,
-  timingSafeEqual,
-} from "@usevon/utils";
+import { hmacSign as baseHmacSign, timingSafeEqual } from "@usevon/utils";
+
+export { hashSha256 as hashKey } from "@usevon/utils";
 
 const SIG_LENGTH = 32;
 
@@ -11,8 +9,6 @@ const PREFIXES: Record<string, string> = {
   von_stg_: "staging",
   von_prod_: "prod",
 };
-
-export { hashSha256 as hashKey };
 
 export function hmacSign(data: string, secret: string): string {
   return baseHmacSign(data, secret).slice(0, SIG_LENGTH);

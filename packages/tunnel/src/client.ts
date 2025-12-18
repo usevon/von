@@ -53,13 +53,19 @@ export class TunnelClient {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private shouldReconnect = true;
   private hasConnectedOnce = false;
+  private readonly wsUrl: string;
+  private readonly token: string;
+  private readonly events: TunnelClientEvents;
 
   constructor(
-    private readonly wsUrl: string,
-    private readonly token: string,
-    private readonly events: TunnelClientEvents,
+    wsUrl: string,
+    token: string,
+    events: TunnelClientEvents,
     options: TunnelClientOptions = {}
   ) {
+    this.wsUrl = wsUrl;
+    this.token = token;
+    this.events = events;
     this.maxReconnects = options.maxRetries ?? 5;
   }
 

@@ -92,7 +92,7 @@ function DialogHeader({
       {...props}
     >
       {children}
-      {showCloseButton && (
+      {showCloseButton ? (
         <DialogPrimitive.Close
           className="col-start-2 row-start-1"
           render={<Button size="icon-sm" variant="ghost" />}
@@ -100,7 +100,7 @@ function DialogHeader({
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
-      )}
+      ) : null}
     </div>
   );
 }

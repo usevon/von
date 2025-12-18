@@ -2,12 +2,10 @@ import { loadConfig } from "@/lib/config";
 import type {
   DeviceCodeResponse,
   DeviceTokenResponse,
-  Organization,
-  TunnelRegistration,
   UserSession,
 } from "@/lib/types";
 
-export type { Organization, TunnelRegistration };
+export type { Organization, TunnelRegistration } from "@/lib/types";
 
 type RequestOptions = {
   method?: "GET" | "POST";

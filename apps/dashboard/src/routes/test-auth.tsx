@@ -35,7 +35,16 @@ function TestAuthPage() {
   const [log, setLog] = useState<string[]>([]);
   const prevSessionRef = useRef(data);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const sessionStatus = isPending ? "Loading..." : data ? "Authenticated" : "Not authenticated";
+  const getSessionStatus = () => {
+    if (isPending) {
+      return "Loading...";
+    }
+    if (data) {
+      return "Authenticated";
+    }
+    return "Not authenticated";
+  };
+  const sessionStatus = getSessionStatus();
 
   useEffect(() => {
     if (prevSessionRef.current && !data && !isPending) {
@@ -114,9 +123,10 @@ function TestAuthPage() {
       return;
     }
     addLog("Found organizations", orgs);
-    const { data: result, error: setActiveError } = await organization.setActive({
-      organizationId: orgs[0].id,
-    });
+    const { data: result, error: setActiveError } =
+      await organization.setActive({
+        organizationId: orgs[0].id,
+      });
     if (setActiveError) {
       addLog("Set active org error", setActiveError);
     } else {

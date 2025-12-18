@@ -6,31 +6,37 @@
 
 "use client";
 
-import * as React from "react";
+import type { ChangeEvent } from "react";
+import { Fragment, useImperativeHandle, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { InputOTPProps } from "@/components/ui/input-otp/types";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export const InputOTP = (props: InputOTPProps) => {
-  const [internalValue, setInternalValue] = React.useState(
+  const [internalValue, setInternalValue] = useState(
     typeof props.defaultValue === "string" ? props.defaultValue : ""
   );
-  const [isFocused, setIsFocused] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  React.useImperativeHandle(props.ref, () => inputRef.current!);
+  useImperativeHandle(props.ref, () => inputRef.current as HTMLInputElement);
 
   const value = props.value ?? internalValue;
-  const regexp = props.pattern
-    ? typeof props.pattern === "string"
-      ? new RegExp(props.pattern)
-      : props.pattern
-    : null;
+  const getRegexp = () => {
+    if (!props.pattern) {
+      return null;
+    }
+    if (typeof props.pattern === "string") {
+      return new RegExp(props.pattern);
+    }
+    return props.pattern;
+  };
+  const regexp = getRegexp();
   const groupSize = props.groupSize ?? 4;
   const insertionPoint = Math.min(value.length, props.maxLength - 1);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = e.currentTarget.value.slice(0, props.maxLength);
     if (newValue.length > 0 && regexp && !regexp.test(newValue)) {
       e.preventDefault();
@@ -73,7 +79,7 @@ export const InputOTP = (props: InputOTPProps) => {
       data-slot="input-otp"
     >
       {groups.map((group, groupIdx) => (
-        <React.Fragment key={groupIdx}>
+        <Fragment key={groupIdx}>
           {groupIdx > 0 && (
             <Separator
               className="mx-1.5"
@@ -95,13 +101,13 @@ export const InputOTP = (props: InputOTPProps) => {
                 key={slotIdx}
               >
                 {slot.char}
-                {slot.hasFakeCaret && (
+                {slot.hasFakeCaret ? (
                   <span className="pointer-events-none absolute h-4 w-px animate-caret-blink bg-foreground" />
-                )}
+                ) : null}
               </div>
             ))}
           </div>
-        </React.Fragment>
+        </Fragment>
       ))}
       <Input
         autoComplete={props.autoComplete || "one-time-code"}

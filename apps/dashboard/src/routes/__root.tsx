@@ -58,24 +58,26 @@ const Navbar = () => {
         </Link>
       </div>
       <div>
-        {isPending ? (
-          <span className="text-gray-400">Loading...</span>
-        ) : null}
-        {!isPending && session ? (
-          <div className="flex items-center gap-3">
-            <span className="text-gray-600">{session.user.email}</span>
-            <button
-              className="cursor-pointer"
-              onClick={handleSignOut}
-              type="button"
-            >
-              Sign Out
-            </button>
-          </div>
-        ) : null}
-        {!isPending && !session ? (
-          <span className="text-gray-400">Not logged in</span>
-        ) : null}
+        {(() => {
+          if (isPending) {
+            return <span className="text-gray-400">Loading...</span>;
+          }
+          if (session) {
+            return (
+              <div className="flex items-center gap-3">
+                <span className="text-gray-600">{session.user.email}</span>
+                <button
+                  className="cursor-pointer"
+                  onClick={handleSignOut}
+                  type="button"
+                >
+                  Sign Out
+                </button>
+              </div>
+            );
+          }
+          return <span className="text-gray-400">Not logged in</span>;
+        })()}
       </div>
     </nav>
   );

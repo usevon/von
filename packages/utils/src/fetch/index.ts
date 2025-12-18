@@ -79,14 +79,14 @@ const executeRequest = async (
   }
 };
 
-const parseResponse = async <T>(response: Response): Promise<T> => {
+const parseResponse = <T>(response: Response): Promise<T> => {
   const contentType = response.headers.get("Content-Type") ?? "";
 
   if (contentType.includes("application/json")) {
     return response.json() as Promise<T>;
   }
 
-  return response.text() as unknown as T;
+  return response.text() as unknown as Promise<T>;
 };
 
 const createFetchError = (

@@ -21,8 +21,8 @@ export const createResource =
       if (!response.ok) {
         throw new Error(`Failed to fetch ${endpoint}`);
       }
-      const data = (await response.json()) as TResponse;
-      return (data[dataKey] as TItem[]) ?? [];
+      const responseData = (await response.json()) as TResponse;
+      return (responseData[dataKey] as TItem[]) ?? [];
     };
 
     const { data, error, isLoading, isValidating, mutate } = useSWR(

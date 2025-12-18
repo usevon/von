@@ -14,7 +14,6 @@ const validateKey = async (key: string): Promise<boolean> => {
 
 const promptUntilValid = async () => {
   while (true) {
-    // biome-ignore lint/suspicious/noAlert: CLI prompt for test setup
     const key = prompt(
       "Enter your VON_API_KEY (or press Enter to skip):"
     )?.trim();

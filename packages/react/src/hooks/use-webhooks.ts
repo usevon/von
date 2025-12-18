@@ -1,4 +1,4 @@
-import { createResource } from "@/hooks/useResource";
+import { createResource } from "@/hooks/use-resource";
 
 export type WebhookEvent = {
   id: string;

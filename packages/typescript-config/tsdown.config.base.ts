@@ -1,4 +1,6 @@
-import { defineConfig, type UserConfig } from "tsdown";
+import type { UserConfig } from "tsdown";
+
+export { defineConfig } from "tsdown";
 
 export const baseConfig: UserConfig = {
   format: "esm",
@@ -10,5 +12,3 @@ export const baseConfig: UserConfig = {
 export const reactConfig: UserConfig = {
   ...baseConfig,
 };
-
-export { defineConfig };

@@ -13,6 +13,9 @@ import { betterAuth, withSession } from "@/modules/auth";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
 
+export { TunnelModel } from "@/modules/tunnel/model";
+export { TunnelService } from "@/modules/tunnel/service";
+
 const log = createLogger({ name: "tunnel" });
 
 const SESSION_VALIDATION_INTERVAL_MS = 30_000;
@@ -102,7 +105,7 @@ export const tunnelRegister = new Elysia()
       response: TunnelModel.rotateResponse,
     }
   )
-  .get("/tunnels", async ({ organizationId }) => {
+  .get("/tunnels", ({ organizationId }) => {
     if (!organizationId) {
       throw new UnauthorizedError("No active organization");
     }
@@ -306,5 +309,3 @@ export const tunnelProxy = new Elysia()
       "/"
     );
   });
-
-export { TunnelModel, TunnelService };

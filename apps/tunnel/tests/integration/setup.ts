@@ -55,6 +55,6 @@ const init = async () => {
   }
 };
 
-void init();
+init().catch(console.error);
 
 export const getApiKey = () => process.env.VON_API_KEY;

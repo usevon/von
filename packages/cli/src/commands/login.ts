@@ -1,4 +1,14 @@
-import { cancel, intro, isCancel, log, note, outro, select, spinner, text } from "@clack/prompts";
+import {
+  cancel,
+  intro,
+  isCancel,
+  log,
+  note,
+  outro,
+  select,
+  spinner,
+  text,
+} from "@clack/prompts";
 import { Command } from "commander";
 import open from "open";
 import pc from "picocolors";

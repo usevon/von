@@ -19,10 +19,10 @@ export class Von {
   private readonly hooks?: Omit<FetchHooks, "onSuccess" | "onError">;
   private readonly timeout?: number;
 
-  public readonly webhooks: ReturnType<typeof webhooksMethods>;
-  public readonly endpoints: ReturnType<typeof endpointsMethods>;
-  public readonly inbound: ReturnType<typeof inboundMethods>;
-  public readonly versions: ReturnType<typeof versionsMethods>;
+  readonly webhooks: ReturnType<typeof webhooksMethods>;
+  readonly endpoints: ReturnType<typeof endpointsMethods>;
+  readonly inbound: ReturnType<typeof inboundMethods>;
+  readonly versions: ReturnType<typeof versionsMethods>;
 
   constructor(config?: VonConfig) {
     this.baseUrl =
@@ -46,7 +46,7 @@ export class Von {
     return headers;
   }
 
-  async request<T>(
+  request<T>(
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     body?: unknown
@@ -61,19 +61,19 @@ export class Von {
     });
   }
 
-  async get<T>(path: string): Promise<VonFetchResponse<T>> {
+  get<T>(path: string): Promise<VonFetchResponse<T>> {
     return this.request<T>("GET", path);
   }
 
-  async post<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
+  post<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
     return this.request<T>("POST", path, body);
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
+  patch<T>(path: string, body?: unknown): Promise<VonFetchResponse<T>> {
     return this.request<T>("PATCH", path, body);
   }
 
-  async delete<T>(path: string): Promise<VonFetchResponse<T>> {
+  delete<T>(path: string): Promise<VonFetchResponse<T>> {
     return this.request<T>("DELETE", path);
   }
 }

@@ -41,4 +41,4 @@ export const createLogger = (options: LoggerOptions = {}): Logger => {
 
 export const logger = createLogger({ name: "von" });
 
-export type { Logger };
+export type { Logger } from "pino";

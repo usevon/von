@@ -87,11 +87,10 @@ export class TunnelManager {
   private readonly onTakeover?: (port: number) => void;
   private readonly onMaxRetries?: (port: number) => void;
   private readonly onSecretRotated?: (port: number, newSecret: string) => void;
+  private readonly token: string;
 
-  constructor(
-    private readonly token: string,
-    options: TunnelManagerOptions = {}
-  ) {
+  constructor(token: string, options: TunnelManagerOptions = {}) {
+    this.token = token;
     this.verbose = options.verbose ?? false;
     this.onTakeover = options.onTakeover;
     this.onMaxRetries = options.onMaxRetries;

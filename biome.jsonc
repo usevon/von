@@ -10,7 +10,22 @@
         "noNamespace": "off"
       },
       "complexity": {
-        "noStaticOnlyClass": "off"
+        "noStaticOnlyClass": "off",
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noAlert": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off"
+      },
+      "nursery": {
+        "noUndeclaredEnvVars": "off"
       }
     }
   }

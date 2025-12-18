@@ -17,10 +17,11 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
       <CheckboxPrimitive.Indicator
         className="absolute -inset-px flex items-center justify-center rounded-[0.25rem] text-primary-foreground data-unchecked:hidden data-checked:bg-primary data-indeterminate:text-foreground"
         data-slot="checkbox-indicator"
-        render={(props, state) => (
-          <span {...props}>
+        render={(indicatorProps, state) => (
+          <span {...indicatorProps}>
             {state.indeterminate ? (
               <svg
+                aria-hidden="true"
                 className="size-3"
                 fill="none"
                 height="24"
@@ -36,6 +37,7 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
               </svg>
             ) : (
               <svg
+                aria-hidden="true"
                 className="size-3"
                 fill="none"
                 height="24"

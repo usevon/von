@@ -97,7 +97,7 @@ type TunnelInfo = {
   wsUrl: string;
 };
 
-const connectTunnels = async (
+const connectTunnels = (
   token: string,
   tunnels: TunnelInfo[],
   verbose: boolean,

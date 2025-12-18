@@ -1,7 +1,7 @@
-export type { Endpoint } from "@/hooks/useEndpoints";
-export { useEndpoints } from "@/hooks/useEndpoints";
-export type { InboundEndpoint } from "@/hooks/useInbound";
-export { useInbound } from "@/hooks/useInbound";
-export { createResource } from "@/hooks/useResource";
-export type { WebhookEvent } from "@/hooks/useWebhooks";
-export { useWebhooks } from "@/hooks/useWebhooks";
+export type { Endpoint } from "@/hooks/use-endpoints";
+export { useEndpoints } from "@/hooks/use-endpoints";
+export type { InboundEndpoint } from "@/hooks/use-inbound";
+export { useInbound } from "@/hooks/use-inbound";
+export { createResource } from "@/hooks/use-resource";
+export type { WebhookEvent } from "@/hooks/use-webhooks";
+export { useWebhooks } from "@/hooks/use-webhooks";
