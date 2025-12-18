@@ -1,58 +1,64 @@
-import { Elysia } from "elysia"
-import { getRedisClient } from "@usevon/queue"
-import { hashSha256 } from "@usevon/utils"
+import { getRedisClient } from "@usevon/queue";
+import { hashSha256 } from "@usevon/utils";
+import { Elysia } from "elysia";
 
-const redis = getRedisClient()
-const IDEMPOTENCY_TTL = 60 * 5 // 5 minutes
+const redis = getRedisClient();
+const IDEMPOTENCY_TTL = 60 * 5; // 5 minutes
 
 type CachedResponse = {
-  status: number
-  body: unknown
-}
+  status: number;
+  body: unknown;
+};
 
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
     .derive(async ({ request, set }) => {
-      const method = request.method
+      const method = request.method;
 
       if (!["POST", "PUT", "PATCH"].includes(method)) {
-        return {}
+        return {};
       }
 
-      const idempotencyKey = request.headers.get("x-idempotency-key")
+      const idempotencyKey = request.headers.get("x-idempotency-key");
       if (!idempotencyKey) {
-        return {}
+        return {};
       }
 
-      const authHeader = request.headers.get("authorization")
+      const authHeader = request.headers.get("authorization");
       if (!authHeader) {
-        return {}
+        return {};
       }
 
-      const authScope = hashSha256(authHeader).slice(0, 16)
-      const cacheKey = `idempotency:${authScope}:${idempotencyKey}`
-      const cached = await redis.get(cacheKey)
+      const authScope = hashSha256(authHeader).slice(0, 16);
+      const cacheKey = `idempotency:${authScope}:${idempotencyKey}`;
+      const cached = await redis.get(cacheKey);
 
       if (cached) {
-        const response: CachedResponse = JSON.parse(cached)
-        set.status = response.status
-        return { idempotencyCached: true, cachedResponse: response.body }
+        const response: CachedResponse = JSON.parse(cached);
+        set.status = response.status;
+        return { idempotencyCached: true, cachedResponse: response.body };
       }
 
-      return { idempotencyCacheKey: cacheKey, idempotencyCached: false }
+      return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
     })
     .onBeforeHandle(({ idempotencyCached, cachedResponse }) => {
       if (idempotencyCached) {
-        return cachedResponse
+        return cachedResponse;
       }
     })
     .onAfterHandle(async ({ idempotencyCacheKey, response, set }) => {
-      if (!idempotencyCacheKey) return
+      if (!idempotencyCacheKey) {
+        return;
+      }
 
       const toCache: CachedResponse = {
         status: (set.status as number) || 200,
         body: response,
-      }
+      };
 
-      await redis.setex(idempotencyCacheKey, IDEMPOTENCY_TTL, JSON.stringify(toCache))
-    })
+      await redis.setex(
+        idempotencyCacheKey,
+        IDEMPOTENCY_TTL,
+        JSON.stringify(toCache)
+      );
+    });

@@ -1,4 +1,4 @@
-import { t } from "elysia"
+import { t } from "elysia";
 
 export namespace EndpointModel {
   export const createBody = t.Object({
@@ -7,10 +7,12 @@ export namespace EndpointModel {
     enabled: t.Optional(t.Boolean({ default: true })),
     version: t.Optional(t.String({ maxLength: 50 })),
     retryCount: t.Optional(t.Number({ default: 3, minimum: 0, maximum: 10 })),
-    timeoutMs: t.Optional(t.Number({ default: 30000, minimum: 1000, maximum: 60000 })),
-  })
+    timeoutMs: t.Optional(
+      t.Number({ default: 30_000, minimum: 1000, maximum: 60_000 })
+    ),
+  });
 
-  export type createBody = typeof createBody.static
+  export type createBody = typeof createBody.static;
 
   export const updateBody = t.Object({
     url: t.Optional(t.String({ format: "uri" })),
@@ -18,10 +20,10 @@ export namespace EndpointModel {
     enabled: t.Optional(t.Boolean()),
     version: t.Optional(t.Union([t.String({ maxLength: 50 }), t.Null()])),
     retryCount: t.Optional(t.Number({ minimum: 0, maximum: 10 })),
-    timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60000 })),
-  })
+    timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60_000 })),
+  });
 
-  export type updateBody = typeof updateBody.static
+  export type updateBody = typeof updateBody.static;
 
   export const endpoint = t.Object({
     id: t.String({ format: "uuid" }),
@@ -34,14 +36,14 @@ export namespace EndpointModel {
     timeoutMs: t.Number(),
     createdAt: t.String(),
     updatedAt: t.String(),
-  })
+  });
 
-  export type endpoint = typeof endpoint.static
+  export type endpoint = typeof endpoint.static;
 
   export const endpointList = t.Object({
     endpoints: t.Array(endpoint),
     total: t.Number(),
-  })
+  });
 
-  export type endpointList = typeof endpointList.static
+  export type endpointList = typeof endpointList.static;
 }

@@ -1,37 +1,63 @@
-import { eq, and, inArray } from "drizzle-orm"
-import { db } from "@usevon/db"
-import { endpoint } from "@usevon/db/schema"
-import { getRedisClient, type DeliveryEndpoint } from "@usevon/queue"
-import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
-import { withServiceError } from "@/lib/service-utils"
-import type { EndpointModel } from "@/modules/endpoints/model"
+import { db } from "@usevon/db";
+import { endpoint } from "@usevon/db/schema";
+import { type DeliveryEndpoint, getRedisClient } from "@usevon/queue";
+import {
+  BadRequestError,
+  generateId,
+  generateSecret,
+  isValidWebhookUrl,
+  toISODates,
+} from "@usevon/utils";
+import { and, eq, inArray } from "drizzle-orm";
+import { withServiceError } from "@/lib/service-utils";
+import type { EndpointModel } from "@/modules/endpoints/model";
 
-const redis = getRedisClient()
-const CACHE_TTL = 300 // 5 minutes
+const redis = getRedisClient();
+const CACHE_TTL = 300; // 5 minutes
 
 type EndpointFields = {
-  url: string
-  description?: string
-  enabled?: boolean
-  version?: string | null
-  retryCount?: number
-  timeoutMs?: number
-}
+  url: string;
+  description?: string;
+  enabled?: boolean;
+  version?: string | null;
+  retryCount?: number;
+  timeoutMs?: number;
+};
 
-type CreateEndpointParams = EndpointFields & { organizationId: string }
-type UpdateEndpointParams = Partial<EndpointFields> & { organizationId: string; endpointId: string }
+type CreateEndpointParams = EndpointFields & { organizationId: string };
+type UpdateEndpointParams = Partial<EndpointFields> & {
+  organizationId: string;
+  endpointId: string;
+};
 
 const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint =>
-  toISODates(e) as EndpointModel.endpoint
+  toISODates(e) as EndpointModel.endpoint;
+
+type EndpointRow = typeof endpoint.$inferSelect;
+
+const buildUpdateSet = (
+  params: UpdateEndpointParams,
+  existing: EndpointRow
+) => ({
+  url: params.url ?? existing.url,
+  description: params.description ?? existing.description,
+  enabled: params.enabled ?? existing.enabled,
+  version: params.version !== undefined ? params.version : existing.version,
+  retryCount: params.retryCount ?? existing.retryCount,
+  timeoutMs: params.timeoutMs ?? existing.timeoutMs,
+  updatedAt: new Date(),
+});
 
 export abstract class EndpointService {
-  static async create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
+  static create(params: CreateEndpointParams): Promise<EndpointModel.endpoint> {
     return withServiceError(async () => {
       if (!isValidWebhookUrl(params.url)) {
-        throw new BadRequestError("Invalid webhook URL: must be http(s) and not target private networks")
+        throw new BadRequestError(
+          "Invalid webhook URL: must be http(s) and not target private networks"
+        );
       }
 
-      const now = new Date()
+      const now = new Date();
 
       const result = await db
         .insert(endpoint)
@@ -44,21 +70,23 @@ export abstract class EndpointService {
           enabled: params.enabled ?? true,
           version: params.version ?? null,
           retryCount: params.retryCount ?? 3,
-          timeoutMs: params.timeoutMs ?? 30000,
+          timeoutMs: params.timeoutMs ?? 30_000,
           createdAt: now,
           updatedAt: now,
         })
-        .returning()
+        .returning();
 
-      if (!result[0]) throw new Error("Failed to create endpoint")
-      if (params.enabled !== false) {
-        await redis.del(`endpoints:${params.organizationId}`)
+      if (!result[0]) {
+        throw new Error("Failed to create endpoint");
       }
-      return toEndpoint(result[0])
-    }, "creating endpoint")
+      if (params.enabled !== false) {
+        await redis.del(`endpoints:${params.organizationId}`);
+      }
+      return toEndpoint(result[0]);
+    }, "creating endpoint");
   }
 
-  static async getAll(
+  static getAll(
     organizationId: string,
     limit: number,
     offset: number
@@ -72,12 +100,12 @@ export abstract class EndpointService {
           .limit(limit)
           .offset(offset),
         db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
-      ])
-      return { endpoints: endpoints.map(toEndpoint), total }
-    }, "fetching endpoints")
+      ]);
+      return { endpoints: endpoints.map(toEndpoint), total };
+    }, "fetching endpoints");
   }
 
-  static async getById(
+  static getById(
     organizationId: string,
     endpointId: string
   ): Promise<EndpointModel.endpoint | null> {
@@ -85,17 +113,26 @@ export abstract class EndpointService {
       const result = await db
         .select()
         .from(endpoint)
-        .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
-        .limit(1)
+        .where(
+          and(
+            eq(endpoint.id, endpointId),
+            eq(endpoint.organizationId, organizationId)
+          )
+        )
+        .limit(1);
 
-      return result[0] ? toEndpoint(result[0]) : null
-    }, "fetching endpoint")
+      return result[0] ? toEndpoint(result[0]) : null;
+    }, "fetching endpoint");
   }
 
-  static async update(params: UpdateEndpointParams): Promise<EndpointModel.endpoint | null> {
+  static update(
+    params: UpdateEndpointParams
+  ): Promise<EndpointModel.endpoint | null> {
     return withServiceError(async () => {
       if (params.url && !isValidWebhookUrl(params.url)) {
-        throw new BadRequestError("Invalid webhook URL: must be http(s) and not target private networks")
+        throw new BadRequestError(
+          "Invalid webhook URL: must be http(s) and not target private networks"
+        );
       }
 
       const existing = await db
@@ -107,62 +144,68 @@ export abstract class EndpointService {
             eq(endpoint.organizationId, params.organizationId)
           )
         )
-        .limit(1)
+        .limit(1);
 
-      if (!existing[0]) return null
+      if (!existing[0]) {
+        return null;
+      }
 
       const result = await db
         .update(endpoint)
-        .set({
-          url: params.url ?? existing[0].url,
-          description: params.description ?? existing[0].description,
-          enabled: params.enabled ?? existing[0].enabled,
-          version: params.version !== undefined ? params.version : existing[0].version,
-          retryCount: params.retryCount ?? existing[0].retryCount,
-          timeoutMs: params.timeoutMs ?? existing[0].timeoutMs,
-          updatedAt: new Date(),
-        })
+        .set(buildUpdateSet(params, existing[0]))
         .where(eq(endpoint.id, params.endpointId))
-        .returning()
+        .returning();
 
-      if (!result[0]) throw new Error("Failed to update endpoint")
+      if (!result[0]) {
+        throw new Error("Failed to update endpoint");
+      }
       // Only invalidate if endpoint is/was enabled or enabled status is changing
       if (existing[0].enabled || params.enabled !== undefined) {
-        await redis.del(`endpoints:${params.organizationId}`)
+        await redis.del(`endpoints:${params.organizationId}`);
       }
-      return toEndpoint(result[0])
-    }, "updating endpoint")
+      return toEndpoint(result[0]);
+    }, "updating endpoint");
   }
 
-  static async delete(organizationId: string, endpointId: string): Promise<boolean> {
+  static delete(organizationId: string, endpointId: string): Promise<boolean> {
     return withServiceError(async () => {
       const result = await db
         .delete(endpoint)
-        .where(and(eq(endpoint.id, endpointId), eq(endpoint.organizationId, organizationId)))
-        .returning({ id: endpoint.id })
+        .where(
+          and(
+            eq(endpoint.id, endpointId),
+            eq(endpoint.organizationId, organizationId)
+          )
+        )
+        .returning({ id: endpoint.id });
 
       if (result.length > 0) {
-        await redis.del(`endpoints:${organizationId}`)
+        await redis.del(`endpoints:${organizationId}`);
       }
-      return result.length > 0
-    }, "deleting endpoint")
+      return result.length > 0;
+    }, "deleting endpoint");
   }
 
-  static async getEnabledEndpointsForDelivery(
+  static getEnabledEndpointsForDelivery(
     organizationId: string,
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
     return withServiceError(async () => {
       // Only use cache when no filterIds (full list)
       if (!filterIds?.length) {
-        const cached = await redis.get(`endpoints:${organizationId}`)
+        const cached = await redis.get(`endpoints:${organizationId}`);
         if (cached) {
-          return JSON.parse(cached) as DeliveryEndpoint[]
+          return JSON.parse(cached) as DeliveryEndpoint[];
         }
       }
 
-      const conditions = [eq(endpoint.organizationId, organizationId), eq(endpoint.enabled, true)]
-      if (filterIds?.length) conditions.push(inArray(endpoint.id, filterIds))
+      const conditions = [
+        eq(endpoint.organizationId, organizationId),
+        eq(endpoint.enabled, true),
+      ];
+      if (filterIds?.length) {
+        conditions.push(inArray(endpoint.id, filterIds));
+      }
 
       const result = await db
         .select({
@@ -174,14 +217,18 @@ export abstract class EndpointService {
           version: endpoint.version,
         })
         .from(endpoint)
-        .where(and(...conditions))
+        .where(and(...conditions));
 
       // Cache only full list results
       if (!filterIds?.length) {
-        await redis.setex(`endpoints:${organizationId}`, CACHE_TTL, JSON.stringify(result))
+        await redis.setex(
+          `endpoints:${organizationId}`,
+          CACHE_TTL,
+          JSON.stringify(result)
+        );
       }
 
-      return result
-    }, "fetching enabled endpoints")
+      return result;
+    }, "fetching enabled endpoints");
   }
 }

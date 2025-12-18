@@ -1,26 +1,26 @@
-import { Elysia, t } from "elysia"
-import { PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withAuth } from "@/modules/auth"
-import { requireOrg } from "@/lib/require-org"
-import { NotFoundError } from "@usevon/utils"
-import { VersionModel } from "@/modules/versions/model"
-import { VersionService } from "@/modules/versions/service"
+import { NotFoundError } from "@usevon/utils";
+import { Elysia, t } from "elysia";
+import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
+import { requireOrg } from "@/lib/require-org";
+import { withAuth } from "@/modules/auth";
+import { VersionModel } from "@/modules/versions/model";
+import { VersionService } from "@/modules/versions/service";
 
 const VersionParam = t.Object({
   version: t.String(),
-})
+});
 
 export const versions = new Elysia({ prefix: "/versions" })
   .use(withAuth)
   .use(requireOrg)
   .post(
     "/",
-    async ({ organizationId, body, set }) => {
-      set.status = 201
+    ({ organizationId, body, set }) => {
+      set.status = 201;
       return VersionService.create({
         organizationId,
         ...body,
-      })
+      });
     },
     {
       body: VersionModel.createBody,
@@ -29,9 +29,12 @@ export const versions = new Elysia({ prefix: "/versions" })
   )
   .get(
     "/",
-    async ({ organizationId, query }) => {
-      return VersionService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
-    },
+    ({ organizationId, query }) =>
+      VersionService.getAll(
+        organizationId,
+        query.limit ?? 20,
+        query.offset ?? 0
+      ),
     {
       query: PaginationQuery,
       response: VersionModel.versionList,
@@ -40,9 +43,14 @@ export const versions = new Elysia({ prefix: "/versions" })
   .get(
     "/:version",
     async ({ organizationId, params }) => {
-      const version = await VersionService.getByVersion(organizationId, params.version)
-      if (!version) throw new NotFoundError("Version not found")
-      return version
+      const version = await VersionService.getByVersion(
+        organizationId,
+        params.version
+      );
+      if (!version) {
+        throw new NotFoundError("Version not found");
+      }
+      return version;
     },
     {
       params: VersionParam,
@@ -59,9 +67,11 @@ export const versions = new Elysia({ prefix: "/versions" })
         organizationId,
         version: params.version,
         ...body,
-      })
-      if (!version) throw new NotFoundError("Version not found")
-      return version
+      });
+      if (!version) {
+        throw new NotFoundError("Version not found");
+      }
+      return version;
     },
     {
       params: VersionParam,
@@ -75,8 +85,8 @@ export const versions = new Elysia({ prefix: "/versions" })
   .delete(
     "/:version",
     async ({ organizationId, params }) => {
-      await VersionService.delete(organizationId, params.version)
-      return { success: true }
+      await VersionService.delete(organizationId, params.version);
+      return { success: true };
     },
     {
       params: VersionParam,
@@ -85,6 +95,4 @@ export const versions = new Elysia({ prefix: "/versions" })
         404: ErrorResponse,
       },
     }
-  )
-
-export { VersionModel, VersionService }
+  );

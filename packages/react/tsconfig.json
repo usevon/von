@@ -13,7 +13,8 @@
     "rootDir": "./src",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "strictNullChecks": true
   },
   "include": ["src"]
 }

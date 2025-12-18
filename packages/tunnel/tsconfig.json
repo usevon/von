@@ -2,7 +2,8 @@
   "extends": "@usevon/typescript-config",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "strictNullChecks": true
   },
   "include": ["src/**/*"]
 }

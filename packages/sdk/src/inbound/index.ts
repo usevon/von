@@ -1,2 +1,2 @@
-export { inboundMethods } from '@/inbound/methods'
-export * from '@/inbound/types'
+export { inboundMethods } from "@/inbound/methods";
+export * from "@/inbound/types";

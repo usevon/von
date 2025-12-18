@@ -10,7 +10,13 @@
     "directory": "packages/sdk"
   },
   "homepage": "https://usevon.com",
-  "keywords": ["webhooks", "sdk", "typescript", "webhook-management", "api"],
+  "keywords": [
+    "webhooks",
+    "sdk",
+    "typescript",
+    "webhook-management",
+    "api"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

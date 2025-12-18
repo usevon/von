@@ -1,8 +1,8 @@
-import type { BetterAuthClientPlugin } from "better-auth/client"
-import type { apiKey } from "@/plugins/api-key"
+import type { BetterAuthClientPlugin } from "better-auth/client";
+import type { apiKey } from "@/plugins/api-key";
 
-export const apiKeyClient = () => {
-  return {
+export const apiKeyClient = () =>
+  ({
     id: "api-key",
     $InferServerPlugin: {} as ReturnType<typeof apiKey>,
     pathMethods: {
@@ -11,7 +11,6 @@ export const apiKeyClient = () => {
       "/api-key/update": "POST",
       "/api-key/delete-all-expired-api-keys": "POST",
     },
-  } satisfies BetterAuthClientPlugin
-}
+  }) satisfies BetterAuthClientPlugin;
 
-export type ApiKeyClientPlugin = ReturnType<typeof apiKeyClient>
+export type ApiKeyClientPlugin = ReturnType<typeof apiKeyClient>;

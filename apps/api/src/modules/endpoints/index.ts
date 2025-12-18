@@ -1,22 +1,27 @@
-import { Elysia } from "elysia"
-import { IdParam, PaginationQuery, ErrorResponse, SuccessResponse } from "@/lib/models"
-import { withAuth } from "@/modules/auth"
-import { requireOrg } from "@/lib/require-org"
-import { NotFoundError } from "@usevon/utils"
-import { EndpointModel } from "@/modules/endpoints/model"
-import { EndpointService } from "@/modules/endpoints/service"
+import { NotFoundError } from "@usevon/utils";
+import { Elysia } from "elysia";
+import {
+  ErrorResponse,
+  IdParam,
+  PaginationQuery,
+  SuccessResponse,
+} from "@/lib/models";
+import { requireOrg } from "@/lib/require-org";
+import { withAuth } from "@/modules/auth";
+import { EndpointModel } from "@/modules/endpoints/model";
+import { EndpointService } from "@/modules/endpoints/service";
 
 export const endpoints = new Elysia({ prefix: "/endpoints" })
   .use(withAuth)
   .use(requireOrg)
   .post(
     "/",
-    async ({ organizationId, body, set }) => {
-      set.status = 201
+    ({ organizationId, body, set }) => {
+      set.status = 201;
       return EndpointService.create({
         organizationId,
         ...body,
-      })
+      });
     },
     {
       body: EndpointModel.createBody,
@@ -25,9 +30,12 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   )
   .get(
     "/",
-    async ({ organizationId, query }) => {
-      return EndpointService.getAll(organizationId, query.limit ?? 20, query.offset ?? 0)
-    },
+    ({ organizationId, query }) =>
+      EndpointService.getAll(
+        organizationId,
+        query.limit ?? 20,
+        query.offset ?? 0
+      ),
     {
       query: PaginationQuery,
       response: EndpointModel.endpointList,
@@ -36,9 +44,11 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .get(
     "/:id",
     async ({ organizationId, params }) => {
-      const endpoint = await EndpointService.getById(organizationId, params.id)
-      if (!endpoint) throw new NotFoundError("Endpoint not found")
-      return endpoint
+      const endpoint = await EndpointService.getById(organizationId, params.id);
+      if (!endpoint) {
+        throw new NotFoundError("Endpoint not found");
+      }
+      return endpoint;
     },
     {
       params: IdParam,
@@ -55,9 +65,11 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
         organizationId,
         endpointId: params.id,
         ...body,
-      })
-      if (!endpoint) throw new NotFoundError("Endpoint not found")
-      return endpoint
+      });
+      if (!endpoint) {
+        throw new NotFoundError("Endpoint not found");
+      }
+      return endpoint;
     },
     {
       params: IdParam,
@@ -71,8 +83,8 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .delete(
     "/:id",
     async ({ organizationId, params }) => {
-      await EndpointService.delete(organizationId, params.id)
-      return { success: true }
+      await EndpointService.delete(organizationId, params.id);
+      return { success: true };
     },
     {
       params: IdParam,
@@ -81,6 +93,4 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
         404: ErrorResponse,
       },
     }
-  )
-
-export { EndpointModel, EndpointService }
+  );

@@ -20,7 +20,7 @@ const alertVariants = cva(
         warning: "border-warning/32 bg-warning/4 [&>svg]:text-warning",
       },
     },
-  },
+  }
 );
 
 function Alert({
@@ -56,7 +56,7 @@ function AlertDescription({
     <div
       className={cn(
         "flex flex-col gap-2.5 text-muted-foreground [svg~&]:col-start-2",
-        className,
+        className
       )}
       data-slot="alert-description"
       {...props}
@@ -69,7 +69,7 @@ function AlertAction({ className, ...props }: React.ComponentProps<"div">) {
     <div
       className={cn(
         "flex gap-1 max-sm:col-start-2 max-sm:mt-2 sm:row-start-1 sm:row-end-3 sm:self-center sm:[[data-slot=alert-description]~&]:col-start-2 sm:[[data-slot=alert-title]~&]:col-start-2 sm:[svg~&]:col-start-2 sm:[svg~[data-slot=alert-description]~&]:col-start-3 sm:[svg~[data-slot=alert-title]~&]:col-start-3",
-        className,
+        className
       )}
       data-slot="alert-action"
       {...props}

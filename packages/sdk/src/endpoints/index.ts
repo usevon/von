@@ -1,2 +1,2 @@
-export { endpointsMethods } from '@/endpoints/methods'
-export * from '@/endpoints/types'
+export { endpointsMethods } from "@/endpoints/methods";
+export * from "@/endpoints/types";

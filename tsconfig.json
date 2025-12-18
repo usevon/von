@@ -6,6 +6,7 @@
     "paths": {
       "@api/*": ["apps/api/src/*"],
       "@dashboard/*": ["apps/dashboard/src/*"]
-    }
+    },
+    "strictNullChecks": true
   }
 }

@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["VON_API_KEY", "BETTER_AUTH_SECRET"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

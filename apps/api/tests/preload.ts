@@ -1,22 +1,28 @@
-import { existsSync } from "fs"
-import { resolve } from "path"
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 
-const envPath = resolve(import.meta.dir, "../.env")
+const envPath = resolve(import.meta.dir, "../.env");
 
 if (!existsSync(envPath)) {
-  console.error("ERROR: Missing .env file in apps/api/")
-  console.error("Tests must be run from apps/api/ directory: cd apps/api && bun test")
-  process.exit(1)
+  console.error("ERROR: Missing .env file in apps/api/");
+  console.error(
+    "Tests must be run from apps/api/ directory: cd apps/api && bun test"
+  );
+  process.exit(1);
 }
 
-const envFile = Bun.file(envPath)
-const envContent = await envFile.text()
+const envFile = Bun.file(envPath);
+const envContent = await envFile.text();
 
 for (const line of envContent.split("\n")) {
-  const trimmed = line.trim()
-  if (!trimmed || trimmed.startsWith("#")) continue
-  const [key, ...valueParts] = trimmed.split("=")
-  if (key) process.env[key] = valueParts.join("=")
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#")) {
+    continue;
+  }
+  const [key, ...valueParts] = trimmed.split("=");
+  if (key) {
+    process.env[key] = valueParts.join("=");
+  }
 }
 
-process.env.NODE_ENV = "test"
+process.env.NODE_ENV = "test";

@@ -1,6 +1,6 @@
-import type { BetterAuthPlugin } from "better-auth"
+import type { BetterAuthPlugin } from "better-auth";
 
-type BetterAuthPluginDBSchema = NonNullable<BetterAuthPlugin["schema"]>
+type BetterAuthPluginDBSchema = NonNullable<BetterAuthPlugin["schema"]>;
 
 export const apiKeySchema = () =>
   ({
@@ -31,7 +31,11 @@ export const apiKeySchema = () =>
         },
         organizationId: {
           type: "string",
-          references: { model: "organization", field: "id", onDelete: "cascade" },
+          references: {
+            model: "organization",
+            field: "id",
+            onDelete: "cascade",
+          },
           required: false,
           input: false,
           index: true,
@@ -64,4 +68,4 @@ export const apiKeySchema = () =>
         },
       },
     },
-  }) satisfies BetterAuthPluginDBSchema
+  }) satisfies BetterAuthPluginDBSchema;

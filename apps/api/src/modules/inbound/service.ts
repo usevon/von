@@ -1,57 +1,69 @@
-import { eq, and } from "drizzle-orm"
-import { db } from "@usevon/db"
-import { inboundEndpoint, inboundDelivery } from "@usevon/db/schema"
-import { getRedisClient, getInboundForwardingQueue } from "@usevon/queue"
-import { generateSecret, generateId, toISODates, BadRequestError, isValidWebhookUrl } from "@usevon/utils"
-import { withServiceError } from "@/lib/service-utils"
-import type { InboundModel } from "@/modules/inbound/model"
+import { db } from "@usevon/db";
+import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
+import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
+import {
+  BadRequestError,
+  generateId,
+  generateSecret,
+  isValidWebhookUrl,
+  toISODates,
+} from "@usevon/utils";
+import { and, eq } from "drizzle-orm";
+import { withServiceError } from "@/lib/service-utils";
+import type { InboundModel } from "@/modules/inbound/model";
 
-const redis = getRedisClient()
-const CACHE_TTL = 300 // 5 minutes
+const redis = getRedisClient();
+const CACHE_TTL = 300; // 5 minutes
 
-type InboundEndpointRow = typeof inboundEndpoint.$inferSelect
+type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
 
-const toInboundEndpoint = (e: InboundEndpointRow): InboundModel.inboundEndpoint =>
-  toISODates(e) as InboundModel.inboundEndpoint
+const toInboundEndpoint = (
+  e: InboundEndpointRow
+): InboundModel.inboundEndpoint =>
+  toISODates(e) as InboundModel.inboundEndpoint;
 
 type CreateInboundEndpointParams = {
-  organizationId: string
-  name?: string
-  provider?: string
-  forwardUrl: string
-  enabled?: boolean
-}
+  organizationId: string;
+  name?: string;
+  provider?: string;
+  forwardUrl: string;
+  enabled?: boolean;
+};
 
 type UpdateInboundEndpointParams = {
-  organizationId: string
-  endpointId: string
-  name?: string
-  provider?: string
-  forwardUrl?: string
-  enabled?: boolean
-}
+  organizationId: string;
+  endpointId: string;
+  name?: string;
+  provider?: string;
+  forwardUrl?: string;
+  enabled?: boolean;
+};
 
 type ReceiveWebhookParams = {
-  endpointId: string
+  endpointId: string;
   endpoint: {
-    id: string
-    forwardUrl: string
-    secret: string
-    timeoutMs: number
-    retryCount: number
-  }
-  payload: unknown
-  headers: Record<string, string>
-}
+    id: string;
+    forwardUrl: string;
+    secret: string;
+    timeoutMs: number;
+    retryCount: number;
+  };
+  payload: unknown;
+  headers: Record<string, string>;
+};
 
 export abstract class InboundService {
-  static async create(params: CreateInboundEndpointParams): Promise<InboundModel.inboundEndpoint> {
+  static create(
+    params: CreateInboundEndpointParams
+  ): Promise<InboundModel.inboundEndpoint> {
     return withServiceError(async () => {
       if (!isValidWebhookUrl(params.forwardUrl)) {
-        throw new BadRequestError("Invalid forward URL - must be a valid public HTTP(S) URL")
+        throw new BadRequestError(
+          "Invalid forward URL - must be a valid public HTTP(S) URL"
+        );
       }
 
-      const now = new Date()
+      const now = new Date();
 
       const result = await db
         .insert(inboundEndpoint)
@@ -66,14 +78,16 @@ export abstract class InboundService {
           createdAt: now,
           updatedAt: now,
         })
-        .returning()
+        .returning();
 
-      if (!result[0]) throw new Error("Failed to create inbound endpoint")
-      return toInboundEndpoint(result[0])
-    }, "creating inbound endpoint")
+      if (!result[0]) {
+        throw new Error("Failed to create inbound endpoint");
+      }
+      return toInboundEndpoint(result[0]);
+    }, "creating inbound endpoint");
   }
 
-  static async getAll(
+  static getAll(
     organizationId: string,
     limit: number,
     offset: number
@@ -86,13 +100,16 @@ export abstract class InboundService {
           .where(eq(inboundEndpoint.organizationId, organizationId))
           .limit(limit)
           .offset(offset),
-        db.$count(inboundEndpoint, eq(inboundEndpoint.organizationId, organizationId)),
-      ])
-      return { endpoints: endpoints.map(toInboundEndpoint), total }
-    }, "fetching inbound endpoints")
+        db.$count(
+          inboundEndpoint,
+          eq(inboundEndpoint.organizationId, organizationId)
+        ),
+      ]);
+      return { endpoints: endpoints.map(toInboundEndpoint), total };
+    }, "fetching inbound endpoints");
   }
 
-  static async getById(
+  static getById(
     organizationId: string,
     endpointId: string
   ): Promise<InboundModel.inboundEndpoint | null> {
@@ -106,39 +123,45 @@ export abstract class InboundService {
             eq(inboundEndpoint.organizationId, organizationId)
           )
         )
-        .limit(1)
+        .limit(1);
 
-      return result[0] ? toInboundEndpoint(result[0]) : null
-    }, "fetching inbound endpoint")
+      return result[0] ? toInboundEndpoint(result[0]) : null;
+    }, "fetching inbound endpoint");
   }
 
-  static async getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
+  static getByPublicId(endpointId: string): Promise<InboundEndpointRow | null> {
     return withServiceError(async () => {
-      const cached = await redis.get(`inbound:${endpointId}`)
+      const cached = await redis.get(`inbound:${endpointId}`);
       if (cached) {
-        return JSON.parse(cached) as InboundEndpointRow
+        return JSON.parse(cached) as InboundEndpointRow;
       }
 
       const result = await db
         .select()
         .from(inboundEndpoint)
         .where(eq(inboundEndpoint.id, endpointId))
-        .limit(1)
+        .limit(1);
 
       if (result[0]) {
-        await redis.setex(`inbound:${endpointId}`, CACHE_TTL, JSON.stringify(result[0]))
+        await redis.setex(
+          `inbound:${endpointId}`,
+          CACHE_TTL,
+          JSON.stringify(result[0])
+        );
       }
 
-      return result[0] ?? null
-    }, "fetching inbound endpoint")
+      return result[0] ?? null;
+    }, "fetching inbound endpoint");
   }
 
-  static async update(
+  static update(
     params: UpdateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint | null> {
     return withServiceError(async () => {
       if (params.forwardUrl && !isValidWebhookUrl(params.forwardUrl)) {
-        throw new BadRequestError("Invalid forward URL - must be a valid public HTTP(S) URL")
+        throw new BadRequestError(
+          "Invalid forward URL - must be a valid public HTTP(S) URL"
+        );
       }
 
       const existing = await db
@@ -150,9 +173,11 @@ export abstract class InboundService {
             eq(inboundEndpoint.organizationId, params.organizationId)
           )
         )
-        .limit(1)
+        .limit(1);
 
-      if (!existing[0]) return null
+      if (!existing[0]) {
+        return null;
+      }
 
       const result = await db
         .update(inboundEndpoint)
@@ -169,15 +194,17 @@ export abstract class InboundService {
             eq(inboundEndpoint.organizationId, params.organizationId)
           )
         )
-        .returning()
+        .returning();
 
-      if (!result[0]) throw new Error("Failed to update inbound endpoint")
-      await redis.del(`inbound:${params.endpointId}`)
-      return toInboundEndpoint(result[0])
-    }, "updating inbound endpoint")
+      if (!result[0]) {
+        throw new Error("Failed to update inbound endpoint");
+      }
+      await redis.del(`inbound:${params.endpointId}`);
+      return toInboundEndpoint(result[0]);
+    }, "updating inbound endpoint");
   }
 
-  static async delete(organizationId: string, endpointId: string): Promise<boolean> {
+  static delete(organizationId: string, endpointId: string): Promise<boolean> {
     return withServiceError(async () => {
       const result = await db
         .delete(inboundEndpoint)
@@ -187,21 +214,23 @@ export abstract class InboundService {
             eq(inboundEndpoint.organizationId, organizationId)
           )
         )
-        .returning({ id: inboundEndpoint.id })
+        .returning({ id: inboundEndpoint.id });
 
       if (result.length > 0) {
-        await redis.del(`inbound:${endpointId}`)
+        await redis.del(`inbound:${endpointId}`);
       }
-      return result.length > 0
-    }, "deleting inbound endpoint")
+      return result.length > 0;
+    }, "deleting inbound endpoint");
   }
 
-  static async receive(params: ReceiveWebhookParams): Promise<InboundModel.inboundDelivery> {
+  static receive(
+    params: ReceiveWebhookParams
+  ): Promise<InboundModel.inboundDelivery> {
     return withServiceError(async () => {
-      const now = new Date()
-      const deliveryId = generateId()
-      const payloadStr = JSON.stringify(params.payload)
-      const headersStr = JSON.stringify(params.headers)
+      const now = new Date();
+      const deliveryId = generateId();
+      const payloadStr = JSON.stringify(params.payload);
+      const headersStr = JSON.stringify(params.headers);
 
       const delivery = await db.transaction(async (tx) => {
         const result = await tx
@@ -214,19 +243,21 @@ export abstract class InboundService {
             status: "pending",
             createdAt: now,
           })
-          .returning()
+          .returning();
 
-        if (!result[0]) throw new Error("Failed to create inbound delivery")
-        return result[0]
-      })
+        if (!result[0]) {
+          throw new Error("Failed to create inbound delivery");
+        }
+        return result[0];
+      });
 
-      const queue = getInboundForwardingQueue()
+      const queue = getInboundForwardingQueue();
       await queue.add("inbound-forwarding", {
         deliveryId,
         endpoint: params.endpoint,
         payload: payloadStr,
         headers: headersStr,
-      })
+      });
 
       return {
         id: delivery.id,
@@ -236,7 +267,7 @@ export abstract class InboundService {
         forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
         responseStatus: delivery.responseStatus,
         createdAt: delivery.createdAt.toISOString(),
-      }
-    }, "receiving webhook")
+      };
+    }, "receiving webhook");
   }
 }

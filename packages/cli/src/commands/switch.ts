@@ -1,46 +1,50 @@
-import { Command } from "commander"
-import * as p from "@clack/prompts"
-import pc from "picocolors"
-import { requireAuth } from "@/lib/config"
-import { listOrganizations } from "@/lib/api"
-import { selectAndSetOrganization } from "@/lib/org"
+import { log, outro, spinner } from "@clack/prompts";
+import { Command } from "commander";
+import pc from "picocolors";
+import { listOrganizations } from "@/lib/api";
+import { requireAuth } from "@/lib/config";
+import { selectAndSetOrganization } from "@/lib/org";
 
 export const switchOrg = new Command("switch")
   .description("Switch active organization")
   .action(async () => {
-    const { token, config } = requireAuth()
+    const { token, config } = requireAuth();
 
-    const s = p.spinner()
-    s.start("Fetching organizations...")
+    const s = spinner();
+    s.start("Fetching organizations...");
 
-    const orgs = await listOrganizations(token)
+    const orgs = await listOrganizations(token);
 
     if (orgs.length === 0) {
-      s.stop()
-      p.log.info("No organizations found")
-      p.outro(`Create one at ${pc.cyan("app.usevon.com")}`)
-      return
+      s.stop();
+      log.info("No organizations found");
+      outro(`Create one at ${pc.cyan("app.usevon.com")}`);
+      return;
     }
 
     if (orgs.length === 1) {
-      const [org] = orgs
+      const [org] = orgs;
       if (org) {
         if (org.id === config.organizationId) {
-          s.stop(`Already using ${pc.cyan(org.name)}`)
-          p.outro("Create more orgs to switch between them")
+          s.stop(`Already using ${pc.cyan(org.name)}`);
+          outro("Create more orgs to switch between them");
         } else {
-          s.stop(`Found ${pc.cyan(org.name)}`)
-          await selectAndSetOrganization({ orgs, token, currentOrgId: config.organizationId })
+          s.stop(`Found ${pc.cyan(org.name)}`);
+          await selectAndSetOrganization({
+            orgs,
+            token,
+            currentOrgId: config.organizationId,
+          });
         }
       }
-      return
+      return;
     }
 
-    s.stop(`Found ${orgs.length} organizations`)
+    s.stop(`Found ${orgs.length} organizations`);
 
-    const currentOrg = orgs.find((o) => o.id === config.organizationId)
+    const currentOrg = orgs.find((o) => o.id === config.organizationId);
     if (currentOrg) {
-      p.log.info(`Current: ${pc.cyan(currentOrg.name)}`)
+      log.info(`Current: ${pc.cyan(currentOrg.name)}`);
     }
 
     await selectAndSetOrganization({
@@ -48,5 +52,5 @@ export const switchOrg = new Command("switch")
       token,
       currentOrgId: config.organizationId,
       exitOnCancel: true,
-    })
-  })
+    });
+  });
