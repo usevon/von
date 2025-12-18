@@ -74,7 +74,7 @@ export const dev = new Command("dev")
       if (options.verbose) {
         log.info("Verbose mode enabled");
       }
-      log.message(pc.dim("Press Ctrl+C to stop\n"));
+      console.log(pc.dim("│\n│  Press Ctrl+C to stop\n"));
 
       await connectTunnels(
         token,
@@ -83,7 +83,7 @@ export const dev = new Command("dev")
         config.tunnelUrl
       );
     } catch (err) {
-      s.stop("Error");
+      s.stop("");
       log.error(
         `Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
       );
@@ -115,7 +115,7 @@ const connectTunnels = (
       onTakeover: () => {
         if (manager.activeTunnels === 0) {
           console.log();
-          console.log(pc.dim("  all tunnels taken over, exiting..."));
+          console.log(pc.dim("│  all tunnels taken over, exiting..."));
           process.exit(0);
         }
       },
@@ -141,7 +141,7 @@ const connectTunnels = (
       isShuttingDown = true;
       configWatcher?.close();
       console.log();
-      console.log(pc.dim(`  ${reason ?? "closing"}...`));
+      console.log(pc.dim(`│  ${reason ?? "closing"}...`));
       manager.terminate();
       process.exit(0);
     };

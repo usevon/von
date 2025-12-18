@@ -173,7 +173,7 @@ export const login = new Command("login")
 
       outro(pc.green("Ready to use Von CLI!"));
     } catch (err) {
-      s.stop("Error");
+      s.stop("");
       cancel(
         `Login failed: ${err instanceof Error ? err.message : "Unknown error"}`
       );
