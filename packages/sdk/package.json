@@ -1,6 +1,6 @@
 {
   "name": "@usevon/sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "TypeScript SDK for Von webhooks",
   "license": "MIT",
   "author": "usevon",
@@ -36,14 +36,14 @@
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.5",
-    "@usevon/api": "workspace:*",
-    "@usevon/utils": "workspace:*",
     "elysia": "^1.4.16"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^22.0.0",
+    "@usevon/api": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
+    "@usevon/utils": "workspace:*",
     "typescript": "^5.7.2"
   },
   "publishConfig": {
