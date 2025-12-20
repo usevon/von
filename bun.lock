@@ -15,7 +15,7 @@
     },
     "apps/api": {
       "name": "@usevon/api",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@elysiajs/server-timing": "^1.4.0",
@@ -38,7 +38,7 @@
     },
     "apps/dashboard": {
       "name": "@usevon/dashboard",
-      "version": "0.0.0",
+      "version": "0.2.0",
       "dependencies": {
         "@elysiajs/eden": "^1.4.5",
         "@tanstack/react-router": "^1.136.1",
@@ -71,7 +71,7 @@
     },
     "apps/site": {
       "name": "@usevon/site",
-      "version": "0.0.0",
+      "version": "0.2.0",
       "dependencies": {
         "@tanstack/react-router": "^1.136.1",
         "@usevon/ui": "workspace:*",
@@ -88,7 +88,7 @@
     },
     "apps/tunnel": {
       "name": "@usevon/tunnel-server",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
@@ -107,7 +107,7 @@
     },
     "apps/worker": {
       "name": "@usevon/worker",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@usevon/db": "workspace:*",
         "@usevon/queue": "workspace:*",
@@ -125,7 +125,7 @@
     },
     "packages/auth": {
       "name": "@usevon/auth",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@usevon/utils": "workspace:*",
         "better-auth": "1.4.3",
@@ -143,7 +143,7 @@
     },
     "packages/cli": {
       "name": "@usevon/cli",
-      "version": "0.1.6",
+      "version": "0.2.0",
       "bin": {
         "von": "./dist/index.js",
       },
@@ -169,7 +169,7 @@
     },
     "packages/db": {
       "name": "@usevon/db",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@usevon/utils": "workspace:*",
         "drizzle-orm": "^0.44.7",
@@ -184,7 +184,7 @@
     },
     "packages/queue": {
       "name": "@usevon/queue",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "dependencies": {
         "@usevon/utils": "workspace:*",
         "bullmq": "^5.64.1",
@@ -197,7 +197,7 @@
     },
     "packages/react": {
       "name": "@usevon/react",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@usevon/auth": "workspace:*",
         "swr": "^2.3.3",
@@ -230,7 +230,7 @@
     },
     "packages/tunnel": {
       "name": "@usevon/tunnel",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "picocolors": "^1.1.1",
         "ws": "^8.18.2",
@@ -241,7 +241,7 @@
     },
     "packages/typescript-config": {
       "name": "@usevon/typescript-config",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "devDependencies": {
         "@tsconfig/bun": "^1.0.7",
         "tsdown": "^0.16.8",
@@ -249,9 +249,9 @@
     },
     "packages/ui": {
       "name": "@usevon/ui",
-      "version": "0.0.0",
+      "version": "0.2.0",
       "dependencies": {
-        "@base-ui-components/react": "^1.0.0-beta.7",
+        "@base-ui/react": "^1.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "lucide-react": "^0.555.0",
@@ -276,7 +276,7 @@
     },
     "packages/utils": {
       "name": "@usevon/utils",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@t3-oss/env-core": "^0.11.1",
         "pino": "^9.6.0",
@@ -368,9 +368,9 @@
 
     "@babel/types": ["@babel/types@7.28.5", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA=="],
 
-    "@base-ui-components/react": ["@base-ui-components/react@1.0.0-beta.7", "", { "dependencies": { "@babel/runtime": "^7.28.4", "@base-ui-components/utils": "0.2.1", "@floating-ui/react-dom": "^2.1.6", "@floating-ui/utils": "^0.2.10", "reselect": "^5.1.1", "tabbable": "^6.3.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-jZoU6ZzPPDhiP62ToFpIZVkLDzYleL8NJhiw4Dm9Q+N7Q+/rOW+N6YN0URuQ9zMdcl8jvIks/8iY1cyD/VC87A=="],
+    "@base-ui/react": ["@base-ui/react@1.0.0", "", { "dependencies": { "@babel/runtime": "^7.28.4", "@base-ui/utils": "0.2.3", "@floating-ui/react-dom": "^2.1.6", "@floating-ui/utils": "^0.2.10", "reselect": "^5.1.1", "tabbable": "^6.3.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-4USBWz++DUSLTuIYpbYkSgy1F9ZmNG9S/lXvlUN6qMK0P0RlW+6eQmDUB4DgZ7HVvtXl4pvi4z5J2fv6Z3+9hg=="],
 
-    "@base-ui-components/utils": ["@base-ui-components/utils@0.2.1", "", { "dependencies": { "@babel/runtime": "^7.28.4", "@floating-ui/utils": "^0.2.10", "reselect": "^5.1.1", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-6D3PNibMXWPxiXCW/aMTclTypNG/QPCUc5vwGS6yKIcoYGDmjLiG3VyJ7hlGAnXiMGJMWH2TVl335N+zkRAKZQ=="],
+    "@base-ui/utils": ["@base-ui/utils@0.2.3", "", { "dependencies": { "@babel/runtime": "^7.28.4", "@floating-ui/utils": "^0.2.10", "reselect": "^5.1.1", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-/CguQ2PDaOzeVOkllQR8nocJ0FFIDqsWIcURsVmm53QGo8NhFNpePjNlyPIB41luxfOqnG7PU0xicMEw3ls7XQ=="],
 
     "@better-auth/cli": ["@better-auth/cli@1.4.4", "", { "dependencies": { "@babel/core": "^7.28.4", "@babel/preset-react": "^7.27.1", "@babel/preset-typescript": "^7.27.1", "@better-auth/core": "1.4.4", "@better-auth/utils": "0.3.0", "@clack/prompts": "^0.11.0", "@mrleebo/prisma-ast": "^0.13.0", "@prisma/client": "^5.22.0", "@types/pg": "^8.15.5", "better-auth": "1.4.4", "better-sqlite3": "^12.2.0", "c12": "^3.2.0", "chalk": "^5.6.2", "commander": "^12.1.0", "dotenv": "^17.2.2", "drizzle-orm": "^0.33.0", "get-tsconfig": "^4.10.1", "jiti": "^2.6.0", "open": "^10.2.0", "pg": "^8.16.3", "prettier": "^3.6.2", "prisma": "^5.22.0", "prompts": "^2.4.2", "semver": "^7.7.2", "tinyexec": "^0.3.2", "yocto-spinner": "^0.2.3", "zod": "^4.1.12" }, "bin": { "better-auth": "dist/index.mjs" } }, "sha512-yg6L6O9WfxnNjZWwIrGNGU8L5JsCwfe1bPuOY5GQy3qZrOWHv6juE4ztX4Ohc8DgOXgbLQ6nM02+L/UTzNv3Lg=="],
 
