@@ -1,6 +1,7 @@
 import { treaty } from "@elysiajs/eden";
+import type { App } from "@usevon/api";
 
-export type { App } from "@usevon/api";
+export type { App };
 export { verifyWebhook, WebhookVerificationError } from "@/verify";
 
 export type VonConfig = {
