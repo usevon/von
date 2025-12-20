@@ -1,11 +1,11 @@
 import { treaty } from "@elysiajs/eden";
-import type { App } from "@usevon/api";
 
+export type { App } from "@usevon/api";
 export { verifyWebhook, WebhookVerificationError } from "@/verify";
 
 export type VonConfig = {
-	baseUrl?: string;
-	apiKey?: string;
+  baseUrl?: string;
+  apiKey?: string;
 };
 
 /**
@@ -30,29 +30,27 @@ export type VonConfig = {
  * ```
  */
 export class Von {
-	readonly endpoints;
-	readonly webhooks;
-	readonly inbound;
-	readonly versions;
+  readonly endpoints;
+  readonly webhooks;
+  readonly inbound;
+  readonly versions;
 
-	constructor(config?: VonConfig) {
-		const baseUrl =
-			config?.baseUrl ??
-			(typeof process !== "undefined" ? process.env.VON_BASE_URL : undefined) ??
-			"http://localhost:8080";
-		const apiKey =
-			config?.apiKey ??
-			(typeof process !== "undefined" ? process.env.VON_API_KEY : undefined);
+  constructor(config?: VonConfig) {
+    const baseUrl =
+      config?.baseUrl ??
+      (typeof process !== "undefined" ? process.env.VON_BASE_URL : undefined) ??
+      "http://localhost:8080";
+    const apiKey =
+      config?.apiKey ??
+      (typeof process !== "undefined" ? process.env.VON_API_KEY : undefined);
 
-		const client = treaty<App>(baseUrl, {
-			headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
-		});
+    const client = treaty<App>(baseUrl, {
+      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
+    });
 
-		this.endpoints = client.endpoints;
-		this.webhooks = client.webhooks;
-		this.inbound = client.inbound;
-		this.versions = client.versions;
-	}
+    this.endpoints = client.endpoints;
+    this.webhooks = client.webhooks;
+    this.inbound = client.inbound;
+    this.versions = client.versions;
+  }
 }
-
-export type { App };
