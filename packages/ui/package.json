@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "dev": "tsdown && tsdown --watch --no-clean",
+    "dev": "tsdown --watch",
     "watch": "tsdown --watch"
   },
   "dependencies": {
