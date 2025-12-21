@@ -1,7 +1,6 @@
 {
   "extends": "@usevon/typescript-config",
   "compilerOptions": {
-    "composite": true,
     "types": ["node"],
     "baseUrl": ".",
     "outDir": "dist",

@@ -1,7 +1,10 @@
-import { defineConfig, reactConfig } from "@usevon/typescript-config/tsdown";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  ...reactConfig,
   entry: ["src/index.ts", "src/hooks/index.ts"],
+  format: "esm",
+  dts: true,
+  sourcemap: true,
+  clean: true,
   outDir: "dist",
 });

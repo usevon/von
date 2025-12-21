@@ -1,7 +1,6 @@
-import { baseConfig, defineConfig } from "@usevon/typescript-config/tsdown";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  ...baseConfig,
   entry: [
     "src/index.ts",
     "src/crypto.ts",
@@ -13,5 +12,9 @@ export default defineConfig({
     "src/logger.ts",
     "src/elysia.ts",
   ],
+  format: "esm",
+  dts: true,
+  sourcemap: true,
+  clean: true,
   outDir: "dist",
 });
