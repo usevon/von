@@ -2,6 +2,10 @@ import pc from "picocolors";
 import { TunnelClient } from "./client";
 import type { TunnelRequest, TunnelResponse } from "./types";
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_RETRIES = 5;
+const GATEWAY_ERROR_STATUS = 502;
+
 export type TunnelManagerOptions = {
   verbose?: boolean;
   onTakeover?: (port: number) => void;
@@ -98,7 +102,7 @@ export class TunnelManager {
   }
 
   addTunnel(port: number, wsUrl: string, options: TunnelOptions = {}): void {
-    const { timeout = 30_000, maxRetries = 5 } = options;
+    const { timeout = DEFAULT_TIMEOUT_MS, maxRetries = DEFAULT_MAX_RETRIES } = options;
 
     const entry: TunnelEntry = {
       port,
@@ -134,7 +138,7 @@ export class TunnelManager {
 
             return {
               requestId: req.id,
-              status: 502,
+              status: GATEWAY_ERROR_STATUS,
               headers: {},
               body: `Failed to forward request: ${error.message}`,
             };
@@ -233,23 +237,12 @@ export class TunnelManager {
     durationMs: number
   ): void {
     const statusColor = res.status >= 400 ? pc.red : pc.green;
-    const method = req.method.padEnd(6);
-    const path = formatPath(req.path);
-
-    console.log(
-      `  ${pc.dim(timestamp())}  ${pc.magenta(port.toString())}  ${method} ${path}  ${statusColor(res.status.toString())}  ${pc.dim(`${durationMs}ms`)}`
-    );
+    this.logBase(port, req, statusColor(res.status.toString()), durationMs);
 
     if (this.verbose) {
-      console.log(
-        pc.dim(`                  ├─ Headers: ${formatHeaders(req.headers)}`)
-      );
+      console.log(pc.dim(`                  ├─ Headers: ${formatHeaders(req.headers)}`));
       console.log(pc.dim(`                  ├─ Body: ${formatBody(req.body)}`));
-      console.log(
-        pc.dim(
-          `                  └─ Response: ${res.status} in ${durationMs}ms`
-        )
-      );
+      console.log(pc.dim(`                  └─ Response: ${res.status} in ${durationMs}ms`));
     }
   }
 
@@ -259,19 +252,25 @@ export class TunnelManager {
     error: Error,
     durationMs: number
   ): void {
-    const method = req.method.padEnd(6);
-    const path = formatPath(req.path);
-
-    console.log(
-      `  ${pc.dim(timestamp())}  ${pc.magenta(port.toString())}  ${method} ${path}  ${pc.red("502")}  ${pc.dim(`${durationMs}ms`)}`
-    );
+    this.logBase(port, req, pc.red(GATEWAY_ERROR_STATUS.toString()), durationMs);
 
     if (this.verbose) {
-      console.log(
-        pc.dim(`                  ├─ Headers: ${formatHeaders(req.headers)}`)
-      );
+      console.log(pc.dim(`                  ├─ Headers: ${formatHeaders(req.headers)}`));
       console.log(pc.dim(`                  └─ Error: ${error.message}`));
     }
+  }
+
+  private logBase(
+    port: number,
+    req: TunnelRequest,
+    status: string,
+    durationMs: number
+  ): void {
+    const method = req.method.padEnd(6);
+    const path = formatPath(req.path);
+    console.log(
+      `  ${pc.dim(timestamp())}  ${pc.magenta(port.toString())}  ${method} ${path}  ${status}  ${pc.dim(`${durationMs}ms`)}`
+    );
   }
 
   private async forwardToLocal(
