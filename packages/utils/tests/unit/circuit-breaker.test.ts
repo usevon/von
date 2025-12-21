@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   CIRCUIT_CONFIG,
   type CircuitBreakerState,
-  getFailureUpdate,
   getSuccessUpdate,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
@@ -127,32 +126,6 @@ describe("circuit-breaker", () => {
       const result = getSuccessUpdate();
       expect(result.circuitState).toBe("closed");
       expect(result.failureCount).toBe(0);
-    });
-  });
-
-  describe("getFailureUpdate", () => {
-    test("increments failure count", () => {
-      const result = getFailureUpdate(2);
-      expect(result.failureCount).toBe(3);
-    });
-
-    test("keeps circuit closed below threshold", () => {
-      const result = getFailureUpdate(3);
-      expect(result.circuitState).toBe("closed");
-      expect(result.shouldOpenCircuit).toBe(false);
-    });
-
-    test("opens circuit at threshold", () => {
-      const result = getFailureUpdate(CIRCUIT_CONFIG.failureThreshold - 1);
-      expect(result.circuitState).toBe("open");
-      expect(result.shouldOpenCircuit).toBe(true);
-      expect(result.failureCount).toBe(CIRCUIT_CONFIG.failureThreshold);
-    });
-
-    test("opens circuit above threshold", () => {
-      const result = getFailureUpdate(CIRCUIT_CONFIG.failureThreshold);
-      expect(result.circuitState).toBe("open");
-      expect(result.shouldOpenCircuit).toBe(true);
     });
   });
 });

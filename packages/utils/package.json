@@ -38,10 +38,6 @@
       "types": "./dist/logger.d.ts",
       "default": "./dist/logger.js"
     },
-    "./fetch": {
-      "types": "./dist/fetch/index.d.ts",
-      "default": "./dist/fetch/index.js"
-    },
     "./elysia": {
       "types": "./dist/elysia.d.ts",
       "default": "./dist/elysia.js"

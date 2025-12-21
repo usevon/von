@@ -3,8 +3,6 @@ import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
 import {
 	BadRequestError,
-	ConflictError,
-	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
 	UnauthorizedError,
@@ -41,8 +39,6 @@ export const vonBase = (opts: VonBaseOptions) =>
 			UnauthorizedError,
 			NotFoundError,
 			BadRequestError,
-			ForbiddenError,
-			ConflictError,
 			InternalServerError,
 		})
 		.onError(({ code, error, set }) => {

@@ -46,18 +46,3 @@ export function getSuccessUpdate(): {
     failureCount: 0,
   };
 }
-
-export function getFailureUpdate(currentFailureCount: number): {
-  circuitState: CircuitState;
-  failureCount: number;
-  shouldOpenCircuit: boolean;
-} {
-  const newFailureCount = currentFailureCount + 1;
-  const shouldOpenCircuit = newFailureCount >= CIRCUIT_CONFIG.failureThreshold;
-
-  return {
-    circuitState: shouldOpenCircuit ? "open" : "closed",
-    failureCount: newFailureCount,
-    shouldOpenCircuit,
-  };
-}
