@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo run build",
+    "start": "turbo run start --filter=!@usevon/cli --filter=!@usevon/sdk",
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
     "test": "bun test packages/ apps/worker/"
