@@ -202,10 +202,12 @@ export default function TestAuthPage() {
   };
 
   return (
-    <div className="font-mono">
-      <h1 className="mb-4 font-bold text-2xl">Auth Test Page</h1>
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-bold text-2xl">Auth Test Page</h1>
+      </div>
 
-      <div className="mb-5 rounded-lg bg-muted p-4">
+      <div className="mb-5 rounded-lg bg-muted p-4 font-mono">
         <h3 className="mb-2 font-semibold text-lg">
           Session Status: {sessionStatus}
         </h3>
@@ -298,6 +300,6 @@ export default function TestAuthPage() {
           ))}
         </CardPanel>
       </Card>
-    </div>
+    </>
   );
 }
