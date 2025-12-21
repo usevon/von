@@ -1,11 +1,13 @@
-import { baseConfig, defineConfig } from "@usevon/typescript-config/tsdown";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  ...baseConfig,
   entry: ["src/index.ts"],
-  outDir: "dist",
-  noExternal: ["@usevon/utils", "@usevon/api"],
+  format: "esm",
   dts: {
     resolve: ["@usevon/api"],
   },
+  sourcemap: true,
+  clean: true,
+  outDir: "dist",
+  noExternal: ["@usevon/utils", "@usevon/api"],
 });

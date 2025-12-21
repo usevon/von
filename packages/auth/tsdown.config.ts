@@ -1,7 +1,10 @@
-import { baseConfig, defineConfig } from "@usevon/typescript-config/tsdown";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  ...baseConfig,
   entry: ["src/index.ts", "src/client.ts"],
+  format: "esm",
+  dts: true,
+  sourcemap: true,
+  clean: true,
   outDir: "dist",
 });

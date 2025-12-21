@@ -3,11 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "exports": {
-    ".": "./tsconfig.json",
-    "./tsdown": "./tsdown.config.base.ts"
+    ".": "./tsconfig.json"
   },
   "devDependencies": {
-    "@tsconfig/bun": "^1.0.7",
-    "tsdown": "^0.16.8"
+    "@tsconfig/bun": "^1.0.7"
   }
 }
