@@ -31,8 +31,3 @@ export type TunnelMessage =
   | TunnelRequest
   | TunnelResponse
   | TunnelControlMessage;
-
-/**
- * Bun WebSocket message types
- */
-export type WsMessage = string | ArrayBufferView | ArrayBuffer;

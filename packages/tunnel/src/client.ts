@@ -1,6 +1,10 @@
 import * as WebSocket from "ws";
 import type { TunnelRequest, TunnelResponse } from "./types";
 
+const PING_INTERVAL_MS = 5000;
+const MAX_BACKOFF_MS = 30_000;
+const BACKOFF_BASE_MS = 1000;
+
 export type TunnelClientEvents = {
   request: (req: TunnelRequest) => Promise<TunnelResponse>;
   takeover?: () => void;
@@ -122,7 +126,7 @@ export class TunnelClient {
 
       if (this.reconnectAttempts < this.maxReconnects) {
         this.reconnectAttempts += 1;
-        const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30_000);
+        const delay = Math.min(BACKOFF_BASE_MS * 2 ** this.reconnectAttempts, MAX_BACKOFF_MS);
         this.events.disconnect?.(
           true,
           this.reconnectAttempts,
@@ -173,7 +177,7 @@ export class TunnelClient {
       }
       pongReceived = false;
       this.ws?.ping();
-    }, 5000);
+    }, PING_INTERVAL_MS);
 
     this.ws?.on("pong", () => {
       pongReceived = true;
