@@ -23,19 +23,13 @@ export const switchOrg = new Command("switch")
     }
 
     if (orgs.length === 1) {
-      const [org] = orgs;
-      if (org) {
-        if (org.id === config.organizationId) {
-          s.stop(`Already using ${pc.cyan(org.name)}`);
-          outro("Create more orgs to switch between them");
-        } else {
-          s.stop(`Found ${pc.cyan(org.name)}`);
-          await selectAndSetOrganization({
-            orgs,
-            token,
-            currentOrgId: config.organizationId,
-          });
-        }
+      const org = orgs[0]!;
+      const isCurrentOrg = org.id === config.organizationId;
+      s.stop(isCurrentOrg ? `Already using ${pc.cyan(org.name)}` : `Found ${pc.cyan(org.name)}`);
+      if (isCurrentOrg) {
+        outro("Create more orgs to switch between them");
+      } else {
+        await selectAndSetOrganization({ orgs, token, currentOrgId: config.organizationId });
       }
       return;
     }

@@ -4,6 +4,8 @@ import { loadConfig } from "@/lib/config";
 import type {
 	DeviceCodeResponse,
 	DeviceTokenResponse,
+	Organization,
+	TunnelRegistration,
 	UserSession,
 } from "@/lib/types";
 
@@ -105,7 +107,9 @@ export const registerTunnel = async (
 	const { data, error } = await client.register.post({ port });
 
 	if (error) {
-		throw new Error(error.message || "Failed to register tunnel");
+		const message =
+			"value" in error ? (error.value as { message?: string })?.message : undefined;
+		throw new Error(message || "Failed to register tunnel");
 	}
 
 	const tunnelUrl = `${config.tunnelUrl}/${data.tunnelId}-${data.secret}`;
@@ -121,27 +125,13 @@ export const rotateTunnel = async (
 	tunnelId: string
 ): Promise<{ secret: string }> => {
 	const client = createTunnelClient(token);
-	const { data, error } = await client.rotate[tunnelId].post();
+	const { data, error } = await client.rotate({ tunnelId }).post();
 
 	if (error) {
-		throw new Error(error.message || "Failed to rotate tunnel secret");
+		const message =
+			"value" in error ? (error.value as { message?: string })?.message : undefined;
+		throw new Error(message || "Failed to rotate tunnel secret");
 	}
 
 	return { secret: data.secret };
-};
-
-type Organization = {
-	id: string;
-	name: string;
-	slug: string;
-	logo: string | null;
-	metadata: Record<string, unknown> | null;
-	createdAt: Date;
-};
-
-type TunnelRegistration = {
-	tunnelId: string;
-	secret: string;
-	tunnelUrl: string;
-	wsUrl: string;
 };

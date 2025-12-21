@@ -9,10 +9,6 @@ import { getConfigPath, loadConfig, requireAuth } from "@/lib/config";
 export const dev = new Command("dev")
   .description("Start dev tunnel for local webhook testing")
   .option("-p, --port <port...>", "Local port(s) to forward to (max 3)")
-  .option(
-    "-o, --org <orgId>",
-    "Organization ID (uses active org if not specified)"
-  )
   .option("-v, --verbose", "Show detailed request/response info")
   .action(async (options) => {
     const { token, config } = requireAuth();
@@ -35,13 +31,6 @@ export const dev = new Command("dev")
       return;
     }
 
-    const organizationId = options.org || config.organizationId;
-
-    if (!organizationId) {
-      log.error("No organization selected. Run 'von login' or specify --org");
-      return;
-    }
-
     const s = spinner();
     s.start("Registering tunnel(s)...");
 
@@ -54,11 +43,7 @@ export const dev = new Command("dev")
       }> = [];
 
       for (const port of ports) {
-        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(
-          token,
-          port,
-          organizationId
-        );
+        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(token, port);
         tunnels.push({ port, tunnelId, tunnelUrl, wsUrl });
       }
 
