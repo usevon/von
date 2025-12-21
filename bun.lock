@@ -15,7 +15,7 @@
     },
     "apps/api": {
       "name": "@usevon/api",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
@@ -35,7 +35,7 @@
     },
     "apps/dashboard": {
       "name": "@usevon/dashboard",
-      "version": "0.1.0",
+      "version": "2.0.0",
       "dependencies": {
         "@elysiajs/eden": "^1.4.5",
         "@t3-oss/env-nextjs": "^0.12.0",
@@ -65,7 +65,7 @@
     },
     "apps/site": {
       "name": "@usevon/site",
-      "version": "0.1.0",
+      "version": "2.0.0",
       "dependencies": {
         "@usevon/ui": "workspace:*",
         "lucide-react": "^0.555.0",
@@ -86,7 +86,7 @@
     },
     "apps/tunnel": {
       "name": "@usevon/tunnel-server",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
@@ -106,7 +106,7 @@
     },
     "apps/worker": {
       "name": "@usevon/worker",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@usevon/db": "workspace:*",
         "@usevon/queue": "workspace:*",
