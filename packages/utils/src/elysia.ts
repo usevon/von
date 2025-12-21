@@ -61,6 +61,7 @@ export const vonBase = (opts: VonBaseOptions) =>
 				error: status === 500 && opts.isProd ? "Internal server error" : message,
 			};
 		})
+		.get("/", () => ({ name: opts.name, status: "ok" }))
 		.get("/live", () => ({ status: "ok", uptime: process.uptime() }))
 		.get("/ready", async ({ set }) => {
 			const [db, redis] = await Promise.all([
