@@ -20,11 +20,15 @@ import {
   EmptyMedia,
   EmptyTitle,
   Spinner,
+  toastManager,
 } from "@usevon/ui";
 import { Building2, Globe } from "lucide-react";
+import {
+  toggleEndpoint as toggleEndpointAction,
+  deleteEndpoint as deleteEndpointAction,
+} from "@/actions/endpoints";
 import { CreateEndpointDialog } from "@/components/create-endpoint-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
-import { api } from "@/lib/api";
 import type { Session, User } from "@/lib/auth";
 
 type EndpointsManagerProps = {
@@ -36,7 +40,7 @@ export const EndpointsManager = (props: EndpointsManagerProps) => {
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
     useEndpoints();
 
-  const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
+  const handleToggle = async (id: string, currentEnabled: boolean) => {
     mutate(
       endpoints.map((e) =>
         e.id === id ? { ...e, enabled: !currentEnabled } : e
@@ -44,32 +48,33 @@ export const EndpointsManager = (props: EndpointsManagerProps) => {
       { revalidate: false }
     );
 
-    const { error: toggleError } = await api
-      .endpoints({ id })
-      .patch(
-        { enabled: !currentEnabled },
-        { fetch: { credentials: "include" } }
-      );
-
-    if (toggleError) {
-      console.error("Error toggling endpoint:", toggleError);
+    try {
+      await toggleEndpointAction(id, !currentEnabled);
+    } catch {
+      toastManager.add({
+        title: "Failed to toggle endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
     }
 
     mutate();
   };
 
-  const deleteEndpoint = async (id: string) => {
+  const handleDelete = async (id: string) => {
     mutate(
       endpoints.filter((e) => e.id !== id),
       { revalidate: false }
     );
 
-    const { error: deleteError } = await api.endpoints({ id }).delete(null, {
-      fetch: { credentials: "include" },
-    });
-
-    if (deleteError) {
-      console.error("Error deleting endpoint:", deleteError);
+    try {
+      await deleteEndpointAction(id);
+    } catch {
+      toastManager.add({
+        title: "Failed to delete endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
     }
 
     mutate();
@@ -168,7 +173,7 @@ export const EndpointsManager = (props: EndpointsManagerProps) => {
                 <div className="flex gap-2">
                   <Button
                     onClick={() =>
-                      toggleEndpoint(endpoint.id, endpoint.enabled)
+                      handleToggle(endpoint.id, endpoint.enabled)
                     }
                     size="sm"
                     variant="outline"
@@ -194,7 +199,7 @@ export const EndpointsManager = (props: EndpointsManagerProps) => {
                           Cancel
                         </AlertDialogClose>
                         <Button
-                          onClick={() => deleteEndpoint(endpoint.id)}
+                          onClick={() => handleDelete(endpoint.id)}
                           variant="destructive"
                         >
                           Delete

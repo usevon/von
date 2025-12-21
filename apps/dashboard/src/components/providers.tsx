@@ -1,6 +1,7 @@
 "use client";
 
 import { VonProvider } from "@usevon/react";
+import { ToastProvider } from "@usevon/ui";
 import { ThemeProvider } from "next-themes";
 
 type ProvidersProps = {
@@ -12,9 +13,11 @@ export const Providers = (props: ProvidersProps) => {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <VonProvider apiUrl={apiUrl}>
-        {props.children}
-      </VonProvider>
+      <ToastProvider>
+        <VonProvider apiUrl={apiUrl}>
+          {props.children}
+        </VonProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 };

@@ -17,8 +17,9 @@ import {
   Form,
   Input,
 } from "@usevon/ui";
+import { toastManager } from "@usevon/ui";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { createInbound } from "@/actions/inbound";
 
 type CreateInboundDialogProps = {
   onCreated: () => void;
@@ -37,20 +38,19 @@ export const CreateInboundDialog = (props: CreateInboundDialogProps) => {
 
     setLoading(true);
 
-    const { error } = await api.inbound.post(
-      { name: name || undefined, forwardUrl },
-      { fetch: { credentials: "include" } }
-    );
-
-    setLoading(false);
-
-    if (error) {
-      console.error("Error creating inbound endpoint:", error);
-      return;
+    try {
+      await createInbound({ name: name || undefined, forwardUrl });
+      setOpen(false);
+      props.onCreated();
+    } catch {
+      toastManager.add({
+        title: "Failed to create inbound endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setOpen(false);
-    props.onCreated();
   };
 
   return (
