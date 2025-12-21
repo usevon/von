@@ -182,7 +182,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         .set({
           failureCount: sql`${inboundEndpoint.failureCount} + 1`,
           circuitState: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${inboundEndpoint.circuitState} END`,
-          circuitOpenedAt: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} AND ${inboundEndpoint.circuitState} != 'open' THEN ${now} ELSE ${inboundEndpoint.circuitOpenedAt} END`,
+          circuitOpenedAt: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} AND ${inboundEndpoint.circuitState} != 'open' THEN ${now.toISOString()} ELSE ${inboundEndpoint.circuitOpenedAt} END`,
           lastFailureAt: now,
           updatedAt: now,
         })
