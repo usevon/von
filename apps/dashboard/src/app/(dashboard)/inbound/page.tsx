@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEndpoints } from "@usevon/react/hooks";
+"use client";
+
+import { useInbound } from "@usevon/react/hooks";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -20,21 +21,17 @@ import {
   EmptyTitle,
   Spinner,
 } from "@usevon/ui";
-import { Building2, Globe } from "lucide-react";
-import { CreateEndpointDialog } from "@/components/create-endpoint-dialog";
+import { Building2, Download } from "lucide-react";
+import { CreateInboundDialog } from "@/components/create-inbound-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth/client";
 
-export const Route = createFileRoute("/endpoints")({
-  component: EndpointsPage,
-});
-
-export default function EndpointsPage() {
+export default function InboundPage() {
   const { data } = useSession();
   const { session, user } = data ?? {};
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
-    useEndpoints();
+    useInbound();
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
     mutate(
@@ -45,14 +42,14 @@ export default function EndpointsPage() {
     );
 
     const { error: toggleError } = await api
-      .endpoints({ id })
+      .inbound({ id })
       .patch(
         { enabled: !currentEnabled },
         { fetch: { credentials: "include" } }
       );
 
     if (toggleError) {
-      console.error("Error toggling endpoint:", toggleError);
+      console.error("Error toggling inbound endpoint:", toggleError);
     }
 
     mutate();
@@ -64,12 +61,12 @@ export default function EndpointsPage() {
       { revalidate: false }
     );
 
-    const { error: deleteError } = await api.endpoints({ id }).delete(null, {
+    const { error: deleteError } = await api.inbound({ id }).delete(null, {
       fetch: { credentials: "include" },
     });
 
     if (deleteError) {
-      console.error("Error deleting endpoint:", deleteError);
+      console.error("Error deleting inbound endpoint:", deleteError);
     }
 
     mutate();
@@ -83,11 +80,11 @@ export default function EndpointsPage() {
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Globe className="size-4.5" />
+              <Download className="size-4.5" />
             </EmptyMedia>
             <EmptyTitle>Sign in required</EmptyTitle>
             <EmptyDescription>
-              Please sign in to manage endpoints.
+              Please sign in to manage inbound endpoints.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -103,7 +100,7 @@ export default function EndpointsPage() {
             </EmptyMedia>
             <EmptyTitle>No organization</EmptyTitle>
             <EmptyDescription>
-              Create an organization to manage endpoints.
+              Create an organization to manage inbound endpoints.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -120,13 +117,13 @@ export default function EndpointsPage() {
             <EmptyMedia variant="icon">
               <Spinner className="size-4.5" />
             </EmptyMedia>
-            <EmptyTitle>Loading endpoints...</EmptyTitle>
+            <EmptyTitle>Loading inbound endpoints...</EmptyTitle>
             <EmptyDescription>
-              Fetching your webhook endpoints.
+              Fetching your inbound endpoints.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button disabled>Create Endpoint</Button>
+            <Button disabled>Create Inbound Endpoint</Button>
           </EmptyContent>
         </Empty>
       );
@@ -145,15 +142,15 @@ export default function EndpointsPage() {
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Globe className="size-4.5" />
+              <Download className="size-4.5" />
             </EmptyMedia>
-            <EmptyTitle>No endpoints</EmptyTitle>
+            <EmptyTitle>No inbound endpoints</EmptyTitle>
             <EmptyDescription>
-              Create an endpoint to get started.
+              Create an inbound endpoint to get started.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <CreateEndpointDialog onCreated={refresh} />
+            <CreateInboundDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
       );
@@ -167,7 +164,14 @@ export default function EndpointsPage() {
               <div className="mb-4 flex items-start justify-between">
                 <div className="flex-1">
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="font-semibold">{endpoint.url}</span>
+                    <span className="font-semibold">
+                      {endpoint.name || "Unnamed endpoint"}
+                    </span>
+                    {endpoint.provider ? (
+                      <span className="rounded bg-blue-100 px-2 py-1 text-blue-800 text-xs">
+                        {endpoint.provider}
+                      </span>
+                    ) : null}
                     <span
                       className={`rounded px-2 py-1 text-xs ${
                         endpoint.enabled
@@ -178,11 +182,9 @@ export default function EndpointsPage() {
                       {endpoint.enabled ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  {endpoint.description ? (
-                    <p className="text-muted-foreground text-sm">
-                      {endpoint.description}
-                    </p>
-                  ) : null}
+                  <p className="text-muted-foreground text-sm">
+                    Forwards to: {endpoint.forwardUrl}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -202,10 +204,12 @@ export default function EndpointsPage() {
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Delete Inbound Endpoint
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this endpoint? This
-                          action cannot be undone.
+                          Are you sure you want to delete this inbound endpoint?
+                          This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -223,20 +227,20 @@ export default function EndpointsPage() {
                   </AlertDialog>
                 </div>
               </div>
+              <div className="mb-4 rounded bg-muted p-4">
+                <p className="mb-2 font-medium text-muted-foreground text-xs">
+                  Public Inbound URL:
+                </p>
+                <code className="block rounded bg-background px-2 py-1 text-xs">
+                  {typeof window !== "undefined" ? window.location.origin : ""}/in/{endpoint.id}
+                </code>
+              </div>
               <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
                 <div>
                   <span className="font-medium">ID:</span> {endpoint.id}
                 </div>
                 <div>
                   <span className="font-medium">Secret:</span> {endpoint.secret}
-                </div>
-                <div>
-                  <span className="font-medium">Retries:</span>{" "}
-                  {endpoint.retryCount}
-                </div>
-                <div>
-                  <span className="font-medium">Timeout:</span>{" "}
-                  {endpoint.timeoutMs}ms
                 </div>
                 <div className="col-span-2">
                   <span className="font-medium">Created:</span>{" "}
@@ -251,11 +255,11 @@ export default function EndpointsPage() {
   };
 
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-bold text-2xl">Webhook Endpoints</h1>
+        <h1 className="font-bold text-2xl">Inbound Endpoints</h1>
         <div className="flex gap-2">
-          <CreateEndpointDialog
+          <CreateInboundDialog
             disabled={isLoading || isDisabled}
             onCreated={refresh}
           />
@@ -269,6 +273,6 @@ export default function EndpointsPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
 }

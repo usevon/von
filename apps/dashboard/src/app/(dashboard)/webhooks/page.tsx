@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import { useWebhooks } from "@usevon/react/hooks";
 import {
   Button,
@@ -16,10 +17,6 @@ import { Building2, Webhook } from "lucide-react";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { SendWebhookDialog } from "@/components/send-webhook-dialog";
 import { useSession } from "@/lib/auth/client";
-
-export const Route = createFileRoute("/webhooks")({
-  component: WebhooksPage,
-});
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -146,7 +143,7 @@ export default function WebhooksPage() {
   };
 
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-bold text-2xl">Webhook Events</h1>
         <div className="flex gap-2">
@@ -164,6 +161,6 @@ export default function WebhooksPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
 }

@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+"use client";
+
 import {
   Button,
   Card,
@@ -8,45 +9,29 @@ import {
   InputOTP,
   REGEXP_ONLY_DIGITS_AND_CHARS,
 } from "@usevon/ui";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { device, useSession } from "@/lib/auth/client";
-
-export const Route = createFileRoute("/device")({
-  component: DevicePage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    user_code:
-      typeof search.user_code === "string" ? search.user_code : undefined,
-  }),
-  loaderDeps: ({ search }) => ({ user_code: search.user_code }),
-  loader: async ({ deps }) => {
-    if (!deps.user_code) {
-      return { prevalidated: null };
-    }
-
-    const formattedCode = deps.user_code.trim().replace(/-/g, "").toUpperCase();
-    const { data, error } = await device({
-      query: { user_code: formattedCode },
-    });
-
-    if (error || !data) {
-      return { prevalidated: null };
-    }
-    return { prevalidated: { userCode: formattedCode } };
-  },
-});
 
 type Status = "idle" | "verifying" | "processing";
 
-export default function DevicePage() {
+export const DeviceAuthorization = () => {
   const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
-  const loaderData = Route.useLoaderData();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userCodeParam = searchParams.get("user_code");
+
   const [userCode, setUserCode] = useState("");
   const [error, setError] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<{ userCode: string } | null>(
-    loaderData.prevalidated
-  );
+  const [deviceInfo, setDeviceInfo] = useState<{ userCode: string } | null>(null);
   const [status, setStatus] = useState<Status>("idle");
+
+  useEffect(() => {
+    if (userCodeParam && session) {
+      const formattedCode = userCodeParam.trim().replace(/-/g, "").toUpperCase();
+      handleVerify(formattedCode);
+    }
+  }, [userCodeParam, session]);
 
   if (isPending) {
     return (
@@ -72,7 +57,7 @@ export default function DevicePage() {
             <Button
               className="w-full"
               onClick={() =>
-                navigate({ to: "/test-auth", search: { redirect: currentUrl } })
+                router.push(`/test-auth?redirect=${encodeURIComponent(currentUrl)}`)
               }
             >
               Sign In
@@ -119,7 +104,7 @@ export default function DevicePage() {
       if (approveError) {
         return;
       }
-      navigate({ to: "/" });
+      router.push("/");
     } catch {
       // silently fail
     } finally {
@@ -137,7 +122,7 @@ export default function DevicePage() {
     } catch {
       // silently fail
     } finally {
-      navigate({ to: "/" });
+      router.push("/");
     }
   };
 
@@ -203,4 +188,4 @@ export default function DevicePage() {
       </Card>
     </div>
   );
-}
+};

@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useInbound } from "@usevon/react/hooks";
+"use client";
+
+import { useEndpoints } from "@usevon/react/hooks";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -20,21 +21,21 @@ import {
   EmptyTitle,
   Spinner,
 } from "@usevon/ui";
-import { Building2, Download } from "lucide-react";
-import { CreateInboundDialog } from "@/components/create-inbound-dialog";
+import { Building2, Globe } from "lucide-react";
+import { CreateEndpointDialog } from "@/components/create-endpoint-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { api } from "@/lib/api";
-import { useSession } from "@/lib/auth/client";
+import type { Session, User } from "@/lib/auth";
 
-export const Route = createFileRoute("/inbound")({
-  component: InboundPage,
-});
+type EndpointsManagerProps = {
+  session: { session: Session["session"]; user: User };
+  needsOrganization?: boolean;
+};
 
-export default function InboundPage() {
-  const { data } = useSession();
-  const { session, user } = data ?? {};
+export const EndpointsManager = (props: EndpointsManagerProps) => {
+  const { session, user } = props.session;
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
-    useInbound();
+    useEndpoints();
 
   const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
     mutate(
@@ -45,14 +46,14 @@ export default function InboundPage() {
     );
 
     const { error: toggleError } = await api
-      .inbound({ id })
+      .endpoints({ id })
       .patch(
         { enabled: !currentEnabled },
         { fetch: { credentials: "include" } }
       );
 
     if (toggleError) {
-      console.error("Error toggling inbound endpoint:", toggleError);
+      console.error("Error toggling endpoint:", toggleError);
     }
 
     mutate();
@@ -64,38 +65,23 @@ export default function InboundPage() {
       { revalidate: false }
     );
 
-    const { error: deleteError } = await api.inbound({ id }).delete(null, {
+    const { error: deleteError } = await api.endpoints({ id }).delete(null, {
       fetch: { credentials: "include" },
     });
 
     if (deleteError) {
-      console.error("Error deleting inbound endpoint:", deleteError);
+      console.error("Error deleting endpoint:", deleteError);
     }
 
     mutate();
   };
 
-  const isDisabled = !(user && session?.activeOrganizationId);
-
-  const renderContent = () => {
-    if (!user) {
-      return (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Download className="size-4.5" />
-            </EmptyMedia>
-            <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>
-              Please sign in to manage inbound endpoints.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
-    if (!session?.activeOrganizationId) {
-      return (
+  if (props.needsOrganization) {
+    return (
+      <>
+        <div className="mb-4">
+          <h1 className="font-bold text-2xl">Webhook Endpoints</h1>
+        </div>
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -103,16 +89,18 @@ export default function InboundPage() {
             </EmptyMedia>
             <EmptyTitle>No organization</EmptyTitle>
             <EmptyDescription>
-              Create an organization to manage inbound endpoints.
+              Create an organization to manage endpoints.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <CreateOrganizationDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
-      );
-    }
+      </>
+    );
+  }
 
+  const renderContent = () => {
     if (isLoading) {
       return (
         <Empty>
@@ -120,13 +108,13 @@ export default function InboundPage() {
             <EmptyMedia variant="icon">
               <Spinner className="size-4.5" />
             </EmptyMedia>
-            <EmptyTitle>Loading inbound endpoints...</EmptyTitle>
+            <EmptyTitle>Loading endpoints...</EmptyTitle>
             <EmptyDescription>
-              Fetching your inbound endpoints.
+              Fetching your webhook endpoints.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button disabled>Create Inbound Endpoint</Button>
+            <Button disabled>Create Endpoint</Button>
           </EmptyContent>
         </Empty>
       );
@@ -145,15 +133,15 @@ export default function InboundPage() {
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Download className="size-4.5" />
+              <Globe className="size-4.5" />
             </EmptyMedia>
-            <EmptyTitle>No inbound endpoints</EmptyTitle>
+            <EmptyTitle>No endpoints</EmptyTitle>
             <EmptyDescription>
-              Create an inbound endpoint to get started.
+              Create an endpoint to get started.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <CreateInboundDialog onCreated={refresh} />
+            <CreateEndpointDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
       );
@@ -167,14 +155,7 @@ export default function InboundPage() {
               <div className="mb-4 flex items-start justify-between">
                 <div className="flex-1">
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="font-semibold">
-                      {endpoint.name || "Unnamed endpoint"}
-                    </span>
-                    {endpoint.provider ? (
-                      <span className="rounded bg-blue-100 px-2 py-1 text-blue-800 text-xs">
-                        {endpoint.provider}
-                      </span>
-                    ) : null}
+                    <span className="font-semibold">{endpoint.url}</span>
                     <span
                       className={`rounded px-2 py-1 text-xs ${
                         endpoint.enabled
@@ -185,9 +166,11 @@ export default function InboundPage() {
                       {endpoint.enabled ? "Enabled" : "Disabled"}
                     </span>
                   </div>
-                  <p className="text-muted-foreground text-sm">
-                    Forwards to: {endpoint.forwardUrl}
-                  </p>
+                  {endpoint.description ? (
+                    <p className="text-muted-foreground text-sm">
+                      {endpoint.description}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -207,12 +190,10 @@ export default function InboundPage() {
                     </AlertDialogTrigger>
                     <AlertDialogPopup>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Delete Inbound Endpoint
-                        </AlertDialogTitle>
+                        <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this inbound endpoint?
-                          This action cannot be undone.
+                          Are you sure you want to delete this endpoint? This
+                          action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -230,20 +211,20 @@ export default function InboundPage() {
                   </AlertDialog>
                 </div>
               </div>
-              <div className="mb-4 rounded bg-muted p-4">
-                <p className="mb-2 font-medium text-muted-foreground text-xs">
-                  Public Inbound URL:
-                </p>
-                <code className="block rounded bg-background px-2 py-1 text-xs">
-                  {window.location.origin}/in/{endpoint.id}
-                </code>
-              </div>
               <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
                 <div>
                   <span className="font-medium">ID:</span> {endpoint.id}
                 </div>
                 <div>
                   <span className="font-medium">Secret:</span> {endpoint.secret}
+                </div>
+                <div>
+                  <span className="font-medium">Retries:</span>{" "}
+                  {endpoint.retryCount}
+                </div>
+                <div>
+                  <span className="font-medium">Timeout:</span>{" "}
+                  {endpoint.timeoutMs}ms
                 </div>
                 <div className="col-span-2">
                   <span className="font-medium">Created:</span>{" "}
@@ -258,16 +239,16 @@ export default function InboundPage() {
   };
 
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-bold text-2xl">Inbound Endpoints</h1>
+        <h1 className="font-bold text-2xl">Webhook Endpoints</h1>
         <div className="flex gap-2">
-          <CreateInboundDialog
-            disabled={isLoading || isDisabled}
+          <CreateEndpointDialog
+            disabled={isLoading}
             onCreated={refresh}
           />
           <Button
-            disabled={isLoading || isRefreshing || isDisabled}
+            disabled={isLoading || isRefreshing}
             onClick={refresh}
             variant="secondary"
           >
@@ -276,6 +257,6 @@ export default function InboundPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
-}
+};

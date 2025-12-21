@@ -1,42 +1,41 @@
 {
   "name": "@usevon/dashboard",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "start": "bun .output/server/index.mjs",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "dev": "next dev --turbopack --port 3000",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.5",
-    "@tanstack/react-router": "^1.136.1",
-    "@tanstack/react-start": "^1.136.1",
+    "@t3-oss/env-nextjs": "^0.12.0",
+    "@tanstack/react-query": "^5.90.12",
     "@usevon/api": "workspace:*",
     "@usevon/auth": "workspace:*",
+    "@usevon/db": "workspace:*",
     "@usevon/react": "workspace:*",
-    "@usevon/sdk": "workspace:*",
     "@usevon/ui": "workspace:*",
+    "better-auth": "^1.4.7",
+    "zod": "^3.24.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "next": "^16.1.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "sonner": "^2.0.5",
+    "tailwind-merge": "^3.3.1",
+    "tw-animate-css": "^1.3.4"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.17",
-    "@tanstack/router-plugin": "^1.136.1",
-    "@tanstack/start-vite-plugin": "^1.91.1",
-    "@types/bun": "latest",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "babel-plugin-react-compiler": "^1.0.0",
-    "nitro": "^3.0.1-alpha.1",
-    "tailwindcss": "^4.1.17",
-    "typescript": "^5.7.2",
-    "vite": "^7.2.2",
-    "vite-tsconfig-paths": "^5.1.4"
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/node": "^20",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@usevon/typescript-config": "workspace:*",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.7.2"
   }
 }
