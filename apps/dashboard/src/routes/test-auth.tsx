@@ -225,7 +225,7 @@ function TestAuthPage() {
             <Button onClick={handleSignOut} variant="destructive">
               Sign Out
             </Button>
-            {session?.activeOrganizationId === undefined && (
+            {!session?.activeOrganizationId && (
               <>
                 <Button onClick={handleCreateOrg} variant="secondary">
                   Create Org
@@ -235,18 +235,15 @@ function TestAuthPage() {
                 </Button>
               </>
             )}
-            {session?.activeOrganizationId !== undefined && (
+            {session?.activeOrganizationId && (
               <>
-                <Button onClick={handleCreateApiKey} variant="outline">
+                <Button onClick={handleCreateApiKey} variant="secondary">
                   Create API Key
                 </Button>
-                <Button onClick={handleListApiKeys} variant="outline">
+                <Button onClick={handleListApiKeys} variant="secondary">
                   List API Keys
                 </Button>
-                <Button
-                  onClick={handleDeleteApiKey}
-                  variant="destructive-outline"
-                >
+                <Button onClick={handleDeleteApiKey} variant="secondary">
                   Delete API Key
                 </Button>
               </>
