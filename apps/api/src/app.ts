@@ -11,7 +11,7 @@ import { webhookEvents, webhooks } from "@/modules/webhooks";
 
 const getCorsOrigins = () => {
   if (env.NODE_ENV !== "production") {
-    return ["http://localhost:5173", "http://localhost:5174"];
+    return ["http://localhost:2999", "http://localhost:3000"];
   }
   if (!env.CORS_ORIGINS) {
     throw new Error("CORS_ORIGINS required in production");

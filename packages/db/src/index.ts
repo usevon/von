@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { env } from "@/env";
-import * as schema from "@/schema";
+import { env } from "./env";
+import * as schema from "./schema";
 
 const client = postgres(env.DATABASE_URL, {
   max: 20,
@@ -25,4 +25,4 @@ export async function closeDatabase(): Promise<void> {
 }
 
 export { and, eq, inArray, or, sql } from "drizzle-orm";
-export * from "@/schema";
+export * from "./schema";
