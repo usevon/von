@@ -17,6 +17,7 @@ import {
   Form,
   Input,
 } from "@usevon/ui";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { organization } from "@/lib/auth/client";
 
@@ -27,6 +28,7 @@ type CreateOrganizationDialogProps = {
 export const CreateOrganizationDialog = (
   props: CreateOrganizationDialogProps
 ) => {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export const CreateOrganizationDialog = (
 
     setLoading(false);
     setOpen(false);
+    router.refresh();
     props.onCreated?.();
   };
 
