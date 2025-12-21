@@ -22,6 +22,7 @@ import {
 } from "@usevon/ui";
 import { Building2, Globe } from "lucide-react";
 import { CreateEndpointDialog } from "@/components/create-endpoint-dialog";
+import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth/client";
 
@@ -106,7 +107,7 @@ export default function EndpointsPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button>Create Organization</Button>
+            <CreateOrganizationDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
       );

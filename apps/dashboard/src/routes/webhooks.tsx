@@ -13,6 +13,7 @@ import {
   Spinner,
 } from "@usevon/ui";
 import { Building2, Webhook } from "lucide-react";
+import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { SendWebhookDialog } from "@/components/send-webhook-dialog";
 import { useSession } from "@/lib/auth/client";
 
@@ -63,7 +64,7 @@ export default function WebhooksPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button>Create Organization</Button>
+            <CreateOrganizationDialog onCreated={refresh} />
           </EmptyContent>
         </Empty>
       );
