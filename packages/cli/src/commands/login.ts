@@ -24,6 +24,7 @@ import {
   loadConfig,
   saveConfig,
 } from "@/lib/config";
+import { formatError } from "@/lib/helpers";
 import { selectAndSetOrganization } from "@/lib/org";
 
 export const login = new Command("login")
@@ -174,9 +175,7 @@ export const login = new Command("login")
       outro(pc.green("Ready to use Von CLI!"));
     } catch (err) {
       s.stop("");
-      cancel(
-        `Login failed: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      cancel(`Login failed: ${formatError(err)}`);
     }
   });
 

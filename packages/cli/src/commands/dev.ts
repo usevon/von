@@ -5,14 +5,12 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { registerTunnel } from "@/lib/api";
 import { getConfigPath, loadConfig, requireAuth } from "@/lib/config";
+import { formatError, validatePort } from "@/lib/helpers";
+import type { TunnelInfo } from "@/lib/types";
 
 export const dev = new Command("dev")
   .description("Start dev tunnel for local webhook testing")
   .option("-p, --port <port...>", "Local port(s) to forward to (max 3)")
-  .option(
-    "-o, --org <orgId>",
-    "Organization ID (uses active org if not specified)"
-  )
   .option("-v, --verbose", "Show detailed request/response info")
   .action(async (options) => {
     const { token, config } = requireAuth();
@@ -22,12 +20,11 @@ export const dev = new Command("dev")
       return;
     }
 
-    const ports = options.port.map((port: string) => Number.parseInt(port, 10));
-    for (const port of ports) {
-      if (Number.isNaN(port) || port < 1 || port > 65_535) {
-        log.error(`Invalid port number: ${port}`);
-        return;
-      }
+    const ports: number[] = [];
+    for (const p of options.port as string[]) {
+      const port = validatePort(p);
+      if (!port) return;
+      ports.push(port);
     }
 
     if (ports.length > 3) {
@@ -35,30 +32,14 @@ export const dev = new Command("dev")
       return;
     }
 
-    const organizationId = options.org || config.organizationId;
-
-    if (!organizationId) {
-      log.error("No organization selected. Run 'von login' or specify --org");
-      return;
-    }
-
     const s = spinner();
     s.start("Registering tunnel(s)...");
 
     try {
-      const tunnels: Array<{
-        port: number;
-        tunnelId: string;
-        tunnelUrl: string;
-        wsUrl: string;
-      }> = [];
+      const tunnels: TunnelInfo[] = [];
 
       for (const port of ports) {
-        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(
-          token,
-          port,
-          organizationId
-        );
+        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(token, port);
         tunnels.push({ port, tunnelId, tunnelUrl, wsUrl });
       }
 
@@ -84,18 +65,9 @@ export const dev = new Command("dev")
       );
     } catch (err) {
       s.stop("");
-      log.error(
-        `Failed to start tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      log.error(`Failed to start tunnel: ${formatError(err)}`);
     }
   });
-
-type TunnelInfo = {
-  port: number;
-  tunnelId: string;
-  tunnelUrl: string;
-  wsUrl: string;
-};
 
 const connectTunnels = (
   token: string,
