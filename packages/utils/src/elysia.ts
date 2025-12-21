@@ -10,6 +10,16 @@ import {
 	UnauthorizedError,
 } from "@/errors";
 
+/**
+ * Base Elysia configuration options for all Von apps.
+ * Enables AOT compilation and optimizations.
+ */
+export const baseElysiaOptions = {
+	aot: true,
+	normalize: true,
+	nativeStaticResponse: true,
+} as const;
+
 type VonBaseOptions = {
 	name: string;
 	isProd: boolean;
