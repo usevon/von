@@ -3,15 +3,11 @@ import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
-import { auth, withApiKey } from "@/modules/auth";
+import { auth } from "@/modules/auth";
 import { endpoints } from "@/modules/endpoints";
 import { inbound, inboundPublic } from "@/modules/inbound";
 import { versions } from "@/modules/versions";
 import { webhookEvents, webhooks } from "@/modules/webhooks";
-
-const ping = new Elysia({ prefix: "/ping" })
-  .use(withApiKey)
-  .get("/", () => ({ ok: true }));
 
 const getCorsOrigins = () => {
   if (env.NODE_ENV !== "production") {
@@ -47,7 +43,6 @@ export const app = new Elysia({
   .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
   .use(idempotency())
   .use(browserMiddleware)
-  .use(ping)
   .use(inboundPublic)
   .use(webhooks)
   .use(webhookEvents)

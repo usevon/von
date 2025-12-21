@@ -34,15 +34,6 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return nodeCrypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
-export function verifyHmac(
-  data: string,
-  signature: string,
-  secret: string
-): boolean {
-  const expected = hmacSign(data, secret);
-  return timingSafeEqual(expected, signature);
-}
-
 export function randomHex(bytes: number): string {
   const array = new Uint8Array(bytes);
   crypto.getRandomValues(array);

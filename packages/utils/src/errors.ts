@@ -22,22 +22,6 @@ export class BadRequestError extends Error {
   }
 }
 
-export class ForbiddenError extends Error {
-  status = 403;
-  constructor(message = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
-
-export class ConflictError extends Error {
-  status = 409;
-  constructor(message = "Conflict") {
-    super(message);
-    this.name = "ConflictError";
-  }
-}
-
 export class InternalServerError extends Error {
   status = 500;
   constructor(message = "Internal server error") {

@@ -4,7 +4,6 @@ import {
   hmacSign,
   randomHex,
   timingSafeEqual,
-  verifyHmac,
 } from "../../src/crypto";
 
 const HEX_REGEX = /^[a-f0-9]+$/;
@@ -70,30 +69,6 @@ describe("timingSafeEqual", () => {
 
   test("returns true for empty strings", () => {
     expect(timingSafeEqual("", "")).toBe(true);
-  });
-});
-
-describe("verifyHmac", () => {
-  test("returns true for valid signature", () => {
-    const data = "test data";
-    const secret = "secret";
-    const signature = hmacSign(data, secret);
-    expect(verifyHmac(data, signature, secret)).toBe(true);
-  });
-
-  test("returns false for invalid signature", () => {
-    expect(verifyHmac("data", "invalidsig", "secret")).toBe(false);
-  });
-
-  test("returns false for wrong secret", () => {
-    const data = "test data";
-    const signature = hmacSign(data, "secret1");
-    expect(verifyHmac(data, signature, "secret2")).toBe(false);
-  });
-
-  test("returns false for tampered data", () => {
-    const signature = hmacSign("original", "secret");
-    expect(verifyHmac("tampered", signature, "secret")).toBe(false);
   });
 });
 

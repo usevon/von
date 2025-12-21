@@ -23,15 +23,12 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.1.0",
-    "@elysiajs/server-timing": "^1.4.0",
     "@usevon/auth": "workspace:*",
     "@usevon/utils": "workspace:*",
     "@usevon/db": "workspace:*",
     "@usevon/queue": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "elysia": "^1.4.16",
-    "elysia-ip": "^1.0.10",
-    "elysia-requestid": "^1.0.9",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
