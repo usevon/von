@@ -7,11 +7,9 @@ const client = postgres(env.DATABASE_URL, {
   max: 20,
   idle_timeout: 20,
   connect_timeout: 10,
-  connection: {
-    statement_timeout: "30s",
-  },
 });
 export const db = drizzle(client, { schema });
+export type Database = typeof db;
 
 export async function checkDatabaseConnection(): Promise<{ ok: boolean }> {
   try {
