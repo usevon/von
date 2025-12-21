@@ -4,6 +4,7 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { getSession, rotateTunnel } from "@/lib/api";
 import { requireAuth } from "@/lib/config";
+import { formatError, validatePort } from "@/lib/helpers";
 
 export const rotate = new Command("rotate")
   .description("Rotate tunnel secret to invalidate the current URL")
@@ -16,11 +17,8 @@ export const rotate = new Command("rotate")
       return;
     }
 
-    const port = Number.parseInt(options.port, 10);
-    if (Number.isNaN(port) || port < 1 || port > 65_535) {
-      log.error(`Invalid port number: ${options.port}`);
-      return;
-    }
+    const port = validatePort(options.port);
+    if (!port) return;
 
     const organizationId = config.organizationId;
     if (!organizationId) {
@@ -52,8 +50,6 @@ export const rotate = new Command("rotate")
       log.success("Old URLs will no longer work");
     } catch (err) {
       s.stop("");
-      log.error(
-        `Failed to rotate tunnel: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      log.error(`Failed to rotate tunnel: ${formatError(err)}`);
     }
   });
