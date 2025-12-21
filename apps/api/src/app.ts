@@ -1,5 +1,5 @@
 import { cors } from "@elysiajs/cors";
-import { vonBase } from "@usevon/utils/elysia";
+import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
@@ -25,7 +25,7 @@ const getCorsOrigins = () => {
 
 const corsMiddleware = cors({ origin: getCorsOrigins() });
 
-const browserRoutes = new Elysia().use(corsMiddleware).use(auth);
+const browserMiddleware = new Elysia().use(corsMiddleware).use(auth);
 
 const securityHeaders = new Elysia({ name: "security-headers" }).onAfterHandle(
   ({ set }) => {
@@ -41,14 +41,12 @@ const securityHeaders = new Elysia({ name: "security-headers" }).onAfterHandle(
 
 export const app = new Elysia({
   name: "von-api",
-  aot: true,
-  normalize: true,
-  nativeStaticResponse: true,
+  ...baseElysiaOptions,
 })
   .use(securityHeaders)
   .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
   .use(idempotency())
-  .use(browserRoutes)
+  .use(browserMiddleware)
   .use(ping)
   .use(inboundPublic)
   .use(webhooks)
