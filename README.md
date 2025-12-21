@@ -48,7 +48,7 @@ Run Von on your own infrastructure. With self-hosted, you get:
 
 Backend services require a VPS or dedicated server (stateful WebSocket connections aren't compatible with serverless platforms like Cloudflare Workers).
 
-The dashboard and site are built with Next.js. For production, we recommend deploying them to [Vercel](https://vercel.com) for the best experience with zero configuration, automatic previews, and edge caching. You can also self-host them anywhere that supports Node.js.
+The dashboard and site are Next.js apps—we recommend [Vercel](https://vercel.com) for production, but they run anywhere Node.js does.
 
 Requires PostgreSQL, Redis, and Bun (for building).
 
