@@ -260,7 +260,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         .set({
           failureCount: sql`${endpoint.failureCount} + 1`,
           circuitState: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${endpoint.circuitState} END`,
-          circuitOpenedAt: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} AND ${endpoint.circuitState} != 'open' THEN ${now} ELSE ${endpoint.circuitOpenedAt} END`,
+          circuitOpenedAt: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} AND ${endpoint.circuitState} != 'open' THEN ${now.toISOString()} ELSE ${endpoint.circuitOpenedAt} END`,
           lastFailureAt: now,
           updatedAt: now,
         })
