@@ -107,9 +107,7 @@ export const registerTunnel = async (
 	const { data, error } = await client.register.post({ port });
 
 	if (error) {
-		const message =
-			"value" in error ? (error.value as { message?: string })?.message : undefined;
-		throw new Error(message || "Failed to register tunnel");
+		throw new Error(error.value?.message || "Failed to register tunnel");
 	}
 
 	const tunnelUrl = `${config.tunnelUrl}/${data.tunnelId}-${data.secret}`;
@@ -128,9 +126,7 @@ export const rotateTunnel = async (
 	const { data, error } = await client.rotate({ tunnelId }).post();
 
 	if (error) {
-		const message =
-			"value" in error ? (error.value as { message?: string })?.message : undefined;
-		throw new Error(message || "Failed to rotate tunnel secret");
+		throw new Error(error.value?.message || "Failed to rotate tunnel secret");
 	}
 
 	return { secret: data.secret };
