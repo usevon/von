@@ -2,7 +2,6 @@
 
 import { VonProvider } from "@usevon/react";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -16,7 +15,6 @@ export const Providers = (props: ProvidersProps) => {
       <VonProvider apiUrl={apiUrl}>
         {props.children}
       </VonProvider>
-      <Toaster richColors />
     </ThemeProvider>
   );
 };
