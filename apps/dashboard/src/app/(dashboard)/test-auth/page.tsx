@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import {
   AlertDialog,
   AlertDialogClose,
@@ -25,18 +26,20 @@ import {
   useSession,
 } from "@/lib/auth/client";
 
-export const Route = createFileRoute("/test-auth")({
-  component: TestAuthPage,
-});
-
-function TestAuthPage() {
+export default function TestAuthPage() {
   const { data, isPending } = useSession();
   const { session } = data ?? {};
   const [log, setLog] = useState<string[]>([]);
   const prevSessionRef = useRef(data);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const getSessionStatus = () => {
-    if (isPending) {
+    if (!mounted || isPending) {
       return "Loading...";
     }
     if (data) {
@@ -199,10 +202,12 @@ function TestAuthPage() {
   };
 
   return (
-    <div className="p-5 font-mono">
-      <h1 className="mb-4 font-bold text-2xl">Auth Test Page</h1>
+    <>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-bold text-2xl">Auth Test Page</h1>
+      </div>
 
-      <div className="mb-5 rounded-lg bg-muted p-4">
+      <div className="mb-5 rounded-lg bg-muted p-4 font-mono">
         <h3 className="mb-2 font-semibold text-lg">
           Session Status: {sessionStatus}
         </h3>
@@ -295,6 +300,6 @@ function TestAuthPage() {
           ))}
         </CardPanel>
       </Card>
-    </div>
+    </>
   );
 }

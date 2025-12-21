@@ -1,25 +1,27 @@
 {
   "name": "@usevon/site",
-  "version": "0.2.0",
+  "version": "2.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "bun --bun vite",
-    "build": "tsc && bun --bun vite build",
-    "start": "bun --bun vite preview --port 3000 --host",
-    "preview": "bun --bun vite preview"
+    "dev": "next dev --port 2999",
+    "build": "next build",
+    "start": "next start --port 2999"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.136.1",
     "@usevon/ui": "workspace:*",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "lucide-react": "^0.555.0",
+    "next": "^16.1.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "typescript": "^5.7.2",
-    "vite": "^7.2.2"
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/node": "^20",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@usevon/typescript-config": "workspace:*",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.7.2"
   }
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { useEndpoints } from "@usevon/react/hooks";
 import {
   Button,

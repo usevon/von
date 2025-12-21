@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import { useWebhooks } from "@usevon/react/hooks";
 import {
   Button,
@@ -15,11 +16,7 @@ import {
 import { Building2, Webhook } from "lucide-react";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { SendWebhookDialog } from "@/components/send-webhook-dialog";
-import { useSession } from "@/lib/auth/client";
-
-export const Route = createFileRoute("/webhooks")({
-  component: WebhooksPage,
-});
+import type { Session, User } from "@/lib/auth";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -27,31 +24,16 @@ const statusColors: Record<string, string> = {
   failed: "bg-red-100 text-red-800",
 };
 
-export default function WebhooksPage() {
-  const { data } = useSession();
-  const { session, user } = data ?? {};
+type WebhooksManagerProps = {
+  session: { session: Session["session"]; user: User };
+};
+
+export const WebhooksManager = (props: WebhooksManagerProps) => {
+  const { session } = props.session;
   const { events, isLoading, isRefreshing, error, refresh } = useWebhooks();
 
-  const isDisabled = !(user && session?.activeOrganizationId);
-
   const renderContent = () => {
-    if (!user) {
-      return (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Webhook className="size-4.5" />
-            </EmptyMedia>
-            <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>
-              Please sign in to view webhook events.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
-    if (!session?.activeOrganizationId) {
+    if (!session.activeOrganizationId) {
       return (
         <Empty>
           <EmptyHeader>
@@ -69,7 +51,6 @@ export default function WebhooksPage() {
         </Empty>
       );
     }
-
     if (isLoading) {
       return (
         <Empty>
@@ -145,15 +126,14 @@ export default function WebhooksPage() {
     );
   };
 
+  const isDisabled = !session.activeOrganizationId;
+
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-bold text-2xl">Webhook Events</h1>
         <div className="flex gap-2">
-          <SendWebhookDialog
-            disabled={isLoading || isDisabled}
-            onSent={refresh}
-          />
+          <SendWebhookDialog disabled={isLoading || isDisabled} onSent={refresh} />
           <Button
             disabled={isLoading || isRefreshing || isDisabled}
             onClick={refresh}
@@ -164,6 +144,6 @@ export default function WebhooksPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
-}
+};

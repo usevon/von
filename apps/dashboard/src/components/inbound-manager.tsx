@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import { useInbound } from "@usevon/react/hooks";
 import {
   AlertDialog,
@@ -24,15 +25,14 @@ import { Building2, Download } from "lucide-react";
 import { CreateInboundDialog } from "@/components/create-inbound-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { api } from "@/lib/api";
-import { useSession } from "@/lib/auth/client";
+import type { Session, User } from "@/lib/auth";
 
-export const Route = createFileRoute("/inbound")({
-  component: InboundPage,
-});
+type InboundManagerProps = {
+  session: { session: Session["session"]; user: User };
+};
 
-export default function InboundPage() {
-  const { data } = useSession();
-  const { session, user } = data ?? {};
+export const InboundManager = (props: InboundManagerProps) => {
+  const { session } = props.session;
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
     useInbound();
 
@@ -75,26 +75,8 @@ export default function InboundPage() {
     mutate();
   };
 
-  const isDisabled = !(user && session?.activeOrganizationId);
-
   const renderContent = () => {
-    if (!user) {
-      return (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Download className="size-4.5" />
-            </EmptyMedia>
-            <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>
-              Please sign in to manage inbound endpoints.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
-    if (!session?.activeOrganizationId) {
+    if (!session.activeOrganizationId) {
       return (
         <Empty>
           <EmptyHeader>
@@ -235,7 +217,7 @@ export default function InboundPage() {
                   Public Inbound URL:
                 </p>
                 <code className="block rounded bg-background px-2 py-1 text-xs">
-                  {window.location.origin}/in/{endpoint.id}
+                  {typeof window !== "undefined" ? window.location.origin : ""}/in/{endpoint.id}
                 </code>
               </div>
               <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
@@ -257,8 +239,10 @@ export default function InboundPage() {
     );
   };
 
+  const isDisabled = !session.activeOrganizationId;
+
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-bold text-2xl">Inbound Endpoints</h1>
         <div className="flex gap-2">
@@ -276,6 +260,6 @@ export default function InboundPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
-}
+};

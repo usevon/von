@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+"use client";
+
 import { useEndpoints } from "@usevon/react/hooks";
 import {
   AlertDialog,
@@ -24,15 +25,14 @@ import { Building2, Globe } from "lucide-react";
 import { CreateEndpointDialog } from "@/components/create-endpoint-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import { api } from "@/lib/api";
-import { useSession } from "@/lib/auth/client";
+import type { Session, User } from "@/lib/auth";
 
-export const Route = createFileRoute("/endpoints")({
-  component: EndpointsPage,
-});
+type EndpointsManagerProps = {
+  session: { session: Session["session"]; user: User };
+};
 
-export default function EndpointsPage() {
-  const { data } = useSession();
-  const { session, user } = data ?? {};
+export const EndpointsManager = (props: EndpointsManagerProps) => {
+  const { session } = props.session;
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
     useEndpoints();
 
@@ -75,26 +75,8 @@ export default function EndpointsPage() {
     mutate();
   };
 
-  const isDisabled = !(user && session?.activeOrganizationId);
-
   const renderContent = () => {
-    if (!user) {
-      return (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Globe className="size-4.5" />
-            </EmptyMedia>
-            <EmptyTitle>Sign in required</EmptyTitle>
-            <EmptyDescription>
-              Please sign in to manage endpoints.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      );
-    }
-
-    if (!session?.activeOrganizationId) {
+    if (!session.activeOrganizationId) {
       return (
         <Empty>
           <EmptyHeader>
@@ -112,7 +94,6 @@ export default function EndpointsPage() {
         </Empty>
       );
     }
-
     if (isLoading) {
       return (
         <Empty>
@@ -250,8 +231,10 @@ export default function EndpointsPage() {
     );
   };
 
+  const isDisabled = !session.activeOrganizationId;
+
   return (
-    <div className="p-4">
+    <>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-bold text-2xl">Webhook Endpoints</h1>
         <div className="flex gap-2">
@@ -269,6 +252,6 @@ export default function EndpointsPage() {
         </div>
       </div>
       {renderContent()}
-    </div>
+    </>
   );
-}
+};

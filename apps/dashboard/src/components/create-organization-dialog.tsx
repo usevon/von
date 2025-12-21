@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Button,
   Dialog,
@@ -49,7 +51,6 @@ export const CreateOrganizationDialog = (
       return;
     }
 
-    // Set the new org as active to update client session
     await organization.setActive({ organizationId: newOrg.id });
 
     setLoading(false);

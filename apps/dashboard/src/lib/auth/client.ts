@@ -1,7 +1,10 @@
+"use client";
+
 import { clearBearerToken, createAuthClient } from "@usevon/auth/client";
+import { env } from "@/env";
 
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  baseURL: env.NEXT_PUBLIC_API_URL,
 });
 
 const originalSignOut = authClient.signOut;

@@ -12,6 +12,7 @@ export const env = createEnv({
     CORS_ORIGINS: z.string().optional(),
     API_URL: z.string().url().optional(),
     TUNNEL_URL: z.string().url().optional(),
+    API_KEY_SIGNING_SECRET: z.string().optional(),
   },
   runtimeEnv: process.env,
 });

@@ -28,8 +28,13 @@ export type CreateAuthOptions = {
   /**
    * Secondary storage for API key caching (Redis).
    * Enables faster API key lookups by caching in Redis with DB fallback.
+   * If not provided, uses database-only storage.
    */
-  secondaryStorage: SecondaryStorage;
+  secondaryStorage?: SecondaryStorage;
+  /**
+   * Signing secret for API keys (required in production).
+   */
+  apiKeySigningSecret?: string;
 };
 
 export const createAuth = (db: Database, options: CreateAuthOptions) =>
@@ -81,12 +86,13 @@ export const createAuth = (db: Database, options: CreateAuthOptions) =>
         },
       }),
       apiKey({
-        storage: "secondary-storage",
-        fallbackToDatabase: true,
+        storage: options.secondaryStorage ? "secondary-storage" : "database",
+        fallbackToDatabase: options.secondaryStorage ? true : false,
+        signingSecret: options.apiKeySigningSecret,
       }),
       deviceAuthorization({
         verificationUri:
-          options.deviceVerificationUri ?? "http://localhost:5174/device",
+          options.deviceVerificationUri ?? "http://localhost:3000/device",
         expiresIn: "30m",
         interval: "5s",
       }),

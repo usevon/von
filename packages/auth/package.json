@@ -6,11 +6,11 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.ts"
+      "import": "./dist/index.js"
     },
     "./client": {
       "types": "./dist/client.d.ts",
-      "import": "./src/client.ts"
+      "import": "./dist/client.js"
     }
   },
   "scripts": {
