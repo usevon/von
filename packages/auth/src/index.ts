@@ -9,6 +9,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { betterAuth } from "better-auth/minimal";
 import { bearer, deviceAuthorization, organization } from "better-auth/plugins";
 import { apiKey } from "@/plugins/api-key";
+import { eq, type Database } from "@usevon/db";
+import * as schema from "@usevon/db/schema";
+
+type SessionInsert = typeof schema.session.$inferInsert;
 
 export type SecondaryStorage = {
   get: (key: string) => Promise<string | null> | string | null;
@@ -28,10 +32,7 @@ export type CreateAuthOptions = {
   secondaryStorage: SecondaryStorage;
 };
 
-export const createAuth = (
-  db: Parameters<typeof drizzleAdapter>[0],
-  options: CreateAuthOptions
-) =>
+export const createAuth = (db: Database, options: CreateAuthOptions) =>
   betterAuth({
     database: drizzleAdapter(db, { provider: "pg" }),
     secret: options.secret,
@@ -68,11 +69,20 @@ export const createAuth = (
     },
     plugins: [
       bearer(),
-      organization(),
+      organization({
+        organizationHooks: {
+          afterAddMember: async ({ member }) => {
+            // Auto-set activeOrganizationId on user's sessions when they join an org
+            await db
+              .update(schema.session)
+              .set({ activeOrganizationId: member.organizationId })
+              .where(eq(schema.session.userId, member.userId));
+          },
+        },
+      }),
       apiKey({
         storage: "secondary-storage",
         fallbackToDatabase: true,
-        customStorage: options.secondaryStorage,
       }),
       deviceAuthorization({
         verificationUri:
@@ -82,20 +92,43 @@ export const createAuth = (
       }),
     ],
     databaseHooks: {
+      user: {
+        delete: {
+          before: async (user) => {
+            // Find orgs where user is sole member and delete them
+            const memberships = await db
+              .select({ organizationId: schema.member.organizationId })
+              .from(schema.member)
+              .where(eq(schema.member.userId, user.id));
+
+            for (const { organizationId } of memberships) {
+              const memberCount = await db
+                .select({ id: schema.member.id })
+                .from(schema.member)
+                .where(eq(schema.member.organizationId, organizationId));
+
+              if (memberCount.length === 1) {
+                await db
+                  .delete(schema.organization)
+                  .where(eq(schema.organization.id, organizationId));
+              }
+            }
+          },
+        },
+      },
       session: {
         create: {
-          before: async (session, ctx) => {
-            if (session.activeOrganizationId) {
+          before: async (session) => {
+            const s = session as SessionInsert;
+            if (s.activeOrganizationId) {
               return { data: session };
             }
-            const members = await ctx?.context?.adapter?.findMany<{
-              organizationId: string;
-            }>({
-              model: "member",
-              where: [{ field: "userId", value: session.userId }],
-              limit: 1,
-            });
-            const firstMember = members?.[0];
+            const [firstMember] = await db
+              .select({ organizationId: schema.member.organizationId })
+              .from(schema.member)
+              .where(eq(schema.member.userId, s.userId))
+              .limit(1);
+
             if (firstMember) {
               return {
                 data: {
