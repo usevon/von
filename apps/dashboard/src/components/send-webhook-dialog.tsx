@@ -23,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  toastManager,
 } from "@usevon/ui";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { sendWebhook } from "@/actions/webhooks";
 
 type SendWebhookDialogProps = {
   onSent: () => void;
@@ -96,26 +97,25 @@ export const SendWebhookDialog = (props: SendWebhookDialogProps) => {
 
     setLoading(true);
 
-    const { error } = await api.webhooks.post(
-      {
+    try {
+      await sendWebhook({
         eventType,
         payload: JSON.parse(payloadJson),
         endpointIds: [selectedEndpoint.value],
-      },
-      { fetch: { credentials: "include" } }
-    );
-
-    setLoading(false);
-
-    if (error) {
-      console.error("Error sending webhook:", error);
-      return;
+      });
+      setOpen(false);
+      setJsonError(null);
+      setSelectedEndpoint(null);
+      props.onSent();
+    } catch {
+      toastManager.add({
+        title: "Failed to send webhook",
+        description: "Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setOpen(false);
-    setJsonError(null);
-    setSelectedEndpoint(null);
-    props.onSent();
   };
 
   return (

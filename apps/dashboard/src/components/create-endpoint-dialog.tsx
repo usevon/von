@@ -17,8 +17,9 @@ import {
   Form,
   Input,
 } from "@usevon/ui";
+import { toastManager } from "@usevon/ui";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { createEndpoint } from "@/actions/endpoints";
 
 type CreateEndpointDialogProps = {
   onCreated: () => void;
@@ -37,20 +38,19 @@ export const CreateEndpointDialog = (props: CreateEndpointDialogProps) => {
 
     setLoading(true);
 
-    const { error } = await api.endpoints.post(
-      { url, description: description || undefined },
-      { fetch: { credentials: "include" } }
-    );
-
-    setLoading(false);
-
-    if (error) {
-      console.error("Error creating endpoint:", error);
-      return;
+    try {
+      await createEndpoint({ url, description: description || undefined });
+      setOpen(false);
+      props.onCreated();
+    } catch {
+      toastManager.add({
+        title: "Failed to create endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setOpen(false);
-    props.onCreated();
   };
 
   return (

@@ -20,11 +20,15 @@ import {
   EmptyMedia,
   EmptyTitle,
   Spinner,
+  toastManager,
 } from "@usevon/ui";
 import { Building2, Download } from "lucide-react";
+import {
+  toggleInbound as toggleInboundAction,
+  deleteInbound as deleteInboundAction,
+} from "@/actions/inbound";
 import { CreateInboundDialog } from "@/components/create-inbound-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
-import { api } from "@/lib/api";
 import type { Session, User } from "@/lib/auth";
 
 type InboundManagerProps = {
@@ -36,7 +40,7 @@ export const InboundManager = (props: InboundManagerProps) => {
   const { endpoints, isLoading, isRefreshing, error, refresh, mutate } =
     useInbound();
 
-  const toggleEndpoint = async (id: string, currentEnabled: boolean) => {
+  const handleToggle = async (id: string, currentEnabled: boolean) => {
     mutate(
       endpoints.map((e) =>
         e.id === id ? { ...e, enabled: !currentEnabled } : e
@@ -44,32 +48,33 @@ export const InboundManager = (props: InboundManagerProps) => {
       { revalidate: false }
     );
 
-    const { error: toggleError } = await api
-      .inbound({ id })
-      .patch(
-        { enabled: !currentEnabled },
-        { fetch: { credentials: "include" } }
-      );
-
-    if (toggleError) {
-      console.error("Error toggling inbound endpoint:", toggleError);
+    try {
+      await toggleInboundAction(id, !currentEnabled);
+    } catch {
+      toastManager.add({
+        title: "Failed to toggle inbound endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
     }
 
     mutate();
   };
 
-  const deleteEndpoint = async (id: string) => {
+  const handleDelete = async (id: string) => {
     mutate(
       endpoints.filter((e) => e.id !== id),
       { revalidate: false }
     );
 
-    const { error: deleteError } = await api.inbound({ id }).delete(null, {
-      fetch: { credentials: "include" },
-    });
-
-    if (deleteError) {
-      console.error("Error deleting inbound endpoint:", deleteError);
+    try {
+      await deleteInboundAction(id);
+    } catch {
+      toastManager.add({
+        title: "Failed to delete inbound endpoint",
+        description: "Please try again.",
+        type: "error",
+      });
     }
 
     mutate();
@@ -174,7 +179,7 @@ export const InboundManager = (props: InboundManagerProps) => {
                 <div className="flex gap-2">
                   <Button
                     onClick={() =>
-                      toggleEndpoint(endpoint.id, endpoint.enabled)
+                      handleToggle(endpoint.id, endpoint.enabled)
                     }
                     size="sm"
                     variant="outline"
@@ -202,7 +207,7 @@ export const InboundManager = (props: InboundManagerProps) => {
                           Cancel
                         </AlertDialogClose>
                         <Button
-                          onClick={() => deleteEndpoint(endpoint.id)}
+                          onClick={() => handleDelete(endpoint.id)}
                           variant="destructive"
                         >
                           Delete
