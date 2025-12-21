@@ -8,13 +8,9 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { log } from "@clack/prompts";
+import type { VonConfig } from "@/lib/types";
 
-export type VonConfig = {
-  apiUrl: string;
-  tunnelUrl: string;
-  token?: string;
-  organizationId?: string;
-};
+export type { VonConfig } from "@/lib/types";
 
 const CONFIG_DIR = join(homedir(), ".von");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");

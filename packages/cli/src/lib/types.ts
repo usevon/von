@@ -40,3 +40,17 @@ export type TunnelRegistration = {
   tunnelUrl: string;
   wsUrl: string;
 };
+
+export type TunnelInfo = {
+  port: number;
+  tunnelId: string;
+  tunnelUrl: string;
+  wsUrl: string;
+};
+
+export type VonConfig = {
+  apiUrl: string;
+  tunnelUrl: string;
+  token?: string;
+  organizationId?: string;
+};
