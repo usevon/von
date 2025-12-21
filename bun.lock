@@ -235,6 +235,9 @@
       },
       "devDependencies": {
         "@types/ws": "^8.18.1",
+        "@usevon/typescript-config": "workspace:*",
+        "tsdown": "^0.12.7",
+        "typescript": "^5.7.2",
       },
     },
     "packages/typescript-config": {

@@ -31,3 +31,39 @@ export type TunnelMessage =
   | TunnelRequest
   | TunnelResponse
   | TunnelControlMessage;
+
+/**
+ * Options for TunnelManager
+ */
+export type TunnelManagerOptions = {
+  verbose?: boolean;
+  onTakeover?: (port: number) => void;
+  onMaxRetries?: (port: number) => void;
+  onSecretRotated?: (port: number, newSecret: string) => void;
+};
+
+/**
+ * Options for individual tunnels
+ */
+export type TunnelOptions = {
+  timeout?: number;
+  maxRetries?: number;
+};
+
+/**
+ * Connection state of a tunnel
+ */
+export type ConnectionState =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected";
+
+/**
+ * Statistics for a tunnel
+ */
+export type TunnelStats = {
+  requests: number;
+  errors: number;
+  avgMs: number;
+};

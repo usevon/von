@@ -1,34 +1,17 @@
 import pc from "picocolors";
-import { TunnelClient } from "./client";
-import type { TunnelRequest, TunnelResponse } from "./types";
+import { TunnelClient } from "@/client";
+import type {
+  ConnectionState,
+  TunnelManagerOptions,
+  TunnelOptions,
+  TunnelRequest,
+  TunnelResponse,
+  TunnelStats,
+} from "@/types";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RETRIES = 5;
 const GATEWAY_ERROR_STATUS = 502;
-
-export type TunnelManagerOptions = {
-  verbose?: boolean;
-  onTakeover?: (port: number) => void;
-  onMaxRetries?: (port: number) => void;
-  onSecretRotated?: (port: number, newSecret: string) => void;
-};
-
-export type TunnelOptions = {
-  timeout?: number;
-  maxRetries?: number;
-};
-
-export type ConnectionState =
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "disconnected";
-
-export type TunnelStats = {
-  requests: number;
-  errors: number;
-  avgMs: number;
-};
 
 type TunnelEntry = {
   port: number;

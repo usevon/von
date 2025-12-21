@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ["src/index.ts"],
   format: ["esm"],
   clean: true,
-  shims: true,
+  dts: true,
   alias: {
     "@": "./src",
   },

@@ -1,5 +1,5 @@
 import * as WebSocket from "ws";
-import type { TunnelRequest, TunnelResponse } from "./types";
+import type { TunnelRequest, TunnelResponse } from "@/types";
 
 const PING_INTERVAL_MS = 5000;
 const MAX_BACKOFF_MS = 30_000;
