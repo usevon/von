@@ -9,9 +9,5 @@ export default async function EndpointsPage() {
     redirect("/test-auth");
   }
 
-  if (!session.session.activeOrganizationId) {
-    return <EndpointsManager session={session} needsOrganization />;
-  }
-
   return <EndpointsManager session={session} />;
 }
