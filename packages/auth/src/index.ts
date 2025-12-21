@@ -157,4 +157,7 @@ export type User = Session["user"];
 export type { ApiKey, ApiKeyOptions } from "@/plugins/api-key";
 export { apiKey } from "@/plugins/api-key";
 
+export { getSessionCookie } from "better-auth/cookies";
+export const COOKIE_PREFIX = "von";
+
 export const generateId = () => crypto.randomUUID();
