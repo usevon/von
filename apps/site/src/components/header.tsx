@@ -6,7 +6,7 @@ import { ModeToggle } from "./mode-toggle";
 
 export const Header = () => {
   return (
-    <header className="sticky top-0 z-10 bg-background">
+    <header className="sticky top-0 z-50 bg-background">
       <nav className="mx-auto flex h-[5.25rem] max-w-7xl items-center gap-4 px-6 lg:px-10">
         <div className="flex flex-1 items-center">
           <Link className="font-semibold text-foreground text-xl no-underline" href="/">

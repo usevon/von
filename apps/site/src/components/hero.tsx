@@ -35,7 +35,7 @@ export const Hero = () => {
               </div>
               <div className="lg:pt-24">
                 <div className="relative h-72 sm:h-92 md:h-125 lg:size-full">
-                  <div className="absolute inset-y-0 left-0 flex w-screen overflow-hidden max-lg:rounded-t-lg lg:rounded-tl-lg">
+                  <div className="absolute inset-y-0 -left-6 flex w-screen overflow-hidden max-lg:rounded-t-lg md:left-0 lg:rounded-tl-lg">
                     <div className="h-full w-full bg-white/10 dark:bg-black/20" />
                   </div>
                 </div>
