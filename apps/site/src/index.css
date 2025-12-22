@@ -5,6 +5,5 @@
 @source "../../../packages/ui/src";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: var(--font-familjen), sans-serif;
 }
