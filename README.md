@@ -46,7 +46,9 @@ Run Von on your own infrastructure. With self-hosted, you get:
 - Full control over your data and deployment
 - No usage limits or rate limiting
 
-Backend services require a VPS or dedicated server (stateful WebSocket connections aren't compatible with serverless platforms like Cloudflare Workers), but frontend can be deployed anywhere.
+Backend services require a VPS or dedicated server (stateful WebSocket connections aren't compatible with serverless platforms like Cloudflare Workers).
+
+The dashboard and site are Next.js apps—we recommend [Vercel](https://vercel.com) for production, but they run anywhere Node.js does.
 
 Requires PostgreSQL, Redis, and Bun (for building).
 
@@ -74,6 +76,17 @@ bun dev
 
 #### Production
 
+**Frontend (Dashboard & Site)**
+
+The easiest way to deploy the Next.js apps is with Vercel:
+
+1. Import your fork/repo on [vercel.com](https://vercel.com)
+2. Set the root directory to `apps/dashboard` or `apps/site`
+3. Add your environment variables
+4. Deploy
+
+**Backend (API, Tunnel, Worker)**
+
 Deploy to a Linux VPS with PM2 for process management.
 
 **Prerequisites:** Linux VPS, [Bun](https://bun.sh), PostgreSQL, Redis, PM2 (`npm install -g pm2`)
@@ -81,29 +94,17 @@ Deploy to a Linux VPS with PM2 for process management.
 **Build:**
 
 ```bash
-# Backend (standalone binaries)
 bun run --cwd apps/api build:prod
 bun run --cwd apps/tunnel build:prod
 bun run --cwd apps/worker build:prod
-
-# Frontend
-bun run --cwd apps/dashboard build
-bun run --cwd apps/site build
 ```
 
 **Deploy** (replace `user@server` with your SSH user and server address):
 
 ```bash
-# Backend binaries
 scp apps/api/dist/api user@server:/app/
 scp apps/tunnel/dist/tunnel user@server:/app/
 scp apps/worker/dist/worker user@server:/app/
-
-# Dashboard
-rsync -av apps/dashboard/.output/ user@server:/app/dashboard/
-
-# Site
-rsync -av apps/site/dist/ user@server:/app/site/
 ```
 
 **Start with PM2:**
@@ -112,8 +113,6 @@ rsync -av apps/site/dist/ user@server:/app/site/
 pm2 start /app/api --name api
 pm2 start /app/tunnel --name tunnel
 pm2 start /app/worker --name worker
-pm2 start "bun /app/dashboard/server/index.mjs" --name dashboard
-pm2 start "bun --bun vite preview --port 3000" --name site --cwd /app/site
 pm2 save && pm2 startup
 ```
 
