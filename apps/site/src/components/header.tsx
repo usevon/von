@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "@usevon/ui";
-import { ModeToggle } from "./mode-toggle";
 
 export const Header = () => {
   return (
@@ -25,7 +24,6 @@ export const Header = () => {
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end gap-4">
-          <ModeToggle />
           <Button variant="ghost" nativeButton={false} render={<Link href="/login" />} className="max-sm:hidden">
             Log in
           </Button>
