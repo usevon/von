@@ -25,9 +25,9 @@ export default function RootLayout(props: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={`${familjen.variable} antialiased`}>
         <Providers>
-          <div className="grid grid-rows-[auto_1fr] min-h-svh">
+          <div className="flex min-h-svh flex-col">
             <Header />
-            <main>{props.children}</main>
+            <main className="flex flex-1 flex-col">{props.children}</main>
           </div>
         </Providers>
       </body>
