@@ -26,7 +26,7 @@ export const Hero = () => {
                     size="lg"
                     variant="ghost"
                     nativeButton={false}
-                    className="border border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    className="border border-white/30 text-white hover:!bg-white/10 hover:!text-white"
                     render={<Link href="https://github.com/usevon/von" target="_blank" />}
                   >
                     Documentation
