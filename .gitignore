@@ -32,5 +32,9 @@ dist/
 # Turborepo
 .turbo
 
+# Next.js
+next-env.d.ts
+.next
+
 # Vite
 .vite
