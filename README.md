@@ -14,7 +14,7 @@ Von is open-source webhooks infrastructure that handles delivery at scale. With 
 - Automatic retries with exponential backoff
 - Circuit breakers for failing endpoints
 - HMAC signature verification
-- Environment isolation (dev, staging, prod, or custom)
+- Environment isolation (dev, staging, prod)
 - Local testing with tunnels via the [CLI](#cli)
 
 All out of the box, without reinventing webhook infrastructure.
