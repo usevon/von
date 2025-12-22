@@ -15,42 +15,23 @@ Von is open-source webhooks infrastructure that handles delivery at scale. With 
 - Circuit breakers for failing endpoints
 - HMAC signature verification
 - Environment isolation (dev, staging, prod, or custom)
+- Local testing with tunnels via the [CLI](#cli)
 
 All out of the box, without reinventing webhook infrastructure.
-
-## SDKs
-
-- **TypeScript** - [`@usevon/sdk`](packages/sdk) ([npm](https://www.npmjs.com/package/@usevon/sdk))
-- **React** - [`@usevon/react`](packages/react) ([npm](https://www.npmjs.com/package/@usevon/react))
-
-## CLI
-
-```bash
-npm install -g @usevon/cli
-```
-
-[`@usevon/cli`](packages/cli) ([npm](https://www.npmjs.com/package/@usevon/cli)) - local webhook testing with tunnels
 
 ## Getting Started
 
 ### Cloud
 
-The quickest way to start is through [usevon.com](https://usevon.com)
+Get started at [usevon.com](https://usevon.com) with no setup required.
 
 ### Self-hosted
 
-Run Von on your own infrastructure. With self-hosted, you get:
+Self-hosting Von gives you full control over your data with no usage limits, and the backend services compile to standalone binaries that you can run with PM2 for zero-downtime reloads.
 
-- Standalone binaries for api, tunnel, and worker (no Bun needed on server)
-- PM2 process management with zero-downtime reloads
-- Full control over your data and deployment
-- No usage limits or rate limiting
+The backend (api, tunnel, worker) requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
 
-Backend services require a VPS or dedicated server (stateful WebSocket connections aren't compatible with serverless platforms like Cloudflare Workers).
-
-The dashboard and site are Next.js apps—we recommend [Vercel](https://vercel.com) for production, but they run anywhere Node.js does.
-
-Requires PostgreSQL, Redis, and Bun (for building).
+You'll need PostgreSQL, Redis, and Bun installed for building.
 
 #### Development
 
@@ -76,22 +57,13 @@ bun dev
 
 #### Production
 
-**Frontend (Dashboard & Site)**
+**Frontend**
 
-The easiest way to deploy the Next.js apps is with Vercel:
+Deploy the dashboard and site to [Vercel](https://vercel.com) by importing your repo and setting the root directory to `apps/dashboard` or `apps/site`, then add your environment variables.
 
-1. Import your fork/repo on [vercel.com](https://vercel.com)
-2. Set the root directory to `apps/dashboard` or `apps/site`
-3. Add your environment variables
-4. Deploy
+**Backend**
 
-**Backend (API, Tunnel, Worker)**
-
-Deploy to a Linux VPS with PM2 for process management.
-
-**Prerequisites:** Linux VPS, [Bun](https://bun.sh), PostgreSQL, Redis, PM2 (`npm install -g pm2`)
-
-**Build:**
+The backend services require a Linux VPS with PostgreSQL and Redis, and PM2 for process management (`npm install -g pm2`). Build the binaries locally and deploy them to your server:
 
 ```bash
 bun run --cwd apps/api build:prod
@@ -99,7 +71,7 @@ bun run --cwd apps/tunnel build:prod
 bun run --cwd apps/worker build:prod
 ```
 
-**Deploy** (replace `user@server` with your SSH user and server address):
+Copy the binaries to your server (replace `user@server` with your SSH details):
 
 ```bash
 scp apps/api/dist/api user@server:/app/
@@ -107,7 +79,7 @@ scp apps/tunnel/dist/tunnel user@server:/app/
 scp apps/worker/dist/worker user@server:/app/
 ```
 
-**Start with PM2:**
+Then start them with PM2 and configure automatic startup:
 
 ```bash
 pm2 start /app/api --name api
@@ -116,7 +88,7 @@ pm2 start /app/worker --name worker
 pm2 save && pm2 startup
 ```
 
-**Zero-downtime reload:** `pm2 reload all`
+For zero-downtime reloads after updates, run `pm2 reload all`.
 
 ## Testing
 
@@ -131,6 +103,21 @@ bun test --cwd apps/worker
 # Integration tests (requires env vars)
 cd apps/api && bun test tests/integration
 cd apps/tunnel && bun test tests/integration
+```
+
+## SDKs
+
+| Language | Package |
+| --- | --- |
+| TypeScript | [`@usevon/sdk`](packages/sdk) |
+| React | [`@usevon/react`](packages/react) |
+
+## CLI
+
+Install the CLI globally to test webhooks locally with tunnels:
+
+```bash
+npm install -g @usevon/cli
 ```
 
 ## Contributing
@@ -149,11 +136,15 @@ Von uses dual licensing:
 
 **AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
 - `apps/` - api, dashboard, site, tunnel, worker
-- `packages/` - auth, db, env, logger, queue
+- `packages/auth` - authentication
+- `packages/db` - database schema
+- `packages/queue` - job queue
+- `packages/utils` - shared utilities
 
 **MIT License** ([LICENSE-MIT](LICENSE-MIT))
-- `packages/cli/` - CLI
-- `packages/sdk/` - TypeScript SDK
-- `packages/tunnel/` - tunnel client
-- `packages/react/` - React hooks
-- `packages/ui/` - UI components
+- `packages/cli` - CLI
+- `packages/react` - React hooks
+- `packages/sdk` - TypeScript SDK
+- `packages/tunnel` - tunnel client
+- `packages/typescript-config` - shared TypeScript config
+- `packages/ui` - UI components
