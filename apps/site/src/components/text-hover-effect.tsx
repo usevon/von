@@ -2,9 +2,11 @@
 
 import { useRef, useState, useCallback } from "react";
 import { motion } from "motion/react";
+import { cn } from "@usevon/ui";
 
 type TextHoverEffectProps = {
   text: string;
+  className?: string;
 };
 
 export const TextHoverEffect = (props: TextHoverEffectProps) => {
@@ -50,7 +52,7 @@ export const TextHoverEffect = (props: TextHoverEffectProps) => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      className="select-none"
+      className={cn("select-none", props.className)}
     >
       <defs>
         <linearGradient

@@ -118,7 +118,7 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-3 items-center border-t border-border py-4">
+        <div className="mt-8 flex items-center justify-between border-t border-border py-4">
           <Button
             variant="ghost"
             nativeButton={false}
@@ -131,17 +131,10 @@ export const Footer = () => {
             </span>
             All systems normal
           </Button>
-          <p className="text-center text-xs text-muted-foreground sm:text-sm">
-            &copy; 2025 USEVON, LLC.
-          </p>
-          <div className="justify-self-end">
-            <ThemeSwitcher />
-          </div>
+          <ThemeSwitcher />
         </div>
 
-        <div className="h-32 w-full sm:h-40 lg:h-48">
-          <TextHoverEffect text="VON" />
-        </div>
+        <TextHoverEffect text="VON" className="h-32 w-full sm:h-40 lg:h-48" />
       </div>
     </footer>
   );
