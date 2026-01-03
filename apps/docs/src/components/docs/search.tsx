@@ -52,15 +52,23 @@ export const Search = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen(true);
+        setOpen((prev) => !prev);
       }
+    };
+    // Use capture phase for escape to close before Autocomplete handles it
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && open) {
         e.preventDefault();
+        e.stopPropagation();
         setOpen(false);
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleEscape, true);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
   }, [open]);
 
   const groupedResults = results.reduce<Record<string, SearchResult[]>>((acc, result) => {
