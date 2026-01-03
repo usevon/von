@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Tabs, TabsList, TabsTab, TabsPanel, cn } from "@usevon/ui";
+import { Button, Tabs, TabsList, TabsTab, TabsPanel } from "@usevon/ui";
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { Children, isValidElement, useState, type ReactNode } from "react";
 
@@ -15,59 +15,40 @@ const getTextContent = (node: ReactNode): string => {
   return "";
 };
 
-const CopyButton = (props: { code: string }) => {
+export const CodeGroup = (props: { children: ReactNode }) => {
+  const [selected, setSelected] = useState("0");
   const [copied, setCopied] = useState(false);
+  const children = Children.toArray(props.children).filter(isValidElement);
+  const tabs = children.map((c, i) => (c.props as { title?: string }).title || `Tab ${i + 1}`);
+  const code = getTextContent(children[Number(selected)]);
+
   const copy = () => {
-    navigator.clipboard.writeText(props.code);
+    navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  return (
-    <Button variant="ghost" onClick={copy} className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
-      {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
-    </Button>
-  );
-};
-
-export const CodeGroup = (props: { children: ReactNode }) => {
-  const [selected, setSelected] = useState("0");
-  const children = Children.toArray(props.children).filter(isValidElement);
-  const tabs = children.map((c, i) => (c.props as { title?: string }).title || `Tab ${i + 1}`);
 
   return (
-    <Card className="not-prose my-6 gap-0 overflow-hidden p-0">
+    <div data-code-group="" className="my-6 overflow-hidden rounded-xl border border-border bg-muted">
       <Tabs value={selected} onValueChange={setSelected} className="gap-0">
-        <div className="border-b px-2">
+        <div className="flex items-center justify-between border-b px-2">
           <TabsList variant="underline">
             {tabs.map((t, i) => <TabsTab key={i} value={String(i)}>{t}</TabsTab>)}
           </TabsList>
+          <Button variant="ghost" size="icon" onClick={copy} className="opacity-70 hover:opacity-100">
+            {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
+          </Button>
         </div>
-        {children.map((child, i) => {
-          const code = getTextContent(child);
-          return (
-            <TabsPanel key={i} value={String(i)}>
-              <div className="group relative p-4 [&_pre]:overflow-x-auto [&_pre]:font-mono [&_pre]:text-sm [&_[data-slot=card]]:m-0 [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:p-0 [&_[data-slot=card]]:shadow-none">
-                {child}
-                <CopyButton code={code} />
-              </div>
-            </TabsPanel>
-          );
-        })}
+        {children.map((child, i) => (
+          <TabsPanel key={i} value={String(i)}>
+            <div className="px-4 py-3">
+              {child}
+            </div>
+          </TabsPanel>
+        ))}
       </Tabs>
-    </Card>
+    </div>
   );
 };
 
 export const CodeGroupTab = (props: { title: string; children: ReactNode }) => <>{props.children}</>;
-
-export const Code = (props: React.ComponentPropsWithoutRef<"code">) => <code {...props} />;
-
-export const Pre = (props: React.ComponentPropsWithoutRef<"pre">) => {
-  const code = getTextContent(props.children);
-  return (
-    <Card className="not-prose group relative my-6 gap-0 overflow-hidden p-4">
-      <pre {...props} className={cn("overflow-x-auto font-mono text-sm", props.className)} />
-      <CopyButton code={code} />
-    </Card>
-  );
-};
