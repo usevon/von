@@ -4,9 +4,9 @@ import { ScrollArea } from "@usevon/ui";
 
 import "@/index.css";
 import { Providers } from "@/components/providers";
-import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { Footer } from "@/components/footer";
+import { ScrollReset } from "@/components/scroll-reset";
 
 const familjen = Familjen_Grotesk({
   variable: "--font-familjen",
@@ -28,11 +28,11 @@ export default function RootLayout(props: RootLayoutProps) {
       <body className={`${familjen.variable} antialiased`}>
         <Providers>
           <div className="flex min-h-svh flex-col">
-            <Header />
             <Sidebar />
-            <main className="h-[calc(100svh-3.5rem)] lg:ml-64">
+            <main className="h-svh lg:ml-64">
               <ScrollArea className="h-full">
-                <div className="flex min-h-[calc(100svh-3.5rem)] flex-col px-4 pt-6 pb-10 sm:px-6 lg:px-8">
+                <ScrollReset />
+                <div className="flex min-h-svh flex-col px-4 pt-6 pb-10 sm:px-6 lg:px-8">
                   {props.children}
                 </div>
                 <Footer />

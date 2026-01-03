@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { Pagination } from "@/components/docs/pagination";
+import { TableOfContents } from "@/components/docs/toc";
 import { HomePage } from "@/components/home-page";
 
 // Content imports
@@ -114,6 +115,7 @@ export default async function DocsPage(props: DocsPageProps) {
   const params = await props.params;
   const slug = params.slug ?? [];
   const content = getContent(slug);
+  const isHome = slug.length === 0;
 
   if (!content) {
     notFound();
@@ -121,12 +123,25 @@ export default async function DocsPage(props: DocsPageProps) {
 
   const Content = content.Component;
 
-  return (
-    <div className="max-w-4xl">
-      <article className="prose prose-headings:no-underline prose-h4:border-none">
+  if (isHome) {
+    return (
+      <div className="max-w-5xl">
         <Content />
-      </article>
-      <Pagination />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-12">
+      <div className="min-w-0 max-w-4xl flex-1">
+        <article className="prose prose-headings:no-underline prose-h4:border-none pb-16">
+          <Content />
+        </article>
+        <Pagination />
+      </div>
+      <aside className="sticky top-6 hidden h-fit w-48 shrink-0 xl:block">
+        <TableOfContents />
+      </aside>
     </div>
   );
 }
