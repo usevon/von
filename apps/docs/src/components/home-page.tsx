@@ -8,7 +8,7 @@ import {
   TerminalIcon,
   CodeIcon,
 } from "@phosphor-icons/react";
-import { cn } from "@usevon/ui";
+import { Card } from "@usevon/ui";
 import type { ReactNode } from "react";
 
 type FeatureCardProps = {
@@ -20,48 +20,16 @@ type FeatureCardProps = {
 
 const FeatureCard = (props: FeatureCardProps) => {
   return (
-    <Link
-      href={props.href}
-      className={cn(
-        "group flex flex-col gap-3 rounded-xl border border-border bg-card p-6",
-        "transition-colors hover:border-primary/50 hover:bg-card/80"
-      )}
-    >
-      <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        {props.icon}
-      </div>
-      <h3 className="font-semibold text-foreground">{props.title}</h3>
-      <p className="text-sm text-muted-foreground">{props.description}</p>
+    <Link href={props.href} className="group">
+      <Card className="h-full gap-3 p-6 transition-colors hover:border-primary/50">
+        <div className="text-primary">{props.icon}</div>
+        <h3 className="font-semibold text-foreground">{props.title}</h3>
+        <p className="text-sm text-muted-foreground">{props.description}</p>
+      </Card>
     </Link>
   );
 };
 
-type SdkCardProps = {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  description: string;
-};
-
-const SdkCard = (props: SdkCardProps) => {
-  return (
-    <Link
-      href={props.href}
-      className={cn(
-        "group flex items-start gap-4 rounded-lg border border-border bg-card p-4",
-        "transition-colors hover:border-primary/50 hover:bg-card/80"
-      )}
-    >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
-        {props.icon}
-      </div>
-      <div>
-        <h4 className="font-medium text-foreground">{props.title}</h4>
-        <p className="mt-1 text-sm text-muted-foreground">{props.description}</p>
-      </div>
-    </Link>
-  );
-};
 
 export const HomePage = () => {
   return (
@@ -75,18 +43,12 @@ export const HomePage = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2">
         <FeatureCard
           href="/getting-started"
           icon={<RocketLaunchIcon className="size-5" weight="duotone" />}
           title="Quickstarts & Tutorials"
           description="Get started with Von in under 5 minutes. Learn how to send your first webhook."
-        />
-        <FeatureCard
-          href="/sdk/react"
-          icon={<AtomIcon className="size-5" weight="duotone" />}
-          title="React SDK"
-          description="React hooks and provider for integrating webhooks into your frontend."
         />
         <FeatureCard
           href="/introduction"
@@ -97,25 +59,25 @@ export const HomePage = () => {
       </div>
 
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold text-foreground">Explore by SDK</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SdkCard
+        <h2 className="text-xl font-semibold text-foreground">SDKs & Tools</h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <FeatureCard
             href="/sdk/typescript"
             icon={<CodeIcon className="size-5" weight="duotone" />}
             title="TypeScript SDK"
-            description="Full-featured SDK with complete type safety"
+            description="Full-featured SDK with complete type safety for your backend."
           />
-          <SdkCard
+          <FeatureCard
             href="/sdk/react"
             icon={<AtomIcon className="size-5" weight="duotone" />}
             title="React SDK"
-            description="React hooks and provider for webhook management"
+            description="React hooks and provider for webhook management."
           />
-          <SdkCard
+          <FeatureCard
             href="/sdk/cli"
             icon={<TerminalIcon className="size-5" weight="duotone" />}
             title="CLI"
-            description="Local development with secure tunnels"
+            description="Local development with secure tunnels."
           />
         </div>
       </div>
