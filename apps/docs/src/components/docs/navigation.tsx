@@ -8,6 +8,7 @@ import {
   RocketLaunchIcon,
   BookOpenIcon,
   CodeIcon,
+  KeyIcon,
 } from "@phosphor-icons/react";
 
 import { topLinks, navigation } from "@/lib/navigation";
@@ -17,6 +18,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "rocket-launch": RocketLaunchIcon,
   "book-open": BookOpenIcon,
   code: CodeIcon,
+  key: KeyIcon,
 };
 
 const isPathActive = (pathname: string, href: string) => {
@@ -73,8 +75,8 @@ export const Navigation = () => {
 
         {/* Sections */}
         {navigation.map((section) => (
-          <div key={section.title} className="flex flex-col gap-4">
-            <h4 className="px-3 text-xs font-semibold text-foreground">
+          <div key={section.title} className="flex flex-col gap-2">
+            <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {section.title}
             </h4>
             <div className="flex flex-col">

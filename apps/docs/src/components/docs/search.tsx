@@ -75,10 +75,10 @@ export const Search = () => {
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandDialogTrigger
         render={
-          <Button variant="outline" className="w-9 justify-center text-muted-foreground sm:w-80 sm:justify-start sm:gap-2">
+          <Button variant="outline" className="w-full justify-start gap-2 text-muted-foreground">
             <MagnifyingGlassIcon className="size-4" />
-            <span className="hidden flex-1 text-left text-sm sm:block">Search docs...</span>
-            <Kbd className="hidden sm:inline-flex">⌘K</Kbd>
+            <span className="flex-1 text-left text-sm">Search docs...</span>
+            <Kbd>⌘K</Kbd>
           </Button>
         }
       />
