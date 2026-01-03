@@ -46,7 +46,6 @@ const useActiveHeading = (headingIds: string[]) => {
   useEffect(() => {
     if (!headingIds?.length) return;
 
-    // Always start with first heading
     setActiveId(headingIds[0] ?? null);
     hasScrolled.current = false;
 
@@ -56,7 +55,6 @@ const useActiveHeading = (headingIds: string[]) => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Ignore initial fires before user scrolls
         if (!hasScrolled.current) return;
 
         for (const entry of entries) {
