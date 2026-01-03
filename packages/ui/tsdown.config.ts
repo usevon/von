@@ -7,4 +7,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   outDir: "dist",
+  banner: {
+    js: '"use client";',
+  },
 });
