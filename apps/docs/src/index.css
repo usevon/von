@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@usevon/ui/styles";
+
+@source "../../../packages/ui/src";
+
+@theme inline {
+  --font-sans: var(--font-familjen), sans-serif;
+}
+
+html,
+body {
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Syntax highlighting */
+code[data-theme*=" "],
+code[data-theme*=" "] span {
+  color: var(--shiki-light);
+}
+
+.dark code[data-theme*=" "],
+.dark code[data-theme*=" "] span {
+  color: var(--shiki-dark);
+}

@@ -1,0 +1,255 @@
+export const frontmatter = {
+  title: "CLI",
+  description: "Command-line tool for local webhook development."
+};
+
+# CLI
+
+The Von CLI provides local development tools, including secure tunnels for receiving webhooks on your local machine.
+
+## Installation
+
+<CodeGroup>
+  <CodeGroupTab title="npm" value="npm">
+```bash
+npm install -g @usevon/cli
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="pnpm" value="pnpm">
+```bash
+pnpm add -g @usevon/cli
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="bun" value="bun">
+```bash
+bun add -g @usevon/cli
+```
+  </CodeGroupTab>
+</CodeGroup>
+
+## Quick Start
+
+```bash
+# Login to Von
+von login
+
+# Start a tunnel to localhost:3000
+von dev -p 3000
+```
+
+## Commands
+
+### von login
+
+Authenticate with Von using device authorization flow.
+
+```bash
+von login
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--local` | Use local development server |
+| `--api-url <url>` | Custom API URL |
+| `--tunnel-url <url>` | Custom tunnel URL |
+| `--force` | Force re-authentication |
+
+The login flow:
+1. Opens browser with authorization code
+2. You approve in the browser
+3. CLI receives authentication token
+
+### von logout
+
+Clear stored credentials.
+
+```bash
+von logout
+```
+
+### von status
+
+Show current authentication and organization status.
+
+```bash
+von status
+```
+
+Output:
+```
+Logged in as: user@example.com
+Organization: My Company
+Environment: development
+```
+
+### von switch
+
+Switch to a different organization.
+
+```bash
+von switch
+```
+
+Displays a list of your organizations to choose from.
+
+### von dev
+
+Start development tunnels to forward webhooks to your local machine.
+
+```bash
+von dev -p 3000
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p, --port <ports...>` | Port(s) to tunnel (up to 3) |
+| `-v, --verbose` | Show request headers and body |
+
+**Examples:**
+
+```bash
+# Single port
+von dev -p 3000
+
+# Multiple ports
+von dev -p 3000 -p 4000 -p 5000
+
+# Verbose mode
+von dev -p 3000 -v
+```
+
+**Output:**
+
+```
+✓ Connected to Von
+
+Tunnel URLs:
+  → https://abc123.tunnel.usevon.com → localhost:3000
+
+Waiting for webhooks...
+```
+
+Use the tunnel URL in Von's endpoint configuration or in third-party webhook settings.
+
+### von rotate
+
+Rotate your tunnel secret. Use this if your tunnel URL is compromised.
+
+```bash
+von rotate
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-p <port>` | Rotate secret for specific port |
+
+After rotation, your old tunnel URLs will stop working.
+
+## Configuration
+
+The CLI stores configuration in `~/.von/config.json`:
+
+```json
+{
+  "apiUrl": "https://api.usevon.com",
+  "tunnelUrl": "wss://tunnel.usevon.com",
+  "token": "...",
+  "organizationId": "org_123"
+}
+```
+
+You can also use environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `VON_API_KEY` | API key for authentication |
+| `VON_BASE_URL` | Custom API URL |
+
+## Development Workflow
+
+### Testing Outbound Webhooks
+
+1. Start your local server
+2. Start a tunnel: `von dev -p 3000`
+3. Create an endpoint with the tunnel URL
+4. Trigger events in your app
+5. See webhooks arrive locally
+
+```bash
+# Terminal 1: Your app
+npm run dev  # Running on port 3000
+
+# Terminal 2: Von tunnel
+von dev -p 3000 -v
+```
+
+### Testing Inbound Webhooks
+
+1. Start your local server
+2. Start a tunnel: `von dev -p 3000`
+3. Create an inbound endpoint with your tunnel as the forward URL
+4. Configure the third-party service with Von's inbound URL
+5. Trigger the third-party webhook
+
+## Tunnel Features
+
+### Auto-Reconnect
+
+If the connection drops, the CLI automatically reconnects with exponential backoff.
+
+### Real-Time Forwarding
+
+Webhooks are forwarded in real-time via WebSocket connection.
+
+### Request Inspection
+
+Use `-v` flag to see full request details:
+
+```bash
+von dev -p 3000 -v
+```
+
+```
+→ POST localhost:3000/webhooks
+  Headers:
+    content-type: application/json
+    x-von-signature: abc123...
+  Body:
+    {"eventType":"order.created","payload":{...}}
+
+← 200 OK (45ms)
+```
+
+### Multiple Tunnels
+
+Run up to 3 simultaneous tunnels:
+
+```bash
+von dev -p 3000 -p 4000 -p 5000
+```
+
+Each port gets its own tunnel URL.
+
+## Troubleshooting
+
+### "Not authenticated"
+
+Run `von login` to authenticate.
+
+### "Connection refused"
+
+Make sure your local server is running on the specified port.
+
+### "Tunnel URL not working"
+
+Your secret may be rotated. Run `von dev` again to get a new URL.
+
+### "Multiple orgs, which one?"
+
+Run `von switch` to select the organization you want to use.

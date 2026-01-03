@@ -1,0 +1,70 @@
+export const frontmatter = {
+  title: "Authentication",
+  description: "Learn how to authenticate with the Von API."
+};
+
+# Authentication
+
+Von uses API keys to authenticate requests. You can create and manage API keys from your dashboard.
+
+## API Keys
+
+Each API key is scoped to a specific organization and environment. We recommend using separate keys for development and production.
+
+<Properties>
+  <Property name="apiKey" type="string" required>
+    Your Von API key. Starts with `von_` followed by the environment prefix.
+  </Property>
+</Properties>
+
+## Environments
+
+Von supports two environments:
+
+| Environment | Key Prefix | Description |
+|-------------|------------|-------------|
+| Development | `von_dev_` | For testing and development |
+| Production | `von_prod_` | For live production traffic |
+
+## Making Authenticated Requests
+
+<Row>
+  <Col>
+    ### Using the SDK
+
+    The SDK handles authentication automatically when you initialize it with your API key.
+
+    ### Using the API Directly
+
+    Include your API key in the `Authorization` header with the `Bearer` prefix.
+  </Col>
+  <Col sticky>
+```typescript
+// SDK (recommended)
+const von = new Von({
+  apiKey: "von_prod_xxx",
+});
+
+// Direct API call
+fetch("https://api.usevon.com/v1/webhooks", {
+  headers: {
+    Authorization: "Bearer von_prod_xxx",
+  },
+});
+```
+  </Col>
+</Row>
+
+## Security Best Practices
+
+- **Store keys securely** - Keep API keys in environment variables, never in code
+- **Rotate keys regularly** - Create new keys periodically and revoke old ones
+- **Use environment-specific keys** - Never use production keys in development
+- **Limit key permissions** - Create keys with only the permissions needed
+- **Monitor key usage** - Review API logs for unusual activity
+
+## Next Steps
+
+- [Sending Webhooks](/sending) - Learn how to send webhooks
+- [Verification](/verification) - Verify incoming webhook signatures
+- [TypeScript SDK](/sdk/typescript) - Full SDK reference

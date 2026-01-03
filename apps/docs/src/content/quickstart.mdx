@@ -1,0 +1,81 @@
+export const frontmatter = {
+  title: "Quickstart",
+  description: "Get started with Von in 5 minutes."
+};
+
+# Quickstart
+
+This guide will help you send your first webhook with Von in under 5 minutes.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- A Von account (sign up at [usevon.com](https://usevon.com))
+- Node.js 18 or later installed
+- An API key from your Von dashboard
+
+## Step 1: Install the SDK
+
+<CodeGroup>
+  <CodeGroupTab title="bun">
+```bash
+bun add @usevon/sdk
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="npm">
+```bash
+npm install @usevon/sdk
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="pnpm">
+```bash
+pnpm add @usevon/sdk
+```
+  </CodeGroupTab>
+</CodeGroup>
+
+## Step 2: Initialize the Client
+
+```typescript
+import { Von } from "@usevon/sdk";
+
+const von = new Von({
+  apiKey: process.env.VON_API_KEY,
+});
+```
+
+## Step 3: Create an Endpoint
+
+```typescript
+const endpoint = await von.endpoints.create({
+  url: "https://your-app.com/webhooks",
+  description: "My first endpoint",
+});
+
+console.log("Created endpoint:", endpoint.id);
+```
+
+## Step 4: Send a Webhook
+
+```typescript
+const webhook = await von.webhooks.send({
+  endpointId: endpoint.id,
+  eventType: "user.created",
+  payload: {
+    userId: "user_123",
+    email: "user@example.com",
+    createdAt: new Date().toISOString(),
+  },
+});
+
+console.log("Webhook sent:", webhook.id);
+```
+
+## Next Steps
+
+Now that you've sent your first webhook, learn more about:
+
+- [Sending Webhooks](/sending) - Deep dive into webhooks, endpoints, and events
+- [Verification](/verification) - Secure your webhook endpoints
+- [TypeScript SDK](/sdk/typescript) - Full SDK reference
