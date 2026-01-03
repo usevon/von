@@ -1,5 +1,4 @@
-"use client";
-
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@usevon/ui";
 import { Wallpaper } from "@/components/wallpaper";
@@ -14,7 +13,8 @@ export const Hero = () => {
             Webhooks infrastructure that just works.
           </h1>
           <p className="flex max-w-3xl flex-col gap-4 text-lg/8 text-muted-foreground">
-            Reliable webhook delivery with automatic retries, circuit breakers, and real-time monitoring so you can focus on building your product.
+            Reliable webhook delivery with automatic retries, circuit breakers, and real-time
+            monitoring so you can focus on building your product.
           </p>
           <div className="flex items-center gap-4">
             <Button size="lg" nativeButton={false} render={<Link href="/signup" />}>
@@ -35,12 +35,13 @@ export const Hero = () => {
         <Wallpaper className="rounded-lg">
           <div className="relative p-[min(10%,4rem)] pb-0">
             <div className="relative overflow-hidden rounded-t-lg bg-background/75 ring-1 ring-black/10 dark:bg-black/75">
-              <img
+              <Image
                 src="/screenshot.png"
                 alt="Von Dashboard"
                 className="w-full"
                 width={2880}
                 height={1800}
+                priority
               />
             </div>
           </div>

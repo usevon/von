@@ -22,9 +22,10 @@ const footerLinks = {
     { label: "SDKs", href: "/docs/sdks" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
+    { label: "Terms of Service", href: "/terms-of-service" },
     { label: "Security", href: "/security" },
+    { label: "Subprocessors", href: "/subprocessors" },
   ],
 };
 
