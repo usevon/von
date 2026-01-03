@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@usevon/ui";
-import { BillingToggle } from "./billing-toggle";
+import { PricingPlans } from "./billing-toggle";
 import { PricingFaqs } from "./faqs";
 import { ComparisonTable } from "./comparison-table";
 
@@ -12,9 +12,13 @@ export default function PricingPage() {
         <div className="flex flex-col items-center gap-6 text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Pricing</h1>
           <p className="max-w-xl text-lg text-muted-foreground">
-            Start free, scale as you grow. No hidden fees, no surprises.
+            Simple, predictable pricing for webhook infrastructure that just works.
           </p>
-          <BillingToggle />
+        </div>
+
+        {/* Plan Cards */}
+        <div className="mt-12">
+          <PricingPlans />
         </div>
 
         {/* Comparison Table */}
@@ -35,10 +39,10 @@ export default function PricingPage() {
             Talk to our team about your specific requirements.
           </p>
           <div className="flex items-center gap-4">
-            <Button nativeButton={false} render={<Link href="/contact" />}>
+            <Button render={<Link href="/contact" />}>
               Contact sales
             </Button>
-            <Button variant="ghost" nativeButton={false} render={<Link href="/docs" />}>
+            <Button variant="ghost" render={<Link href="/docs" />}>
               Read the docs
             </Button>
           </div>
