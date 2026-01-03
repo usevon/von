@@ -8,9 +8,13 @@ function ScrollArea({
   className,
   children,
   orientation,
+  scrollFade,
+  scrollbarGutter,
   ...props
 }: ScrollAreaPrimitive.Root.Props & {
   orientation?: "horizontal" | "vertical" | "both";
+  scrollFade?: boolean;
+  scrollbarGutter?: boolean;
 }) {
   return (
     <ScrollAreaPrimitive.Root className="size-full min-h-0" {...props}>
