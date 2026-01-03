@@ -8,6 +8,7 @@
     "start": "next start --port 2999"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@usevon/ui": "workspace:*",
     "lucide-react": "^0.555.0",
     "motion": "^12.23.26",
