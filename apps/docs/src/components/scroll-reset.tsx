@@ -1,17 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 export const ScrollReset = () => {
   const pathname = usePathname();
 
-  useEffect(() => {
-    const scrollContainer = document.querySelector<HTMLElement>(
-      "[data-slot=scroll-area-viewport]"
-    );
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0 });
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const viewport = document.querySelector("[data-slot=scroll-area-viewport]");
+    if (viewport) {
+      viewport.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [pathname]);
 
