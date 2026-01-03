@@ -16,7 +16,7 @@ const withMDX = createMDX({
     remarkPlugins: ["remark-gfm"],
     rehypePlugins: [
       "rehype-slug",
-      ["rehype-pretty-code", { theme: { dark: "catppuccin-mocha", light: "catppuccin-latte" }, keepBackground: false }],
+      ["rehype-pretty-code", { theme: { dark: "github-dark", light: "github-light-default" }, keepBackground: false }],
     ],
   },
 });
