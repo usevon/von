@@ -17,13 +17,12 @@ export const Hero = () => {
             monitoring so you can focus on building your product.
           </p>
           <div className="flex items-center gap-4">
-            <Button size="lg" nativeButton={false} render={<Link href="/signup" />}>
+            <Button size="lg" render={<Link href="/signup" />}>
               Get started
             </Button>
             <Button
               size="lg"
               variant="outline"
-              nativeButton={false}
               render={<Link href="https://github.com/usevon/von" target="_blank" />}
             >
               Documentation

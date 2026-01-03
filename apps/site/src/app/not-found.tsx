@@ -36,7 +36,7 @@ export default function NotFoundPage() {
         <p className="max-w-md text-muted-foreground">
           Von can deliver webhooks anywhere, but this page isn&apos;t one of the destinations.
         </p>
-        <Button nativeButton={false} render={<Link href="/" />} className="mt-4">
+        <Button render={<Link href="/" />} className="mt-4">
           Go home
         </Button>
       </div>
