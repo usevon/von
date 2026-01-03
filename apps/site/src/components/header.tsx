@@ -13,21 +13,18 @@ export const Header = () => {
           </Link>
         </div>
         <div className="flex gap-2 max-lg:hidden">
-          <Button variant="ghost" nativeButton={false} render={<Link href="/pricing" />}>
+          <Button variant="ghost" render={<Link href="/pricing" />}>
             Pricing
           </Button>
-          <Button variant="ghost" nativeButton={false} render={<Link href="https://github.com/usevon/von" target="_blank" />}>
+          <Button variant="ghost" render={<Link href="https://github.com/usevon/von" target="_blank" />}>
             Docs
-          </Button>
-          <Button variant="ghost" nativeButton={false} render={<Link href="https://github.com/usevon/von" target="_blank" />}>
-            GitHub
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end gap-4">
-          <Button variant="ghost" nativeButton={false} render={<Link href="/login" />} className="max-sm:hidden">
+          <Button variant="ghost" render={<Link href="/login" />} className="max-sm:hidden">
             Log in
           </Button>
-          <Button nativeButton={false} render={<Link href="/signup" />}>
+          <Button render={<Link href="/signup" />}>
             Get started
           </Button>
         </div>

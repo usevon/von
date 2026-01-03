@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@usevon/ui";
+import { GithubLogo, DiscordLogo } from "@phosphor-icons/react/ssr";
 import { ThemeSwitcher } from "./theme-switcher";
 import { TextHoverEffect } from "@/components/text-hover-effect";
 
@@ -12,9 +13,9 @@ const footerLinks = {
     { label: "Open Source", href: "/open-source" },
   ],
   resources: [
+    { label: "Contact", href: "/contact" },
     { label: "Blog", href: "/blog" },
     { label: "Pricing", href: "/pricing" },
-    { label: "Guides", href: "/guides" },
   ],
   documentation: [
     { label: "Getting Started", href: "/docs/getting-started" },
@@ -47,7 +48,6 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Button
                     variant="ghost"
-                    nativeButton={false}
                     render={<Link href={link.href} />}
                     className="-ml-3 text-foreground"
                   >
@@ -67,7 +67,6 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Button
                     variant="ghost"
-                    nativeButton={false}
                     render={<Link href={link.href} />}
                     className="-ml-3 text-foreground"
                   >
@@ -87,7 +86,6 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Button
                     variant="ghost"
-                    nativeButton={false}
                     render={<Link href={link.href} />}
                     className="-ml-3 text-foreground"
                   >
@@ -107,7 +105,6 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Button
                     variant="ghost"
-                    nativeButton={false}
                     render={<Link href={link.href} />}
                     className="-ml-3 text-foreground"
                   >
@@ -122,7 +119,6 @@ export const Footer = () => {
         <div className="mt-8 flex items-center justify-between border-t border-border py-4">
           <Button
             variant="ghost"
-            nativeButton={false}
             render={<Link href="/status" />}
             className="w-fit gap-2 text-muted-foreground hover:text-foreground"
           >
@@ -132,7 +128,25 @@ export const Footer = () => {
             </span>
             All systems normal
           </Button>
-          <ThemeSwitcher />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              render={<Link href="https://github.com/usevon/von" target="_blank" />}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <GithubLogo className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              render={<Link href="https://discord.gg/usevon" target="_blank" />}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <DiscordLogo className="size-4" />
+            </Button>
+            <ThemeSwitcher />
+          </div>
         </div>
 
         <TextHoverEffect text="VON" className="h-32 w-full sm:h-40 lg:h-48" />
