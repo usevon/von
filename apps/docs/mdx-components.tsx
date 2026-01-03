@@ -5,6 +5,7 @@ import { CopyButton } from "@/components/copy-button";
 import { CodeGroup, CodeGroupTab } from "@/mdx/code-group";
 import { Properties, Property } from "@/mdx/properties";
 import { Row, Col } from "@/mdx/row-col";
+import { Timeline, TimelineItem } from "@/mdx/timeline";
 import { H1, H2, H3, H4, P, A, Ul, Ol, Li, Blockquote, Hr, Table, Th, Td, Strong, InlineCode } from "@/mdx/elements";
 
 const getTextContent = (node: ReactNode): string => {
@@ -31,6 +32,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Col,
     CodeGroup,
     CodeGroupTab,
+    Timeline,
+    TimelineItem,
     figure: (props: FigureProps) => {
       const isCodeBlock = props["data-rehype-pretty-code-figure"] !== undefined;
       if (isCodeBlock) {
