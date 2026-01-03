@@ -18,9 +18,10 @@ const footerLinks = {
     { label: "Pricing", href: "/pricing" },
   ],
   documentation: [
-    { label: "Getting Started", href: "/docs/getting-started" },
-    { label: "API Reference", href: "/docs/api-reference" },
-    { label: "SDKs", href: "/docs/sdks" },
+    { label: "Home", href: "https://docs.usevon.com" },
+    { label: "Getting Started", href: "https://docs.usevon.com/getting-started" },
+    { label: "Guides", href: "https://docs.usevon.com/guides" },
+    { label: "API Reference", href: "https://docs.usevon.com/api" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy-policy" },
@@ -119,7 +120,7 @@ export const Footer = () => {
         <div className="mt-8 flex items-center justify-between border-t border-border py-4">
           <Button
             variant="ghost"
-            render={<Link href="/status" />}
+            render={<Link href="https://status.usevon.com" target="_blank" />}
             className="w-fit gap-2 text-muted-foreground hover:text-foreground"
           >
             <span className="relative flex size-2">
