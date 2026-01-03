@@ -37,6 +37,14 @@ export const TestAuthManager = (props: TestAuthManagerProps) => {
     });
   };
 
+  const showSuccess = (title: string, message?: string) => {
+    toastManager.add({
+      title,
+      description: message,
+      type: "success",
+    });
+  };
+
   const handleSignUp = async () => {
     addLog("Signing up...");
     const { data: result, error } = await signUp.email({
@@ -99,7 +107,6 @@ export const TestAuthManager = (props: TestAuthManagerProps) => {
       showError("No active organization", "Set an organization first.");
       return;
     }
-    addLog("Creating API key...");
     const { data: result, error } = await apiKey.create({
       name: "test-api-key",
       environment: "dev",
@@ -108,7 +115,8 @@ export const TestAuthManager = (props: TestAuthManagerProps) => {
     if (error) {
       showError("Failed to create API key", error.message);
     } else {
-      addLog("Create API key success (save this key!)", result);
+      showSuccess("API key created", "Save this key, it won't be shown again.");
+      addLog("API key created", result);
     }
   };
 
@@ -123,7 +131,6 @@ export const TestAuthManager = (props: TestAuthManagerProps) => {
   };
 
   const handleDeleteApiKey = async () => {
-    addLog("Fetching API keys...");
     const { data: keys, error: listError } = await apiKey.list();
     if (listError) {
       showError("Failed to list API keys", listError.message);
@@ -134,14 +141,13 @@ export const TestAuthManager = (props: TestAuthManagerProps) => {
       return;
     }
     const keyToDelete = keys[0];
-    addLog(`Deleting API key: ${keyToDelete.start}...`);
-    const { data: result, error } = await apiKey.delete({
+    const { error } = await apiKey.delete({
       keyId: keyToDelete.id,
     });
     if (error) {
       showError("Failed to delete API key", error.message);
     } else {
-      addLog("Delete API key success", result);
+      showSuccess("API key deleted", `Key ${keyToDelete.start}*** was removed.`);
     }
   };
 
