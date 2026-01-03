@@ -12,7 +12,9 @@
   },
   "scripts": {
     "dev": "turbo dev --filter=@usevon/site --filter=@usevon/dashboard --filter=@usevon/api --filter=@usevon/worker",
+    "dev:docs": "turbo dev --filter=@usevon/docs",
     "build": "turbo run build --filter=@usevon/site... --filter=@usevon/dashboard... --filter=@usevon/api... --filter=@usevon/worker...",
+    "build:docs": "turbo run build --filter=@usevon/docs...",
     "start": "turbo run start --filter=!@usevon/cli --filter=!@usevon/sdk",
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
