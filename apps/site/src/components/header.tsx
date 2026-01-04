@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
-import { Copy, Check, ArrowSquareOut } from "@phosphor-icons/react";
+import { CopyIcon, CheckIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="364.31" height="273.74" viewBox="0 0 364.31 273.74"><polyline points="273.08 92.3 185.65 91.8 272.58 0 364.31 0 364.31 91.29 181.35 273.74 91.13 273.74 91.64 91.73 0 91.98 92.4 0 183.12 0 182.9 91.79 183.87 182.51" fill="currentColor"/></svg>`;
 
@@ -21,7 +21,7 @@ export const Header = () => {
   const handleCopyPng = async () => {
     const svg = new Blob([LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')], { type: "image/svg+xml" });
     const url = URL.createObjectURL(svg);
-    const img = new Image();
+    const img = document.createElement("img");
     img.onload = async () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width * 2;
@@ -71,15 +71,15 @@ export const Header = () => {
             <ContextMenuPopup>
               <ContextMenuItem onClick={handleCopySvg} className="justify-between">
                 {copiedSvg ? "Copied!" : "Copy as SVG"}
-                {copiedSvg ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copiedSvg ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
               </ContextMenuItem>
               <ContextMenuItem onClick={handleCopyPng} className="justify-between">
                 {copiedPng ? "Copied!" : "Copy as PNG"}
-                {copiedPng ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copiedPng ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
               </ContextMenuItem>
               <ContextMenuItem render={<Link href="/brand" />} className="justify-between">
                 Brand Kit
-                <ArrowSquareOut className="size-4" />
+                <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
             </ContextMenuPopup>
           </ContextMenu>
