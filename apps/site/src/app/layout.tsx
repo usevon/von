@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
+import { Analytics } from "@usevon/analytics";
 
 import "../index.css";
 import { Footer } from "@/components/footer";
@@ -25,6 +26,7 @@ export default function RootLayout(props: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${familjen.variable} antialiased`}>
+        <Analytics clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!} />
         <Providers>
           <div className="flex min-h-svh flex-col">
             <Header />
