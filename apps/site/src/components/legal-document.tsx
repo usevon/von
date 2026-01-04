@@ -6,7 +6,7 @@ type LegalDocumentProps = {
 
 export const LegalDocument = (props: LegalDocumentProps) => {
   return (
-    <main className="py-24">
+    <main className="py-16">
       <div className="mx-auto flex max-w-7xl flex-col gap-10 px-6 sm:gap-16 lg:px-10">
         <div className="flex max-w-2xl flex-col gap-4">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{props.title}</h1>

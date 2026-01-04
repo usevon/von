@@ -3,7 +3,8 @@
 @import "@usevon/ui/styles";
 
 html {
-  overflow-y: scroll important;
+  overflow-y: scroll !important;
+  scroll-behavior: smooth;
 }
 
 @source "../../../packages/ui/src";

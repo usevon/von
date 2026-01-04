@@ -6,7 +6,7 @@ import { ComparisonTable } from "./comparison-table";
 
 export default function PricingPage() {
   return (
-    <main className="py-24">
+    <main className="py-16">
       <div className="mx-auto max-w-7xl px-6 lg:px-10">
         {/* Hero */}
         <div className="flex flex-col items-center gap-6 text-center">

@@ -4,10 +4,8 @@ import { useForm } from "react-hook-form";
 import { Button, Field, FieldLabel, FieldError, Input, Textarea } from "@usevon/ui";
 
 type ContactFormData = {
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
-  company: string;
   message: string;
 };
 
@@ -26,25 +24,14 @@ export const ContactForm = () => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-12 space-y-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <Field>
-          <FieldLabel>First name</FieldLabel>
-          <Input
-            {...register("firstName", { required: "First name is required" })}
-            aria-invalid={errors.firstName ? "true" : undefined}
-          />
-          {errors.firstName && <FieldError>{errors.firstName.message}</FieldError>}
-        </Field>
-
-        <Field>
-          <FieldLabel>Last name</FieldLabel>
-          <Input
-            {...register("lastName", { required: "Last name is required" })}
-            aria-invalid={errors.lastName ? "true" : undefined}
-          />
-          {errors.lastName && <FieldError>{errors.lastName.message}</FieldError>}
-        </Field>
-      </div>
+      <Field>
+        <FieldLabel>Name</FieldLabel>
+        <Input
+          {...register("name", { required: "Name is required" })}
+          aria-invalid={errors.name ? "true" : undefined}
+        />
+        {errors.name && <FieldError>{errors.name.message}</FieldError>}
+      </Field>
 
       <Field>
         <FieldLabel>Email</FieldLabel>
@@ -60,14 +47,6 @@ export const ContactForm = () => {
           aria-invalid={errors.email ? "true" : undefined}
         />
         {errors.email && <FieldError>{errors.email.message}</FieldError>}
-      </Field>
-
-      <Field>
-        <FieldLabel>Company</FieldLabel>
-        <Input
-          {...register("company")}
-          aria-invalid={errors.company ? "true" : undefined}
-        />
       </Field>
 
       <Field>
