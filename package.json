@@ -11,8 +11,11 @@
     "bun": ">=1.3.2"
   },
   "scripts": {
-    "dev": "turbo dev --filter=@usevon/site --filter=@usevon/dashboard --filter=@usevon/api --filter=@usevon/worker",
+    "dev": "turbo dev --filter=@usevon/site --filter=@usevon/dashboard --filter=@usevon/api --filter=@usevon/worker --filter=@usevon/docs",
+    "dev:app": "turbo dev --filter=@usevon/dashboard --filter=@usevon/api --filter=@usevon/worker",
+    "dev:site": "turbo dev --filter=@usevon/site",
     "dev:docs": "turbo dev --filter=@usevon/docs",
+    "dev:api": "turbo dev --filter=@usevon/api --filter=@usevon/worker",
     "build": "turbo run build --filter=@usevon/site... --filter=@usevon/dashboard... --filter=@usevon/api... --filter=@usevon/worker...",
     "build:docs": "turbo run build --filter=@usevon/docs...",
     "start": "turbo run start --filter=!@usevon/cli --filter=!@usevon/sdk",
