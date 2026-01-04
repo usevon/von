@@ -35,7 +35,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "bunx tsdown",
+    "build": "bun run tsdown",
     "dev": "tsdown && tsdown --watch --no-clean"
   },
   "dependencies": {
@@ -49,6 +49,7 @@
     "@types/react": "^19.2.0",
     "@usevon/typescript-config": "workspace:*",
     "react": "^19.2.0",
+    "tsdown": "^0.12.9",
     "typescript": "^5.7.2"
   },
   "publishConfig": {

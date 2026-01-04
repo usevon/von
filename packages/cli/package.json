@@ -22,7 +22,7 @@
     "von": "./dist/index.js"
   },
   "scripts": {
-    "build": "bunx tsdown",
+    "build": "bun run tsdown",
     "cli": "tsx ./src/index.ts"
   },
   "dependencies": {

@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "build": "bunx tsdown"
+    "build": "bun run tsdown"
   },
   "dependencies": {
     "@usevon/db": "workspace:*",
@@ -29,6 +29,7 @@
     "@better-auth/cli": "^1.4.2",
     "@types/node": "^22.0.0",
     "@usevon/typescript-config": "workspace:*",
+    "tsdown": "^0.12.9",
     "typescript": "^5.7.2"
   }
 }
