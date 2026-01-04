@@ -1,0 +1,308 @@
+export const frontmatter = {
+  title: "React SDK",
+  description: "React hooks and provider for webhook management."
+};
+
+# React SDK
+
+The `@usevon/react` package provides React hooks and a context provider for managing webhooks in your React applications.
+
+## Installation
+
+<CodeGroup>
+  <CodeGroupTab title="npm" value="npm">
+```bash
+npm install @usevon/react
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="pnpm" value="pnpm">
+```bash
+pnpm add @usevon/react
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="bun" value="bun">
+```bash
+bun add @usevon/react
+```
+  </CodeGroupTab>
+</CodeGroup>
+
+## Quick Start
+
+```tsx
+import { VonProvider } from "@usevon/react";
+import { useEndpoints } from "@usevon/react/hooks";
+
+function App() {
+  return (
+    <VonProvider apiKey={process.env.NEXT_PUBLIC_VON_API_KEY}>
+      <EndpointsList />
+    </VonProvider>
+  );
+}
+
+function EndpointsList() {
+  const { endpoints, isLoading, error } = useEndpoints();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <ul>
+      {endpoints.map((endpoint) => (
+        <li key={endpoint.id}>{endpoint.url}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## VonProvider
+
+Wrap your app with `VonProvider` to enable the hooks.
+
+<Properties>
+  <Property name="apiKey" type="string">
+    Von API key for SDK authentication. Use for client-side API calls.
+  </Property>
+  <Property name="apiUrl" type="string">
+    Base API URL. Defaults to `/api` for proxied requests.
+  </Property>
+  <Property name="useSession" type="boolean">
+    Use cookie-based session auth instead of API key. For dashboard apps.
+  </Property>
+</Properties>
+
+### With API Key
+
+```tsx
+<VonProvider apiKey="von_dev_xxx">
+  {children}
+</VonProvider>
+```
+
+### With Session Auth
+
+```tsx
+<VonProvider useSession>
+  {children}
+</VonProvider>
+```
+
+### With Custom API URL
+
+```tsx
+<VonProvider apiUrl="https://api.usevon.com" apiKey="von_prod_xxx">
+  {children}
+</VonProvider>
+```
+
+## useEndpoints
+
+Fetch and manage webhook endpoints. See [Sending Webhooks](/sending) for endpoint concepts.
+
+```tsx
+import { useEndpoints } from "@usevon/react/hooks";
+
+function EndpointsManager() {
+  const {
+    endpoints,     // Endpoint[]
+    isLoading,     // boolean - initial load
+    isRefreshing,  // boolean - background refresh
+    error,         // Error | null
+    refresh,       // () => void - manual refresh
+    mutate,        // SWR mutate for optimistic updates
+  } = useEndpoints();
+
+  return (
+    <div>
+      {endpoints.map((endpoint) => (
+        <div key={endpoint.id}>
+          <span>{endpoint.url}</span>
+          <span>{endpoint.enabled ? "Active" : "Disabled"}</span>
+        </div>
+      ))}
+      <button onClick={refresh}>Refresh</button>
+    </div>
+  );
+}
+```
+
+### Endpoint Type
+
+```typescript
+type Endpoint = {
+  id: string;
+  url: string;
+  description: string | null;
+  secret: string;
+  enabled: boolean;
+  retryCount: number;
+  timeoutMs: number;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+## useInbound
+
+Fetch and manage inbound webhook endpoints. See [Receiving Webhooks](/receiving) for inbound concepts.
+
+```tsx
+import { useInbound } from "@usevon/react/hooks";
+
+function InboundManager() {
+  const { endpoints, isLoading, error, refresh } = useInbound();
+
+  return (
+    <div>
+      {endpoints.map((inbound) => (
+        <div key={inbound.id}>
+          <span>{inbound.name}</span>
+          <span>{inbound.provider}</span>
+          <span>{inbound.enabled ? "Active" : "Disabled"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### InboundEndpoint Type
+
+```typescript
+type InboundEndpoint = {
+  id: string;
+  name: string;
+  provider: string;
+  secret: string;
+  forwardUrl: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+## useWebhooks
+
+Fetch webhook events. See [Sending Webhooks](/sending) for event concepts.
+
+```tsx
+import { useWebhooks } from "@usevon/react/hooks";
+
+function EventsList() {
+  const { events, isLoading, error, refresh } = useWebhooks();
+
+  return (
+    <div>
+      {events.map((event) => (
+        <div key={event.id}>
+          <span>{event.eventType}</span>
+          <span>{event.status}</span>
+          <time>{event.createdAt}</time>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### WebhookEvent Type
+
+```typescript
+type WebhookEvent = {
+  id: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  idempotencyKey: string | null;
+  status: "pending" | "processing" | "delivered" | "failed";
+  createdAt: string;
+};
+```
+
+## Loading States
+
+All hooks provide loading states for better UX:
+
+```tsx
+function MyComponent() {
+  const { endpoints, isLoading, isRefreshing } = useEndpoints();
+
+  if (isLoading) {
+    // Initial load - show skeleton
+    return <Skeleton />;
+  }
+
+  return (
+    <div>
+      {isRefreshing && <RefreshIndicator />}
+      {endpoints.map((e) => <EndpointCard key={e.id} endpoint={e} />)}
+    </div>
+  );
+}
+```
+
+## Error Handling
+
+```tsx
+function MyComponent() {
+  const { endpoints, error, refresh } = useEndpoints();
+
+  if (error) {
+    return (
+      <div>
+        <p>Failed to load: {error.message}</p>
+        <button onClick={refresh}>Retry</button>
+      </div>
+    );
+  }
+
+  return <EndpointsList endpoints={endpoints} />;
+}
+```
+
+## Optimistic Updates
+
+Use `mutate` for optimistic updates with SWR:
+
+```tsx
+function EndpointToggle({ endpoint }) {
+  const { mutate } = useEndpoints();
+
+  const toggle = async () => {
+    // Optimistic update
+    mutate(
+      (endpoints) =>
+        endpoints.map((e) =>
+          e.id === endpoint.id ? { ...e, enabled: !e.enabled } : e
+        ),
+      { revalidate: false }
+    );
+
+    // API call
+    await von.endpoints[endpoint.id].patch({
+      enabled: !endpoint.enabled,
+    });
+  };
+
+  return (
+    <button onClick={toggle}>
+      {endpoint.enabled ? "Disable" : "Enable"}
+    </button>
+  );
+}
+```
+
+## useVonContext
+
+Access the Von context directly:
+
+```tsx
+import { useVonContext } from "@usevon/react";
+
+function MyComponent() {
+  const { apiKey, apiUrl, useSession } = useVonContext();
+
+  return <div>Connected to: {apiUrl}</div>;
+}
+```

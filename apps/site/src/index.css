@@ -2,8 +2,58 @@
 @import "tw-animate-css";
 @import "@usevon/ui/styles";
 
+html {
+  overflow-y: scroll !important;
+  scroll-behavior: smooth;
+}
+
 @source "../../../packages/ui/src";
 
 @theme inline {
   --font-sans: var(--font-familjen), sans-serif;
+
+  --wallpaper-h1: 220;
+  --wallpaper-s1: 60%;
+  --wallpaper-l1: 18%;
+
+  --wallpaper-h2: 210;
+  --wallpaper-s2: 55%;
+  --wallpaper-l2: 28%;
+
+  --wallpaper-h3: 200;
+  --wallpaper-s3: 45%;
+  --wallpaper-l3: 45%;
+
+  --wallpaper-h4: 205;
+  --wallpaper-s4: 50%;
+  --wallpaper-l4: 55%;
+
+  --wallpaper-h5: 210;
+  --wallpaper-s5: 55%;
+  --wallpaper-l5: 60%;
+}
+
+.dark {
+  /* Dark slate base */
+  --wallpaper-h1: 215;
+  --wallpaper-s1: 20%;
+  --wallpaper-l1: 12%;
+
+  --wallpaper-h2: 215;
+  --wallpaper-s2: 18%;
+  --wallpaper-l2: 18%;
+
+  /* Moonlit cloud glow */
+  --wallpaper-h3: 210;
+  --wallpaper-s3: 15%;
+  --wallpaper-l3: 28%;
+
+  --wallpaper-h4: 210;
+  --wallpaper-s4: 12%;
+  --wallpaper-l4: 38%;
+
+  /* Soft light edge */
+  --wallpaper-h5: 210;
+  --wallpaper-s5: 10%;
+  --wallpaper-l5: 50%;
 }

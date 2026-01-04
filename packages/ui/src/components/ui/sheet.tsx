@@ -76,15 +76,15 @@ function SheetPopup({
           className={cn(
             "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover bg-clip-padding text-popover-foreground shadow-lg transition-[opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:before:hidden dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
             side === "bottom" &&
-              "row-start-2 border-t data-ending-style:translate-y-8 data-starting-style:translate-y-8",
+            "row-start-2 border-t data-ending-style:translate-y-8 data-starting-style:translate-y-8",
             side === "top" &&
-              "data-ending-style:-translate-y-8 data-starting-style:-translate-y-8 border-b",
+            "data-ending-style:-translate-y-8 data-starting-style:-translate-y-8 border-b",
             side === "left" &&
-              "data-ending-style:-translate-x-8 data-starting-style:-translate-x-8 w-[calc(100%-(--spacing(12)))] max-w-md border-e",
+            "data-ending-style:-translate-x-8 data-starting-style:-translate-x-8 w-[calc(100%-(--spacing(12)))] max-w-md border-e",
             side === "right" &&
-              "col-start-2 w-[calc(100%-(--spacing(12)))] max-w-md border-s data-ending-style:translate-x-8 data-starting-style:translate-x-8",
+            "col-start-2 w-[calc(100%-(--spacing(12)))] max-w-md border-s data-ending-style:translate-x-8 data-starting-style:translate-x-8",
             inset &&
-              "before:hidden sm:rounded-2xl sm:border sm:before:rounded-[calc(var(--radius-2xl)-1px)] sm:**:data-[slot=sheet-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
+            "before:hidden sm:rounded-2xl sm:border sm:before:rounded-[calc(var(--radius-2xl)-1px)] sm:**:data-[slot=sheet-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
             className,
           )}
           data-slot="sheet-popup"
@@ -94,7 +94,7 @@ function SheetPopup({
           {showCloseButton && (
             <SheetPrimitive.Close
               aria-label="Close"
-              className="absolute end-2 top-2"
+              className="absolute end-4 top-4"
               render={<Button size="icon" variant="ghost" />}
             >
               <XIcon />
@@ -110,7 +110,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 p-6 in-[[data-slot=sheet-popup]:has([data-slot=sheet-panel])]:pb-3 max-sm:pb-4",
+        "flex min-h-14 flex-col justify-center gap-2 px-6",
         className,
       )}
       data-slot="sheet-header"
@@ -132,7 +132,7 @@ function SheetFooter({
         "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end",
         variant === "default" && "border-t bg-muted/50 py-4",
         variant === "bare" &&
-          "in-[[data-slot=sheet-popup]:has([data-slot=sheet-panel])]:pt-3 pt-4 pb-6",
+        "in-[[data-slot=sheet-popup]:has([data-slot=sheet-panel])]:pt-3 pt-4 pb-6",
         className,
       )}
       data-slot="sheet-footer"
@@ -173,7 +173,7 @@ function SheetPanel({
     <ScrollArea scrollFade={scrollFade}>
       <div
         className={cn(
-          "px-6 in-[[data-slot=sheet-popup]:has([data-slot=sheet-header])]:pt-1 in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-header]))]:pt-6 in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-footer]))]:pb-6! in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-footer].border-t))]:pb-1 pb-6",
+          "px-6 in-[[data-slot=sheet-popup]:has([data-slot=sheet-header])]:pt-3 in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-header]))]:pt-6 in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-footer]))]:pb-6! in-[[data-slot=sheet-popup]:not(:has([data-slot=sheet-footer].border-t))]:pb-1 pb-6",
           className,
         )}
         data-slot="sheet-panel"

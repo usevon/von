@@ -13,7 +13,7 @@ import {
   toastManager,
 } from "@usevon/ui";
 import { useState } from "react";
-import { deleteUser } from "@/lib/auth/client";
+import { deleteUser, signOut } from "@/lib/auth/client";
 
 type DeleteAccountDialogProps = {
   onDeleted?: () => void;
@@ -36,6 +36,12 @@ export const DeleteAccountDialog = (props: DeleteAccountDialogProps) => {
         });
       } else {
         setOpen(false);
+        await signOut();
+        toastManager.add({
+          title: "Account deleted",
+          description: "Your account has been permanently removed.",
+          type: "success",
+        });
         props.onDeleted?.();
       }
     } catch {

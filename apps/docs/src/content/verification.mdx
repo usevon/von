@@ -1,0 +1,145 @@
+export const frontmatter = {
+  title: "Verification",
+  description: "Learn how to verify webhook signatures for security."
+};
+
+# Verification
+
+Every webhook Von sends includes an HMAC-SHA256 signature. Verifying this signature ensures the webhook:
+- Was sent by Von (authenticity)
+- Wasn't modified in transit (integrity)
+
+## How Signing Works
+
+1. Each endpoint has a unique `secret`
+2. Von creates a signature from the payload using this secret
+3. The signature is included in the `x-von-signature` header
+4. Your server verifies using the same secret
+
+## Verifying with the SDK
+
+The easiest way to verify webhooks is using the SDK's `verifyWebhook` function:
+
+<Row>
+  <Col>
+    ### Automatic Verification
+
+    The SDK handles:
+    - Parsing the signature header
+    - Computing the expected signature
+    - Timing-safe comparison
+    - Throwing on mismatch
+
+    ### Error Handling
+
+    If verification fails, a `WebhookVerificationError` is thrown with details about the failure.
+  </Col>
+  <Col sticky>
+```typescript
+import { verifyWebhook, WebhookVerificationError } from "@usevon/sdk";
+
+app.post("/webhooks", (req, res) => {
+  const signature = req.headers["x-von-signature"];
+  const payload = req.body;
+  const secret = process.env.WEBHOOK_SECRET;
+
+  try {
+    verifyWebhook({ payload, signature, secret });
+
+    // Signature valid, process the webhook
+    console.log("Received:", payload.eventType);
+    res.status(200).send("OK");
+  } catch (error) {
+    if (error instanceof WebhookVerificationError) {
+      console.error("Invalid signature:", error.message);
+      res.status(401).send("Invalid signature");
+    }
+  }
+});
+```
+  </Col>
+</Row>
+
+## Manual Verification
+
+If you can't use the SDK, you can verify signatures manually:
+
+```typescript
+import { createHmac, timingSafeEqual } from "crypto";
+
+function verifySignature(payload: string, signature: string, secret: string): boolean {
+  const expectedSignature = createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+
+  // Use timing-safe comparison to prevent timing attacks
+  const expected = Buffer.from(expectedSignature, "utf8");
+  const received = Buffer.from(signature, "utf8");
+
+  if (expected.length !== received.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expected, received);
+}
+```
+
+## Signature Header Format
+
+The signature is sent in the `x-von-signature` header (or `von-signature`):
+
+```
+x-von-signature: a1b2c3d4e5f6...
+```
+
+The signature is a lowercase hexadecimal string (64 characters for SHA-256).
+
+## Security Best Practices
+
+<Row>
+  <Col>
+    ### Do
+
+    - Store secrets in environment variables
+    - Use timing-safe comparison functions
+    - Verify signatures before processing
+    - Log verification failures for monitoring
+    - Rotate secrets if they're compromised
+  </Col>
+  <Col>
+    ### Don't
+
+    - Hardcode secrets in your code
+    - Use simple string comparison (`===`)
+    - Skip verification in production
+    - Share secrets between endpoints
+    - Log the actual secret value
+  </Col>
+</Row>
+
+## Finding Your Endpoint Secret
+
+Each endpoint has a unique secret. You can find it:
+
+1. **Dashboard** - View endpoint details
+2. **API** - Get endpoint and access the `secret` field
+
+```typescript
+const endpoint = await von.endpoints["ep_123"].get();
+console.log("Secret:", endpoint.secret);
+```
+
+## Testing Verification
+
+When developing locally, use the CLI tunnel to receive real webhooks:
+
+```bash
+von dev -p 3000
+```
+
+This creates a public URL that forwards webhooks to your local server, including valid signatures.
+
+## Next Steps
+
+- [Versioning](/versioning) - Evolve webhook payloads safely
+- [CLI](/sdk/cli) - Local development with tunnels

@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@usevon/ui/styles";
+
+@source "../../../packages/ui/src";
+
+@theme inline {
+  --font-sans: var(--font-familjen), sans-serif;
+}
+
+/* Code block wrapper - position relative + overflow hidden contains the copy button */
+[data-rehype-pretty-code-figure] {
+  position: relative;
+  overflow: hidden;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-muted);
+}
+
+[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* Syntax highlighting */
+[data-line] span {
+  color: var(--shiki-light);
+}
+
+.dark [data-line] span {
+  color: var(--shiki-dark) !important;
+}
+
+/* Reset figure styling inside CodeGroup */
+[data-code-group] [data-rehype-pretty-code-figure] {
+  all: unset;
+  display: block;
+}
+
+[data-code-group] [data-rehype-pretty-code-figure] pre {
+  all: unset;
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+[data-code-group] [data-rehype-pretty-code-figure] button {
+  display: none;
+}

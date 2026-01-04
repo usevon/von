@@ -1,0 +1,277 @@
+export const frontmatter = {
+  title: "TypeScript SDK",
+  description: "Complete reference for the @usevon/sdk package."
+};
+
+# TypeScript SDK
+
+The official Von SDK for TypeScript and JavaScript. Built with end-to-end type safety using Eden Treaty.
+
+## Installation
+
+<CodeGroup>
+  <CodeGroupTab title="npm" value="npm">
+```bash
+npm install @usevon/sdk
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="pnpm" value="pnpm">
+```bash
+pnpm add @usevon/sdk
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="bun" value="bun">
+```bash
+bun add @usevon/sdk
+```
+  </CodeGroupTab>
+</CodeGroup>
+
+## Quick Start
+
+```typescript
+import { Von } from "@usevon/sdk";
+
+const von = new Von({
+  apiKey: process.env.VON_API_KEY,
+});
+
+// Send a webhook
+await von.webhooks.post({
+  eventType: "user.created",
+  payload: { userId: "user_123" },
+});
+```
+
+## Configuration
+
+<Properties>
+  <Property name="apiKey" type="string" required>
+    Your Von API key. Can also be set via `VON_API_KEY` environment variable.
+  </Property>
+  <Property name="baseUrl" type="string">
+    API base URL. Defaults to `https://api.usevon.com`. Can also be set via `VON_BASE_URL`.
+  </Property>
+</Properties>
+
+```typescript
+const von = new Von({
+  apiKey: "von_prod_xxx",
+  baseUrl: "https://api.usevon.com", // optional
+});
+```
+
+## Webhooks API
+
+Send webhook events to your endpoints. See [Sending Webhooks](/sending) for concepts.
+
+### Send Event
+
+```typescript
+const { data, error } = await von.webhooks.post({
+  eventType: "order.created",
+  payload: {
+    orderId: "ord_123",
+    total: 99.99,
+  },
+  idempotencyKey: "order_123_created", // optional
+  endpointId: "ep_123", // optional, targets specific endpoint
+});
+
+if (error) {
+  console.error("Failed to send:", error);
+} else {
+  console.log("Event ID:", data.id);
+}
+```
+
+### Batch Send
+
+```typescript
+const { data, error } = await von.webhooks.batch.post({
+  events: [
+    { eventType: "order.created", payload: { orderId: "ord_1" } },
+    { eventType: "order.created", payload: { orderId: "ord_2" } },
+  ],
+});
+```
+
+### List Events
+
+```typescript
+const { data: events } = await von.webhooks.get({
+  limit: 50,
+  offset: 0,
+});
+```
+
+### Get Event
+
+```typescript
+const { data: event } = await von.webhooks["evt_123"].get();
+```
+
+## Endpoints API
+
+Manage webhook endpoints. See [Sending Webhooks](/sending) for concepts.
+
+### Create Endpoint
+
+```typescript
+const { data: endpoint } = await von.endpoints.post({
+  url: "https://your-app.com/webhooks",
+  description: "Production endpoint",
+  retryCount: 5,
+  timeoutMs: 10000,
+  events: ["order.*", "payment.completed"],
+});
+```
+
+### List Endpoints
+
+```typescript
+const { data: endpoints } = await von.endpoints.get();
+```
+
+### Get Endpoint
+
+```typescript
+const { data: endpoint } = await von.endpoints["ep_123"].get();
+console.log("Secret:", endpoint.secret);
+```
+
+### Update Endpoint
+
+```typescript
+await von.endpoints["ep_123"].patch({
+  enabled: false,
+  retryCount: 3,
+});
+```
+
+### Delete Endpoint
+
+```typescript
+await von.endpoints["ep_123"].delete();
+```
+
+## Inbound API
+
+Manage inbound webhook endpoints. See [Receiving Webhooks](/receiving) for concepts.
+
+### Create Inbound Endpoint
+
+```typescript
+const { data: inbound } = await von.inbound.post({
+  name: "Stripe Payments",
+  provider: "stripe",
+  forwardUrl: "https://your-app.com/webhooks/stripe",
+});
+```
+
+### List Inbound Endpoints
+
+```typescript
+const { data: inbounds } = await von.inbound.get();
+```
+
+### Update Inbound Endpoint
+
+```typescript
+await von.inbound["inb_123"].patch({
+  forwardUrl: "https://new-url.com/webhooks",
+  enabled: true,
+});
+```
+
+### Delete Inbound Endpoint
+
+```typescript
+await von.inbound["inb_123"].delete();
+```
+
+## Versions API
+
+Manage webhook payload versions. See [Versioning](/versioning) for concepts.
+
+### Create Version
+
+```typescript
+await von.versions.post({
+  version: "2025-01-15",
+  eventType: "order.created",
+  transforms: {
+    rename: { line_items: "items" },
+    remove: ["legacy_id"],
+    defaults: { api_version: "2025-01-15" },
+  },
+});
+```
+
+### List Versions
+
+```typescript
+const { data: versions } = await von.versions.get();
+```
+
+### Update Version
+
+```typescript
+await von.versions["2025-01-15"].patch({
+  transforms: {
+    rename: { new_field: "old_field" },
+  },
+});
+```
+
+### Delete Version
+
+```typescript
+await von.versions["2025-01-15"].delete();
+```
+
+## Webhook Verification
+
+Verify incoming webhook signatures. See [Verification](/verification) for concepts.
+
+```typescript
+import { verifyWebhook, WebhookVerificationError } from "@usevon/sdk";
+
+try {
+  verifyWebhook({
+    payload: req.body,
+    signature: req.headers["x-von-signature"],
+    secret: process.env.WEBHOOK_SECRET,
+  });
+  // Valid signature
+} catch (error) {
+  if (error instanceof WebhookVerificationError) {
+    // Invalid signature
+  }
+}
+```
+
+## Error Handling
+
+All methods return `{ data, error, status, response }`:
+
+```typescript
+const { data, error, status } = await von.webhooks.post({
+  eventType: "test",
+  payload: {},
+});
+
+if (error) {
+  console.error(`Error ${status}:`, error.message);
+} else {
+  console.log("Success:", data);
+}
+```
+
+## TypeScript Types
+
+The SDK exports types for all resources:
+
+```typescript
+import type { Endpoint, Event, InboundEndpoint, Version } from "@usevon/sdk";
+```

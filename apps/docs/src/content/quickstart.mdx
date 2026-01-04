@@ -1,0 +1,97 @@
+export const frontmatter = {
+  title: "Getting Started",
+  description: "Get started with Von in 5 minutes."
+};
+
+# Getting Started
+
+Send your first webhook with Von in under 5 minutes.
+
+<PageActions />
+
+## Prerequisites
+
+Before you begin, make sure you have the following:
+
+- A Von account, which you can [create for free](https://app.usevon.com/)
+- Node.js 18 or later installed on your machine
+- An API key generated from the [API Keys page](https://app.usevon.com/settings/api-keys) in the dashboard
+
+## Setup
+
+<Timeline>
+  <TimelineItem title="Install the SDK">
+    Let's start by adding Von to your project:
+
+    <CodeGroup>
+      <CodeGroupTab title="bun">
+```bash
+bun add @usevon/sdk
+```
+      </CodeGroupTab>
+      <CodeGroupTab title="npm">
+```bash
+npm install @usevon/sdk
+```
+      </CodeGroupTab>
+      <CodeGroupTab title="pnpm">
+```bash
+pnpm add @usevon/sdk
+```
+      </CodeGroupTab>
+    </CodeGroup>
+  </TimelineItem>
+
+  <TimelineItem title="Configure environment">
+    Create a `.env` file and add the API key. The key authenticates all requests to the Von API and determines which [environment](/introduction#environments) (development, staging, or production) webhooks are sent from.
+
+```bash
+VON_API_KEY=von_live_xxxxxxxxxxxxx
+```
+  </TimelineItem>
+
+  <TimelineItem title="Initialize the client">
+```typescript
+import { Von } from "@usevon/sdk";
+
+const von = new Von({
+  apiKey: process.env.VON_API_KEY,
+});
+```
+  </TimelineItem>
+
+  <TimelineItem title="Create an endpoint">
+    An endpoint is the destination URL where Von delivers webhooks.
+
+```typescript
+const endpoint = await von.endpoints.create({
+  url: "https://your-app.com/webhooks",
+  description: "Production webhook endpoint",
+});
+```
+  </TimelineItem>
+
+  <TimelineItem title="Send a webhook">
+```typescript
+const webhook = await von.webhooks.send({
+  endpointId: endpoint.id,
+  eventType: "user.created",
+  payload: {
+    userId: "user_123",
+    email: "user@example.com",
+    createdAt: new Date().toISOString(),
+  },
+});
+```
+  </TimelineItem>
+
+  <TimelineItem title="View in dashboard">
+    Once sent, the webhook appears in the [Von dashboard](https://app.usevon.com/) where you can monitor delivery status, view response codes, and debug any failures.
+  </TimelineItem>
+</Timeline>
+
+## Next Steps
+
+- [Introduction](/introduction): Learn about endpoints, events, and environments
+- [Sending Webhooks](/sending): Retries, delivery, and event types
+- [Verification](/verification): Secure webhook endpoints with signatures

@@ -1,0 +1,195 @@
+export const frontmatter = {
+  title: "Versioning",
+  description: "Learn how to evolve webhook payloads without breaking integrations."
+};
+
+# Versioning
+
+As your API evolves, your webhook payloads need to change too. Von's versioning system lets you make changes without breaking existing integrations.
+
+## The Problem
+
+Without versioning, changing a webhook payload breaks all existing consumers:
+
+```typescript
+// v1: Original payload
+{ "line_items": [...] }
+
+// v2: Renamed field
+{ "items": [...] }  // ❌ Breaks existing integrations
+```
+
+## The Solution
+
+With Von versioning, each endpoint subscribes to a specific version. Von transforms payloads automatically:
+
+```
+Your App → Von → Transform → Endpoint
+(v2 payload)     (to v1)     (receives v1)
+```
+
+- New endpoints get the latest schema
+- Old endpoints continue receiving their subscribed version
+- No coordination required with your customers
+
+## Creating Versions
+
+Versions are identified by date strings (e.g., `2025-01-15`). Each version can define transforms for specific event types.
+
+<Row>
+  <Col>
+    ### Version Configuration
+
+    Each version specifies:
+    - **Version ID** - Date-based identifier
+    - **Event Type** - Which events to transform
+    - **Transforms** - How to modify the payload
+
+    ### Transform Types
+
+    - `rename` - Rename fields
+    - `remove` - Remove fields
+    - `defaults` - Add default values
+  </Col>
+  <Col sticky>
+```typescript
+import { Von } from "@usevon/sdk";
+
+const von = new Von({
+  apiKey: process.env.VON_API_KEY,
+});
+
+// Create a version with transforms
+await von.versions.post({
+  version: "2025-01-15",
+  eventType: "order.created",
+  transforms: {
+    rename: { line_items: "items" },
+    remove: ["legacy_id", "internal_notes"],
+    defaults: { api_version: "2025-01-15" },
+  },
+});
+```
+  </Col>
+</Row>
+
+## Transform Examples
+
+### Renaming Fields
+
+When you rename a field in your payload:
+
+```typescript
+transforms: {
+  rename: {
+    line_items: "items",        // line_items → items
+    customer_id: "customerId",  // snake_case → camelCase
+  }
+}
+```
+
+**Input (v2):**
+```json
+{ "items": [...], "customerId": "cus_123" }
+```
+
+**Output (v1):**
+```json
+{ "line_items": [...], "customer_id": "cus_123" }
+```
+
+### Removing Fields
+
+When you add fields that old versions shouldn't receive:
+
+```typescript
+transforms: {
+  remove: ["internal_metadata", "debug_info"]
+}
+```
+
+### Adding Defaults
+
+When old versions expect fields that new payloads don't include:
+
+```typescript
+transforms: {
+  defaults: {
+    api_version: "2024-01-01",
+    currency: "USD"
+  }
+}
+```
+
+## Assigning Versions to Endpoints
+
+Each endpoint can specify which version it wants:
+
+```typescript
+// Create endpoint with specific version
+await von.endpoints.post({
+  url: "https://customer.com/webhooks",
+  version: "2024-01-01",  // Will receive v1 payloads
+});
+
+// Update endpoint to new version
+await von.endpoints["ep_123"].patch({
+  version: "2025-01-15",  // Now receives v2 payloads
+});
+```
+
+## Version Lifecycle
+
+1. **Create new version** when your payload schema changes
+2. **New endpoints** default to the latest version
+3. **Existing endpoints** continue receiving their subscribed version
+4. **Customers migrate** by updating their endpoint's version
+5. **Deprecate old versions** after all customers have migrated
+
+## Managing Versions
+
+```typescript
+// List all versions
+const { data: versions } = await von.versions.get();
+
+// Get a specific version
+const version = await von.versions["2025-01-15"].get();
+
+// Update transforms
+await von.versions["2025-01-15"].patch({
+  transforms: {
+    rename: { new_field: "old_field" },
+  },
+});
+
+// Delete a version (only if no endpoints use it)
+await von.versions["2024-01-01"].delete();
+```
+
+## Best Practices
+
+<Row>
+  <Col>
+    ### Naming Conventions
+
+    Use date-based version IDs:
+    - `2025-01-15`
+    - `2025-06-01`
+
+    This makes it clear when versions were introduced and helps with ordering.
+  </Col>
+  <Col>
+    ### Migration Strategy
+
+    1. Announce new version to customers
+    2. Give migration window (30-90 days)
+    3. Provide migration guides
+    4. Monitor version usage in dashboard
+    5. Deprecate old versions
+  </Col>
+</Row>
+
+## Next Steps
+
+- [Sending Webhooks](/sending) - Send versioned webhooks
+- [TypeScript SDK](/sdk/typescript) - Full SDK reference

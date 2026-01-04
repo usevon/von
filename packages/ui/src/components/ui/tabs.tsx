@@ -88,3 +88,5 @@ export {
   TabsPanel,
   TabsPanel as TabsContent,
 };
+
+export { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
