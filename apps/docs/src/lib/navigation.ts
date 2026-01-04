@@ -34,4 +34,10 @@ export const navigation: NavSection[] = [
       { title: "CLI", href: "/sdk/cli" },
     ],
   },
+  {
+    title: "Resources",
+    items: [
+      { title: "llms.txt", href: "/llms.txt" },
+    ],
+  },
 ];

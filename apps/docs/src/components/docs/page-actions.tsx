@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
 import {
   Button,
   Menu,
@@ -10,23 +9,13 @@ import {
   MenuItem,
 } from "@usevon/ui";
 import {
-  CopyIcon,
-  CheckIcon,
+  FileTextIcon,
   CaretDownIcon,
   ArrowSquareOutIcon,
 } from "@phosphor-icons/react";
 
-const usePageContent = () => {
-  const [content, setContent] = useState("");
-
-  useEffect(() => {
-    const article = document.querySelector("article");
-    if (article) {
-      setContent(article.innerText);
-    }
-  }, []);
-
-  return content;
+const getMarkdownUrl = (pathname: string) => {
+  return pathname === "/" ? "/index.md" : `${pathname}.md`;
 };
 
 const getGitHubPath = (pathname: string) => {
@@ -37,25 +26,20 @@ const getGitHubPath = (pathname: string) => {
 
 export const PageActions = () => {
   const pathname = usePathname();
-  const content = usePageContent();
-  const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const markdownUrl = getMarkdownUrl(pathname);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(content);
-    setCopied(true);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+  const handleOpenMarkdown = () => {
+    window.open(markdownUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleOpenIn = (target: string) => {
-    const encodedContent = encodeURIComponent(content);
+  const handleOpenIn = async (target: string) => {
+    const fullMarkdownUrl = new URL(markdownUrl, window.location.origin).toString();
+    const prompt = `Read ${fullMarkdownUrl}, I want to ask questions about it.`;
+
     const urls: Record<string, string> = {
       github: getGitHubPath(pathname),
-      chatgpt: `https://chat.openai.com/?q=${encodedContent}`,
-      claude: `https://claude.ai/new?q=${encodedContent}`,
+      chatgpt: `https://chatgpt.com/?hints=search&q=${encodeURIComponent(prompt)}`,
+      claude: `https://claude.ai/new?q=${encodeURIComponent(prompt)}`,
     };
     if (urls[target]) {
       window.open(urls[target], "_blank", "noopener,noreferrer");
@@ -63,7 +47,16 @@ export const PageActions = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 not-prose my-6">
+    <div className="flex flex-wrap items-center gap-2 not-prose my-6">
+      <Button
+        variant="outline"
+        className="gap-1.5 active:scale-[0.97] transition-transform"
+        onClick={handleOpenMarkdown}
+      >
+        <FileTextIcon className="size-4" />
+        View as Markdown
+      </Button>
+
       <Menu>
         <MenuTrigger
           render={
@@ -88,27 +81,6 @@ export const PageActions = () => {
           </MenuItem>
         </MenuPopup>
       </Menu>
-
-      <Button
-        variant="outline"
-        className="gap-1.5 active:scale-[0.97] transition-transform"
-        onClick={handleCopy}
-      >
-        <span className="relative size-4">
-          <CopyIcon
-            className={`size-4 absolute inset-0 transition-all duration-150 ease-out ${
-              copied ? "scale-50 opacity-0 blur-[2px]" : "scale-100 opacity-100"
-            }`}
-          />
-          <CheckIcon
-            className={`size-4 absolute inset-0 text-emerald-500 transition-all duration-150 ease-out ${
-              copied ? "scale-100 opacity-100" : "scale-50 opacity-0 blur-[2px]"
-            }`}
-          />
-        </span>
-        {copied ? "Copied!" : "Copy Markdown"}
-      </Button>
-
     </div>
   );
 };
