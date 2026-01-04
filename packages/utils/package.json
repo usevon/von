@@ -44,7 +44,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "bunx tsdown",
     "test": "bun test"
   },
   "dependencies": {

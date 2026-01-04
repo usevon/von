@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown"
+    "build": "bunx tsdown"
   },
   "dependencies": {
     "@usevon/utils": "workspace:*",
