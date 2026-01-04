@@ -44,7 +44,7 @@
     }
   },
   "scripts": {
-    "build": "bunx tsdown",
+    "build": "bun run tsdown",
     "test": "bun test"
   },
   "dependencies": {
@@ -68,5 +68,10 @@
     "@usevon/queue": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@usevon/typescript-config": "workspace:*",
+    "tsdown": "^0.12.9",
+    "typescript": "^5.7.2"
   }
 }

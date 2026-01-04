@@ -30,7 +30,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "bunx tsdown",
+    "build": "bun run tsdown",
     "dev": "tsdown && tsdown --watch --no-clean",
     "test": "bun test"
   },
@@ -44,6 +44,7 @@
     "@usevon/api": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
     "@usevon/utils": "workspace:*",
+    "tsdown": "^0.12.9",
     "typescript": "^5.7.2"
   },
   "publishConfig": {
