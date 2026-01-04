@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@usevon/ui";
+import Image from "next/image";
+import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { MobileNavigation } from "./docs/mobile-navigation";
 import { Search } from "./docs/search";
 
@@ -11,9 +13,38 @@ export const Header = () => {
       <div className="flex h-14 items-center gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <MobileNavigation />
-          <Link href="/" className="font-semibold text-lg">
-            Von
-          </Link>
+          <ContextMenu>
+            <ContextMenuTrigger
+              render={
+                <Link href="/" className="no-underline">
+                  <Image
+                    src="/brand/von-wordmark-black.svg"
+                    alt="Von"
+                    width={60}
+                    height={20}
+                    className="h-5 w-auto dark:hidden"
+                  />
+                  <Image
+                    src="/brand/von-wordmark-white.svg"
+                    alt="Von"
+                    width={60}
+                    height={20}
+                    className="hidden h-5 w-auto dark:block"
+                  />
+                </Link>
+              }
+            />
+            <ContextMenuPopup>
+              <ContextMenuItem render={<a href="https://usevon.com" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+                Go to Website
+                <ArrowSquareOut className="size-4" />
+              </ContextMenuItem>
+              <ContextMenuItem render={<a href="https://usevon.com/brand" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+                Brand Kit
+                <ArrowSquareOut className="size-4" />
+              </ContextMenuItem>
+            </ContextMenuPopup>
+          </ContextMenu>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@usevon/ui";
 import { GithubLogo, DiscordLogo } from "@phosphor-icons/react/ssr";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -16,6 +17,7 @@ const footerLinks = {
     { label: "Contact", href: "/contact" },
     { label: "Blog", href: "/blog" },
     { label: "Pricing", href: "/pricing" },
+    { label: "Brand", href: "/brand" },
   ],
   documentation: [
     { label: "Home", href: "https://docs.usevon.com" },
@@ -37,7 +39,27 @@ export const Footer = () => {
       <div className="mx-auto max-w-7xl px-6 pt-16 lg:px-10">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2 sm:col-span-1">
-            <span className="font-semibold text-xl text-foreground">V</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="-ml-2"
+            >
+              <Image
+                src="/brand/von-icon-black.svg"
+                alt="Von"
+                width={24}
+                height={24}
+                className="size-6 dark:hidden"
+              />
+              <Image
+                src="/brand/von-icon-white.svg"
+                alt="Von"
+                width={24}
+                height={24}
+                className="hidden size-6 dark:block"
+              />
+            </Button>
           </div>
 
           <div>

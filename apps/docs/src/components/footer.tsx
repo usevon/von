@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@usevon/ui";
 import { GithubLogoIcon, DiscordLogoIcon } from "@phosphor-icons/react";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -37,7 +38,22 @@ export const Footer = () => {
       <div className="px-4 pt-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2 sm:col-span-1">
-            <span className="font-semibold text-xl text-foreground">V</span>
+            <Link href="/">
+              <Image
+                src="/brand/von-icon-black.svg"
+                alt="Von"
+                width={24}
+                height={24}
+                className="size-6 dark:hidden"
+              />
+              <Image
+                src="/brand/von-icon-white.svg"
+                alt="Von"
+                width={24}
+                height={24}
+                className="hidden size-6 dark:block"
+              />
+            </Link>
           </div>
 
           <div>

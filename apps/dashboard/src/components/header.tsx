@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { signOut, useSession } from "@/lib/auth/client";
 
@@ -19,8 +20,21 @@ export const Header = () => {
   return (
     <nav className="flex items-center justify-between border-b px-5 py-3">
       <div className="flex items-center gap-5">
-        <Link className="font-bold text-foreground no-underline" href="/">
-          Von
+        <Link className="no-underline" href="/">
+          <Image
+            src="/brand/von-wordmark-black.svg"
+            alt="Von"
+            width={60}
+            height={20}
+            className="h-5 w-auto dark:hidden"
+          />
+          <Image
+            src="/brand/von-wordmark-white.svg"
+            alt="Von"
+            width={60}
+            height={20}
+            className="hidden h-5 w-auto dark:block"
+          />
         </Link>
         <Link
           className="text-muted-foreground no-underline hover:text-foreground"
