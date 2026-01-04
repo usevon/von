@@ -12,6 +12,7 @@ export * from "@/components/ui/checkbox-group";
 export * from "@/components/ui/collapsible";
 export * from "@/components/ui/combobox";
 export * from "@/components/ui/command";
+export * from "@/components/ui/context-menu";
 export * from "@/components/ui/dialog";
 export * from "@/components/ui/empty";
 export * from "@/components/ui/field";
