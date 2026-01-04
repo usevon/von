@@ -30,6 +30,7 @@
     "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
+    "babel-plugin-react-compiler": "^1.0.0",
     "@tailwindcss/postcss": "^4.1.10",
     "@types/mdx": "^2.0.13",
     "@types/node": "^20",

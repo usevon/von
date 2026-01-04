@@ -1,9 +1,8 @@
 "use client";
 
-import { Tabs } from "@base-ui-components/react/tabs";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { cn } from "@usevon/ui";
+import { TabsPrimitive as Tabs, cn } from "@usevon/ui";
 
 type TocItem = {
   id: string;
