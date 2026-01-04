@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
-import { ArrowSquareOut } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { MobileNavigation } from "./docs/mobile-navigation";
 import { Search } from "./docs/search";
 
@@ -37,11 +37,11 @@ export const Header = () => {
             <ContextMenuPopup>
               <ContextMenuItem render={<a href="https://usevon.com" target="_blank" rel="noopener noreferrer" />} className="justify-between">
                 Go to Website
-                <ArrowSquareOut className="size-4" />
+                <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
               <ContextMenuItem render={<a href="https://usevon.com/brand" target="_blank" rel="noopener noreferrer" />} className="justify-between">
                 Brand Kit
-                <ArrowSquareOut className="size-4" />
+                <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
             </ContextMenuPopup>
           </ContextMenu>
