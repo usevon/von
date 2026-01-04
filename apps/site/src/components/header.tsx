@@ -21,7 +21,7 @@ export const Header = () => {
   const handleCopyPng = async () => {
     const svg = new Blob([LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')], { type: "image/svg+xml" });
     const url = URL.createObjectURL(svg);
-    const img = new Image();
+    const img = document.createElement("img");
     img.onload = async () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width * 2;
