@@ -13,7 +13,7 @@
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun run tsdown",
-    "build:prod": "bun build --compile --minify --drop console --drop debugger --target bun-linux-x64 --outfile dist/tunnel src/index.ts",
+    "build:prod": "bun build --compile --minify --sourcemap --drop console --drop debugger --target bun-linux-x64 --outfile dist/tunnel src/index.ts",
     "test": "bun test --preload ./tests/preload.ts",
     "test:unit": "bun test --preload ./tests/preload.ts tests/unit",
     "test:integration": "bun test --preload ./tests/preload.ts tests/integration"
