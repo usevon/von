@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown"
+    "build": "bunx tsdown"
   },
   "dependencies": {
     "@databuddy/sdk": "^2.0.0"

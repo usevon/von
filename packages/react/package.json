@@ -35,7 +35,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "bunx tsdown",
     "dev": "tsdown && tsdown --watch --no-clean"
   },
   "dependencies": {

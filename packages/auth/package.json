@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown"
+    "build": "bunx tsdown"
   },
   "dependencies": {
     "@usevon/db": "workspace:*",
