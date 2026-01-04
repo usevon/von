@@ -6,11 +6,11 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.ts"
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
-    "build:types": "tsc --emitDeclarationOnly"
+    "build": "tsdown"
   },
   "dependencies": {
     "@usevon/utils": "workspace:*",
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@usevon/typescript-config": "workspace:*",
+    "tsdown": "^0.12.9",
     "typescript": "^5.7.2"
   }
 }
