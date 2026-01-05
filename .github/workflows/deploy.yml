@@ -1,0 +1,24 @@
+name: Migrate
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: cd packages/db && bunx drizzle-kit push
