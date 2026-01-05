@@ -102,7 +102,6 @@ bun test --cwd apps/worker
 
 # Integration tests (requires env vars)
 cd apps/api && bun test tests/integration
-cd apps/tunnel && bun test tests/integration
 ```
 
 ## SDKs
@@ -145,6 +144,5 @@ Von uses dual licensing:
 - `packages/cli` - CLI
 - `packages/react` - React hooks
 - `packages/sdk` - TypeScript SDK
-- `packages/tunnel` - tunnel client
 - `packages/typescript-config` - shared TypeScript config
 - `packages/ui` - UI components
