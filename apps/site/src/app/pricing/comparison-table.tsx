@@ -162,18 +162,18 @@ export const ComparisonTable = () => {
           <col className="w-[20%]" />
           <col className="w-[20%]" />
         </colgroup>
-        <thead>
+        <thead className="sticky top-[5.25rem] z-10 bg-background shadow-[inset_0_-1px_0_var(--color-border)]">
           <tr>
-            <th className="sticky top-0 z-10 bg-background pb-4 pr-3 text-base font-medium text-foreground">
+            <th className="pb-4 pr-3 text-base font-medium text-foreground">
               Compare features
             </th>
-            <th className="sticky top-0 z-10 bg-background pb-4 text-center font-semibold text-foreground">
+            <th className="pb-4 text-center font-semibold text-foreground">
               Hobby
             </th>
-            <th className="sticky top-0 z-10 bg-background pb-4 text-center font-semibold text-foreground">
+            <th className="pb-4 text-center font-semibold text-foreground">
               Pro
             </th>
-            <th className="sticky top-0 z-10 bg-background pb-4 text-center font-semibold text-foreground">
+            <th className="pb-4 text-center font-semibold text-foreground">
               Enterprise
             </th>
           </tr>
