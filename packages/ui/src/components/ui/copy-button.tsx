@@ -26,15 +26,24 @@ export const CopyButton = (props: CopyButtonProps) => {
       size="icon"
       onClick={copy}
       className={cn(
-        "absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-70 hover:!opacity-100",
+        "absolute right-2 top-2 z-10 opacity-0 transition-all duration-150 group-hover:opacity-70 hover:!opacity-100",
         props.className
       )}
     >
-      {copied ? (
-        <CheckIcon className="text-emerald-500" />
-      ) : (
-        <CopyIcon />
-      )}
+      <span className="relative size-4">
+        <CopyIcon
+          className={cn(
+            "absolute inset-0 transition-all duration-150",
+            copied ? "scale-90 opacity-0" : "scale-100 opacity-100"
+          )}
+        />
+        <CheckIcon
+          className={cn(
+            "absolute inset-0 text-emerald-500 transition-all duration-150",
+            copied ? "scale-100 opacity-100" : "scale-90 opacity-0"
+          )}
+        />
+      </span>
     </Button>
   );
 };
