@@ -10,16 +10,16 @@ import { versions } from "@/modules/versions";
 import { webhookEvents, webhooks } from "@/modules/webhooks";
 
 const getCorsOrigins = () => {
-  if (env.NODE_ENV !== "production") {
-    return ["http://localhost:2999", "http://localhost:3000"];
+  if (env.CORS_ORIGINS) {
+    return env.CORS_ORIGINS.split(",").map((o) => o.trim());
   }
-  if (!env.CORS_ORIGINS) {
+  if (env.NODE_ENV === "production") {
     throw new Error("CORS_ORIGINS required in production");
   }
-  return env.CORS_ORIGINS.split(",").map((o) => o.trim());
+  return [env.DASHBOARD_URL ?? "http://localhost:3001"];
 };
 
-const corsMiddleware = cors({ origin: getCorsOrigins() });
+const corsMiddleware = cors({ origin: getCorsOrigins(), credentials: true });
 
 const browserMiddleware = new Elysia().use(corsMiddleware).use(auth);
 

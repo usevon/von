@@ -27,6 +27,7 @@ import {
   toggleInbound as toggleInboundAction,
   deleteInbound as deleteInboundAction,
 } from "@/actions/inbound";
+import { env } from "@/env";
 import { CreateInboundDialog } from "@/components/create-inbound-dialog";
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog";
 import type { Session, User } from "@/lib/auth";
@@ -222,7 +223,7 @@ export const InboundManager = (props: InboundManagerProps) => {
                   Public Inbound URL:
                 </p>
                 <code className="block rounded bg-background px-2 py-1 text-xs">
-                  {typeof window !== "undefined" ? window.location.origin : ""}/in/{endpoint.id}
+                  {env.NEXT_PUBLIC_API_URL}/in/{endpoint.id}
                 </code>
               </div>
               <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">

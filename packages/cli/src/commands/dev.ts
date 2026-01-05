@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { log, note, spinner } from "@clack/prompts";
-import { TunnelManager } from "@usevon/tunnel";
+import { TunnelManager } from "@/lib/tunnel";
 import { Command } from "commander";
 import pc from "picocolors";
 import { registerTunnel } from "@/lib/api";

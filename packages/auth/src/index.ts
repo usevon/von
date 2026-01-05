@@ -92,7 +92,7 @@ export const createAuth = (db: Database, options: CreateAuthOptions) =>
       }),
       deviceAuthorization({
         verificationUri:
-          options.deviceVerificationUri ?? "http://localhost:3000/device",
+          options.deviceVerificationUri ?? "http://localhost:3001/device",
         expiresIn: "30m",
         interval: "5s",
       }),

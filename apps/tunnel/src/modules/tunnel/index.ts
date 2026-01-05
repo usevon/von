@@ -1,6 +1,6 @@
 import { db, eq } from "@usevon/db";
 import { tunnel } from "@usevon/db/schema";
-import type { TunnelResponse } from "@usevon/tunnel";
+import type { TunnelResponse } from "@/types";
 import {
   generateTunnelId,
   generateTunnelSecret,
