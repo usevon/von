@@ -2,16 +2,10 @@ import Link from "next/link";
 
 const subprocessors = [
   {
-    name: "Vercel",
-    purpose: "Frontend hosting and deployment",
+    name: "Autumn",
+    purpose: "Subscription and billing management (via Stripe)",
     location: "United States",
-    website: "https://vercel.com",
-  },
-  {
-    name: "Hetzner",
-    purpose: "Cloud infrastructure and hosting",
-    location: "Germany",
-    website: "https://hetzner.com",
+    website: "https://useautumn.com",
   },
   {
     name: "Cloudflare",
@@ -20,16 +14,22 @@ const subprocessors = [
     website: "https://cloudflare.com",
   },
   {
-    name: "Autumn",
-    purpose: "Subscription and billing management (via Stripe)",
+    name: "Coolify",
+    purpose: "Application deployment and hosting",
     location: "United States",
-    website: "https://useautumn.com",
+    website: "https://coolify.io",
   },
   {
-    name: "Stripe",
-    purpose: "Payment processing",
+    name: "Databuddy",
+    purpose: "Privacy-focused web analytics",
+    location: "European Union",
+    website: "https://databuddy.cc",
+  },
+  {
+    name: "OVH Cloud",
+    purpose: "Cloud infrastructure and hosting",
     location: "United States",
-    website: "https://stripe.com",
+    website: "https://ovhcloud.com",
   },
   {
     name: "Resend",
@@ -37,18 +37,24 @@ const subprocessors = [
     location: "United States",
     website: "https://resend.com",
   },
+  {
+    name: "Stripe",
+    purpose: "Payment processing",
+    location: "United States",
+    website: "https://stripe.com",
+  },
 ];
 
 export default function SubprocessorsPage() {
   return (
-    <main className="py-24">
-      <div className="mx-auto flex max-w-7xl flex-col gap-10 px-6 sm:gap-16 lg:px-10">
+    <main className="py-16 lg:py-24">
+      <div className="mx-auto flex max-w-7xl flex-col gap-10 px-6 sm:gap-12 lg:px-10">
         <div className="flex max-w-2xl flex-col gap-4">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Subprocessors</h1>
           <p className="text-lg text-muted-foreground">
             Third-party services that process data on our behalf.
           </p>
-          <p className="text-sm text-muted-foreground">Last updated on January 2, 2026.</p>
+          <p className="text-sm text-muted-foreground">Last updated on January 5, 2026.</p>
         </div>
 
         <table className="max-w-2xl text-sm">
