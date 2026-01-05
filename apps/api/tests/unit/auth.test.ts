@@ -8,9 +8,7 @@ describe("Auth endpoints", () => {
 
       expect(error).toBeDefined();
       expect(error?.status).toBe(401);
-      expect(error?.value).toEqual({
-        error: "Please sign in or provide a valid API key.",
-      });
+      expect(error?.value).toBe("Please sign in or provide a valid API key.");
     });
 
     test("protected route returns 401 with invalid Bearer token", async () => {
@@ -20,9 +18,7 @@ describe("Auth endpoints", () => {
 
       expect(error).toBeDefined();
       expect(error?.status).toBe(401);
-      expect(error?.value).toEqual({
-        error: "Please sign in or provide a valid API key.",
-      });
+      expect(error?.value).toBe("Please sign in or provide a valid API key.");
     });
 
     test("protected route returns 401 with wrong prefix (von_prod instead of von_dev)", async () => {
@@ -32,9 +28,7 @@ describe("Auth endpoints", () => {
 
       expect(error).toBeDefined();
       expect(error?.status).toBe(401);
-      expect(error?.value).toEqual({
-        error: "Please sign in or provide a valid API key.",
-      });
+      expect(error?.value).toBe("Please sign in or provide a valid API key.");
     });
 
     test("protected route returns 401 without Bearer prefix", async () => {
@@ -44,9 +38,7 @@ describe("Auth endpoints", () => {
 
       expect(error).toBeDefined();
       expect(error?.status).toBe(401);
-      expect(error?.value).toEqual({
-        error: "Please sign in or provide a valid API key.",
-      });
+      expect(error?.value).toBe("Please sign in or provide a valid API key.");
     });
   });
 });
