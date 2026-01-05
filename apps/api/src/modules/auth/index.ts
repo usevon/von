@@ -11,10 +11,8 @@ const betterAuth: Auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins:
-    env.NODE_ENV === "development" ? ["http://localhost:3000"] : [],
-  deviceVerificationUri: env.DASHBOARD_URL
-    ? `${env.DASHBOARD_URL}/device`
-    : undefined,
+    env.NODE_ENV === "development" ? [env.DASHBOARD_URL ?? "http://localhost:3001"] : [],
+  deviceVerificationUri: `${env.DASHBOARD_URL ?? "http://localhost:3001"}/device`,
   apiKeySigningSecret: env.API_KEY_SIGNING_SECRET,
   secondaryStorage: {
     get: async (key) => await redis.get(key),
