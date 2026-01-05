@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { Button, Field, FieldLabel, FieldError, Input, Textarea } from "@usevon/ui";
+import { Button, Field, FieldLabel, FieldError, Input, Textarea, cn } from "@usevon/ui";
 
 type ContactFormData = {
   name: string;
@@ -9,7 +9,11 @@ type ContactFormData = {
   message: string;
 };
 
-export const ContactForm = () => {
+type ContactFormProps = {
+  className?: string;
+};
+
+export const ContactForm = (props: ContactFormProps) => {
   const {
     register,
     handleSubmit,
@@ -23,7 +27,7 @@ export const ContactForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-12 space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className={cn("space-y-6", props.className)}>
       <Field>
         <FieldLabel>Name</FieldLabel>
         <Input
@@ -54,11 +58,12 @@ export const ContactForm = () => {
         <Textarea
           {...register("message", { required: "Message is required" })}
           aria-invalid={errors.message ? "true" : undefined}
+          className="h-40"
         />
         {errors.message && <FieldError>{errors.message.message}</FieldError>}
       </Field>
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         {isSubmitting ? "Sending..." : "Send message"}
       </Button>
     </form>

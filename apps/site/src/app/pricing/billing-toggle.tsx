@@ -89,11 +89,11 @@ export const PricingPlans = () => {
             </ul>
           </div>
           {plan.highlighted ? (
-            <Button render={<Link href={plan.href} />} className="w-full">
+            <Button size="lg" render={<Link href={plan.href} />} className="w-full">
               {plan.cta}
             </Button>
           ) : (
-            <Button variant="outline" render={<Link href={plan.href} />} className="w-full">
+            <Button size="lg" variant="outline" render={<Link href={plan.href} />} className="w-full">
               {plan.cta}
             </Button>
           )}

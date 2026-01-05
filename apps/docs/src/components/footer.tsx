@@ -38,7 +38,7 @@ export const Footer = () => {
       <div className="px-4 pt-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2 sm:col-span-1">
-            <Link href="/">
+            <Link href="https://usevon.com">
               <Image
                 src="/brand/von-icon-black.svg"
                 alt="Von"

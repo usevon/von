@@ -16,7 +16,6 @@ type PageInfo = {
 // Special case mappings for slugs that don't match file paths
 const filePathOverrides: Record<string, string> = {
   "": "index.mdx",
-  "getting-started": "quickstart.mdx",
 };
 
 // Build content pages from navigation

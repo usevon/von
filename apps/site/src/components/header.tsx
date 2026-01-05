@@ -93,7 +93,7 @@ export const Header = () => {
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end gap-4">
-          <Button variant="ghost" render={<Link href="/login" />} className="max-sm:hidden">
+          <Button variant="outline" render={<Link href="/login" />} className="max-sm:hidden">
             Log in
           </Button>
           <Button render={<Link href="/signup" />}>
