@@ -12,22 +12,22 @@ export default function ContactPage() {
             <ContactForm />
           </div>
 
-          <div className="mt-16 lg:mt-0">
+          <div className="mt-16 lg:mt-12">
             <h2 className="text-xl font-semibold tracking-tight">Need help?</h2>
             <p className="mt-4 text-muted-foreground">
-              For general support and questions, reach out to us at{" "}
-              <a href="mailto:support@usevon.com" className="text-foreground underline underline-offset-4">
-                support@usevon.com
-              </a>
+              For general support and questions, reach out to us:
             </p>
+            <a href="mailto:support@usevon.com" className="mt-1 block text-foreground underline underline-offset-4">
+              support@usevon.com
+            </a>
 
             <h2 className="mt-12 text-xl font-semibold tracking-tight">Security</h2>
             <p className="mt-4 text-muted-foreground">
-              For security-related concerns or to report vulnerabilities, contact{" "}
-              <a href="mailto:security@usevon.com" className="text-foreground underline underline-offset-4">
-                security@usevon.com
-              </a>
+              For security-related concerns or to report vulnerabilities:
             </p>
+            <a href="mailto:security@usevon.com" className="mt-1 block text-foreground underline underline-offset-4">
+              security@usevon.com
+            </a>
           </div>
         </div>
       </section>
