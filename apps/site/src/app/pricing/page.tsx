@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@usevon/ui";
+import { CTA } from "@/components/cta";
 import { PricingPlans } from "./billing-toggle";
 import { PricingFaqs } from "./faqs";
 import { ComparisonTable } from "./comparison-table";
@@ -37,25 +38,17 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:flex lg:items-center lg:justify-between lg:px-10">
-          <div className="max-w-2xl">
-            <h2 className="text-xl font-semibold tracking-tight">Have more questions?</h2>
-            <p className="mt-2 text-muted-foreground">
-              Talk to our team about your specific requirements.
-            </p>
-          </div>
-          <div className="mt-6 flex items-center gap-4 lg:mt-0 lg:shrink-0">
-            <Button render={<Link href="/contact" />}>
-              Contact sales
-            </Button>
-            <Button variant="ghost" render={<Link href="/docs" />}>
-              Read the docs
-            </Button>
-          </div>
-        </div>
-      </section>
+      <CTA
+        title="Have more questions?"
+        description="Talk to our team about your specific requirements."
+      >
+        <Button size="lg" render={<Link href="/contact" />}>
+          Contact sales
+        </Button>
+        <Button size="lg" variant="outline" render={<Link href="https://docs.usevon.com" />}>
+          Read the docs
+        </Button>
+      </CTA>
     </main>
   );
 }
