@@ -1,4 +1,4 @@
-import type { TunnelRequest, TunnelResponse } from "@usevon/tunnel";
+import type { TunnelRequest, TunnelResponse } from "@/types";
 import { generateId, timingSafeEqual } from "@usevon/utils";
 import type { TunnelConnection } from "@/modules/tunnel/model";
 

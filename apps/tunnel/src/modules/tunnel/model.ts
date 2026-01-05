@@ -1,4 +1,4 @@
-import type { TunnelResponse } from "@usevon/tunnel";
+import type { TunnelResponse } from "@/types";
 import { t } from "elysia";
 
 export type PendingRequest = {

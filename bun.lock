@@ -137,7 +137,6 @@
         "@usevon/auth": "workspace:*",
         "@usevon/db": "workspace:*",
         "@usevon/queue": "workspace:*",
-        "@usevon/tunnel": "workspace:*",
         "@usevon/utils": "workspace:*",
         "elysia": "^1.4.16",
       },
@@ -219,7 +218,6 @@
       "devDependencies": {
         "@types/node": "^22.15.21",
         "@types/ws": "^8.5.0",
-        "@usevon/tunnel": "workspace:*",
         "@usevon/tunnel-server": "workspace:*",
         "@usevon/typescript-config": "workspace:*",
         "tsdown": "^0.12.7",
@@ -288,20 +286,6 @@
         "@usevon/typescript-config": "workspace:*",
         "@usevon/utils": "workspace:*",
         "tsdown": "^0.12.9",
-        "typescript": "^5.7.2",
-      },
-    },
-    "packages/tunnel": {
-      "name": "@usevon/tunnel",
-      "version": "0.2.1",
-      "dependencies": {
-        "picocolors": "^1.1.1",
-        "ws": "^8.18.2",
-      },
-      "devDependencies": {
-        "@types/ws": "^8.18.1",
-        "@usevon/typescript-config": "workspace:*",
-        "tsdown": "^0.12.7",
         "typescript": "^5.7.2",
       },
     },
@@ -925,8 +909,6 @@
     "@usevon/sdk": ["@usevon/sdk@workspace:packages/sdk"],
 
     "@usevon/site": ["@usevon/site@workspace:apps/site"],
-
-    "@usevon/tunnel": ["@usevon/tunnel@workspace:packages/tunnel"],
 
     "@usevon/tunnel-server": ["@usevon/tunnel-server@workspace:apps/tunnel"],
 
