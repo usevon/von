@@ -22,4 +22,4 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         working-directory: packages/db
-        run: bun run db:push
+        run: bun --bun run db:push
