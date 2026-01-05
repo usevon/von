@@ -16,9 +16,10 @@ jobs:
           bun-version-file: package.json
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --ignore-scripts
 
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: cd packages/db && bunx drizzle-kit push
+        working-directory: packages/db
+        run: bunx drizzle-kit push
