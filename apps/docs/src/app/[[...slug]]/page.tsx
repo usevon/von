@@ -6,7 +6,7 @@ import { TableOfContents } from "@/components/docs/toc";
 import { HomePage } from "@/components/home-page";
 
 // Content imports
-import QuickstartContent from "@/content/quickstart.mdx";
+import GettingStartedContent from "@/content/getting-started.mdx";
 import AuthenticationContent from "@/content/authentication.mdx";
 import IntroductionContent from "@/content/introduction.mdx";
 import SendingContent from "@/content/sending.mdx";
@@ -34,7 +34,7 @@ const contentMap: Record<string, ContentEntry> = {
     description: "Learn how to use Von webhook infrastructure.",
   },
   "getting-started": {
-    Component: QuickstartContent,
+    Component: GettingStartedContent,
     title: "Getting Started",
     description: "Get started with Von in 5 minutes.",
   },
