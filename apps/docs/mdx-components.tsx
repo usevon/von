@@ -20,10 +20,6 @@ const getTextContent = (node: ReactNode): string => {
   return "";
 };
 
-type FigureProps = React.ComponentPropsWithoutRef<"figure"> & {
-  "data-rehype-pretty-code-figure"?: string;
-};
-
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     ...components,
@@ -36,18 +32,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Timeline,
     TimelineItem,
     PageActions,
-    figure: (props: FigureProps) => {
-      const isCodeBlock = props["data-rehype-pretty-code-figure"] !== undefined;
-      if (isCodeBlock) {
-        const code = getTextContent(props.children);
-        return (
-          <figure {...props}>
-            {code && <CopyButton value={code} />}
-            {props.children}
-          </figure>
-        );
-      }
-      return <figure {...props} />;
+    pre: (props: React.ComponentPropsWithoutRef<"pre">) => {
+      const code = getTextContent(props.children);
+      return (
+        <div className="group relative">
+          {code && <CopyButton value={code} />}
+          <pre {...props} />
+        </div>
+      );
     },
     code: (props: React.ComponentPropsWithoutRef<"code">) => {
       const isInline = typeof props.children === "string" && !props.className;

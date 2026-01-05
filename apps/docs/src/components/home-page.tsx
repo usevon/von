@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  RocketLaunchIcon,
-  AtomIcon,
-  BookOpenIcon,
-  TerminalIcon,
-  CodeIcon,
-} from "@phosphor-icons/react";
+import { RocketLaunchIcon, AtomIcon, BookOpenIcon, TerminalIcon, CodeIcon } from "@phosphor-icons/react";
 import { Card } from "@usevon/ui";
 import type { ReactNode } from "react";
 
