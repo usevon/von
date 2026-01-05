@@ -42,8 +42,6 @@ export const DeviceAuthorization = () => {
   }
 
   if (!session) {
-    const currentUrl =
-      typeof window !== "undefined" ? window.location.href : "";
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-5">
         <Card className="w-full max-w-md">
@@ -56,9 +54,10 @@ export const DeviceAuthorization = () => {
             </p>
             <Button
               className="w-full"
-              onClick={() =>
-                router.push(`/test-auth?redirect=${encodeURIComponent(currentUrl)}`)
-              }
+              onClick={() => {
+                const currentUrl = window.location.href;
+                router.push(`/test-auth?redirect=${encodeURIComponent(currentUrl)}`);
+              }}
             >
               Sign In
             </Button>
