@@ -109,17 +109,21 @@
   --color-background: var(--background);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+
   @keyframes skeleton {
     to {
       background-position: -200% 0;
     }
   }
+
   @keyframes caret-blink {
+
     0%,
     70%,
     100% {
       opacity: 1;
     }
+
     20%,
     50% {
       opacity: 0;
@@ -153,6 +157,17 @@
   --success-foreground: var(--color-emerald-700);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-700);
+
+  /* Sugar-high syntax highlighting - light mode */
+  --sh-class: #8250df;
+  --sh-identifier: #24292f;
+  --sh-sign: #24292f;
+  --sh-property: #0550ae;
+  --sh-entity: #116329;
+  --sh-jsxliterals: #0550ae;
+  --sh-string: #0550ae;
+  --sh-keyword: #cf222e;
+  --sh-comment: #6e7781;
 }
 
 .dark {
@@ -181,12 +196,24 @@
   --success-foreground: var(--color-emerald-400);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-400);
+
+  /* Sugar-high syntax highlighting - dark mode */
+  --sh-class: #b392f0;
+  --sh-identifier: #e1e4e8;
+  --sh-sign: #6a737d;
+  --sh-property: #79b8ff;
+  --sh-entity: #85e89d;
+  --sh-jsxliterals: #9ecbff;
+  --sh-string: #9ecbff;
+  --sh-keyword: #f97583;
+  --sh-comment: #6a737d;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

@@ -8,11 +8,7 @@ import {
   MenuPopup,
   MenuItem,
 } from "@usevon/ui";
-import {
-  FileTextIcon,
-  CaretDownIcon,
-  ArrowSquareOutIcon,
-} from "@phosphor-icons/react";
+import { FileTextIcon, CaretDownIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
 
 const getMarkdownUrl = (pathname: string) => {
   return pathname === "/" ? "/index.md" : `${pathname}.md`;

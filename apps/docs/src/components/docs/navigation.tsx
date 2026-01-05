@@ -3,13 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Tabs } from "@base-ui/react/tabs";
 import { cn } from "@usevon/ui";
-import {
-  HouseIcon,
-  RocketLaunchIcon,
-  BookOpenIcon,
-  CodeIcon,
-  KeyIcon,
-} from "@phosphor-icons/react";
+import { HouseIcon, RocketLaunchIcon, BookOpenIcon, CodeIcon, KeyIcon } from "@phosphor-icons/react";
 
 import { topLinks, navigation } from "@/lib/navigation";
 
