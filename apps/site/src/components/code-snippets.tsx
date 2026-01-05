@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Card, Tabs, TabsList, TabsTab, TabsPanel, CodeBlock } from "@usevon/ui";
+import Link from "next/link";
+import { Tabs } from "@base-ui/react/tabs";
+import { Card, CodeBlock } from "@usevon/ui";
 import { Wallpaper } from "./wallpaper";
 
 const steps = [
@@ -9,14 +10,16 @@ const steps = [
     id: "setup",
     title: "Setup",
     label: "Initialize the client",
-    description: "Add your API key and you're ready to go.",
+    description: "Install the SDK and add your API key.",
+    href: "https://docs.usevon.com/getting-started",
     lines: [2, 3, 4],
   },
   {
     id: "send",
     title: "Send",
     label: "Send your first event",
-    description: "Automatic retries, monitoring, and verification included.",
+    description: "Von handles retries and delivery for you.",
+    href: "https://docs.usevon.com/sending",
     lines: [6, 7, 8, 9, 10, 11, 12, 13],
   },
 ];
@@ -37,10 +40,6 @@ await von.webhooks.send({
 });`;
 
 export const CodeSnippets = () => {
-  const [activeTab, setActiveTab] = useState("setup");
-  const activeStep = steps.find((s) => s.id === activeTab) || steps[0];
-  const activeLines = new Set(activeStep.lines);
-
   return (
     <section className="py-24">
       <div className="mx-auto max-w-7xl px-6 lg:px-10">
@@ -52,34 +51,56 @@ export const CodeSnippets = () => {
             Two API calls and you're done.
           </p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="flex flex-col justify-between border-0 bg-muted/50 p-4 dark:bg-white/5">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                {steps.map((step, index) => (
-                  <TabsTab key={step.id} value={step.id}>
-                    {index + 1}. {step.title}
-                  </TabsTab>
+        <Tabs.Root defaultValue="setup">
+          <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 lg:gap-4">
+            <Card className="flex flex-col justify-between border-0 bg-muted/50 p-4 dark:bg-white/5 max-lg:rounded-t-none">
+              <Tabs.List className="relative inline-flex self-start rounded-lg bg-muted p-1 dark:bg-black/20">
+                <Tabs.Indicator
+                  className="absolute rounded-md bg-background shadow-sm transition-all duration-200 dark:bg-zinc-800"
+                  style={{
+                    height: "var(--active-tab-height)",
+                    width: "var(--active-tab-width)",
+                    left: "var(--active-tab-left)",
+                    top: "var(--active-tab-top)",
+                  }}
+                />
+                {steps.map((step, i) => (
+                  <Tabs.Tab
+                    key={step.id}
+                    value={step.id}
+                    className="relative z-10 h-9 rounded-md px-3 text-base font-medium text-muted-foreground transition-colors hover:text-foreground data-[active]:text-foreground sm:h-8 sm:text-sm"
+                  >
+                    {i + 1}. {step.title}
+                  </Tabs.Tab>
                 ))}
-              </TabsList>
+              </Tabs.List>
               {steps.map((step) => (
-                <TabsPanel key={step.id} value={step.id} className="flex-1" />
+                <Tabs.Panel key={step.id} value={step.id} className="flex flex-col gap-3 pt-4">
+                  <h3 className="text-3xl font-semibold">{step.label}</h3>
+                  <p className="text-lg text-muted-foreground">{step.description}</p>
+                  <Link
+                    href={step.href}
+                    className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                  >
+                    Learn more
+                  </Link>
+                </Tabs.Panel>
               ))}
-            </Tabs>
-            <div>
-              <h3 className="text-2xl font-semibold">{activeStep.label}</h3>
-              <p className="mt-2 text-muted-foreground">{activeStep.description}</p>
-            </div>
-          </Card>
+            </Card>
 
-          <Wallpaper className="rounded-2xl p-4">
-            <CodeBlock
-              code={code}
-              activeLines={activeLines}
-              preClassName="border-0 bg-background/95 shadow-2xl backdrop-blur"
-            />
-          </Wallpaper>
-        </div>
+            <Wallpaper className="rounded-2xl p-4 max-lg:rounded-b-none">
+              {steps.map((step) => (
+                <Tabs.Panel key={step.id} value={step.id}>
+                  <CodeBlock
+                    code={code}
+                    activeLines={new Set(step.lines)}
+                    preClassName="border-0 bg-background/95 shadow-2xl backdrop-blur"
+                  />
+                </Tabs.Panel>
+              ))}
+            </Wallpaper>
+          </div>
+        </Tabs.Root>
       </div>
     </section>
   );
