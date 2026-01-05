@@ -26,7 +26,7 @@ export const CopyButton = (props: CopyButtonProps) => {
       size="icon"
       onClick={copy}
       className={cn(
-        "absolute right-1.5 top-1.5 z-10 opacity-0 transition-opacity group-hover:opacity-70 hover:!opacity-100",
+        "absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-70 hover:!opacity-100",
         props.className
       )}
     >
