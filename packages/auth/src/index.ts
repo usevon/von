@@ -20,6 +20,23 @@ export type SecondaryStorage = {
   delete: (key: string) => Promise<void> | void;
 };
 
+/** Full user type from better-auth (used in callbacks) */
+export type BetterAuthUser = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  email: string;
+  emailVerified: boolean;
+  name: string;
+  image?: string | null;
+};
+
+export type PasswordResetData = {
+  user: BetterAuthUser;
+  url: string;
+  token: string;
+};
+
 export type CreateAuthOptions = {
   secret: string;
   baseURL?: string;
@@ -35,6 +52,16 @@ export type CreateAuthOptions = {
    * Signing secret for API keys (required in production).
    */
   apiKeySigningSecret?: string;
+  /**
+   * Callback to send password reset emails.
+   * If provided, enables password reset functionality.
+   * Don't await to prevent timing attacks.
+   */
+  sendResetPassword?: (data: PasswordResetData, request?: Request) => Promise<void>;
+  /**
+   * Callback after password has been reset.
+   */
+  onPasswordReset?: (data: { user: BetterAuthUser }, request?: Request) => Promise<void>;
 };
 
 export const createAuth = (db: Database, options: CreateAuthOptions) =>
@@ -51,6 +78,8 @@ export const createAuth = (db: Database, options: CreateAuthOptions) =>
     },
     emailAndPassword: {
       enabled: true,
+      sendResetPassword: options.sendResetPassword,
+      onPasswordReset: options.onPasswordReset,
     },
     user: {
       deleteUser: {
