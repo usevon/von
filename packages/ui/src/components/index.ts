@@ -17,6 +17,7 @@ export * from "@/components/ui/context-menu";
 export * from "@/components/ui/copy-button";
 export * from "@/components/ui/dialog";
 export * from "@/components/ui/empty";
+export * from "@/components/ui/error-illustration";
 export * from "@/components/ui/field";
 export * from "@/components/ui/fieldset";
 export * from "@/components/ui/form";

@@ -10,7 +10,6 @@ import type { ChangeEvent } from "react";
 import { Fragment, useImperativeHandle, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { InputOTPProps } from "@/components/ui/input-otp/types";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export const InputOTP = (props: InputOTPProps) => {
@@ -72,7 +71,7 @@ export const InputOTP = (props: InputOTPProps) => {
   return (
     <div
       className={cn(
-        "relative flex select-none items-center",
+        "relative flex select-none items-center gap-2",
         props.disabled ? "cursor-default" : "cursor-text",
         props.className
       )}
@@ -81,30 +80,24 @@ export const InputOTP = (props: InputOTPProps) => {
       {groups.map((group, groupIdx) => (
         <Fragment key={groupIdx}>
           {groupIdx > 0 && (
-            <Separator
-              className="mx-1.5"
-              orientation="horizontal"
-              style={{ width: "0.75rem" }}
-            />
+            <span className="text-muted-foreground">-</span>
           )}
-          <div className="flex items-center">
+          <div className="flex flex-1 items-center gap-1.5">
             {group.map((slot, slotIdx) => (
-              <div
+              <Input
+                key={slotIdx}
+                value={slot.char || ""}
+                readOnly
+                tabIndex={-1}
+                aria-invalid={props.error || undefined}
                 className={cn(
-                  "relative flex size-9 items-center justify-center border-y border-r font-mono first:rounded-l-md first:border-l last:rounded-r-md",
-                  props.error ? "border-destructive" : "border-input",
-                  slot.isActive && !props.error && "z-10 ring-2 ring-ring",
-                  slot.isActive && props.error && "z-10 ring-2 ring-destructive"
+                  "h-12 flex-1 px-0 text-center font-mono text-xl [&_input]:text-center [&_input]:text-xl",
+                  slot.isActive && !props.error && "border-ring ring-[3px] ring-ring/24",
+                  slot.isActive && props.error && "ring-[3px] ring-destructive/24"
                 )}
                 data-active={slot.isActive || undefined}
                 data-slot="input-otp-slot"
-                key={slotIdx}
-              >
-                {slot.char}
-                {slot.hasFakeCaret ? (
-                  <span className="pointer-events-none absolute h-4 w-px animate-caret-blink bg-foreground" />
-                ) : null}
-              </div>
+              />
             ))}
           </div>
         </Fragment>
