@@ -47,6 +47,7 @@ export const LoginForm = () => {
         <FieldLabel>Email</FieldLabel>
         <Input
           autoComplete="email"
+          disabled={isPending}
           name="email"
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
@@ -59,6 +60,7 @@ export const LoginForm = () => {
         <FieldLabel>Password</FieldLabel>
         <Input
           autoComplete="current-password"
+          disabled={isPending}
           name="password"
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"

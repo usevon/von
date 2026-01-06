@@ -63,6 +63,7 @@ export const DeviceForm = (props: DeviceFormProps) => {
   return (
     <div className="flex flex-col gap-4">
       <InputOTP
+        disabled={status === "loading"}
         error={error}
         groupSize={4}
         maxLength={8}

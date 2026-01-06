@@ -58,6 +58,7 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
         <FieldLabel>New password</FieldLabel>
         <Input
           autoComplete="new-password"
+          disabled={isPending}
           name="password"
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your new password (min 8 chars)"

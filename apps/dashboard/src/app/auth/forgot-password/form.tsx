@@ -51,6 +51,7 @@ export const ForgotPasswordForm = () => {
         <FieldLabel>Email</FieldLabel>
         <Input
           autoComplete="email"
+          disabled={isPending}
           name="email"
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"

@@ -57,6 +57,7 @@ export const OnboardingForm = () => {
         <Input
           autoComplete="organization"
           autoFocus
+          disabled={isPending}
           name="name"
           onChange={(e) => setName(e.target.value)}
           placeholder="Acme Inc."
