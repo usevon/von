@@ -1,85 +1,131 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldError, FieldLabel, Form, Input } from "@usevon/ui";
+import { Button, Field, FieldLabel, FieldMessage, Form, Input, toast } from "@usevon/ui";
 
 import { signIn } from "@/lib/auth/client";
 
-export const LoginForm = () => {
+type LoginFormProps = {
+  redirectTo?: string;
+};
+
+export const LoginForm = (props: LoginFormProps) => {
   const router = useRouter();
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isPending, setIsPending] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  const isValid = email.length > 0 && password.length > 0;
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    onSubmit: async ({ value }) => {
+      const { error } = await signIn.email({
+        email: value.email,
+        password: value.password,
+      });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
+      if (error) {
+        toast.error(error.message || "Invalid credentials");
+        return;
+      }
 
-    const fieldErrors: Record<string, string> = {};
-    if (!email) fieldErrors.email = "Email is required";
-    if (!password) fieldErrors.password = "Password is required";
-
-    if (Object.keys(fieldErrors).length > 0) {
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsPending(true);
-
-    await signIn.email({ email, password }, {
-      onSuccess: () => router.push("/"),
-      onError: () => {
-        setErrors({ email: "Invalid email", password: "Invalid password" });
-        setIsPending(false);
-      },
-    });
-  };
+      toast.success("Welcome back!");
+      router.push(props.redirectTo || "/");
+    },
+  });
 
   return (
-    <Form errors={errors} onSubmit={handleSubmit}>
-      <Field name="email">
-        <FieldLabel>Email</FieldLabel>
-        <Input
-          autoComplete="email"
-          disabled={isPending}
-          name="email"
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          type="email"
-          value={email}
-        />
-        <FieldError />
-      </Field>
-      <Field name="password">
-        <FieldLabel>Password</FieldLabel>
-        <Input
-          autoComplete="current-password"
-          disabled={isPending}
-          name="password"
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter your password"
-          type="password"
-          value={password}
-        />
-        <FieldError />
-      </Field>
-      <div className="flex items-center justify-between">
-        <Link
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-          href="/auth/forgot-password"
-        >
-          Forgot password?
-        </Link>
-      </div>
-      <Button className="w-full" disabled={!isValid || isPending} type="submit">
-        {isPending ? "Signing in..." : "Sign in"}
-      </Button>
+    <Form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+    >
+      <form.Field
+        name="email"
+        validators={{
+          onBlur: ({ value }) => {
+            if (!value) return "Email is required";
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+              return "Please enter a valid email address";
+            }
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel>Email</FieldLabel>
+            <Input
+              autoComplete="email"
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="Email"
+              type="email"
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Field
+        name="password"
+        validators={{
+          onBlur: ({ value }) => {
+            if (!value) return "Password is required";
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <div className="flex w-full items-center justify-between">
+              <FieldLabel>Password</FieldLabel>
+              <Link
+                className="text-muted-foreground text-xs hover:text-foreground"
+                href={{
+                  pathname: "/auth/forgot-password",
+                  query: props.redirectTo && props.redirectTo !== "/" ? { redirect: props.redirectTo } : undefined,
+                }}
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <Input
+              autoComplete="current-password"
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="••••••••"
+              type="password"
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+        {([canSubmit, isSubmitting]) => (
+          <Button
+            className="w-full"
+            disabled={!canSubmit || isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Signing in..." : "Sign in"}
+          </Button>
+        )}
+      </form.Subscribe>
     </Form>
   );
 };

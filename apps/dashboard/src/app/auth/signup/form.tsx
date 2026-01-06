@@ -1,99 +1,153 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldError, FieldLabel, Form, Input } from "@usevon/ui";
+import { Button, Field, FieldLabel, FieldMessage, FieldDescription, Form, Input, toast } from "@usevon/ui";
 
 import { signUp } from "@/lib/auth/client";
 
-export const SignupForm = () => {
+type SignupFormProps = {
+  redirectTo?: string;
+};
+
+export const SignupForm = (props: SignupFormProps) => {
   const router = useRouter();
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isPending, setIsPending] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  const isValid = name.length > 0 && email.length > 0 && password.length >= 8;
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
+    onSubmit: async ({ value }) => {
+      const { error } = await signUp.email({
+        name: value.name,
+        email: value.email,
+        password: value.password,
+      });
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
+      if (error) {
+        toast.error(error.message || "Failed to create account");
+        return;
+      }
 
-    const fieldErrors: Record<string, string> = {};
-    if (!name) fieldErrors.name = "Name is required";
-    if (!email) fieldErrors.email = "Email is required";
-    if (!password) fieldErrors.password = "Password is required";
-    else if (password.length < 8) fieldErrors.password = "Password must be at least 8 characters";
-
-    if (Object.keys(fieldErrors).length > 0) {
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsPending(true);
-
-    await signUp.email({ name, email, password }, {
-      onSuccess: () => router.push("/"),
-      onError: (ctx) => {
-        const msg = ctx.error.message?.toLowerCase() ?? "";
-        if (msg.includes("email") || msg.includes("user")) {
-          setErrors({ email: ctx.error.message ?? "Email already in use" });
-        } else if (msg.includes("password")) {
-          setErrors({ password: ctx.error.message ?? "Invalid password" });
-        } else {
-          setErrors({ email: ctx.error.message ?? "Failed to create account" });
-        }
-        setIsPending(false);
-      },
-    });
-  };
+      toast.success("Account created!");
+      router.push(props.redirectTo || "/");
+    },
+  });
 
   return (
-    <Form errors={errors} onSubmit={handleSubmit}>
-      <Field name="name">
-        <FieldLabel>Name</FieldLabel>
-        <Input
-          autoComplete="name"
-          disabled={isPending}
-          name="name"
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-          type="text"
-          value={name}
-        />
-        <FieldError />
-      </Field>
-      <Field name="email">
-        <FieldLabel>Email</FieldLabel>
-        <Input
-          autoComplete="email"
-          disabled={isPending}
-          name="email"
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          type="email"
-          value={email}
-        />
-        <FieldError />
-      </Field>
-      <Field name="password">
-        <FieldLabel>Password</FieldLabel>
-        <Input
-          autoComplete="new-password"
-          disabled={isPending}
-          name="password"
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Create a password (min 8 chars)"
-          type="password"
-          value={password}
-        />
-        <FieldError />
-      </Field>
-      <Button className="w-full" disabled={!isValid || isPending} type="submit">
-        {isPending ? "Creating account..." : "Create account"}
-      </Button>
+    <Form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+    >
+      <form.Field
+        name="name"
+        validators={{
+          onBlur: ({ value }) => {
+            if (!value) return "Name is required";
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel>Name</FieldLabel>
+            <Input
+              autoComplete="name"
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="Name"
+              type="text"
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Field
+        name="email"
+        validators={{
+          onBlur: ({ value }) => {
+            if (!value) return "Email is required";
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+              return "Please enter a valid email address";
+            }
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel>Email</FieldLabel>
+            <Input
+              autoComplete="email"
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="Email"
+              type="email"
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Field
+        name="password"
+        validators={{
+          onBlur: ({ value }) => {
+            if (!value) return "Password is required";
+            if (value.length < 8) return "Password must be at least 8 characters";
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel>Password</FieldLabel>
+            <Input
+              autoComplete="new-password"
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="••••••••"
+              type="password"
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            ) : (
+              <FieldDescription>Must be at least 8 characters</FieldDescription>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+        {([canSubmit, isSubmitting]) => (
+          <Button
+            className="w-full"
+            disabled={!canSubmit || isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Creating account..." : "Create account"}
+          </Button>
+        )}
+      </form.Subscribe>
     </Form>
   );
 };
