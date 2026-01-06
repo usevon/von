@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
 
 import "@/index.css";
-import { Header } from "@/components/header";
 import { Providers } from "@/components/providers";
 
 const familjen = Familjen_Grotesk({
@@ -23,12 +22,7 @@ export default function RootLayout(props: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${familjen.variable} antialiased`}>
-        <Providers>
-          <div className="grid grid-rows-[auto_1fr] h-svh">
-            <Header />
-            {props.children}
-          </div>
-        </Providers>
+        <Providers>{props.children}</Providers>
       </body>
     </html>
   );
