@@ -1,24 +1,16 @@
 "use client";
 
-import { clearBearerToken, createAuthClient } from "@usevon/auth/client";
-import { env } from "@/env";
+import { createAuthClient } from "@usevon/auth/client";
 
-export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_API_URL,
-});
+export const authClient = createAuthClient();
 
-const originalSignOut = authClient.signOut;
-const originalDeleteUser = authClient.deleteUser;
-
-export const signOut = () => {
-  clearBearerToken();
-  return originalSignOut();
-};
-
-export const deleteUser = () => {
-  clearBearerToken();
-  return originalDeleteUser();
-};
-
-export const { useSession, signIn, signUp, organization, apiKey, device } =
-  authClient;
+export const {
+  useSession,
+  signIn,
+  signUp,
+  signOut,
+  deleteUser,
+  organization,
+  apiKey,
+  device,
+} = authClient;

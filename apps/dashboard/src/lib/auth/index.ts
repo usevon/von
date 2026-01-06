@@ -1,18 +1,14 @@
-import { createAuth, type Session, type User } from "@usevon/auth";
+import { createAuth } from "@usevon/auth";
 import { db } from "@usevon/db";
-import { headers } from "next/headers";
 import { env } from "@/env";
 
-const auth = createAuth(db, {
+export const auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.NEXT_PUBLIC_API_URL,
   apiKeySigningSecret: env.API_KEY_SIGNING_SECRET,
+  deviceVerificationUri: "/device",
+  sendResetPassword: async ({ user, url }) => {
+    // TODO: Integrate email provider (Resend, SendGrid, etc.)
+    // Fire and forget to prevent timing attacks
+    console.log(`[Auth] Password reset requested for ${user.email}: ${url}`);
+  },
 });
-
-export async function getServerSession() {
-  return auth.api.getSession({
-    headers: await headers(),
-  });
-}
-
-export type { Session, User };
