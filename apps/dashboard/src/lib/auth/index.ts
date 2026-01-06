@@ -2,6 +2,18 @@ import { createAuth } from "@usevon/auth";
 import { db } from "@usevon/db";
 import { env } from "@/env";
 
+/**
+ * Validates and sanitizes a redirect URL to prevent open redirect attacks.
+ * Only allows internal paths (starting with / but not //).
+ */
+export function getSafeRedirect(url: string | undefined): string {
+  if (!url) return "/";
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    return url;
+  }
+  return "/";
+}
+
 export const auth = createAuth(db, {
   secret: env.BETTER_AUTH_SECRET,
   apiKeySigningSecret: env.API_KEY_SIGNING_SECRET,

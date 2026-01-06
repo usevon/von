@@ -13,6 +13,7 @@ export default async function AuthLayout(props: AuthLayoutProps) {
     headers: await headers(),
   });
 
+  // If already logged in, redirect is handled by middleware
   if (session) {
     redirect("/");
   }

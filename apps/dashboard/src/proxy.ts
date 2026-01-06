@@ -2,13 +2,13 @@ import { COOKIE_PREFIX, getSessionCookie } from "@usevon/auth";
 import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
   const session = getSessionCookie(request, { cookiePrefix: COOKIE_PREFIX });
 
   if (!session) {
     const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", pathname + search);
     return NextResponse.redirect(loginUrl);
   }
 

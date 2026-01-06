@@ -1,4 +1,5 @@
-import { ResetPasswordForm } from "./form";
+import Link from "next/link";
+import { ResetPasswordForm } from "@/app/auth/reset-password/form";
 
 export const metadata = {
   title: "Reset password - Von",
@@ -14,13 +15,17 @@ export default async function ResetPasswordPage(props: ResetPasswordPageProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
+      <div>
         <h1 className="text-2xl font-semibold tracking-tight">Reset password</h1>
-        <p className="text-muted-foreground text-sm">
-          Enter your new password below
-        </p>
+        <p className="text-muted-foreground text-sm">Enter your new password below</p>
       </div>
       <ResetPasswordForm token={token ?? ""} />
+      <p className="text-muted-foreground text-sm">
+        Back to{" "}
+        <Link className="text-foreground underline" href="/auth/login">
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }

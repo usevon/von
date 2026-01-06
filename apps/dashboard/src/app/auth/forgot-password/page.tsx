@@ -1,24 +1,36 @@
 import Link from "next/link";
 
-import { ForgotPasswordForm } from "./form";
+import { getSafeRedirect } from "@/lib/auth";
+import { ForgotPasswordForm } from "@/app/auth/forgot-password/form";
 
 export const metadata = {
   title: "Forgot password - Von",
 };
 
-export default function ForgotPasswordPage() {
+type ForgotPasswordPageProps = {
+  searchParams: Promise<{ redirect?: string }>;
+};
+
+export default async function ForgotPasswordPage(props: ForgotPasswordPageProps) {
+  const searchParams = await props.searchParams;
+  const redirectTo = getSafeRedirect(searchParams.redirect);
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Reset password</h1>
-        <p className="text-muted-foreground text-sm">
-          Enter your email and we&apos;ll send you a reset link
-        </p>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Forgot password?</h1>
+        <p className="text-muted-foreground text-sm">We&apos;ll send you a reset link</p>
       </div>
       <ForgotPasswordForm />
-      <p className="text-muted-foreground text-center text-sm">
+      <p className="text-muted-foreground text-sm">
         Remember your password?{" "}
-        <Link className="text-foreground underline-offset-4 hover:underline" href="/auth/login">
+        <Link
+          className="text-foreground underline"
+          href={{
+            pathname: "/auth/login",
+            query: redirectTo !== "/" ? { redirect: redirectTo } : undefined,
+          }}
+        >
           Sign in
         </Link>
       </p>

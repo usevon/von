@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button, InputOTP, REGEXP_ONLY_DIGITS_AND_CHARS } from "@usevon/ui";
 
@@ -13,6 +13,7 @@ type DeviceFormProps = {
 
 export const DeviceForm = (props: DeviceFormProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, isPending: sessionPending } = useSession();
   const [userCode, setUserCode] = useState(props.initialCode);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
@@ -23,7 +24,9 @@ export const DeviceForm = (props: DeviceFormProps) => {
   }
 
   if (!session) {
-    const returnUrl = `/device${userCode ? `?user_code=${userCode}` : ""}`;
+    // Get code from URL directly to ensure it's preserved in redirect
+    const urlCode = searchParams.get("user_code") || searchParams.get("code") || userCode;
+    const returnUrl = `/device${urlCode ? `?user_code=${urlCode}` : ""}`;
     router.push(`/auth/login?redirect=${encodeURIComponent(returnUrl)}`);
     return null;
   }
