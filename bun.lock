@@ -16,7 +16,7 @@
     },
     "apps/api": {
       "name": "@usevon/api",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
@@ -37,7 +37,7 @@
     },
     "apps/dashboard": {
       "name": "@usevon/dashboard",
-      "version": "2.0.0",
+      "version": "0.3.1",
       "dependencies": {
         "@elysiajs/eden": "^1.4.5",
         "@t3-oss/env-nextjs": "^0.12.0",
@@ -48,7 +48,6 @@
         "@usevon/react": "workspace:*",
         "@usevon/ui": "workspace:*",
         "better-auth": "^1.4.7",
-        "lucide-react": "^0.555.0",
         "next": "^16.1.0",
         "next-themes": "^0.4.6",
         "react": "^19.2.3",
@@ -68,7 +67,7 @@
     },
     "apps/docs": {
       "name": "@usevon/docs",
-      "version": "1.0.0",
+      "version": "0.3.1",
       "dependencies": {
         "@mdx-js/loader": "^3.1.0",
         "@mdx-js/react": "^3.1.0",
@@ -105,12 +104,11 @@
     },
     "apps/site": {
       "name": "@usevon/site",
-      "version": "2.0.0",
+      "version": "0.3.1",
       "dependencies": {
         "@phosphor-icons/react": "^2.1.10",
         "@usevon/analytics": "workspace:*",
         "@usevon/ui": "workspace:*",
-        "lucide-react": "^0.555.0",
         "motion": "^12.23.26",
         "next": "^16.1.0",
         "next-themes": "^0.4.6",
@@ -131,7 +129,7 @@
     },
     "apps/tunnel": {
       "name": "@usevon/tunnel-server",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@elysiajs/cors": "^1.1.0",
         "@usevon/auth": "workspace:*",
@@ -182,7 +180,7 @@
     },
     "packages/auth": {
       "name": "@usevon/auth",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@usevon/db": "workspace:*",
         "@usevon/utils": "workspace:*",
@@ -202,7 +200,7 @@
     },
     "packages/cli": {
       "name": "@usevon/cli",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "bin": {
         "von": "./dist/index.js",
       },
@@ -298,7 +296,7 @@
     },
     "packages/ui": {
       "name": "@usevon/ui",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@base-ui/react": "^1.0.0",
         "@phosphor-icons/react": "^2.1.10",

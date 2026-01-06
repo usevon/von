@@ -1,15 +1,15 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { cn } from "@usevon/ui";
 
 const themes = [
-  { key: "system", icon: Monitor, label: "System theme" },
-  { key: "light", icon: Sun, label: "Light theme" },
-  { key: "dark", icon: Moon, label: "Dark theme" },
+  { key: "system", icon: DesktopIcon, label: "System theme" },
+  { key: "light", icon: SunIcon, label: "Light theme" },
+  { key: "dark", icon: MoonIcon, label: "Dark theme" },
 ] as const;
 
 export const ThemeSwitcher = () => {
@@ -44,8 +44,9 @@ export const ThemeSwitcher = () => {
               />
             )}
             <Icon
+              size={16}
               className={cn(
-                "relative z-10 size-4",
+                "relative z-10",
                 isActive ? "text-foreground" : "text-muted-foreground"
               )}
             />

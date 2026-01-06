@@ -11,7 +11,6 @@
     "@phosphor-icons/react": "^2.1.10",
     "@usevon/analytics": "workspace:*",
     "@usevon/ui": "workspace:*",
-    "lucide-react": "^0.555.0",
     "motion": "^12.23.26",
     "next": "^16.1.0",
     "next-themes": "^0.4.6",
