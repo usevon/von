@@ -1,8 +1,7 @@
 import { NotFoundError } from "@usevon/utils";
 import { Elysia, t } from "elysia";
 import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
-import { requireOrg } from "@/lib/require-org";
-import { withAuth } from "@/modules/auth";
+import { requireOrg } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
 import { VersionService } from "@/modules/versions/service";
 
@@ -11,7 +10,6 @@ const VersionParam = t.Object({
 });
 
 export const versions = new Elysia({ prefix: "/versions" })
-  .use(withAuth)
   .use(requireOrg)
   .post(
     "/",

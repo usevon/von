@@ -3,7 +3,6 @@ import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
-import { auth } from "@/modules/auth";
 import { endpoints } from "@/modules/endpoints";
 import { inbound, inboundPublic } from "@/modules/inbound";
 import { versions } from "@/modules/versions";
@@ -20,8 +19,6 @@ const getCorsOrigins = () => {
 };
 
 const corsMiddleware = cors({ origin: getCorsOrigins(), credentials: true });
-
-const browserMiddleware = new Elysia().use(corsMiddleware).use(auth);
 
 const securityHeaders = new Elysia({ name: "security-headers" }).onAfterHandle(
   ({ set }) => {
@@ -42,7 +39,7 @@ export const app = new Elysia({
   .use(securityHeaders)
   .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
   .use(idempotency())
-  .use(browserMiddleware)
+  .use(corsMiddleware)
   .use(inboundPublic)
   .use(webhooks)
   .use(webhookEvents)

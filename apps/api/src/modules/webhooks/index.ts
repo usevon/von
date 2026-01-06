@@ -1,13 +1,11 @@
 import { NotFoundError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam, PaginationQuery } from "@/lib/models";
-import { requireOrg } from "@/lib/require-org";
-import { withAuth } from "@/modules/auth";
+import { requireOrg } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
 import { WebhookService } from "@/modules/webhooks/service";
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
-  .use(withAuth)
   .use(requireOrg)
   .post(
     "/",
@@ -42,7 +40,6 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   );
 
 export const webhookEvents = new Elysia({ prefix: "/webhooks" })
-  .use(withAuth)
   .use(requireOrg)
   .get(
     "/events",

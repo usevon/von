@@ -7,13 +7,11 @@ import {
   SuccessResponse,
 } from "@/lib/models";
 import { rateLimit } from "@/lib/rate-limit";
-import { requireOrg } from "@/lib/require-org";
-import { withAuth } from "@/modules/auth";
+import { requireOrg } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
 
 export const inbound = new Elysia({ prefix: "/inbound" })
-  .use(withAuth)
   .use(requireOrg)
   .post(
     "/",

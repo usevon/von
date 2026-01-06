@@ -6,13 +6,11 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
-import { requireOrg } from "@/lib/require-org";
-import { withAuth } from "@/modules/auth";
+import { requireOrg } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
 import { EndpointService } from "@/modules/endpoints/service";
 
 export const endpoints = new Elysia({ prefix: "/endpoints" })
-  .use(withAuth)
   .use(requireOrg)
   .post(
     "/",
