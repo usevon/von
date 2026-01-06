@@ -1,11 +1,21 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Button, ErrorIllustration } from "@usevon/ui";
 
-export default function NotFoundPage() {
+type ErrorProps = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
+
+export default function Error(props: ErrorProps) {
+  useEffect(() => {
+    console.error(props.error);
+  }, [props.error]);
+
   return (
     <div className="flex min-h-svh flex-col p-4">
       <Link href="/">
@@ -25,16 +35,16 @@ export default function NotFoundPage() {
         />
       </Link>
       <div className="flex flex-1 flex-col items-center justify-center">
-        <ErrorIllustration left="4" right="4" />
+        <ErrorIllustration left="5" right="0" />
         <div className="mt-8 flex flex-col items-center gap-4 text-center">
           <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
-            This one got away
+            Something went wrong
           </h1>
           <p className="max-w-md text-lg text-muted-foreground">
-            Von can deliver webhooks anywhere, but this page isn&apos;t one of the destinations.
+            An unexpected error occurred.
           </p>
-          <Button render={<Link href="/" />} size="lg" className="mt-4">
-            Go home
+          <Button onClick={props.reset} size="lg" className="mt-4">
+            Try again
           </Button>
         </div>
       </div>
