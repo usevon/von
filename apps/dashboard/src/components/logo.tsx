@@ -1,0 +1,67 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuTrigger,
+} from "@usevon/ui";
+
+export const Logo = () => {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={
+          <Link href="/">
+            <Image
+              src="/brand/von-wordmark-black.svg"
+              alt="Von"
+              width={80}
+              height={24}
+              className="h-6 w-auto dark:hidden"
+            />
+            <Image
+              src="/brand/von-wordmark-white.svg"
+              alt="Von"
+              width={80}
+              height={24}
+              className="hidden h-6 w-auto dark:block"
+            />
+          </Link>
+        }
+      />
+      <ContextMenuPopup>
+        <ContextMenuItem
+          render={
+            <a
+              href="https://usevon.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+          className="justify-between"
+        >
+          Go to Website
+          <ArrowSquareOutIcon className="size-4" />
+        </ContextMenuItem>
+        <ContextMenuItem
+          render={
+            <a
+              href="https://usevon.com/brand"
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+          className="justify-between"
+        >
+          Brand Kit
+          <ArrowSquareOutIcon className="size-4" />
+        </ContextMenuItem>
+      </ContextMenuPopup>
+    </ContextMenu>
+  );
+};
