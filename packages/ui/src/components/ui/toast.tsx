@@ -260,10 +260,77 @@ function AnchoredToasts() {
   );
 }
 
+type ToastPromiseOptions<T> = {
+  loading: string;
+  success: string | ((data: T) => string);
+  error: string | ((err: unknown) => string);
+};
+
+async function toastPromise<T>(
+  promise: Promise<T>,
+  options: ToastPromiseOptions<T>
+): Promise<T> {
+  const startTime = performance.now();
+
+  const toastId = toastManager.add({
+    title: options.loading,
+    type: "loading",
+    timeout: 0,
+  });
+
+  try {
+    const result = await promise;
+    const duration = Math.round(performance.now() - startTime);
+    const successMessage = typeof options.success === "function"
+      ? options.success(result)
+      : options.success;
+
+    toastManager.update(toastId, {
+      title: process.env.NODE_ENV === "development"
+        ? `${successMessage} (${duration}ms)`
+        : successMessage,
+      type: "success",
+      timeout: 4000,
+    });
+
+    return result;
+  } catch (err) {
+    const duration = Math.round(performance.now() - startTime);
+    const errorMessage = typeof options.error === "function"
+      ? options.error(err)
+      : options.error;
+
+    toastManager.update(toastId, {
+      title: process.env.NODE_ENV === "development"
+        ? `${errorMessage} (${duration}ms)`
+        : errorMessage,
+      type: "error",
+      timeout: 4000,
+    });
+
+    throw err;
+  }
+}
+
+const toast = {
+  success: (title: string, description?: string) =>
+    toastManager.add({ title, description, type: "success" }),
+  error: (title: string, description?: string) =>
+    toastManager.add({ title, description, type: "error" }),
+  info: (title: string, description?: string) =>
+    toastManager.add({ title, description, type: "info" }),
+  warning: (title: string, description?: string) =>
+    toastManager.add({ title, description, type: "warning" }),
+  loading: (title: string, description?: string) =>
+    toastManager.add({ title, description, type: "loading", timeout: 0 }),
+  promise: toastPromise,
+};
+
 export {
   ToastProvider,
   type ToastPosition,
   toastManager,
+  toast,
   AnchoredToastProvider,
   anchoredToastManager,
 };

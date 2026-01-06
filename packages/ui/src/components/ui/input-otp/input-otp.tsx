@@ -32,7 +32,8 @@ export const InputOTP = (props: InputOTPProps) => {
     return props.pattern;
   };
   const regexp = getRegexp();
-  const groupSize = props.groupSize ?? 4;
+  // groupSize of 0 or undefined means no grouping (all in one row)
+  const groupSize = props.groupSize || props.maxLength;
   const insertionPoint = Math.min(value.length, props.maxLength - 1);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {

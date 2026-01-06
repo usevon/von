@@ -47,6 +47,22 @@ function FieldError({ className, ...props }: FieldPrimitive.Error.Props) {
   );
 }
 
+type FieldMessageProps = {
+  className?: string;
+  children: React.ReactNode;
+};
+
+function FieldMessage({ className, children }: FieldMessageProps) {
+  return (
+    <p
+      className={cn("text-destructive-foreground text-xs", className)}
+      data-slot="field-message"
+    >
+      {children}
+    </p>
+  );
+}
+
 const FieldControl = FieldPrimitive.Control;
 const FieldValidity = FieldPrimitive.Validity;
 
@@ -55,6 +71,7 @@ export {
   FieldLabel,
   FieldDescription,
   FieldError,
+  FieldMessage,
   FieldControl,
   FieldValidity,
 };
