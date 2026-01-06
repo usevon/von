@@ -32,7 +32,7 @@ const authRequest = async <T>(
 		headers["Content-Type"] = "application/json";
 	}
 
-	const res = await fetch(`${config.apiUrl}${path}`, {
+	const res = await fetch(`${config.dashboardUrl}${path}`, {
 		method: options.method ?? "GET",
 		headers,
 		body: options.body ? JSON.stringify(options.body) : undefined,
@@ -60,7 +60,7 @@ export const pollDeviceToken = async (
 	clientId = "von-cli"
 ): Promise<DeviceTokenResponse> => {
 	const config = loadConfig();
-	const res = await fetch(`${config.apiUrl}/api/auth/device/token`, {
+	const res = await fetch(`${config.dashboardUrl}/api/auth/device/token`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({

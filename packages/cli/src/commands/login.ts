@@ -19,7 +19,7 @@ import {
   requestDeviceCode,
 } from "@/lib/api";
 import {
-  DEFAULT_API_URL,
+  DEFAULT_DASHBOARD_URL,
   DEFAULT_TUNNEL_URL,
   loadConfig,
   saveConfig,
@@ -29,12 +29,26 @@ import { selectAndSetOrganization } from "@/lib/org";
 
 export const login = new Command("login")
   .description("Authenticate with Von")
-  .option("-l, --local", "Use local development URLs (localhost:8080)")
-  .option("--api-url <url>", "Custom API URL")
+  .option("-l, --local", "Use local development URLs (localhost:3001)")
+  .option("--dashboard-url <url>", "Custom dashboard URL")
   .option("--tunnel-url <url>", "Custom tunnel URL")
   .option("-f, --force", "Force re-login even if already authenticated")
   .action(async (options) => {
     intro(pc.cyan("Von CLI Login"));
+
+    // Update URLs first before checking token
+    if (options.local) {
+      saveConfig({
+        dashboardUrl: "http://localhost:3001",
+        tunnelUrl: "http://localhost:8081",
+      });
+      log.info("Using local development URLs");
+    } else if (options.dashboardUrl) {
+      saveConfig({
+        dashboardUrl: options.dashboardUrl,
+        tunnelUrl: options.tunnelUrl || options.dashboardUrl,
+      });
+    }
 
     const config = loadConfig();
 
@@ -47,24 +61,14 @@ export const login = new Command("login")
       }
     }
 
-    if (options.local) {
-      saveConfig({
-        apiUrl: "http://localhost:8080",
-        tunnelUrl: "http://localhost:8081",
-      });
-      log.info("Using local development URLs");
-    } else if (options.apiUrl) {
-      saveConfig({
-        apiUrl: options.apiUrl,
-        tunnelUrl: options.tunnelUrl || options.apiUrl,
-      });
-    } else {
+    // If no URL options provided, prompt for instance type
+    if (!options.local && !options.dashboardUrl) {
       const instanceType = await select({
         message: "How are you connecting to Von?",
         options: [
           {
             value: "hosted",
-            label: "Hosted (api.usevon.com)",
+            label: "Hosted (app.usevon.com)",
             hint: "recommended",
           },
           { value: "self-hosted", label: "Self-hosted" },
@@ -78,16 +82,16 @@ export const login = new Command("login")
 
       if (instanceType === "hosted") {
         saveConfig({
-          apiUrl: DEFAULT_API_URL,
+          dashboardUrl: DEFAULT_DASHBOARD_URL,
           tunnelUrl: DEFAULT_TUNNEL_URL,
         });
       } else if (instanceType === "self-hosted") {
-        const apiUrl = await text({
-          message: "API URL:",
-          placeholder: "http://localhost:8080",
+        const dashboardUrl = await text({
+          message: "Dashboard URL:",
+          placeholder: "http://localhost:3001",
           validate: (v) => {
             if (!v) {
-              return "API URL is required";
+              return "Dashboard URL is required";
             }
             if (!v.startsWith("http")) {
               return "Must be a valid URL";
@@ -95,15 +99,14 @@ export const login = new Command("login")
           },
         });
 
-        if (isCancel(apiUrl)) {
+        if (isCancel(dashboardUrl)) {
           cancel("Login cancelled");
           process.exit(0);
         }
 
         const tunnelUrl = await text({
           message: "Tunnel URL:",
-          placeholder: "http://localhost:8080",
-          initialValue: apiUrl as string,
+          placeholder: "http://localhost:8081",
           validate: (v) => {
             if (!v) {
               return "Tunnel URL is required";
@@ -120,7 +123,7 @@ export const login = new Command("login")
         }
 
         saveConfig({
-          apiUrl: apiUrl as string,
+          dashboardUrl: dashboardUrl as string,
           tunnelUrl: tunnelUrl as string,
         });
       }

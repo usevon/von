@@ -49,7 +49,7 @@ export type TunnelInfo = {
 };
 
 export type VonConfig = {
-  apiUrl: string;
+  dashboardUrl: string;
   tunnelUrl: string;
   token?: string;
   organizationId?: string;

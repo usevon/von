@@ -17,11 +17,11 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 export const getConfigPath = (): string => CONFIG_FILE;
 
-export const DEFAULT_API_URL = "https://api.usevon.com";
+export const DEFAULT_DASHBOARD_URL = "https://app.usevon.com";
 export const DEFAULT_TUNNEL_URL = "https://tunnel.usevon.com";
 
 const DEFAULT_CONFIG: VonConfig = {
-  apiUrl: DEFAULT_API_URL,
+  dashboardUrl: DEFAULT_DASHBOARD_URL,
   tunnelUrl: DEFAULT_TUNNEL_URL,
 };
 
