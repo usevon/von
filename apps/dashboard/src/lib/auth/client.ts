@@ -1,8 +1,14 @@
 "use client";
 
-import { createAuthClient } from "@usevon/auth/client";
+import { organizationClient, deviceAuthorizationClient } from "better-auth/client/plugins";
+import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient();
+import { env } from "@/env";
+
+export const authClient = createAuthClient({
+  baseURL: env.NEXT_PUBLIC_AUTH_URL,
+  plugins: [organizationClient(), deviceAuthorizationClient()],
+});
 
 export const {
   useSession,
@@ -11,6 +17,5 @@ export const {
   signOut,
   deleteUser,
   organization,
-  apiKey,
   device,
 } = authClient;

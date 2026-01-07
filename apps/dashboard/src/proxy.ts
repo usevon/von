@@ -1,5 +1,7 @@
-import { COOKIE_PREFIX, getSessionCookie } from "@usevon/auth";
+import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
+
+import { COOKIE_PREFIX } from "@/lib/auth";
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -20,10 +22,12 @@ export const config = {
     /*
      * Match all routes except:
      * - _next (Next.js internals)
-     * - Static files (anything with an extension)
-     * - api (API routes including auth, live, etc.)
+     * - Static files (html, css, js, images, fonts, etc.)
+     * - api (API routes)
      * - auth (public auth pages)
+     * - onboarding (public onboarding)
+     * - favicon.ico
      */
-    "/((?!_next|api|auth|onboarding|.*\\.[\\w]+$).*)",
+    "/((?!_next|api|auth|onboarding|favicon\\.ico|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)$).*)",
   ],
 };
