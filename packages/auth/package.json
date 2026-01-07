@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@usevon/utils": "workspace:*",
-    "better-auth": "1.4.7",
+    "better-auth": "1.4.10",
     "zod": "^3.24.1"
   },
   "devDependencies": {
