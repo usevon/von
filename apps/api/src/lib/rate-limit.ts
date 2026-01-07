@@ -3,10 +3,17 @@ import { Elysia } from "elysia";
 
 const redis = getRedisClient();
 
+type RateLimitContext = {
+  request: Request;
+  set: { status?: number | string; headers: Record<string, string | number> };
+  userId?: string;
+};
+
 type RateLimitOptions = {
   windowMs: number;
   max: number;
   keyPrefix?: string;
+  getKey?: (ctx: RateLimitContext) => string | null;
 };
 
 export const getClientIp = (request: Request): string => {
@@ -23,15 +30,23 @@ export const getClientIp = (request: Request): string => {
   return "unknown";
 };
 
-export const rateLimit = (options: RateLimitOptions) => {
-  const { windowMs, max, keyPrefix = "ratelimit" } = options;
+const createRateLimiter = (options: RateLimitOptions) => {
+  const {
+    windowMs,
+    max,
+    keyPrefix = "ratelimit",
+    getKey = (ctx) => getClientIp(ctx.request),
+  } = options;
   const windowSeconds = Math.ceil(windowMs / 1000);
 
-  return new Elysia({ name: "rate-limit" })
-    .derive(async ({ request, set }) => {
-      const clientIp = getClientIp(request);
-      const key = `${keyPrefix}:${clientIp}`;
+  return new Elysia({ name: `rate-limit:${keyPrefix}` })
+    .derive(async (ctx: RateLimitContext) => {
+      const identifier = getKey(ctx);
+      if (!identifier) {
+        return { rateLimited: false };
+      }
 
+      const key = `${keyPrefix}:${identifier}`;
       const current = await redis.incr(key);
       if (current === 1) {
         await redis.expire(key, windowSeconds);
@@ -40,15 +55,15 @@ export const rateLimit = (options: RateLimitOptions) => {
       const remaining = Math.max(0, max - current);
       const ttl = await redis.ttl(key);
 
-      set.headers["X-RateLimit-Limit"] = String(max);
-      set.headers["X-RateLimit-Remaining"] = String(remaining);
-      set.headers["X-RateLimit-Reset"] = String(
+      ctx.set.headers["X-RateLimit-Limit"] = String(max);
+      ctx.set.headers["X-RateLimit-Remaining"] = String(remaining);
+      ctx.set.headers["X-RateLimit-Reset"] = String(
         Math.ceil(Date.now() / 1000) + ttl
       );
 
       if (current > max) {
-        set.status = 429;
-        set.headers["Retry-After"] = String(ttl);
+        ctx.set.status = 429;
+        ctx.set.headers["Retry-After"] = String(ttl);
         return { rateLimited: true };
       }
 
@@ -61,53 +76,14 @@ export const rateLimit = (options: RateLimitOptions) => {
     });
 };
 
-export const userRateLimit = (options: RateLimitOptions) => {
-  const { windowMs, max, keyPrefix = "rl:user" } = options;
-  const windowSeconds = Math.ceil(windowMs / 1000);
+export const rateLimit = (
+  options: Omit<RateLimitOptions, "getKey">
+) => createRateLimiter(options);
 
-  return new Elysia({ name: "user-rate-limit" })
-    .derive(
-      async ({
-        set,
-        userId,
-      }: {
-        set: {
-          status?: number | string;
-          headers: Record<string, string | number>;
-        };
-        userId?: string;
-      }) => {
-        if (!userId) {
-          return { userRateLimited: false };
-        }
-
-        const key = `${keyPrefix}:${userId}`;
-        const current = await redis.incr(key);
-        if (current === 1) {
-          await redis.expire(key, windowSeconds);
-        }
-
-        const remaining = Math.max(0, max - current);
-        const ttl = await redis.ttl(key);
-
-        set.headers["X-RateLimit-Limit"] = String(max);
-        set.headers["X-RateLimit-Remaining"] = String(remaining);
-        set.headers["X-RateLimit-Reset"] = String(
-          Math.ceil(Date.now() / 1000) + ttl
-        );
-
-        if (current > max) {
-          set.status = 429;
-          set.headers["Retry-After"] = String(ttl);
-          return { userRateLimited: true };
-        }
-
-        return { userRateLimited: false };
-      }
-    )
-    .onBeforeHandle(({ userRateLimited }) => {
-      if (userRateLimited) {
-        return { error: "Too many requests. Please try again later." };
-      }
-    });
-};
+export const userRateLimit = (
+  options: Omit<RateLimitOptions, "getKey">
+) => createRateLimiter({
+  ...options,
+  keyPrefix: options.keyPrefix ?? "rl:user",
+  getKey: (ctx) => ctx.userId ?? null,
+});
