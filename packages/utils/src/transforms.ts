@@ -1,13 +1,22 @@
-export const toISODates = <T extends { createdAt: Date; updatedAt?: Date }>(
+type DateToString<T> = {
+  [K in keyof T]: T[K] extends Date
+    ? string
+    : T[K] extends Date | null
+      ? string | null
+      : T[K];
+};
+
+export const toISODates = <T extends Record<string, unknown>>(
   row: T
-): Omit<T, "createdAt" | "updatedAt"> & {
-  createdAt: string;
-  updatedAt?: string;
-} => ({
-  ...row,
-  createdAt: row.createdAt.toISOString(),
-  ...(row.updatedAt && { updatedAt: row.updatedAt.toISOString() }),
-});
+): DateToString<T> => {
+  const result = { ...row } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(result)) {
+    if (value instanceof Date) {
+      result[key] = value.toISOString();
+    }
+  }
+  return result as DateToString<T>;
+};
 
 export type TransformMappings = {
   rename?: Record<string, string>;
