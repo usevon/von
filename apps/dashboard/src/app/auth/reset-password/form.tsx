@@ -19,23 +19,27 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
       password: "",
     },
     onSubmit: async ({ value }) => {
-      if (!props.token) {
-        toast.error("Invalid or expired reset link");
-        return;
+      try {
+        if (!props.token) {
+          toast.error("Invalid or expired reset link");
+          return;
+        }
+
+        const { data, showSuccess, showError } = await toast.timed(
+          () => authClient.resetPassword({ newPassword: value.password, token: props.token }),
+          { loading: "Resetting password..." }
+        );
+
+        if (data.error) {
+          showError(data.error.message || "Invalid or expired reset link");
+          return;
+        }
+
+        showSuccess("Password reset successfully!");
+        router.push("/auth/login");
+      } catch {
+        toast.error("Something went wrong");
       }
-
-      const { error } = await authClient.resetPassword({
-        newPassword: value.password,
-        token: props.token,
-      });
-
-      if (error) {
-        toast.error(error.message || "Invalid or expired reset link");
-        return;
-      }
-
-      toast.success("Password reset successfully!");
-      router.push("/auth/login");
     },
   });
 
@@ -78,14 +82,18 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-        {([canSubmit, isSubmitting]) => (
+      <form.Subscribe selector={(state) => ({
+        canSubmit: state.canSubmit,
+        isSubmitting: state.isSubmitting,
+        password: state.values.password,
+      })}>
+        {(state) => (
           <Button
             className="w-full"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!state.canSubmit || !state.password || state.isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Resetting..." : "Reset password"}
+            {state.isSubmitting ? "Resetting..." : "Reset password"}
           </Button>
         )}
       </form.Subscribe>

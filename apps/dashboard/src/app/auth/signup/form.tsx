@@ -21,19 +21,22 @@ export const SignupForm = (props: SignupFormProps) => {
       password: "",
     },
     onSubmit: async ({ value }) => {
-      const { error } = await signUp.email({
-        name: value.name,
-        email: value.email,
-        password: value.password,
-      });
+      try {
+        const { data, showSuccess, showError } = await toast.timed(
+          () => signUp.email({ name: value.name, email: value.email, password: value.password }),
+          { loading: "Creating account..." }
+        );
 
-      if (error) {
-        toast.error(error.message || "Failed to create account");
-        return;
+        if (data.error) {
+          showError(data.error.message || "Failed to create account");
+          return;
+        }
+
+        showSuccess("Account created!");
+        router.push(props.redirectTo || "/");
+      } catch {
+        toast.error("Something went wrong");
       }
-
-      toast.success("Account created!");
-      router.push(props.redirectTo || "/");
     },
   });
 
@@ -137,14 +140,20 @@ export const SignupForm = (props: SignupFormProps) => {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-        {([canSubmit, isSubmitting]) => (
+      <form.Subscribe selector={(state) => ({
+        canSubmit: state.canSubmit,
+        isSubmitting: state.isSubmitting,
+        name: state.values.name,
+        email: state.values.email,
+        password: state.values.password,
+      })}>
+        {(state) => (
           <Button
             className="w-full"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!state.canSubmit || !state.name || !state.email || !state.password || state.isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Creating account..." : "Create account"}
+            {state.isSubmitting ? "Creating account..." : "Create account"}
           </Button>
         )}
       </form.Subscribe>

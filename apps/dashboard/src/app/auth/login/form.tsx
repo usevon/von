@@ -21,18 +21,22 @@ export const LoginForm = (props: LoginFormProps) => {
       password: "",
     },
     onSubmit: async ({ value }) => {
-      const { error } = await signIn.email({
-        email: value.email,
-        password: value.password,
-      });
+      try {
+        const { data, showSuccess, showError } = await toast.timed(
+          () => signIn.email({ email: value.email, password: value.password }),
+          { loading: "Signing in..." }
+        );
 
-      if (error) {
-        toast.error(error.message || "Invalid credentials");
-        return;
+        if (data.error) {
+          showError(data.error.message || "Invalid credentials");
+          return;
+        }
+
+        showSuccess("Welcome back!");
+        router.push(props.redirectTo || "/");
+      } catch {
+        toast.error("Something went wrong");
       }
-
-      toast.success("Welcome back!");
-      router.push(props.redirectTo || "/");
     },
   });
 
@@ -115,14 +119,19 @@ export const LoginForm = (props: LoginFormProps) => {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-        {([canSubmit, isSubmitting]) => (
+      <form.Subscribe selector={(state) => ({
+        canSubmit: state.canSubmit,
+        isSubmitting: state.isSubmitting,
+        email: state.values.email,
+        password: state.values.password,
+      })}>
+        {(state) => (
           <Button
             className="w-full"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!state.canSubmit || !state.email || !state.password || state.isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Signing in..." : "Sign in"}
+            {state.isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         )}
       </form.Subscribe>

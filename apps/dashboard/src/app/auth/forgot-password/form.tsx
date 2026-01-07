@@ -12,17 +12,21 @@ export const ForgotPasswordForm = () => {
       email: "",
     },
     onSubmit: async ({ value }) => {
-      const { error } = await authClient.requestPasswordReset({
-        email: value.email,
-        redirectTo: "/auth/reset-password",
-      });
+      try {
+        const { data, showSuccess, showError } = await toast.timed(
+          () => authClient.requestPasswordReset({ email: value.email, redirectTo: "/auth/reset-password" }),
+          { loading: "Sending reset link..." }
+        );
 
-      if (error) {
-        toast.error(error.message || "Failed to send reset link");
-        return;
+        if (data.error) {
+          showError(data.error.message || "Failed to send reset link");
+          return;
+        }
+
+        showSuccess("If an account exists, you'll receive a reset link");
+      } catch {
+        toast.error("Something went wrong");
       }
-
-      toast.success("If an account exists, you'll receive a reset link");
     },
   });
 
@@ -65,14 +69,18 @@ export const ForgotPasswordForm = () => {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-        {([canSubmit, isSubmitting]) => (
+      <form.Subscribe selector={(state) => ({
+        canSubmit: state.canSubmit,
+        isSubmitting: state.isSubmitting,
+        email: state.values.email,
+      })}>
+        {(state) => (
           <Button
             className="w-full"
-            disabled={!canSubmit || isSubmitting}
+            disabled={!state.canSubmit || !state.email || state.isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Sending..." : "Send reset link"}
+            {state.isSubmitting ? "Sending..." : "Send reset link"}
           </Button>
         )}
       </form.Subscribe>
