@@ -183,7 +183,6 @@
       "name": "@usevon/auth",
       "version": "0.2.1",
       "dependencies": {
-        "@usevon/db": "workspace:*",
         "@usevon/utils": "workspace:*",
         "better-auth": "1.4.7",
         "zod": "^3.24.1",
@@ -194,9 +193,6 @@
         "@usevon/typescript-config": "workspace:*",
         "tsdown": "^0.12.9",
         "typescript": "^5.7.2",
-      },
-      "peerDependencies": {
-        "drizzle-orm": ">=0.44.0",
       },
     },
     "packages/cli": {
