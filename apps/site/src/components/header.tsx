@@ -50,12 +50,13 @@ export const Header = () => {
           <ContextMenu>
             <ContextMenuTrigger
               render={
-                <Link href="/" className="no-underline">
+                <Link href="/" className="flex h-7 w-20 items-center no-underline">
                   <Image
                     src="/brand/von-wordmark-black.svg"
                     alt="Von"
                     width={80}
                     height={28}
+                    priority
                     className="h-7 w-auto dark:hidden"
                   />
                   <Image
@@ -63,6 +64,7 @@ export const Header = () => {
                     alt="Von"
                     width={80}
                     height={28}
+                    priority
                     className="hidden h-7 w-auto dark:block"
                   />
                 </Link>

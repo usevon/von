@@ -16,20 +16,22 @@ export const Header = () => {
           <ContextMenu>
             <ContextMenuTrigger
               render={
-                <Link href="/" className="no-underline">
+                <Link href="/" className="flex h-6 w-20 items-center no-underline">
                   <Image
                     src="/brand/von-wordmark-black.svg"
                     alt="Von"
-                    width={60}
-                    height={20}
-                    className="h-5 w-auto dark:hidden"
+                    width={80}
+                    height={24}
+                    priority
+                    className="h-6 w-auto dark:hidden"
                   />
                   <Image
                     src="/brand/von-wordmark-white.svg"
                     alt="Von"
-                    width={60}
-                    height={20}
-                    className="hidden h-5 w-auto dark:block"
+                    width={80}
+                    height={24}
+                    priority
+                    className="hidden h-6 w-auto dark:block"
                   />
                 </Link>
               }
