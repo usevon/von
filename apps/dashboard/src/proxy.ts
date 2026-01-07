@@ -1,4 +1,4 @@
-import { getSessionCookie } from "better-auth/cookies";
+import { getSessionCookie } from "@usevon/auth";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { COOKIE_PREFIX } from "@/lib/auth";

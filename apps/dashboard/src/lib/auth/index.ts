@@ -5,10 +5,14 @@
  * API keys, device authorization, and database hooks.
  */
 
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { betterAuth } from "better-auth/minimal";
-import { bearer, deviceAuthorization, organization } from "better-auth/plugins";
-import { apiKey } from "@usevon/auth";
+import {
+  apiKey,
+  bearer,
+  betterAuth,
+  deviceAuthorization,
+  drizzleAdapter,
+  organization,
+} from "@usevon/auth";
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 

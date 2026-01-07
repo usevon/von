@@ -1,7 +1,10 @@
 "use client";
 
-import { organizationClient, deviceAuthorizationClient } from "better-auth/client/plugins";
-import { createAuthClient } from "better-auth/react";
+import {
+  createAuthClient,
+  deviceAuthorizationClient,
+  organizationClient,
+} from "@usevon/auth/client";
 
 import { env } from "@/env";
 
