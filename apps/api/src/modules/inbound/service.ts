@@ -17,11 +17,6 @@ const CACHE_TTL = 300; // 5 minutes
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
 
-const toInboundEndpoint = (
-  e: InboundEndpointRow
-): InboundModel.inboundEndpoint =>
-  toISODates(e) as InboundModel.inboundEndpoint;
-
 type CreateInboundEndpointParams = {
   organizationId: string;
   name?: string;
@@ -83,7 +78,7 @@ export abstract class InboundService {
       if (!result[0]) {
         throw new Error("Failed to create inbound endpoint");
       }
-      return toInboundEndpoint(result[0]);
+      return toISODates(result[0]) as InboundModel.inboundEndpoint;
     }, "creating inbound endpoint");
   }
 
@@ -105,7 +100,7 @@ export abstract class InboundService {
           eq(inboundEndpoint.organizationId, organizationId)
         ),
       ]);
-      return { endpoints: endpoints.map(toInboundEndpoint), total };
+      return { endpoints: endpoints.map((e) => toISODates(e) as InboundModel.inboundEndpoint), total };
     }, "fetching inbound endpoints");
   }
 
@@ -125,7 +120,7 @@ export abstract class InboundService {
         )
         .limit(1);
 
-      return result[0] ? toInboundEndpoint(result[0]) : null;
+      return result[0] ? toISODates(result[0]) as InboundModel.inboundEndpoint : null;
     }, "fetching inbound endpoint");
   }
 
@@ -200,7 +195,7 @@ export abstract class InboundService {
         throw new Error("Failed to update inbound endpoint");
       }
       await redis.del(`inbound:${params.endpointId}`);
-      return toInboundEndpoint(result[0]);
+      return toISODates(result[0]) as InboundModel.inboundEndpoint;
     }, "updating inbound endpoint");
   }
 

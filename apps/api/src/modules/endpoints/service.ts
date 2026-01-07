@@ -31,9 +31,6 @@ type UpdateEndpointParams = Partial<EndpointFields> & {
   endpointId: string;
 };
 
-const toEndpoint = (e: typeof endpoint.$inferSelect): EndpointModel.endpoint =>
-  toISODates(e) as EndpointModel.endpoint;
-
 type EndpointRow = typeof endpoint.$inferSelect;
 
 const buildUpdateSet = (
@@ -85,7 +82,7 @@ export abstract class EndpointService {
       if (params.enabled !== false) {
         await redis.del(`endpoints:${params.organizationId}`);
       }
-      return toEndpoint(result[0]);
+      return toISODates(result[0]) as EndpointModel.endpoint;
     }, "creating endpoint");
   }
 
@@ -104,7 +101,7 @@ export abstract class EndpointService {
           .offset(offset),
         db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
       ]);
-      return { endpoints: endpoints.map(toEndpoint), total };
+      return { endpoints: endpoints.map((e) => toISODates(e) as EndpointModel.endpoint), total };
     }, "fetching endpoints");
   }
 
@@ -124,7 +121,7 @@ export abstract class EndpointService {
         )
         .limit(1);
 
-      return result[0] ? toEndpoint(result[0]) : null;
+      return result[0] ? toISODates(result[0]) as EndpointModel.endpoint : null;
     }, "fetching endpoint");
   }
 
@@ -166,7 +163,7 @@ export abstract class EndpointService {
       if (existing[0].enabled || params.enabled !== undefined) {
         await redis.del(`endpoints:${params.organizationId}`);
       }
-      return toEndpoint(result[0]);
+      return toISODates(result[0]) as EndpointModel.endpoint;
     }, "updating endpoint");
   }
 

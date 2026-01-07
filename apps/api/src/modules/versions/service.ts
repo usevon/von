@@ -16,19 +16,6 @@ type UpdateVersionParams = Pick<VersionFields, "transforms"> & {
   version: string;
 };
 
-const toVersion = (
-  v: typeof webhookVersion.$inferSelect
-): VersionModel.webhookVersion => {
-  const dates = toISODates(v);
-  return {
-    id: v.id,
-    version: v.version,
-    transforms: v.transforms as Transforms,
-    createdAt: dates.createdAt,
-    updatedAt: dates.updatedAt ?? dates.createdAt,
-  };
-};
-
 export abstract class VersionService {
   static create(
     params: CreateVersionParams
@@ -51,7 +38,7 @@ export abstract class VersionService {
       if (!result[0]) {
         throw new Error("Failed to create version");
       }
-      return toVersion(result[0]);
+      return toISODates(result[0]) as VersionModel.webhookVersion;
     }, "creating version");
   }
 
@@ -73,7 +60,7 @@ export abstract class VersionService {
           eq(webhookVersion.organizationId, organizationId)
         ),
       ]);
-      return { versions: versions.map(toVersion), total };
+      return { versions: versions.map((v) => toISODates(v) as VersionModel.webhookVersion), total };
     }, "fetching versions");
   }
 
@@ -93,7 +80,7 @@ export abstract class VersionService {
         )
         .limit(1);
 
-      return result[0] ? toVersion(result[0]) : null;
+      return result[0] ? toISODates(result[0]) as VersionModel.webhookVersion : null;
     }, "fetching version");
   }
 
@@ -128,7 +115,7 @@ export abstract class VersionService {
       if (!result[0]) {
         throw new Error("Failed to update version");
       }
-      return toVersion(result[0]);
+      return toISODates(result[0]) as VersionModel.webhookVersion;
     }, "updating version");
   }
 
