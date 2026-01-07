@@ -44,7 +44,6 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.17",
-    "tsdown": "^0.16.8",
-    "typescript": "^5.7.2"
+    "tsdown": "^0.16.8"
   }
 }

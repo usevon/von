@@ -28,7 +28,6 @@
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@usevon/typescript-config": "workspace:*",
-    "drizzle-kit": "^0.31.7",
-    "typescript": "^5.7.2"
+    "drizzle-kit": "^0.31.7"
   }
 }

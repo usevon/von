@@ -44,8 +44,7 @@
     "@usevon/api": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
     "@usevon/utils": "workspace:*",
-    "tsdown": "^0.12.9",
-    "typescript": "^5.7.2"
+    "tsdown": "^0.12.9"
   },
   "publishConfig": {
     "access": "public"
