@@ -1,6 +1,6 @@
 {
   "name": "@usevon/cli",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "CLI for Von webhooks",
   "license": "MIT",
   "author": "usevon",
