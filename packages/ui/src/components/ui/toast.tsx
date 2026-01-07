@@ -312,6 +312,46 @@ async function toastPromise<T>(
   }
 }
 
+type ToastTimedOptions = {
+  loading?: string;
+};
+
+async function toastTimed<T>(
+  fn: () => Promise<T>,
+  options?: ToastTimedOptions
+): Promise<{ data: T; duration: number; showSuccess: (title: string) => void; showError: (title: string) => void }> {
+  const startTime = performance.now();
+
+  const toastId = options?.loading
+    ? toastManager.add({ title: options.loading, type: "loading", timeout: 0 })
+    : null;
+
+  const data = await fn();
+  const duration = Math.round(performance.now() - startTime);
+  const isDev = process.env.NODE_ENV === "development";
+
+  return {
+    data,
+    duration,
+    showSuccess: (title: string) => {
+      const message = isDev ? `${title} (${duration}ms)` : title;
+      if (toastId) {
+        toastManager.update(toastId, { title: message, type: "success", timeout: 4000 });
+      } else {
+        toastManager.add({ title: message, type: "success" });
+      }
+    },
+    showError: (title: string) => {
+      const message = isDev ? `${title} (${duration}ms)` : title;
+      if (toastId) {
+        toastManager.update(toastId, { title: message, type: "error", timeout: 4000 });
+      } else {
+        toastManager.add({ title: message, type: "error" });
+      }
+    },
+  };
+}
+
 const toast = {
   success: (title: string, description?: string) =>
     toastManager.add({ title, description, type: "success" }),
@@ -324,6 +364,7 @@ const toast = {
   loading: (title: string, description?: string) =>
     toastManager.add({ title, description, type: "loading", timeout: 0 }),
   promise: toastPromise,
+  timed: toastTimed,
 };
 
 export {
