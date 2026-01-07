@@ -7,7 +7,7 @@ import {
 } from "@usevon/auth";
 import { db } from "@usevon/db";
 import { getRedisClient } from "@usevon/queue";
-import { BadRequestError } from "@usevon/utils";
+import { UnauthorizedError } from "@usevon/utils";
 import { Elysia } from "elysia";
 
 import { env } from "@/env";
@@ -71,7 +71,7 @@ export const requireOrg = new Elysia({ name: "require-org" })
       };
     }
 
-    throw new BadRequestError("Authentication required");
+    throw new UnauthorizedError("Please sign in or provide a valid API key.");
   });
 
 export { auth };
