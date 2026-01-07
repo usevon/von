@@ -43,9 +43,10 @@ export type CreateAuthOptions = {
   trustedOrigins?: string[];
   deviceVerificationUri?: string;
   /**
-   * Secondary storage for API key caching (Redis).
+   * Secondary storage for API key caching and rate limiting (Redis).
    * Enables faster API key lookups by caching in Redis with DB fallback.
-   * If not provided, uses database-only storage.
+   * Also used for distributed rate limiting across multiple instances.
+   * If not provided, uses database-only storage for API keys and memory for rate limiting.
    */
   secondaryStorage?: SecondaryStorage;
   /**
@@ -74,7 +75,19 @@ export const createAuth = (db: Database, options: CreateAuthOptions) =>
       enabled: true,
       window: 60,
       max: 100,
-      storage: "memory",
+      ...(options.secondaryStorage
+        ? {
+            customStorage: {
+              get: async (key) => {
+                const value = await options.secondaryStorage!.get(key);
+                return value ? JSON.parse(value) : null;
+              },
+              set: async (key, value) => {
+                await options.secondaryStorage!.set(key, JSON.stringify(value), 60);
+              },
+            },
+          }
+        : { storage: "memory" }),
     },
     emailAndPassword: {
       enabled: true,
