@@ -7,23 +7,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.js"
     }
   },
   "scripts": {
     "build": "bun run tsdown"
   },
   "dependencies": {
-    "@usevon/db": "workspace:*",
     "@usevon/utils": "workspace:*",
     "better-auth": "1.4.7",
     "zod": "^3.24.1"
-  },
-  "peerDependencies": {
-    "drizzle-orm": ">=0.44.0"
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.2",

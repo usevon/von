@@ -55,7 +55,7 @@ export const apiKey = (options?: ApiKeyOptions) => {
   const opts: ResolvedApiKeyOptions = {
     storage: options?.storage ?? "database",
     fallbackToDatabase: options?.fallbackToDatabase ?? false,
-    customStorage: options?.customStorage,
+    secondaryStorage: options?.secondaryStorage,
     signingSecret: options?.signingSecret,
   };
 

@@ -2,14 +2,10 @@ export type ApiKeyOptions = {
   signingSecret?: string;
   storage?: "database" | "secondary-storage";
   fallbackToDatabase?: boolean;
-  customStorage?: {
-    get: (key: string) => Promise<unknown> | unknown;
-    set: (
-      key: string,
-      value: string,
-      ttl?: number
-    ) => Promise<undefined | null | unknown> | undefined;
-    delete: (key: string) => Promise<undefined | null | string> | undefined;
+  secondaryStorage?: {
+    get: (key: string) => Promise<string | null> | string | null;
+    set: (key: string, value: string, ttl?: number) => Promise<void> | void;
+    delete: (key: string) => Promise<void> | void;
   };
 };
 
@@ -31,5 +27,5 @@ export type ResolvedApiKeyOptions = {
   signingSecret?: string;
   storage: "database" | "secondary-storage";
   fallbackToDatabase: boolean;
-  customStorage?: ApiKeyOptions["customStorage"];
+  secondaryStorage?: ApiKeyOptions["secondaryStorage"];
 };

@@ -1,13 +1,9 @@
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
 export type SecondaryStorage = {
-  get: (key: string) => Promise<unknown> | unknown;
-  set: (
-    key: string,
-    value: string,
-    ttl?: number
-  ) => Promise<undefined | null | unknown> | undefined;
-  delete: (key: string) => Promise<undefined | null | string> | undefined;
+  get: (key: string) => Promise<string | null> | string | null;
+  set: (key: string, value: string, ttl?: number) => Promise<void> | void;
+  delete: (key: string) => Promise<void> | void;
 };
 
 type AuthContext = {
@@ -65,8 +61,8 @@ function getStorageInstance(
   ctx: GenericEndpointContext,
   opts: ResolvedApiKeyOptions
 ): SecondaryStorage | null {
-  if (opts.customStorage) {
-    return opts.customStorage as SecondaryStorage;
+  if (opts.secondaryStorage) {
+    return opts.secondaryStorage as SecondaryStorage;
   }
   return ctx.context.secondaryStorage || null;
 }
