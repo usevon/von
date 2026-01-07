@@ -21,9 +21,9 @@ export const config = {
      * Match all routes except:
      * - _next (Next.js internals)
      * - Static files (anything with an extension)
-     * - api/auth (better-auth callbacks)
+     * - api (API routes including auth, live, etc.)
      * - auth (public auth pages)
      */
-    "/((?!_next|api/auth|auth|onboarding|.*\\.[\\w]+$).*)",
+    "/((?!_next|api|auth|onboarding|.*\\.[\\w]+$).*)",
   ],
 };
