@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldLabel, FieldMessage, FieldDescription, Form, Input, toast } from "@usevon/ui";
+import { Form, toast } from "@usevon/ui";
 
+import { TextField, SubmitButton, validators } from "@/components/form";
 import { signUp } from "@/lib/auth/client";
 
 type SignupFormProps = {
@@ -49,94 +50,49 @@ export const SignupForm = (props: SignupFormProps) => {
     >
       <form.Field
         name="name"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value) return "Name is required";
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.required("Name is required") }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>Name</FieldLabel>
-            <Input
-              autoComplete="name"
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="Name"
-              type="text"
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="Name"
+            placeholder="Name"
+            autoComplete="name"
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
       <form.Field
         name="email"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value) return "Email is required";
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-              return "Please enter a valid email address";
-            }
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.compose(validators.required("Email is required"), validators.email()) }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>Email</FieldLabel>
-            <Input
-              autoComplete="email"
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="Email"
-              type="email"
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="Email"
+            placeholder="Email"
+            type="email"
+            autoComplete="email"
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
       <form.Field
         name="password"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value) return "Password is required";
-            if (value.length < 8) return "Password must be at least 8 characters";
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.compose(validators.required("Password is required"), validators.minLength(8, "Password must be at least 8 characters")) }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>Password</FieldLabel>
-            <Input
-              autoComplete="new-password"
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="••••••••"
-              type="password"
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            ) : (
-              <FieldDescription>Must be at least 8 characters</FieldDescription>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="Password"
+            description="Must be at least 8 characters"
+            placeholder="••••••••"
+            type="password"
+            autoComplete="new-password"
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
@@ -148,13 +104,15 @@ export const SignupForm = (props: SignupFormProps) => {
         password: state.values.password,
       })}>
         {(state) => (
-          <Button
+          <SubmitButton
             className="w-full"
-            disabled={!state.canSubmit || !state.name || !state.email || !state.password || state.isSubmitting}
-            type="submit"
+            canSubmit={state.canSubmit}
+            isSubmitting={state.isSubmitting}
+            hasEmptyFields={!state.name || !state.email || !state.password}
+            loadingText="Creating account..."
           >
-            {state.isSubmitting ? "Creating account..." : "Create account"}
-          </Button>
+            Create account
+          </SubmitButton>
         )}
       </form.Subscribe>
     </Form>

@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldLabel, FieldMessage, FieldDescription, Form, Input, toast } from "@usevon/ui";
+import { Form, toast } from "@usevon/ui";
 
+import { TextField, SubmitButton, validators } from "@/components/form";
 import { authClient } from "@/lib/auth/client";
 
 type ResetPasswordFormProps = {
@@ -52,33 +53,18 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
     >
       <form.Field
         name="password"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value) return "Password is required";
-            if (value.length < 8) return "Password must be at least 8 characters";
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.compose(validators.required("Password is required"), validators.minLength(8, "Password must be at least 8 characters")) }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>New password</FieldLabel>
-            <Input
-              autoComplete="new-password"
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="••••••••"
-              type="password"
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            ) : (
-              <FieldDescription>Must be at least 8 characters</FieldDescription>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="New password"
+            description="Must be at least 8 characters"
+            placeholder="••••••••"
+            type="password"
+            autoComplete="new-password"
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
@@ -88,13 +74,15 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
         password: state.values.password,
       })}>
         {(state) => (
-          <Button
+          <SubmitButton
             className="w-full"
-            disabled={!state.canSubmit || !state.password || state.isSubmitting}
-            type="submit"
+            canSubmit={state.canSubmit}
+            isSubmitting={state.isSubmitting}
+            hasEmptyFields={!state.password}
+            loadingText="Resetting..."
           >
-            {state.isSubmitting ? "Resetting..." : "Reset password"}
-          </Button>
+            Reset password
+          </SubmitButton>
         )}
       </form.Subscribe>
     </Form>

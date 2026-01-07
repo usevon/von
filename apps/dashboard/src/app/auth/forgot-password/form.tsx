@@ -2,8 +2,9 @@
 
 import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldLabel, FieldMessage, Form, Input, toast } from "@usevon/ui";
+import { Form, toast } from "@usevon/ui";
 
+import { TextField, SubmitButton, validators } from "@/components/form";
 import { authClient } from "@/lib/auth/client";
 
 export const ForgotPasswordForm = () => {
@@ -39,33 +40,17 @@ export const ForgotPasswordForm = () => {
     >
       <form.Field
         name="email"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value) return "Email is required";
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-              return "Please enter a valid email address";
-            }
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.compose(validators.required("Email is required"), validators.email()) }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>Email</FieldLabel>
-            <Input
-              autoComplete="email"
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="Email"
-              type="email"
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="Email"
+            placeholder="Email"
+            type="email"
+            autoComplete="email"
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
@@ -75,13 +60,15 @@ export const ForgotPasswordForm = () => {
         email: state.values.email,
       })}>
         {(state) => (
-          <Button
+          <SubmitButton
             className="w-full"
-            disabled={!state.canSubmit || !state.email || state.isSubmitting}
-            type="submit"
+            canSubmit={state.canSubmit}
+            isSubmitting={state.isSubmitting}
+            hasEmptyFields={!state.email}
+            loadingText="Sending..."
           >
-            {state.isSubmitting ? "Sending..." : "Send reset link"}
-          </Button>
+            Send reset link
+          </SubmitButton>
         )}
       </form.Subscribe>
     </Form>
