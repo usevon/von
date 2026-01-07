@@ -1,5 +1,5 @@
 import { Logo } from "@/components/logo";
-import { DeviceForm } from "@/app/device/form";
+import { DeviceForm } from "./form";
 
 type DevicePageProps = {
   searchParams: Promise<{ user_code?: string; code?: string }>;
