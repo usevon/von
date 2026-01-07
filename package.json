@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "turbo dev",
+    "dev:app": "turbo dev --filter=@usevon/dashboard",
     "dev:site": "turbo dev --filter=@usevon/site",
     "dev:docs": "turbo dev --filter=@usevon/docs",
     "dev:api": "turbo dev --filter=@usevon/api --filter=@usevon/worker",
