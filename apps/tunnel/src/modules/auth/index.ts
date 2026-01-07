@@ -1,7 +1,10 @@
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { betterAuth } from "better-auth/minimal";
-import { bearer, organization } from "better-auth/plugins";
-import { apiKey } from "@usevon/auth";
+import {
+  apiKey,
+  bearer,
+  betterAuth,
+  drizzleAdapter,
+  organization,
+} from "@usevon/auth";
 import { db } from "@usevon/db";
 import { getRedisClient } from "@usevon/queue";
 import { UnauthorizedError } from "@usevon/utils";
