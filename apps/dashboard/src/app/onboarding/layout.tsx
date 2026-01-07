@@ -16,9 +16,9 @@ export default async function OnboardingLayout(props: OnboardingLayoutProps) {
     redirect("/auth/login");
   }
 
-  const orgs = await (auth.api as any).listOrganizations({
+  const orgs = await auth.api.listOrganizations({
     headers: await headers(),
-  }) as { id: string }[] | null;
+  });
 
   if (orgs && orgs.length > 0) {
     redirect("/");

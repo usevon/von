@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldLabel, FieldMessage, FieldDescription, Form, Input, toast } from "@usevon/ui";
+import { Form, toast } from "@usevon/ui";
 
+import { TextField, SubmitButton, validators } from "@/components/form";
 import { organization } from "@/lib/auth/client";
 
 const generateSlug = (name: string) => {
@@ -52,33 +53,18 @@ export const OnboardingForm = () => {
     >
       <form.Field
         name="name"
-        validators={{
-          onChange: ({ value }) => {
-            if (!value.trim()) return "Team name is required";
-            if (value.trim().length < 4) return "Team name must be at least 4 characters";
-            return undefined;
-          },
-        }}
+        validators={{ onChange: validators.minLength(4, "Team name must be at least 4 characters") }}
       >
         {(field) => (
-          <Field invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel>Team name</FieldLabel>
-            <Input
-              autoComplete="organization"
-              autoFocus
-              disabled={form.state.isSubmitting}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="Acme Inc."
-              value={field.state.value}
-            />
-            {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
-              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
-            ) : (
-              <FieldDescription>Must be at least 4 characters</FieldDescription>
-            )}
-          </Field>
+          <TextField
+            field={field}
+            label="Team name"
+            description="Must be at least 4 characters"
+            placeholder="Acme Inc."
+            autoComplete="organization"
+            autoFocus
+            disabled={form.state.isSubmitting}
+          />
         )}
       </form.Field>
 
@@ -88,13 +74,15 @@ export const OnboardingForm = () => {
         name: state.values.name,
       })}>
         {(state) => (
-          <Button
+          <SubmitButton
             className="w-full"
-            disabled={!state.canSubmit || !state.name.trim() || state.name.trim().length < 4 || state.isSubmitting}
-            type="submit"
+            canSubmit={state.canSubmit}
+            isSubmitting={state.isSubmitting}
+            hasEmptyFields={!state.name.trim() || state.name.trim().length < 4}
+            loadingText="Creating team..."
           >
-            {state.isSubmitting ? "Creating team..." : "Create team"}
-          </Button>
+            Create team
+          </SubmitButton>
         )}
       </form.Subscribe>
     </Form>
