@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "better-auth";
+import type { BetterAuthPlugin } from "better-auth/minimal";
 import { hmacSign } from "@/plugins/api-key/crypto";
 import { createApiKeyRoutes } from "@/plugins/api-key/routes";
 import { apiKeySchema } from "@/plugins/api-key/schema";

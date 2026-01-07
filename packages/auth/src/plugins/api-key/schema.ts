@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "better-auth";
+import type { BetterAuthPlugin } from "better-auth/minimal";
 
 type BetterAuthPluginDBSchema = NonNullable<BetterAuthPlugin["schema"]>;
 
