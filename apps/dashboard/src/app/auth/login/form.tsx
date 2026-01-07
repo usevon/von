@@ -50,7 +50,7 @@ export const LoginForm = (props: LoginFormProps) => {
       <form.Field
         name="email"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Email is required";
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
               return "Please enter a valid email address";
@@ -82,7 +82,7 @@ export const LoginForm = (props: LoginFormProps) => {
       <form.Field
         name="password"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Password is required";
             return undefined;
           },

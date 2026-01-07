@@ -50,7 +50,7 @@ export const SignupForm = (props: SignupFormProps) => {
       <form.Field
         name="name"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Name is required";
             return undefined;
           },
@@ -79,7 +79,7 @@ export const SignupForm = (props: SignupFormProps) => {
       <form.Field
         name="email"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Email is required";
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
               return "Please enter a valid email address";
@@ -111,7 +111,7 @@ export const SignupForm = (props: SignupFormProps) => {
       <form.Field
         name="password"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Password is required";
             if (value.length < 8) return "Password must be at least 8 characters";
             return undefined;

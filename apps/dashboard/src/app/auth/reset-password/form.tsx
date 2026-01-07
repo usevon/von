@@ -53,7 +53,7 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
       <form.Field
         name="password"
         validators={{
-          onBlur: ({ value }) => {
+          onChange: ({ value }) => {
             if (!value) return "Password is required";
             if (value.length < 8) return "Password must be at least 8 characters";
             return undefined;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "@tanstack/react-form";
 
-import { Button, Field, FieldError, FieldLabel, Form, Input } from "@usevon/ui";
+import { Button, Field, FieldLabel, FieldMessage, FieldDescription, Form, Input, toast } from "@usevon/ui";
 
 import { organization } from "@/lib/auth/client";
 
@@ -15,59 +15,88 @@ const generateSlug = (name: string) => {
 
 export const OnboardingForm = () => {
   const router = useRouter();
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isPending, setIsPending] = useState(false);
-  const [name, setName] = useState("");
 
-  const isValid = name.trim().length >= 4;
+  const form = useForm({
+    defaultValues: {
+      name: "",
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        const trimmedName = value.name.trim();
+        const slug = generateSlug(trimmedName);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
+        const { data, showSuccess, showError } = await toast.timed(
+          () => organization.create({ name: trimmedName, slug }),
+          { loading: "Creating team..." }
+        );
 
-    const trimmedName = name.trim();
+        if (data.error) {
+          showError(data.error.message || "Failed to create team");
+          return;
+        }
 
-    if (!trimmedName) {
-      setErrors({ name: "Team name is required" });
-      return;
-    }
-
-    if (trimmedName.length < 4) {
-      setErrors({ name: "Team name must be at least 4 characters" });
-      return;
-    }
-
-    setIsPending(true);
-
-    const slug = generateSlug(trimmedName);
-
-    await organization.create({ name: trimmedName, slug }, {
-      onSuccess: () => router.push(`/${slug}`),
-      onError: (ctx) => {
-        setErrors({ name: ctx.error.message ?? "Failed to create team" });
-        setIsPending(false);
-      },
-    });
-  };
+        showSuccess("Team created!");
+        router.push(`/${slug}`);
+      } catch {
+        toast.error("Something went wrong");
+      }
+    },
+  });
 
   return (
-    <Form errors={errors} onSubmit={handleSubmit}>
-      <Field name="name">
-        <FieldLabel>Team name</FieldLabel>
-        <Input
-          autoComplete="organization"
-          autoFocus
-          disabled={isPending}
-          name="name"
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Acme Inc."
-          value={name}
-        />
-        <FieldError />
-      </Field>
-      <Button className="w-full" disabled={!isValid || isPending} type="submit">
-        {isPending ? "Creating team..." : "Create team"}
-      </Button>
+    <Form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+    >
+      <form.Field
+        name="name"
+        validators={{
+          onChange: ({ value }) => {
+            if (!value.trim()) return "Team name is required";
+            if (value.trim().length < 4) return "Team name must be at least 4 characters";
+            return undefined;
+          },
+        }}
+      >
+        {(field) => (
+          <Field invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel>Team name</FieldLabel>
+            <Input
+              autoComplete="organization"
+              autoFocus
+              disabled={form.state.isSubmitting}
+              name={field.name}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="Acme Inc."
+              value={field.state.value}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
+              <FieldMessage>{field.state.meta.errors[0]}</FieldMessage>
+            ) : (
+              <FieldDescription>Must be at least 4 characters</FieldDescription>
+            )}
+          </Field>
+        )}
+      </form.Field>
+
+      <form.Subscribe selector={(state) => ({
+        canSubmit: state.canSubmit,
+        isSubmitting: state.isSubmitting,
+        name: state.values.name,
+      })}>
+        {(state) => (
+          <Button
+            className="w-full"
+            disabled={!state.canSubmit || !state.name.trim() || state.name.trim().length < 4 || state.isSubmitting}
+            type="submit"
+          >
+            {state.isSubmitting ? "Creating team..." : "Create team"}
+          </Button>
+        )}
+      </form.Subscribe>
     </Form>
   );
 };
