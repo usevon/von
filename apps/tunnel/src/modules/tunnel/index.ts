@@ -9,7 +9,7 @@ import {
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
 import { env } from "@/env";
-import { betterAuth, withSession } from "@/modules/auth";
+import { requireOrg, validateSession } from "@/modules/auth";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
 
@@ -21,14 +21,10 @@ const log = createLogger({ name: "tunnel" });
 const SESSION_VALIDATION_INTERVAL_MS = 30_000;
 
 export const tunnelRegister = new Elysia()
-  .use(withSession)
+  .use(requireOrg)
   .post(
     "/register",
     async ({ body, organizationId, userId }) => {
-      if (!organizationId) {
-        throw new UnauthorizedError("No active organization");
-      }
-
       const tunnelId = generateTunnelId(organizationId, userId, body.port);
 
       // Check if tunnel exists in DB
@@ -70,10 +66,6 @@ export const tunnelRegister = new Elysia()
   .post(
     "/rotate/:tunnelId",
     async ({ params, organizationId, userId }) => {
-      if (!organizationId) {
-        throw new UnauthorizedError("No active organization");
-      }
-
       // Verify tunnel belongs to this user/org
       const [existing] = await db
         .select()
@@ -106,9 +98,6 @@ export const tunnelRegister = new Elysia()
     }
   )
   .get("/tunnels", ({ organizationId }) => {
-    if (!organizationId) {
-      throw new UnauthorizedError("No active organization");
-    }
     return { tunnels: TunnelService.getActiveTunnels(organizationId) };
   });
 
@@ -130,28 +119,20 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
     }
 
     // Validate session before accepting connection
-    let organizationId: string;
-    try {
-      const session = await betterAuth.api.getSession({
-        headers: headers as HeadersInit,
-      });
-      if (!session?.session?.activeOrganizationId) {
-        ws.close(4001, "Unauthorized");
-        return;
-      }
-      organizationId = session.session.activeOrganizationId;
-    } catch {
+    const organizationId = await validateSession(headers);
+    if (!organizationId) {
       ws.close(4001, "Unauthorized");
       return;
     }
 
-    // Fetch tunnel secret from DB
+    // Fetch tunnel from DB and verify ownership
     const [tunnelRecord] = await db
       .select()
       .from(tunnel)
       .where(eq(tunnel.id, tunnelId))
       .limit(1);
-    if (!tunnelRecord) {
+
+    if (!tunnelRecord || tunnelRecord.organizationId !== organizationId) {
       ws.close(4001, "Tunnel not found");
       return;
     }
@@ -180,19 +161,9 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
 
     // Periodic session validation
     connection.validationInterval = setInterval(async () => {
-      try {
-        const session = await betterAuth.api.getSession({
-          headers: headers as HeadersInit,
-        });
-        if (!session) {
-          log.info(`Session expired: ${tunnelId}`);
-          if (connection.validationInterval) {
-            clearInterval(connection.validationInterval);
-          }
-          ws.close(4001, "Session expired");
-        }
-      } catch {
-        log.info(`Session validation failed: ${tunnelId}`);
+      const sessionOrgId = await validateSession(headers);
+      if (!sessionOrgId) {
+        log.info(`Session expired: ${tunnelId}`);
         if (connection.validationInterval) {
           clearInterval(connection.validationInterval);
         }
