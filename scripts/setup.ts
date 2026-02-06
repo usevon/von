@@ -100,15 +100,13 @@ function generateSecrets() {
   step("Generating secrets");
 
   const authSecret = randomBytes(32).toString("base64url");
-  const signingSecret = randomBytes(32).toString("base64url");
 
   ok("BETTER_AUTH_SECRET generated");
-  ok("API_KEY_SIGNING_SECRET generated");
 
-  return { authSecret, signingSecret };
+  return { authSecret };
 }
 
-function createEnvFiles(secrets: { authSecret: string; signingSecret: string }) {
+function createEnvFiles(secrets: { authSecret: string }) {
   step("Creating .env files");
 
   const apps = [
@@ -155,7 +153,7 @@ function pushDatabase() {
   step("Pushing database schema");
 
   try {
-    execSync("bun run --cwd apps/api db:push", { stdio: "inherit", cwd: ROOT });
+    execSync("bun run --cwd apps/api db:push", { stdio: "pipe", cwd: ROOT });
     ok("Database schema pushed");
   } catch {
     warn("db:push failed — you may need to run it manually later");
