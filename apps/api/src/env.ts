@@ -11,8 +11,8 @@ export const env = createEnv({
     DASHBOARD_URL: z.string().url().optional(),
     CORS_ORIGINS: z.string().optional(),
     API_URL: z.string().url().optional(),
-    TUNNEL_URL: z.string().url().optional(),
     API_KEY_SIGNING_SECRET: z.string().optional(),
+    MAX_TUNNELS_PER_ORG: z.coerce.number().default(3),
   },
   runtimeEnv: process.env,
 });

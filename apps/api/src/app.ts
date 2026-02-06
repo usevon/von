@@ -3,8 +3,10 @@ import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
+import { auth } from "@/modules/auth";
 import { endpoints } from "@/modules/endpoints";
 import { inbound, inboundPublic } from "@/modules/inbound";
+import { tunnelProxy, tunnelRegister, tunnelWs } from "@/modules/tunnel";
 import { versions } from "@/modules/versions";
 import { webhookEvents, webhooks } from "@/modules/webhooks";
 
@@ -40,6 +42,10 @@ export const app = new Elysia({
   .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
   .use(idempotency())
   .use(corsMiddleware)
+  .mount(auth.handler)
+  .use(tunnelRegister)
+  .use(tunnelWs)
+  .use(tunnelProxy)
   .use(inboundPublic)
   .use(webhooks)
   .use(webhookEvents)
