@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@usevon/ui";
+import { docsUrl } from "@/lib/urls";
 import { CTA } from "@/components/cta";
 import { PricingPlans } from "./billing-toggle";
 import { PricingFaqs } from "./faqs";
@@ -45,7 +46,7 @@ export default function PricingPage() {
         <Button size="lg" render={<Link href="/contact" />}>
           Contact sales
         </Button>
-        <Button size="lg" variant="outline" render={<Link href="https://docs.usevon.com" />}>
+        <Button size="lg" variant="outline" render={<Link href={docsUrl()} />}>
           Read the docs
         </Button>
       </CTA>

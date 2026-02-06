@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button, GitHubIcon, DiscordIcon } from "@usevon/ui";
 import { ThemeSwitcher } from "./theme-switcher";
 import { TextHoverEffect } from "@/components/text-hover-effect";
+import { docsUrl } from "@/lib/urls";
 
 const footerLinks = {
   explore: [
@@ -19,10 +20,10 @@ const footerLinks = {
     { label: "Brand", href: "/brand" },
   ],
   documentation: [
-    { label: "Home", href: "https://docs.usevon.com" },
-    { label: "Getting Started", href: "https://docs.usevon.com/getting-started" },
-    { label: "Guides", href: "https://docs.usevon.com/guides" },
-    { label: "API Reference", href: "https://docs.usevon.com/api" },
+    { label: "Home", href: docsUrl() },
+    { label: "Getting Started", href: docsUrl("/getting-started") },
+    { label: "Guides", href: docsUrl("/guides") },
+    { label: "API Reference", href: docsUrl("/api") },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy-policy" },

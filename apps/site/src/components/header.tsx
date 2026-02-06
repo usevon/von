@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
 import { CopyIcon, CheckIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
-import { urls } from "@/lib/urls";
+import { urls, docsUrl } from "@/lib/urls";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="364.31" height="273.74" viewBox="0 0 364.31 273.74"><polyline points="273.08 92.3 185.65 91.8 272.58 0 364.31 0 364.31 91.29 181.35 273.74 91.13 273.74 91.64 91.73 0 91.98 92.4 0 183.12 0 182.9 91.79 183.87 182.51" fill="currentColor"/></svg>`;
 
@@ -91,7 +91,7 @@ export const Header = () => {
           <Button variant="ghost" render={<Link href="/pricing" />}>
             Pricing
           </Button>
-          <Button variant="ghost" render={<Link href="https://github.com/usevon/von" target="_blank" />}>
+          <Button variant="ghost" render={<Link href={docsUrl()} />}>
             Docs
           </Button>
         </div>

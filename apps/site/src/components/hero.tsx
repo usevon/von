@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@usevon/ui";
 import { Wallpaper } from "@/components/wallpaper";
-import { urls } from "@/lib/urls";
+import { urls, docsUrl } from "@/lib/urls";
 
 export const Hero = () => {
   return (
@@ -24,7 +24,7 @@ export const Hero = () => {
             <Button
               size="lg"
               variant="outline"
-              render={<Link href="https://github.com/usevon/von" target="_blank" />}
+              render={<Link href={docsUrl()} />}
             >
               Documentation
             </Button>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Tabs } from "@base-ui/react/tabs";
 import { Card, CodeBlock } from "@usevon/ui";
 import { Wallpaper } from "./wallpaper";
+import { docsUrl } from "@/lib/urls";
 
 const steps = [
   {
@@ -11,7 +12,7 @@ const steps = [
     title: "Setup",
     label: "Initialize the client",
     description: "Install the SDK and add your API key.",
-    href: "https://docs.usevon.com/getting-started",
+    href: docsUrl("/getting-started"),
     lines: [2, 3, 4],
   },
   {
@@ -19,7 +20,7 @@ const steps = [
     title: "Send",
     label: "Send your first event",
     description: "Von handles retries and delivery for you.",
-    href: "https://docs.usevon.com/sending",
+    href: docsUrl("/sending"),
     lines: [6, 7, 8, 9, 10, 11, 12, 13],
   },
 ];
