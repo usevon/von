@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@usevon/ui";
-import { GithubLogo, DiscordLogo } from "@phosphor-icons/react/ssr";
+import { Button, GitHubIcon, DiscordIcon } from "@usevon/ui";
 import { ThemeSwitcher } from "./theme-switcher";
 import { TextHoverEffect } from "@/components/text-hover-effect";
 
@@ -158,7 +157,7 @@ export const Footer = () => {
               render={<Link href="https://github.com/usevon/von" target="_blank" />}
               className="text-muted-foreground hover:text-foreground"
             >
-              <GithubLogo className="size-4" />
+              <GitHubIcon className="size-4" />
             </Button>
             <Button
               variant="ghost"
@@ -166,7 +165,7 @@ export const Footer = () => {
               render={<Link href="https://discord.gg/usevon" target="_blank" />}
               className="text-muted-foreground hover:text-foreground"
             >
-              <DiscordLogo className="size-4" />
+              <DiscordIcon className="size-4" />
             </Button>
             <ThemeSwitcher />
           </div>
