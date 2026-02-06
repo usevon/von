@@ -58,26 +58,23 @@ const AssetCard = (props: AssetCardProps) => {
 
 export default function BrandPage() {
   return (
-    <main>
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
-          <div className="flex max-w-2xl flex-col gap-4">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Brand</h1>
-            <p className="text-lg text-muted-foreground">
-              Resources and guidelines for using the Von brand.
-            </p>
-          </div>
-          <div className="mt-12">
-            <h2 className="text-xl font-semibold text-foreground">Naming</h2>
-            <p className="mt-4 max-w-2xl text-sm/7 text-muted-foreground">
-              &ldquo;Von&rdquo; comes from the Icelandic word for &ldquo;hope&rdquo; and is always written with a capital V, with all-caps &ldquo;VON&rdquo; reserved for logos and stylized displays.
-            </p>
-          </div>
+    <main className="py-16">
+      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="flex max-w-2xl flex-col gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Brand</h1>
+          <p className="text-lg text-muted-foreground">
+            Resources and guidelines for using the Von brand.
+          </p>
         </div>
-      </section>
 
-      <section className="py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="mt-12">
+          <h2 className="text-xl font-semibold text-foreground">Naming</h2>
+          <p className="mt-4 max-w-2xl text-sm/7 text-muted-foreground">
+            &ldquo;Von&rdquo; comes from the Icelandic word for &ldquo;hope&rdquo; and is always written with a capital V, with all-caps &ldquo;VON&rdquo; reserved for logos and stylized displays.
+          </p>
+        </div>
+
+        <div className="mt-12">
           <h2 className="mb-6 text-xl font-semibold text-foreground">Logo</h2>
           <div className="grid gap-6 sm:grid-cols-2">
             <AssetCard
@@ -108,16 +105,14 @@ export default function BrandPage() {
             />
           </div>
         </div>
-      </section>
 
-      <section className="py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="mt-12">
           <h2 className="text-xl font-semibold text-foreground">Questions</h2>
           <p className="mt-4 max-w-2xl text-sm/7 text-muted-foreground">
             Need something else? <Link href="/contact" className="font-medium text-foreground underline underline-offset-4">Contact us</Link> and we&apos;ll help you out.
           </p>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
 
 import { Button, ErrorIllustration } from "@usevon/ui";
 
@@ -17,36 +15,18 @@ export default function Error(props: ErrorProps) {
   }, [props.error]);
 
   return (
-    <div className="flex min-h-svh flex-col p-4">
-      <Link href="/">
-        <Image
-          src="/brand/von-wordmark-black.svg"
-          alt="Von"
-          width={80}
-          height={24}
-          className="h-6 w-auto dark:hidden"
-        />
-        <Image
-          src="/brand/von-wordmark-white.svg"
-          alt="Von"
-          width={80}
-          height={24}
-          className="hidden h-6 w-auto dark:block"
-        />
-      </Link>
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <ErrorIllustration left="5" right="0" />
-        <div className="mt-8 flex flex-col items-center gap-4 text-center">
-          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
-            Something went wrong
-          </h1>
-          <p className="max-w-md text-lg text-muted-foreground">
-            An unexpected error occurred.
-          </p>
-          <Button onClick={props.reset} size="lg" className="mt-4">
-            Try again
-          </Button>
-        </div>
+    <div className="flex flex-1 flex-col items-center justify-center p-4">
+      <ErrorIllustration left="5" right="0" />
+      <div className="mt-8 flex flex-col items-center gap-4 text-center">
+        <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
+          Something went wrong
+        </h1>
+        <p className="max-w-md text-lg text-muted-foreground">
+          An unexpected error occurred.
+        </p>
+        <Button onClick={props.reset} size="lg" className="mt-4">
+          Try again
+        </Button>
       </div>
     </div>
   );
