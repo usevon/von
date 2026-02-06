@@ -13,7 +13,7 @@
     "build": "bun run tsdown"
   },
   "dependencies": {
-    "@databuddy/sdk": "^2.0.0"
+    "@databuddy/sdk": "^2.3.29"
   },
   "peerDependencies": {
     "react": "^19.0.0"
