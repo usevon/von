@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
 import { Analytics } from "@usevon/analytics";
-import { ScrollArea } from "@usevon/ui";
 
 import "@/index.css";
 import { Providers } from "@/components/providers";
@@ -31,14 +30,12 @@ export default function RootLayout(props: RootLayoutProps) {
         <Providers>
           <div className="flex min-h-svh flex-col">
             <Sidebar />
-            <main className="h-svh lg:ml-64">
-              <ScrollArea className="h-full">
-                <ScrollReset />
-                <div className="flex min-h-svh flex-col px-4 pt-6 pb-10 sm:px-6 lg:px-8">
-                  {props.children}
-                </div>
-                <Footer />
-              </ScrollArea>
+            <main className="h-svh overflow-y-auto lg:ml-64">
+              <ScrollReset />
+              <div className="flex min-h-svh flex-col px-4 pt-6 pb-10 sm:px-6 lg:px-6">
+                {props.children}
+              </div>
+              <Footer />
             </main>
           </div>
         </Providers>

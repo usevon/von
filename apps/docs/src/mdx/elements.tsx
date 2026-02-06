@@ -1,5 +1,5 @@
 export const H1 = (props: React.ComponentPropsWithoutRef<"h1">) => (
-  <h1 {...props} className="text-3xl font-semibold tracking-tight text-foreground" />
+  <h1 {...props} className="mb-0 text-3xl font-semibold tracking-tight text-foreground" />
 );
 
 export const H2 = (props: React.ComponentPropsWithoutRef<"h2">) => (
@@ -15,7 +15,7 @@ export const H4 = (props: React.ComponentPropsWithoutRef<"h4">) => (
 );
 
 export const P = (props: React.ComponentPropsWithoutRef<"p">) => (
-  <p {...props} className="mt-4 leading-7 text-muted-foreground" />
+  <p {...props} className="mt-2 leading-7 text-muted-foreground" />
 );
 
 export const A = (props: React.ComponentPropsWithoutRef<"a">) => (

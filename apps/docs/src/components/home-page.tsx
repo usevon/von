@@ -27,8 +27,8 @@ const FeatureCard = (props: FeatureCardProps) => {
 
 export const HomePage = () => {
   return (
-    <div className="space-y-12">
-      <div className="space-y-4">
+    <div className="space-y-8">
+      <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Introducing Von documentation
         </h1>
