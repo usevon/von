@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@usevon/ui";
 import { CheckIcon } from "@phosphor-icons/react/ssr";
+import { urls } from "@/lib/urls";
 
 const plans = [
   {
@@ -17,7 +18,7 @@ const plans = [
       "Community support",
     ],
     cta: "Get started",
-    href: "/signup",
+    href: urls.signup,
     highlighted: false,
   },
   {
@@ -35,7 +36,7 @@ const plans = [
       "Email support",
     ],
     cta: "Get started",
-    href: "/signup?plan=pro",
+    href: urls.signupPro,
     highlighted: true,
   },
   {

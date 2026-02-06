@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@usevon/ui";
 import { Wallpaper } from "@/components/wallpaper";
+import { urls } from "@/lib/urls";
 
 export const Hero = () => {
   return (
@@ -17,7 +18,7 @@ export const Hero = () => {
             monitoring so you can focus on building your product.
           </p>
           <div className="flex items-center gap-4">
-            <Button size="lg" render={<Link href="/signup" />}>
+            <Button size="lg" render={<Link href={urls.signup} />}>
               Get started
             </Button>
             <Button
