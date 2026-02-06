@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
-import { motion } from "motion/react";
+import { useRef, useState } from "react";
+import { motion, useMotionValue, useMotionTemplate, useSpring } from "motion/react";
 import { cn } from "@usevon/ui";
 
 type TextHoverEffectProps = {
@@ -9,38 +9,34 @@ type TextHoverEffectProps = {
   className?: string;
 };
 
-export const TextHoverEffect = (props: TextHoverEffectProps) => {
+export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hovered, setHovered] = useState(false);
-  const [maskPosition, setMaskPosition] = useState({ cx: "50%", cy: "50%" });
-  const [shouldAnimate, setShouldAnimate] = useState(false);
 
-  const getMousePosition = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current) return null;
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const cx = `${((e.clientX - svgRect.left) / svgRect.width) * 100}%`;
-    const cy = `${((e.clientY - svgRect.top) / svgRect.height) * 100}%`;
-    return { cx, cy };
-  }, []);
+  const cx = useMotionValue("50%");
+  const cy = useMotionValue("50%");
+  const r = useSpring(0, { stiffness: 300, damping: 50 });
 
-  const handleMouseEnter = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    const pos = getMousePosition(e);
-    if (pos) {
-      setShouldAnimate(false);
-      setMaskPosition(pos);
-      requestAnimationFrame(() => setShouldAnimate(true));
-    }
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    cx.set(`${((e.clientX - rect.left) / rect.width) * 100}%`);
+    cy.set(`${((e.clientY - rect.top) / rect.height) * 100}%`);
+  }
+
+  function handleMouseEnter(e: React.MouseEvent<SVGSVGElement>) {
+    handleMouseMove(e);
+    r.set(20);
     setHovered(true);
-  }, [getMousePosition]);
+  }
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    const pos = getMousePosition(e);
-    if (pos) setMaskPosition(pos);
-  }, [getMousePosition]);
-
-  const handleMouseLeave = useCallback(() => {
+  function handleMouseLeave() {
+    r.set(0);
     setHovered(false);
-  }, []);
+  }
+
+  const rPercent = useMotionTemplate`${r}%`;
 
   return (
     <svg
@@ -52,7 +48,7 @@ export const TextHoverEffect = (props: TextHoverEffectProps) => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      className={cn("select-none", props.className)}
+      className={cn("select-none", className)}
     >
       <defs>
         <linearGradient
@@ -73,12 +69,9 @@ export const TextHoverEffect = (props: TextHoverEffectProps) => {
         <motion.radialGradient
           id="revealMask"
           gradientUnits="userSpaceOnUse"
-          initial={{ cx: "50%", cy: "50%", r: "0%" }}
-          animate={{
-            ...maskPosition,
-            r: hovered ? "15%" : "0%",
-          }}
-          transition={shouldAnimate ? { type: "spring", stiffness: 300, damping: 50 } : { duration: 0 }}
+          cx={cx}
+          cy={cy}
+          r={rPercent}
         >
           <stop offset="0%" stopColor="white" />
           <stop offset="100%" stopColor="black" />
@@ -99,7 +92,7 @@ export const TextHoverEffect = (props: TextHoverEffectProps) => {
         fontSize="48"
         className="fill-transparent stroke-foreground/20 font-sans font-bold"
       >
-        {props.text}
+        {text}
       </text>
 
       {/* Gradient text revealed by mask */}
@@ -113,7 +106,7 @@ export const TextHoverEffect = (props: TextHoverEffectProps) => {
         mask="url(#textMask)"
         className="font-sans font-bold"
       >
-        {props.text}
+        {text}
       </text>
     </svg>
   );
