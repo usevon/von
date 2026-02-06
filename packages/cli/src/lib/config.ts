@@ -17,12 +17,10 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 export const getConfigPath = (): string => CONFIG_FILE;
 
-export const DEFAULT_DASHBOARD_URL = "https://app.usevon.com";
-export const DEFAULT_TUNNEL_URL = "https://tunnel.usevon.com";
+export const DEFAULT_API_URL = "https://api.usevon.com";
 
 const DEFAULT_CONFIG: VonConfig = {
-  dashboardUrl: DEFAULT_DASHBOARD_URL,
-  tunnelUrl: DEFAULT_TUNNEL_URL,
+  apiUrl: DEFAULT_API_URL,
 };
 
 const ensureConfigDir = (): void => {
@@ -40,7 +38,16 @@ export const loadConfig = (): VonConfig => {
 
   try {
     const raw = readFileSync(CONFIG_FILE, "utf-8");
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+
+    // Migrate legacy config: dashboardUrl/tunnelUrl -> apiUrl
+    if (parsed.dashboardUrl && !parsed.apiUrl) {
+      parsed.apiUrl = parsed.dashboardUrl.replace(":3001", ":8080");
+      delete parsed.dashboardUrl;
+      delete parsed.tunnelUrl;
+    }
+
+    return { ...DEFAULT_CONFIG, ...parsed };
   } catch {
     return { ...DEFAULT_CONFIG };
   }

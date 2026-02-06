@@ -1,5 +1,3 @@
-import { treaty } from "@elysiajs/eden";
-import type { App as TunnelApp } from "@usevon/tunnel-server";
 import { loadConfig } from "@/lib/config";
 import type {
 	DeviceCodeResponse,
@@ -10,13 +8,6 @@ import type {
 } from "@/lib/types";
 
 export type { Organization, TunnelRegistration } from "@/lib/types";
-
-const createTunnelClient = (token?: string) => {
-	const config = loadConfig();
-	return treaty<TunnelApp>(config.tunnelUrl, {
-		headers: token ? { authorization: `Bearer ${token}` } : {},
-	});
-};
 
 const authRequest = async <T>(
 	path: string,
@@ -32,7 +23,7 @@ const authRequest = async <T>(
 		headers["Content-Type"] = "application/json";
 	}
 
-	const res = await fetch(`${config.dashboardUrl}${path}`, {
+	const res = await fetch(`${config.apiUrl}${path}`, {
 		method: options.method ?? "GET",
 		headers,
 		body: options.body ? JSON.stringify(options.body) : undefined,
@@ -60,7 +51,7 @@ export const pollDeviceToken = async (
 	clientId = "von-cli"
 ): Promise<DeviceTokenResponse> => {
 	const config = loadConfig();
-	const res = await fetch(`${config.dashboardUrl}/api/auth/device/token`, {
+	const res = await fetch(`${config.apiUrl}/api/auth/device/token`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
@@ -103,16 +94,26 @@ export const registerTunnel = async (
 	port: number
 ): Promise<TunnelRegistration> => {
 	const config = loadConfig();
-	const client = createTunnelClient(token);
-	const { data, error } = await client.register.post({ port });
+	const res = await fetch(`${config.apiUrl}/register`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${token}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ port }),
+		signal: AbortSignal.timeout(30_000),
+	});
 
-	if (error) {
-		throw new Error(error.value?.message || "Failed to register tunnel");
+	if (!res.ok) {
+		const error = (await res.json().catch(() => ({}))) as { message?: string };
+		throw new Error(error.message || "Failed to register tunnel");
 	}
 
-	const tunnelUrl = `${config.tunnelUrl}/${data.tunnelId}-${data.secret}`;
+	const data = (await res.json()) as { tunnelId: string; secret: string };
+
+	const tunnelUrl = `${config.apiUrl}/${data.tunnelId}-${data.secret}`;
 	const wsUrl =
-		config.tunnelUrl.replace("http://", "ws://").replace("https://", "wss://") +
+		config.apiUrl.replace("http://", "ws://").replace("https://", "wss://") +
 		`/ws/${data.tunnelId}`;
 
 	return { tunnelId: data.tunnelId, secret: data.secret, tunnelUrl, wsUrl };
@@ -122,12 +123,20 @@ export const rotateTunnel = async (
 	token: string,
 	tunnelId: string
 ): Promise<{ secret: string }> => {
-	const client = createTunnelClient(token);
-	const { data, error } = await client.rotate({ tunnelId }).post();
+	const config = loadConfig();
+	const res = await fetch(`${config.apiUrl}/rotate/${tunnelId}`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+		signal: AbortSignal.timeout(30_000),
+	});
 
-	if (error) {
-		throw new Error(error.value?.message || "Failed to rotate tunnel secret");
+	if (!res.ok) {
+		const error = (await res.json().catch(() => ({}))) as { message?: string };
+		throw new Error(error.message || "Failed to rotate tunnel secret");
 	}
 
+	const data = (await res.json()) as { secret: string };
 	return { secret: data.secret };
 };

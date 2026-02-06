@@ -82,7 +82,6 @@ Stored in `~/.von/config.json`:
 ```json
 {
   "apiUrl": "https://api.usevon.com",
-  "tunnelUrl": "https://tunnel.usevon.com",
   "token": "...",
   "organizationId": "..."
 }

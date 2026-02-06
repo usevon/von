@@ -61,7 +61,7 @@ export const dev = new Command("dev")
         token,
         tunnels,
         options.verbose ?? false,
-        config.tunnelUrl
+        config.apiUrl
       );
     } catch (err) {
       s.stop("");
@@ -73,7 +73,7 @@ const connectTunnels = (
   token: string,
   tunnels: TunnelInfo[],
   verbose: boolean,
-  tunnelBaseUrl: string
+  apiBaseUrl: string
 ): Promise<void> => {
   return new Promise((_, reject) => {
     let isShuttingDown = false;
@@ -97,7 +97,7 @@ const connectTunnels = (
       onSecretRotated: (port, newSecret) => {
         const tunnelId = portToTunnelId.get(port);
         if (tunnelId) {
-          const newUrl = `${tunnelBaseUrl}/${tunnelId}-${newSecret}`;
+          const newUrl = `${apiBaseUrl}/${tunnelId}-${newSecret}`;
           console.log();
           console.log(pc.yellow(`  Secret rotated for port ${port}`));
           console.log(pc.cyan(`  New URL: ${newUrl}`));
