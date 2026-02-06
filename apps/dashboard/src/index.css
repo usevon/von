@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "@usevon/ui/styles";
 
+html {
+  overflow-y: scroll !important;
+}
+
 @source "../../../packages/ui/src";
 
 @theme inline {

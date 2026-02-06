@@ -16,22 +16,22 @@ export const Logo = () => {
     <ContextMenu>
       <ContextMenuTrigger
         render={
-          <Link href="/" className="flex h-6 w-20 items-center">
+          <Link href="/" className="flex h-7 w-20 items-center">
             <Image
               src="/brand/von-wordmark-black.svg"
               alt="Von"
               width={80}
-              height={24}
+              height={28}
               priority
-              className="h-6 w-auto dark:hidden"
+              className="h-7 w-auto dark:hidden"
             />
             <Image
               src="/brand/von-wordmark-white.svg"
               alt="Von"
               width={80}
-              height={24}
+              height={28}
               priority
-              className="hidden h-6 w-auto dark:block"
+              className="hidden h-7 w-auto dark:block"
             />
           </Link>
         }
