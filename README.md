@@ -39,14 +39,26 @@ You'll need PostgreSQL, Redis, and Bun installed for building.
 git clone https://github.com/usevon/von.git
 cd von
 bun install
+bun setup
+bun dev
+```
 
+<details>
+<summary>Manual setup (without the setup script)</summary>
+
+```bash
 # Start infrastructure
 docker compose -f docker-compose.dev.yml up -d
 
 # Copy env files
 cp apps/api/.env.example apps/api/.env
-cp apps/worker/.env.example apps/worker/.env
+cp apps/dashboard/.env.example apps/dashboard/.env
 cp apps/tunnel/.env.example apps/tunnel/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/docs/.env.example apps/docs/.env
+cp apps/site/.env.example apps/site/.env
+
+# Edit .env files to set BETTER_AUTH_SECRET and API_KEY_SIGNING_SECRET
 
 # Push database schema
 bun run --cwd apps/api db:push
@@ -54,6 +66,8 @@ bun run --cwd apps/api db:push
 # Start all services
 bun dev
 ```
+
+</details>
 
 #### Production
 

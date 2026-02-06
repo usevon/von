@@ -11,10 +11,8 @@
 git clone https://github.com/usevon/von.git
 cd von
 bun install
-docker compose -f docker-compose.dev.yml up -d
-cp .env.example .env
-cd packages/db && bun run db:push
-bun run dev
+bun setup
+bun dev
 ```
 
 **Running Tests**
