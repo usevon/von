@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem, ScrollArea } from "@usevon/ui";
+import { ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { Navigation } from "./docs/navigation";
 import { Search } from "./docs/search";
@@ -48,9 +48,9 @@ export const Sidebar = () => {
         </ContextMenu>
         <Search />
       </div>
-      <ScrollArea className="h-[calc(100svh-7.5rem)] px-6">
+      <div className="h-[calc(100svh-7.5rem)] overflow-y-auto px-6">
         <Navigation />
-      </ScrollArea>
+      </div>
     </aside>
   );
 };
