@@ -6,6 +6,7 @@ import { ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem, Scr
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { Navigation } from "./docs/navigation";
 import { Search } from "./docs/search";
+import { siteUrl } from "@/lib/urls";
 
 export const Sidebar = () => {
   return (
@@ -35,11 +36,11 @@ export const Sidebar = () => {
             }
           />
           <ContextMenuPopup>
-            <ContextMenuItem render={<a href="https://usevon.com" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+            <ContextMenuItem render={<a href={siteUrl()} target="_blank" rel="noopener noreferrer" />} className="justify-between">
               Go to Website
               <ArrowSquareOutIcon className="size-4" />
             </ContextMenuItem>
-            <ContextMenuItem render={<a href="https://usevon.com/brand" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+            <ContextMenuItem render={<a href={siteUrl("/brand")} target="_blank" rel="noopener noreferrer" />} className="justify-between">
               Brand Kit
               <ArrowSquareOutIcon className="size-4" />
             </ContextMenuItem>

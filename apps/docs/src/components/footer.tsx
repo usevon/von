@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@usevon/ui";
-import { GithubLogoIcon, DiscordLogoIcon } from "@phosphor-icons/react";
+import { Button, GitHubIcon, DiscordIcon } from "@usevon/ui";
 import { ThemeSwitcher } from "./theme-switcher";
 import { TextHoverEffect } from "./text-hover-effect";
+import { siteUrl } from "@/lib/urls";
 
 const footerLinks = {
   explore: [
-    { label: "Startups", href: "https://usevon.com/startups" },
-    { label: "Developers", href: "https://usevon.com/developers" },
-    { label: "Open Source", href: "https://usevon.com/open-source" },
+    { label: "Startups", href: siteUrl("/startups") },
+    { label: "Developers", href: siteUrl("/developers") },
+    { label: "Open Source", href: siteUrl("/open-source") },
   ],
   resources: [
-    { label: "Contact", href: "https://usevon.com/contact" },
-    { label: "Blog", href: "https://usevon.com/blog" },
-    { label: "Pricing", href: "https://usevon.com/pricing" },
+    { label: "Contact", href: siteUrl("/contact") },
+    { label: "Blog", href: siteUrl("/blog") },
+    { label: "Pricing", href: siteUrl("/pricing") },
   ],
   documentation: [
     { label: "Home", href: "/" },
@@ -25,10 +25,10 @@ const footerLinks = {
     { label: "API Reference", href: "/api" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "https://usevon.com/privacy-policy" },
-    { label: "Terms of Service", href: "https://usevon.com/terms-of-service" },
-    { label: "Security", href: "https://usevon.com/security" },
-    { label: "Subprocessors", href: "https://usevon.com/subprocessors" },
+    { label: "Privacy Policy", href: siteUrl("/privacy-policy") },
+    { label: "Terms of Service", href: siteUrl("/terms-of-service") },
+    { label: "Security", href: siteUrl("/security") },
+    { label: "Subprocessors", href: siteUrl("/subprocessors") },
   ],
 };
 
@@ -38,7 +38,7 @@ export const Footer = () => {
       <div className="px-4 pt-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2 sm:col-span-1">
-            <Link href="https://usevon.com">
+            <Link href={siteUrl()}>
               <Image
                 src="/brand/von-icon-black.svg"
                 alt="Von"
@@ -152,7 +152,7 @@ export const Footer = () => {
               render={<Link href="https://github.com/usevon/von" target="_blank" />}
               className="text-muted-foreground hover:text-foreground"
             >
-              <GithubLogoIcon className="size-4" />
+              <GitHubIcon className="size-4" />
             </Button>
             <Button
               variant="ghost"
@@ -160,7 +160,7 @@ export const Footer = () => {
               render={<Link href="https://discord.gg/usevon" target="_blank" />}
               className="text-muted-foreground hover:text-foreground"
             >
-              <DiscordLogoIcon className="size-4" />
+              <DiscordIcon className="size-4" />
             </Button>
             <ThemeSwitcher />
           </div>

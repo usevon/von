@@ -6,6 +6,7 @@ import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuI
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { MobileNavigation } from "./docs/mobile-navigation";
 import { Search } from "./docs/search";
+import { siteUrl, appUrl } from "@/lib/urls";
 
 export const Header = () => {
   return (
@@ -37,11 +38,11 @@ export const Header = () => {
               }
             />
             <ContextMenuPopup>
-              <ContextMenuItem render={<a href="https://usevon.com" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+              <ContextMenuItem render={<a href={siteUrl()} target="_blank" rel="noopener noreferrer" />} className="justify-between">
                 Go to Website
                 <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
-              <ContextMenuItem render={<a href="https://usevon.com/brand" target="_blank" rel="noopener noreferrer" />} className="justify-between">
+              <ContextMenuItem render={<a href={siteUrl("/brand")} target="_blank" rel="noopener noreferrer" />} className="justify-between">
                 Brand Kit
                 <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
@@ -51,7 +52,7 @@ export const Header = () => {
         <div className="flex-1" />
         <div className="flex items-center gap-2">
           <Search />
-          <Button variant="default" size="sm" render={<Link href="https://app.usevon.com" />}>
+          <Button variant="default" size="sm" render={<Link href={appUrl()} />}>
             Dashboard
           </Button>
         </div>
