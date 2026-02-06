@@ -118,19 +118,7 @@ function createEnvFiles(secrets: { authSecret: string; signingSecret: string }) 
         "BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long": `BETTER_AUTH_SECRET=${secrets.authSecret}`,
       },
     },
-    {
-      name: "dashboard",
-      replacements: {
-        "BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long": `BETTER_AUTH_SECRET=${secrets.authSecret}`,
-        "API_KEY_SIGNING_SECRET=your-api-key-signing-secret-32chars": `API_KEY_SIGNING_SECRET=${secrets.signingSecret}`,
-      },
-    },
-    {
-      name: "tunnel",
-      replacements: {
-        "BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long": `BETTER_AUTH_SECRET=${secrets.authSecret}`,
-      },
-    },
+    { name: "dashboard" },
     { name: "worker" },
     { name: "docs" },
     { name: "site" },
@@ -179,7 +167,6 @@ function printNextSteps() {
   log(`  ${c("1", "Start developing:")}  bun dev`);
   log(`  ${c("1", "Dashboard:")}         ${c("2", "http://localhost:3001")}`);
   log(`  ${c("1", "API:")}               ${c("2", "http://localhost:8080")}`);
-  log(`  ${c("1", "Tunnel:")}            ${c("2", "http://localhost:8081")}`);
   log("");
 }
 

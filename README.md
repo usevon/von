@@ -29,7 +29,7 @@ Get started at [usevon.com](https://usevon.com) with no setup required.
 
 Self-hosting Von gives you full control over your data with no usage limits, and the backend services compile to standalone binaries that you can run with PM2 for zero-downtime reloads.
 
-The backend (api, tunnel, worker) requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
+The backend (api, worker) requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
 
 You'll need PostgreSQL, Redis, and Bun installed for building.
 
@@ -53,7 +53,6 @@ docker compose -f docker-compose.dev.yml up -d
 # Copy env files
 cp apps/api/.env.example apps/api/.env
 cp apps/dashboard/.env.example apps/dashboard/.env
-cp apps/tunnel/.env.example apps/tunnel/.env
 cp apps/worker/.env.example apps/worker/.env
 cp apps/docs/.env.example apps/docs/.env
 cp apps/site/.env.example apps/site/.env
@@ -81,7 +80,6 @@ The backend services require a Linux VPS with PostgreSQL and Redis, and PM2 for 
 
 ```bash
 bun run --cwd apps/api build:prod
-bun run --cwd apps/tunnel build:prod
 bun run --cwd apps/worker build:prod
 ```
 
@@ -89,7 +87,6 @@ Copy the binaries to your server (replace `user@server` with your SSH details):
 
 ```bash
 scp apps/api/dist/api user@server:/app/
-scp apps/tunnel/dist/tunnel user@server:/app/
 scp apps/worker/dist/worker user@server:/app/
 ```
 
@@ -97,7 +94,6 @@ Then start them with PM2 and configure automatic startup:
 
 ```bash
 pm2 start /app/api --name api
-pm2 start /app/tunnel --name tunnel
 pm2 start /app/worker --name worker
 pm2 save && pm2 startup
 ```
@@ -148,7 +144,7 @@ For security concerns, see our [Security Policy](.github/SECURITY.md).
 Von uses dual licensing:
 
 **AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
-- `apps/` - api, dashboard, site, tunnel, worker
+- `apps/` - api, dashboard, site, worker
 - `packages/auth` - authentication
 - `packages/db` - database schema
 - `packages/queue` - job queue
