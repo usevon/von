@@ -1,10 +1,8 @@
-import { headers } from "next/headers";
-
 import { ErrorIllustration } from "@usevon/ui";
 
 import { Logo } from "@/components/logo";
 import { Logout } from "@/components/logout";
-import { auth } from "@/lib/auth";
+import { getSession, listOrganizations, setActiveOrganization } from "@/app/actions/user";
 
 type TeamLayoutProps = {
   children: React.ReactNode;
@@ -13,19 +11,11 @@ type TeamLayoutProps = {
 
 export default async function TeamLayout(props: TeamLayoutProps) {
   const { team } = await props.params;
-  const hdrs = await headers();
 
-  // Get user's orgs and find the one with matching slug
-  const orgs = await (auth.api as any).listOrganizations({
-    headers: hdrs,
-  }) as { id: string; slug: string; name: string }[] | null;
+  const orgs = await listOrganizations();
+  const org = orgs.find((o) => o.slug === team);
 
-  const org = orgs?.find((o) => o.slug === team);
-
-  // Get session for user info
-  const session = await auth.api.getSession({
-    headers: hdrs,
-  });
+  const session = await getSession();
 
   if (!org) {
     return (
@@ -48,10 +38,7 @@ export default async function TeamLayout(props: TeamLayoutProps) {
   }
 
   if (session?.session.activeOrganizationId !== org.id) {
-    await auth.api.setActiveOrganization({
-      body: { organizationId: org.id },
-      headers: hdrs,
-    });
+    await setActiveOrganization(org.id);
   }
 
   return props.children;

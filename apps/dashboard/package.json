@@ -14,7 +14,6 @@
     "@tanstack/react-query": "^5.90.12",
     "@usevon/api": "workspace:*",
     "@usevon/auth": "workspace:*",
-    "@usevon/db": "workspace:*",
     "@usevon/react": "workspace:*",
     "@usevon/ui": "workspace:*",
     "next": "^16.1.0",

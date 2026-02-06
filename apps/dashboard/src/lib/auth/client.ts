@@ -1,5 +1,3 @@
-"use client";
-
 import {
   createAuthClient,
   deviceAuthorizationClient,
@@ -9,7 +7,7 @@ import {
 import { env } from "@/env";
 
 export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_AUTH_URL,
+  baseURL: env.NEXT_PUBLIC_API_URL,
   plugins: [organizationClient(), deviceAuthorizationClient()],
 });
 

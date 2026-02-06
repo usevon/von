@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { getSafeRedirect } from "@/lib/auth";
 import { ForgotPasswordForm } from "@/app/auth/forgot-password/form";
 
 export const metadata = {
@@ -13,7 +12,7 @@ type ForgotPasswordPageProps = {
 
 export default async function ForgotPasswordPage(props: ForgotPasswordPageProps) {
   const searchParams = await props.searchParams;
-  const redirectTo = getSafeRedirect(searchParams.redirect);
+  const redirectTo = searchParams.redirect ?? "/";
 
   return (
     <div className="flex flex-col gap-4">

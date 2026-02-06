@@ -1,27 +1,22 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/logo";
-import { auth } from "@/lib/auth";
+import { getSession, listOrganizations } from "@/app/actions/user";
 
 type OnboardingLayoutProps = {
   children: React.ReactNode;
 };
 
 export default async function OnboardingLayout(props: OnboardingLayoutProps) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");
   }
 
-  const orgs = await auth.api.listOrganizations({
-    headers: await headers(),
-  });
+  const orgs = await listOrganizations();
 
-  if (orgs && orgs.length > 0) {
+  if (orgs.length > 0) {
     redirect("/");
   }
 

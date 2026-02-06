@@ -1,16 +1,13 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getSession } from "@/app/actions/user";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
 export default async function DashboardLayout(props: DashboardLayoutProps) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");

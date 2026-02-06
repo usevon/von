@@ -1,22 +1,17 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getSession, listOrganizations } from "@/app/actions/user";
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   if (!session) {
     redirect("/auth/login");
   }
 
-  const orgs = await (auth.api as any).listOrganizations({
-    headers: await headers(),
-  }) as { id: string; slug: string }[] | null;
+  const orgs = await listOrganizations();
 
-  if (!orgs || orgs.length === 0) {
+  if (orgs.length === 0) {
     redirect("/onboarding");
   }
 
