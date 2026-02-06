@@ -35,7 +35,7 @@ export default async function LoginPage(props: LoginPageProps) {
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
         <p className="text-muted-foreground text-sm">Sign in to your account</p>
       </div>
-      <OAuthButtons />
+      <OAuthButtons redirectTo={redirectTo} mode="login" />
       <div className="flex items-center gap-2">
         <Separator className="flex-1" />
         <span className="text-muted-foreground text-xs">or</span>

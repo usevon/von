@@ -35,7 +35,7 @@ export default async function SignupPage(props: SignupPageProps) {
         <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
         <p className="text-muted-foreground text-sm">Get started with Von</p>
       </div>
-      <OAuthButtons />
+      <OAuthButtons redirectTo={redirectTo} mode="signup" />
       <div className="flex items-center gap-2">
         <Separator className="flex-1" />
         <span className="text-muted-foreground text-xs">or</span>

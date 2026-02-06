@@ -19,6 +19,35 @@ const redis = getRedisClient();
 
 type SessionInsert = typeof schema.session.$inferInsert;
 
+function buildSocialProviders() {
+  const providers: Record<string, { clientId: string; clientSecret: string }> = {};
+
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    providers.google = {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    };
+  }
+
+  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+    providers.github = {
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+    };
+  }
+
+  if (Object.keys(providers).length === 0) {
+    if (env.NODE_ENV === "development") {
+      console.log("[Auth] No OAuth providers configured — social login disabled in development");
+    }
+    return undefined;
+  }
+
+  return providers;
+}
+
+const socialProviders = buildSocialProviders();
+
 const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   secret: env.BETTER_AUTH_SECRET,
@@ -30,6 +59,7 @@ const auth = betterAuth({
     max: 100,
     storage: "memory",
   },
+  ...(socialProviders && { socialProviders }),
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {
