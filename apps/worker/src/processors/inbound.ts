@@ -4,11 +4,11 @@ import { createConnection, type InboundForwardingJob } from "@usevon/queue";
 import {
   CIRCUIT_CONFIG,
   type CircuitState,
-  getSuccessUpdate,
   hmacSign,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "@usevon/utils";
+import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
 import { createLogger } from "@usevon/utils/logger";
 import { type Job, Worker } from "bullmq";
 import { eq, sql } from "drizzle-orm";
@@ -132,8 +132,6 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     });
 
     if (response.ok) {
-      const successUpdate = getSuccessUpdate();
-
       await Promise.all([
         db
           .update(inboundDelivery)
@@ -147,10 +145,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
           .where(eq(inboundDelivery.id, deliveryId)),
         db
           .update(inboundEndpoint)
-          .set({
-            ...successUpdate,
-            updatedAt: now,
-          })
+          .set(circuitSuccessSet(now))
           .where(eq(inboundEndpoint.id, ep.id)),
       ]);
 
@@ -166,8 +161,6 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
     const maxAttempts = ep.retryCount;
     const isFinalAttempt = attempts >= maxAttempts;
 
-    // Atomic circuit breaker update - increment failureCount and conditionally open circuit
-    const threshold = CIRCUIT_CONFIG.failureThreshold;
     const [, [endpointResult]] = await Promise.all([
       db
         .update(inboundDelivery)
@@ -179,13 +172,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         .where(eq(inboundDelivery.id, deliveryId)),
       db
         .update(inboundEndpoint)
-        .set({
-          failureCount: sql`${inboundEndpoint.failureCount} + 1`,
-          circuitState: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${inboundEndpoint.circuitState} END`,
-          circuitOpenedAt: sql`CASE WHEN ${inboundEndpoint.failureCount} + 1 >= ${threshold} AND ${inboundEndpoint.circuitState} != 'open' THEN ${now.toISOString()} ELSE ${inboundEndpoint.circuitOpenedAt} END`,
-          lastFailureAt: now,
-          updatedAt: now,
-        })
+        .set(circuitFailureSet(inboundEndpoint, now))
         .where(eq(inboundEndpoint.id, ep.id))
         .returning({
           failureCount: inboundEndpoint.failureCount,
@@ -195,7 +182,7 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
 
     if (
       endpointResult?.circuitState === "open" &&
-      endpointResult.failureCount === threshold
+      endpointResult.failureCount === CIRCUIT_CONFIG.failureThreshold
     ) {
       log.warn(
         { endpointId: ep.id, failureCount: endpointResult.failureCount },

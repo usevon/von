@@ -5,12 +5,12 @@ import {
   applyTransforms,
   CIRCUIT_CONFIG,
   type CircuitState,
-  getSuccessUpdate,
   hmacSign,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
   type Transforms,
 } from "@usevon/utils";
+import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
 import { createLogger } from "@usevon/utils/logger";
 import { type Job, Worker } from "bullmq";
 import { and, eq, sql } from "drizzle-orm";
@@ -209,8 +209,6 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     });
 
     if (response.ok) {
-      const successUpdate = getSuccessUpdate();
-
       await Promise.all([
         db
           .update(delivery)
@@ -224,10 +222,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
           .where(eq(delivery.id, deliveryId)),
         db
           .update(endpoint)
-          .set({
-            ...successUpdate,
-            updatedAt: now,
-          })
+          .set(circuitSuccessSet(now))
           .where(eq(endpoint.id, ep.id)),
       ]);
 
@@ -243,8 +238,6 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
     const maxAttempts = ep.retryCount;
     const isFinalAttempt = attempts >= maxAttempts;
 
-    // Atomic circuit breaker update - increment failureCount and conditionally open circuit
-    const threshold = CIRCUIT_CONFIG.failureThreshold;
     const [, [endpointResult]] = await Promise.all([
       db
         .update(delivery)
@@ -257,13 +250,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
         .where(eq(delivery.id, deliveryId)),
       db
         .update(endpoint)
-        .set({
-          failureCount: sql`${endpoint.failureCount} + 1`,
-          circuitState: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} THEN 'open' ELSE ${endpoint.circuitState} END`,
-          circuitOpenedAt: sql`CASE WHEN ${endpoint.failureCount} + 1 >= ${threshold} AND ${endpoint.circuitState} != 'open' THEN ${now.toISOString()} ELSE ${endpoint.circuitOpenedAt} END`,
-          lastFailureAt: now,
-          updatedAt: now,
-        })
+        .set(circuitFailureSet(endpoint, now))
         .where(eq(endpoint.id, ep.id))
         .returning({
           failureCount: endpoint.failureCount,
@@ -273,7 +260,7 @@ const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
 
     if (
       endpointResult?.circuitState === "open" &&
-      endpointResult.failureCount === threshold
+      endpointResult.failureCount === CIRCUIT_CONFIG.failureThreshold
     ) {
       log.warn(
         { endpointId: ep.id, failureCount: endpointResult.failureCount },
