@@ -4,12 +4,16 @@ import {
   betterAuth,
   deviceAuthorization,
   drizzleAdapter,
+  emailHarmony,
   organization,
 } from "@usevon/auth";
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
 import { UnauthorizedError } from "@usevon/utils";
+import { APIError } from "better-auth/api";
+import isEmail from "validator/es/lib/isEmail.js";
+import mailchecker from "mailchecker";
 import { Elysia } from "elysia";
 
 import { env } from "@/env";
@@ -88,6 +92,17 @@ const auth = betterAuth({
     },
   },
   plugins: [
+    emailHarmony({
+      validator: (email) => {
+        if (!isEmail(email)) return false;
+        if (!mailchecker.isValid(email)) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Disposable email addresses are not allowed",
+          });
+        }
+        return true;
+      },
+    }),
     bearer(),
     organization({
       organizationHooks: {

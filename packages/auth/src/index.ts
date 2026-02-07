@@ -16,6 +16,7 @@ export {
   organization,
   deviceAuthorization,
 } from "better-auth/plugins";
+export { emailHarmony } from "better-auth-harmony";
 
 // Utilities
 export { getSessionCookie } from "better-auth/cookies";
