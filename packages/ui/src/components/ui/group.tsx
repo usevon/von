@@ -1,27 +1,25 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { cva, type VariantProps } from "class-variance-authority";
+import { tv, type VariantProps } from "tailwind-variants";
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-const groupVariants = cva(
-  "flex w-fit *:focus-visible:z-10 has-[>[data-slot=group]]:gap-2 *:has-focus-visible:z-10",
-  {
-    defaultVariants: {
-      orientation: "horizontal",
-    },
-    variants: {
-      orientation: {
-        horizontal:
-          "*:not-first:before:-start-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-end-[0.5px] *:not-first:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-e-none *:not-first:border-s-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-e-0 *:not-first:before:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-e-none *:after:absolute *:after:start-full *:after:h-full *:after:w-px *:pointer-coarse:after:min-w-auto",
-        vertical:
-          "*:not-first:before:-top-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-bottom-[0.5px] flex-col *:not-first:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-b-none *:not-first:border-t-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-b-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:hidden *:not-first:before:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-b-none *:after:absolute *:after:top-full *:after:h-px *:pointer-coarse:after:min-h-auto *:after:w-full dark:*:last:before:hidden dark:*:first:before:block",
-      },
+const groupVariants = tv({
+  base: "flex w-fit *:focus-visible:z-10 has-[>[data-slot=group]]:gap-2 *:has-focus-visible:z-10",
+  defaultVariants: {
+    orientation: "horizontal",
+  },
+  variants: {
+    orientation: {
+      horizontal:
+        "*:not-first:before:-start-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-end-[0.5px] *:not-first:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-e-none *:not-first:border-s-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-e-0 *:not-first:before:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-e-none *:after:absolute *:after:start-full *:after:h-full *:after:w-px *:pointer-coarse:after:min-w-auto",
+      vertical:
+        "*:not-first:before:-top-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-bottom-[0.5px] flex-col *:not-first:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-b-none *:not-first:border-t-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-b-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:hidden *:not-first:before:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-b-none *:after:absolute *:after:top-full *:after:h-px *:pointer-coarse:after:min-h-auto *:after:w-full dark:*:last:before:hidden dark:*:first:before:block",
     },
   },
-);
+});
 
 function Group({
   className,
