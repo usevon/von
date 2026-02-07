@@ -1,5 +1,6 @@
 import { db } from "@usevon/db";
 import { webhookVersion } from "@usevon/db/schema";
+import { getRedisClient } from "@usevon/queue";
 import { InternalServerError, type Transforms, toISODates } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -15,6 +16,8 @@ type UpdateVersionParams = Pick<VersionFields, "transforms"> & {
   organizationId: string;
   version: string;
 };
+
+const redis = getRedisClient();
 
 export abstract class VersionService {
   static create(
@@ -115,6 +118,7 @@ export abstract class VersionService {
       if (!result[0]) {
         throw new InternalServerError("Failed to update version");
       }
+      await redis.del(`version:${params.organizationId}:${params.version}`);
       return toISODates(result[0]) as VersionModel.webhookVersion;
     }, "updating version");
   }
@@ -131,6 +135,9 @@ export abstract class VersionService {
         )
         .returning({ id: webhookVersion.id });
 
+      if (result.length > 0) {
+        await redis.del(`version:${organizationId}:${version}`);
+      }
       return result.length > 0;
     }, "deleting version");
   }

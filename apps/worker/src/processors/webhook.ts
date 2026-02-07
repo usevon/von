@@ -1,17 +1,11 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema";
-import { createConnection, type WebhookDeliveryJob } from "@usevon/queue";
+import { getRedisClient, type WebhookDeliveryJob } from "@usevon/queue";
 import { applyTransforms, type Transforms } from "@usevon/utils";
+import { createWorker } from "@/lib/create-worker";
+import { log } from "@/lib/logger";
 import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
-import { createLogger } from "@usevon/utils/logger";
-import { type Job, Worker } from "bullmq";
 import { and, eq, sql } from "drizzle-orm";
-import { env } from "@/env";
-
-const log = createLogger({
-  level: env.NODE_ENV === "development" ? "debug" : "info",
-  pretty: env.NODE_ENV === "development",
-});
 
 const getDeliveryStmt = db
   .select()
@@ -44,24 +38,18 @@ const getVersionStmt = db
   .limit(1)
   .prepare("worker_get_version");
 
-type CachedVersion = {
-  transforms: Transforms | null;
-  expiresAt: number;
-};
-
-const versionCache = new Map<string, CachedVersion>();
-const CACHE_TTL_MS = 60_000;
-const CACHE_MAX_SIZE = 1000;
+const redis = getRedisClient();
+const VERSION_CACHE_TTL = 60; // seconds
 
 const getVersionTransforms = async (
   version: string,
   organizationId: string
 ): Promise<Transforms | null> => {
-  const cacheKey = `${organizationId}:${version}`;
-  const cached = versionCache.get(cacheKey);
+  const cacheKey = `version:${organizationId}:${version}`;
+  const cached = await redis.get(cacheKey);
 
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.transforms;
+  if (cached) {
+    return JSON.parse(cached) as Transforms;
   }
 
   const [result] = await getVersionStmt.execute({
@@ -70,22 +58,14 @@ const getVersionTransforms = async (
   });
   const transforms = (result?.transforms as Transforms) ?? null;
 
-  if (versionCache.size >= CACHE_MAX_SIZE) {
-    const oldestKey = versionCache.keys().next().value;
-    if (oldestKey) {
-      versionCache.delete(oldestKey);
-    }
+  if (transforms) {
+    await redis.setex(cacheKey, VERSION_CACHE_TTL, JSON.stringify(transforms));
   }
-
-  versionCache.set(cacheKey, {
-    transforms,
-    expiresAt: Date.now() + CACHE_TTL_MS,
-  });
 
   return transforms;
 };
 
-const webhookConfig: DeliveryConfig = {
+const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
   label: "Webhook",
   deliveryTable: delivery,
   endpointTable: endpoint,
@@ -136,7 +116,7 @@ const webhookConfig: DeliveryConfig = {
 
     if (!transforms) return payload;
 
-    const eventTransforms = transforms[job.eventType as string];
+    const eventTransforms = transforms[job.eventType];
     if (!eventTransforms) return payload;
 
     let parsed: Record<string, unknown>;
@@ -163,27 +143,7 @@ const webhookConfig: DeliveryConfig = {
   },
 };
 
-const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  await processDelivery(webhookConfig, job);
-};
-
-export const createWebhookWorker = () => {
-  const worker = new Worker<WebhookDeliveryJob>(
-    "webhook-delivery",
-    processWebhookDelivery,
-    {
-      connection: createConnection(),
-      concurrency: env.WORKER_CONCURRENCY,
-    }
+export const createWebhookWorker = () =>
+  createWorker<WebhookDeliveryJob>("webhook-delivery", (job) =>
+    processDelivery(webhookConfig, job)
   );
-
-  worker.on("completed", (job) => {
-    log.debug({ jobId: job.id }, "Job completed");
-  });
-
-  worker.on("failed", (job, error) => {
-    log.error({ jobId: job?.id, error: error.message }, "Job failed");
-  });
-
-  return worker;
-};
