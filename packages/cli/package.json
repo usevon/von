@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "bun run tsdown",
+    "prepack": "bun run tsdown",
     "cli": "tsx ./src/index.ts"
   },
   "dependencies": {
