@@ -57,11 +57,24 @@ const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: [env.DASHBOARD_URL ?? "http://localhost:3001"],
+  secondaryStorage: {
+    get: async (key) => await redis.get(key),
+    set: async (key, value, ttl) => {
+      if (ttl) {
+        await redis.setex(key, ttl, value);
+      } else {
+        await redis.set(key, value);
+      }
+    },
+    delete: async (key) => {
+      await redis.del(key);
+    },
+  },
   rateLimit: {
     enabled: true,
     window: 60,
     max: 100,
-    storage: "memory",
+    storage: "secondary-storage",
   },
   ...(socialProviders && { socialProviders }),
   emailAndPassword: {
