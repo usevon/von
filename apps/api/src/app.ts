@@ -45,12 +45,12 @@ export const app = new Elysia({
   .mount(auth.handler)
   .use(tunnelRegister)
   .use(tunnelWs)
-  .use(tunnelProxy)
   .use(inboundPublic)
   .use(webhooks)
   .use(webhookEvents)
   .use(endpoints)
   .use(inbound)
-  .use(versions);
+  .use(versions)
+  .group("/t", (app) => app.use(tunnelProxy));
 
 export type App = typeof app;

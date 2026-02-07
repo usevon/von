@@ -42,7 +42,7 @@ export const rotate = new Command("rotate")
 
       s.stop("Secret rotated");
 
-      const tunnelUrl = `${config.apiUrl}/${tunnelId}-${secret}`;
+      const tunnelUrl = `${config.apiUrl}/t/${tunnelId}-${secret}`;
       note(
         `${pc.dim("Port:")}   ${pc.magenta(port.toString())}\n${pc.dim("URL:")}    ${pc.cyan(tunnelUrl)}`,
         "New Tunnel URL"

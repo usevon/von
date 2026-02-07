@@ -99,24 +99,28 @@ const auth = betterAuth({
         },
       },
     }),
-    apiKey({
-      storage: "secondary-storage",
-      fallbackToDatabase: true,
-      signingSecret: env.API_KEY_SIGNING_SECRET,
-      secondaryStorage: {
-        get: async (key) => await redis.get(key),
-        set: async (key, value, ttl) => {
-          if (ttl) {
-            await redis.setex(key, ttl, value);
-          } else {
-            await redis.set(key, value);
-          }
-        },
-        delete: async (key) => {
-          await redis.del(key);
-        },
-      },
-    }),
+    ...(env.API_KEY_SIGNING_SECRET
+      ? [
+          apiKey({
+            storage: "secondary-storage",
+            fallbackToDatabase: true,
+            signingSecret: env.API_KEY_SIGNING_SECRET,
+            secondaryStorage: {
+              get: async (key) => await redis.get(key),
+              set: async (key, value, ttl) => {
+                if (ttl) {
+                  await redis.setex(key, ttl, value);
+                } else {
+                  await redis.set(key, value);
+                }
+              },
+              delete: async (key) => {
+                await redis.del(key);
+              },
+            },
+          }),
+        ]
+      : []),
     deviceAuthorization({
       verificationUri: "/device",
       expiresIn: "30m",

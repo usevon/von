@@ -111,7 +111,7 @@ export const registerTunnel = async (
 
 	const data = (await res.json()) as { tunnelId: string; secret: string };
 
-	const tunnelUrl = `${config.apiUrl}/${data.tunnelId}-${data.secret}`;
+	const tunnelUrl = `${config.apiUrl}/t/${data.tunnelId}-${data.secret}`;
 	const wsUrl =
 		config.apiUrl.replace("http://", "ws://").replace("https://", "wss://") +
 		`/ws/${data.tunnelId}`;
