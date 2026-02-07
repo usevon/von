@@ -4,7 +4,6 @@ import { type DeliveryEndpoint, getRedisClient } from "@usevon/queue";
 import {
   BadRequestError,
   InternalServerError,
-  generateId,
   generateSecret,
   isValidWebhookUrl,
   toISODates,
@@ -62,7 +61,7 @@ export abstract class EndpointService {
       const result = await db
         .insert(endpoint)
         .values({
-          id: generateId(),
+          id: crypto.randomUUID(),
           organizationId: params.organizationId,
           url: params.url,
           description: params.description ?? null,

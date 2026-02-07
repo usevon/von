@@ -4,7 +4,6 @@ import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
 import {
   BadRequestError,
   InternalServerError,
-  generateId,
   generateSecret,
   isValidWebhookUrl,
   toISODates,
@@ -64,7 +63,7 @@ export abstract class InboundService {
       const result = await db
         .insert(inboundEndpoint)
         .values({
-          id: generateId(),
+          id: crypto.randomUUID(),
           organizationId: params.organizationId,
           name: params.name ?? null,
           provider: params.provider ?? null,
@@ -224,7 +223,7 @@ export abstract class InboundService {
   ): Promise<InboundModel.inboundDelivery> {
     return withServiceError(async () => {
       const now = new Date();
-      const deliveryId = generateId();
+      const deliveryId = crypto.randomUUID();
       const payloadStr = JSON.stringify(params.payload);
       const headersStr = JSON.stringify(params.headers);
 

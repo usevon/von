@@ -1,5 +1,5 @@
 import type { TunnelConnection, TunnelRequest, TunnelResponse } from "@/modules/tunnel/model";
-import { generateId, timingSafeEqual } from "@usevon/utils";
+import { timingSafeEqual } from "@usevon/utils";
 
 const tunnels = new Map<string, TunnelConnection>();
 const orgTunnelCounts = new Map<string, number>();
@@ -112,7 +112,7 @@ export abstract class TunnelService {
 
     try {
       const response = await TunnelService.forwardRequest(tunnelId, {
-        id: generateId(),
+        id: crypto.randomUUID(),
         method: request.method,
         path,
         headers,

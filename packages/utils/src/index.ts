@@ -14,7 +14,6 @@ export {
   UnauthorizedError,
 } from "@/errors";
 export {
-  generateId,
   generateSecret,
   generateTunnelId,
   generateTunnelSecret,

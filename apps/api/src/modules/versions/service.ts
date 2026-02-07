@@ -1,6 +1,6 @@
 import { db } from "@usevon/db";
 import { webhookVersion } from "@usevon/db/schema";
-import { InternalServerError, generateId, type Transforms, toISODates } from "@usevon/utils";
+import { InternalServerError, type Transforms, toISODates } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
 import type { VersionModel } from "@/modules/versions/model";
@@ -26,7 +26,7 @@ export abstract class VersionService {
       const result = await db
         .insert(webhookVersion)
         .values({
-          id: generateId(),
+          id: crypto.randomUUID(),
           organizationId: params.organizationId,
           version: params.version,
           transforms: params.transforms,

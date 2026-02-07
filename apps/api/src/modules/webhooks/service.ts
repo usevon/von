@@ -4,7 +4,6 @@ import type { WebhookDeliveryJob } from "@usevon/queue";
 import { getWebhookDeliveryQueue } from "@usevon/queue";
 import {
   BadRequestError,
-  generateId,
   InternalServerError,
   matchesEventType,
   toISODates,
@@ -88,7 +87,7 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
 
     const payloadStr = JSON.stringify(evt.payload);
     for (const ep of targets) {
-      const deliveryId = generateId();
+      const deliveryId = crypto.randomUUID();
       allDeliveries.push({
         id: deliveryId,
         eventId: evt.id,
@@ -235,7 +234,7 @@ export abstract class WebhookService {
           continue;
         }
         newEvents.push({
-          id: generateId(),
+          id: crypto.randomUUID(),
           eventType: evt.eventType,
           payload: evt.payload,
           idempotencyKey: evt.idempotencyKey ?? null,
