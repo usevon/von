@@ -5,12 +5,12 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
     },
     "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.js"
+      "types": "./dist/client.d.mts",
+      "import": "./dist/client.mjs"
     }
   },
   "scripts": {
@@ -24,8 +24,8 @@
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.2",
-    "@types/node": "^22.0.0",
+    "@types/node": "^20",
     "@usevon/typescript-config": "workspace:*",
-    "tsdown": "^0.12.9"
+    "tsdown": "^0.16.8"
   }
 }

@@ -3,44 +3,44 @@
   "version": "0.2.1",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     },
     "./crypto": {
-      "types": "./dist/crypto.d.ts",
-      "default": "./dist/crypto.js"
+      "types": "./dist/crypto.d.mts",
+      "default": "./dist/crypto.mjs"
     },
     "./errors": {
-      "types": "./dist/errors.d.ts",
-      "default": "./dist/errors.js"
+      "types": "./dist/errors.d.mts",
+      "default": "./dist/errors.mjs"
     },
     "./circuit-breaker": {
-      "types": "./dist/circuit-breaker.d.ts",
-      "default": "./dist/circuit-breaker.js"
+      "types": "./dist/circuit-breaker.d.mts",
+      "default": "./dist/circuit-breaker.mjs"
     },
     "./ids": {
-      "types": "./dist/ids.d.ts",
-      "default": "./dist/ids.js"
+      "types": "./dist/ids.d.mts",
+      "default": "./dist/ids.mjs"
     },
     "./transforms": {
-      "types": "./dist/transforms.d.ts",
-      "default": "./dist/transforms.js"
+      "types": "./dist/transforms.d.mts",
+      "default": "./dist/transforms.mjs"
     },
     "./env": {
-      "types": "./dist/env.d.ts",
-      "default": "./dist/env.js"
+      "types": "./dist/env.d.mts",
+      "default": "./dist/env.mjs"
     },
     "./logger": {
-      "types": "./dist/logger.d.ts",
-      "default": "./dist/logger.js"
+      "types": "./dist/logger.d.mts",
+      "default": "./dist/logger.mjs"
     },
     "./elysia": {
-      "types": "./dist/elysia.d.ts",
-      "default": "./dist/elysia.js"
+      "types": "./dist/elysia.d.mts",
+      "default": "./dist/elysia.mjs"
     }
   },
   "scripts": {
@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.11.1",
-    "zod": "^3.24.0",
+    "zod": "^3.24.1",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0"
   },
@@ -71,6 +71,6 @@
   },
   "devDependencies": {
     "@usevon/typescript-config": "workspace:*",
-    "tsdown": "^0.12.9"
+    "tsdown": "^0.16.8"
   }
 }

@@ -19,7 +19,7 @@
   ],
   "type": "module",
   "bin": {
-    "von": "./dist/index.js"
+    "von": "./dist/index.mjs"
   },
   "scripts": {
     "build": "bun run tsdown",
@@ -34,10 +34,10 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
-    "@types/node": "^22.15.21",
+    "@types/node": "^20",
     "@types/ws": "^8.5.0",
     "@usevon/typescript-config": "workspace:*",
-    "tsdown": "^0.12.7",
+    "tsdown": "^0.16.8",
     "tsx": "^4.20.0"
   },
   "files": [

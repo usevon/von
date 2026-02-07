@@ -7,16 +7,16 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun --minify",
-    "build:prod": "bun build --compile --minify --sourcemap --drop console --drop debugger --target bun-linux-x64 --outfile dist/worker src/index.ts",
+    "build:prod": "bun build --compile --bytecode --minify --sourcemap --drop console --drop debugger --target bun-linux-x64 --outfile dist/worker src/index.ts",
     "test": "bun test"
   },
   "dependencies": {
     "@usevon/db": "workspace:*",
     "@usevon/queue": "workspace:*",
     "@usevon/utils": "workspace:*",
-    "bullmq": "^5.64.1",
+    "bullmq": "^5.67.3",
     "drizzle-orm": "^0.44.7",
-    "ioredis": "^5.8.2",
+    "ioredis": "^5.9.2",
     "postgres": "^3.4.7"
   },
   "devDependencies": {

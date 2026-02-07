@@ -5,8 +5,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
     }
   },
   "scripts": {
@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "@usevon/typescript-config": "workspace:*",
-    "tsdown": "^0.12.9"
+    "tsdown": "^0.16.8"
   }
 }
