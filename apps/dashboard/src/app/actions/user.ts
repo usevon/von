@@ -10,11 +10,11 @@ type SessionResult = {
     id: string;
     name: string;
     email: string;
-    image?: string;
+    image?: string | null;
   };
   session: {
     id: string;
-    activeOrganizationId?: string;
+    activeOrganizationId?: string | null;
   };
 } | null;
 
