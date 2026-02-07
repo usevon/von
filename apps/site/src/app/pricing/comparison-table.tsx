@@ -10,61 +10,24 @@ const comparisonFeatures = [
         description: "Number of webhook deliveries included in your plan each month.",
         hobby: "25,000",
         pro: "100,000 included",
-        enterprise: "Unlimited",
       },
       {
         name: "Additional webhooks",
         description: "Cost for webhooks beyond your included amount.",
         hobby: false,
         pro: "$1 per 10k",
-        enterprise: "Custom",
       },
       {
         name: "Base throughput",
         description: "Maximum webhooks delivered per second under normal load.",
         hobby: "25/sec",
         pro: "100/sec",
-        enterprise: "Custom",
       },
       {
         name: "Burst capacity",
         description: "Temporary throughput boost (1.5x) for traffic spikes.",
         hobby: false,
         pro: "150/sec",
-        enterprise: "Custom",
-      },
-    ],
-  },
-  {
-    category: "Development",
-    features: [
-      {
-        name: "Active dev tunnels",
-        description: "Concurrent tunnel connections for local development.",
-        hobby: "3",
-        pro: "5",
-        enterprise: "Unlimited",
-      },
-      {
-        name: "Tunnel sessions",
-        description: "Maximum duration for each tunnel session.",
-        hobby: "8 hours",
-        pro: "8 hours",
-        enterprise: "Unlimited",
-      },
-      {
-        name: "Real-time events",
-        description: "Live event streaming for debugging and monitoring.",
-        hobby: true,
-        pro: true,
-        enterprise: true,
-      },
-      {
-        name: "React components",
-        description: "Pre-built React components for webhook management UI.",
-        hobby: true,
-        pro: true,
-        enterprise: true,
       },
     ],
   },
@@ -72,32 +35,28 @@ const comparisonFeatures = [
     category: "Infrastructure",
     features: [
       {
+        name: "Dev tunnels",
+        description: "One concurrent tunnel per team member.",
+        hobby: "1",
+        pro: "1 per member",
+      },
+      {
         name: "Retention",
         description: "How long webhook delivery logs are stored.",
-        hobby: "7 days",
+        hobby: "3 days",
         pro: "90 days",
-        enterprise: "Custom",
       },
       {
         name: "Custom domains",
         description: "Use your own domain for webhook endpoints.",
         hobby: true,
         pro: true,
-        enterprise: true,
       },
       {
         name: "Dedicated IP",
         description: "Static IP address for customer IP allowlists.",
         hobby: false,
         pro: "+$50/mo per IP",
-        enterprise: "Included",
-      },
-      {
-        name: "SSO & SAML",
-        description: "Single sign-on with your identity provider.",
-        hobby: false,
-        pro: false,
-        enterprise: true,
       },
     ],
   },
@@ -107,16 +66,20 @@ const comparisonFeatures = [
       {
         name: "Team members",
         description: "Users who can access your Von workspace.",
-        hobby: "3",
-        pro: "Unlimited",
-        enterprise: "Unlimited",
+        hobby: "1",
+        pro: "5 included",
+      },
+      {
+        name: "Additional members",
+        description: "Cost for each team member beyond the included amount.",
+        hobby: false,
+        pro: "$5/mo each",
       },
       {
         name: "Support",
         description: "How you can reach us for help.",
-        hobby: "Community",
-        pro: "Email",
-        enterprise: "Priority + SLA",
+        hobby: "Discord",
+        pro: "Discord + Email",
       },
     ],
   },
@@ -157,10 +120,9 @@ export const ComparisonTable = () => {
       {/* Desktop table */}
       <table className="w-full border-collapse text-left text-sm max-sm:hidden">
         <colgroup>
-          <col className="w-[40%]" />
-          <col className="w-[20%]" />
-          <col className="w-[20%]" />
-          <col className="w-[20%]" />
+          <col className="w-[50%]" />
+          <col className="w-[25%]" />
+          <col className="w-[25%]" />
         </colgroup>
         <thead className="sticky top-[5.25rem] z-10 bg-background shadow-[inset_0_-1px_0_var(--color-border)]">
           <tr>
@@ -173,16 +135,13 @@ export const ComparisonTable = () => {
             <th className="pb-4 text-center font-semibold text-foreground">
               Pro
             </th>
-            <th className="pb-4 text-center font-semibold text-foreground">
-              Enterprise
-            </th>
           </tr>
         </thead>
         {comparisonFeatures.map((group) => (
           <tbody key={group.category}>
             <tr>
               <th
-                colSpan={4}
+                colSpan={3}
                 className="border-b border-t border-border pb-4 pt-8 font-medium text-foreground"
               >
                 {group.category}
@@ -198,9 +157,6 @@ export const ComparisonTable = () => {
                 </td>
                 <td className="py-3 text-center text-muted-foreground">
                   {renderFeatureValue(feature.pro)}
-                </td>
-                <td className="py-3 text-center text-muted-foreground">
-                  {renderFeatureValue(feature.enterprise)}
                 </td>
               </tr>
             ))}
@@ -218,7 +174,7 @@ export const ComparisonTable = () => {
               {group.features.map((feature) => (
                 <div key={feature.name} className="text-sm">
                   <p className="text-muted-foreground">{feature.name}</p>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground/60">Hobby:</span>{" "}
                       {renderFeatureValue(feature.hobby)}
@@ -226,10 +182,6 @@ export const ComparisonTable = () => {
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground/60">Pro:</span>{" "}
                       {renderFeatureValue(feature.pro)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground/60">Enterprise:</span>{" "}
-                      {renderFeatureValue(feature.enterprise)}
                     </div>
                   </div>
                 </div>

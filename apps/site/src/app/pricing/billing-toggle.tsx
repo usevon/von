@@ -12,10 +12,9 @@ const plans = [
     features: [
       "25,000 webhooks/month",
       "25/sec throughput",
-      "3 concurrent dev tunnels",
-      "7 day retention",
+      "3 day retention",
       "Custom domains",
-      "Community support",
+      "Discord support",
     ],
     cta: "Get started",
     href: urls.signup,
@@ -27,41 +26,21 @@ const plans = [
     period: "/month + usage",
     description: "For production applications with growing traffic.",
     features: [
-      "$20 usage credit included",
       "100,000 webhooks included",
       "100/sec throughput",
-      "5 concurrent dev tunnels",
       "90 day retention",
-      "Unlimited team members",
-      "Email support",
+      "5 team members",
+      "Discord + Email support",
     ],
     cta: "Get started",
     href: urls.signupPro,
     highlighted: true,
   },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    description: "For organizations with advanced requirements.",
-    features: [
-      "Unlimited webhooks",
-      "Custom throughput",
-      "Unlimited dev tunnels",
-      "Custom retention",
-      "Dedicated IP addresses",
-      "SSO & SAML",
-      "SLA & priority support",
-    ],
-    cta: "Contact us",
-    href: "/contact",
-    highlighted: false,
-  },
 ];
 
 export const PricingPlans = () => {
   return (
-    <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-2 md:grid-cols-3">
+    <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-2 md:grid-cols-2">
       {plans.map((plan) => (
         <div
           key={plan.name}

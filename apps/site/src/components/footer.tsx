@@ -8,11 +8,6 @@ import { TextHoverEffect } from "@/components/text-hover-effect";
 import { docsUrl } from "@/lib/urls";
 
 const footerLinks = {
-  explore: [
-    { label: "Startups", href: "/startups" },
-    { label: "Developers", href: "/developers" },
-    { label: "Open Source", href: "/open-source" },
-  ],
   resources: [
     { label: "Contact", href: "/contact" },
     { label: "Blog", href: "/blog" },
@@ -37,7 +32,7 @@ export const Footer = () => {
   return (
     <footer className="bg-foreground/[0.02] dark:bg-white/[0.02]">
       <div className="mx-auto max-w-7xl px-6 pt-16 lg:px-10">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
             <Button
               variant="ghost"
@@ -60,25 +55,6 @@ export const Footer = () => {
                 className="hidden size-6 dark:block"
               />
             </Button>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Explore
-            </h3>
-            <ul className="mt-4 flex flex-col items-start">
-              {footerLinks.explore.map((link) => (
-                <li key={link.href}>
-                  <Button
-                    variant="ghost"
-                    render={<Link href={link.href} />}
-                    className="-ml-3 text-foreground"
-                  >
-                    {link.label}
-                  </Button>
-                </li>
-              ))}
-            </ul>
           </div>
 
           <div>
