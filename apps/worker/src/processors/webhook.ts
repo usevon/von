@@ -1,16 +1,8 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema";
 import { createConnection, type WebhookDeliveryJob } from "@usevon/queue";
-import {
-  applyTransforms,
-  CIRCUIT_CONFIG,
-  type CircuitState,
-  hmacSign,
-  isCircuitOpen,
-  shouldTransitionToHalfOpen,
-  type Transforms,
-} from "@usevon/utils";
-import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
+import { applyTransforms, type Transforms } from "@usevon/utils";
+import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
 import { createLogger } from "@usevon/utils/logger";
 import { type Job, Worker } from "bullmq";
 import { and, eq, sql } from "drizzle-orm";
@@ -78,7 +70,6 @@ const getVersionTransforms = async (
   });
   const transforms = (result?.transforms as Transforms) ?? null;
 
-  // LRU eviction: remove oldest entry if cache is full
   if (versionCache.size >= CACHE_MAX_SIZE) {
     const oldestKey = versionCache.keys().next().value;
     if (oldestKey) {
@@ -94,189 +85,86 @@ const getVersionTransforms = async (
   return transforms;
 };
 
-const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
-  const {
-    deliveryId,
-    eventId,
-    payload,
-    eventType,
-    endpoint: ep,
-    organizationId,
-  } = job.data;
+const webhookConfig: DeliveryConfig = {
+  label: "Webhook",
+  deliveryTable: delivery,
+  endpointTable: endpoint,
+  getDeliveryStmt,
+  getEndpointStmt: getEndpointStateStmt,
+  completedStatus: "delivered",
 
-  const [[deliveryRecord], [endpointState]] = await Promise.all([
-    getDeliveryStmt.execute({ id: deliveryId }),
-    getEndpointStateStmt.execute({ id: ep.id }),
-  ]);
+  buildStatusSet: (status) => ({
+    status,
+    updatedAt: new Date(),
+  }),
 
-  if (!deliveryRecord) {
-    log.warn({ deliveryId }, "Delivery not found, skipping");
-    return;
-  }
+  buildSuccessSet: ({ attempts, now, responseStatus }) => ({
+    status: "delivered",
+    attempts,
+    lastAttemptAt: now,
+    responseStatus,
+    updatedAt: now,
+  }),
 
-  if (deliveryRecord.status === "delivered") {
-    log.info({ deliveryId }, "Already delivered, skipping");
-    return;
-  }
+  buildFailureSet: ({ attempts, now, isFinalAttempt }) => ({
+    status: isFinalAttempt ? "failed" : "pending",
+    attempts,
+    lastAttemptAt: now,
+    updatedAt: now,
+  }),
 
-  if (!endpointState) {
-    log.error({ endpointId: ep.id }, "Endpoint not found");
-    throw new Error(`Endpoint ${ep.id} not found`);
-  }
+  buildRequest: ({ payload, timestamp, signature, deliveryId, job }) => ({
+    url: job.endpoint.url,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+      "X-Von-Timestamp": String(timestamp),
+      "X-Von-Event-Type": job.eventType,
+      "X-Von-Delivery-Id": deliveryId,
+      "X-Von-Event-Id": job.eventId,
+    },
+    body: payload,
+  }),
 
-  if (!endpointState.enabled) {
-    log.info({ endpointId: ep.id }, "Endpoint disabled, marking as skipped");
-    await db
-      .update(delivery)
-      .set({ status: "skipped", updatedAt: new Date() })
-      .where(eq(delivery.id, deliveryId));
-    return;
-  }
+  transformPayload: async (payload, job) => {
+    if (!job.endpoint.version) return payload;
 
-  const circuitState = {
-    circuitState: endpointState.circuitState as CircuitState,
-    circuitOpenedAt: endpointState.circuitOpenedAt,
-    failureCount: endpointState.failureCount,
-  };
-
-  if (isCircuitOpen(circuitState)) {
-    log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped");
-    await db
-      .update(delivery)
-      .set({ status: "circuit_open", updatedAt: new Date() })
-      .where(eq(delivery.id, deliveryId));
-    return;
-  }
-
-  if (shouldTransitionToHalfOpen(circuitState)) {
-    await db
-      .update(endpoint)
-      .set({ circuitState: "half_open", updatedAt: new Date() })
-      .where(eq(endpoint.id, ep.id));
-  }
-
-  let finalPayload = payload;
-
-  if (ep.version) {
-    const transforms = await getVersionTransforms(ep.version, organizationId);
-
-    if (transforms) {
-      const eventTransforms = transforms[eventType];
-
-      if (eventTransforms) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(payload) as Record<string, unknown>;
-        } catch {
-          log.error(
-            { deliveryId, payload: payload.slice(0, 100) },
-            "Invalid JSON payload"
-          );
-          await db
-            .update(delivery)
-            .set({ status: "failed", updatedAt: new Date() })
-            .where(eq(delivery.id, deliveryId));
-          return;
-        }
-        const transformed = applyTransforms(parsed, eventTransforms);
-        finalPayload = JSON.stringify(transformed);
-        log.debug(
-          { endpointId: ep.id, version: ep.version, eventType },
-          "Applied transforms"
-        );
-      }
-    }
-  }
-
-  const now = new Date();
-  const timestamp = Math.floor(now.getTime() / 1000);
-  const signedPayload = `${timestamp}.${finalPayload}`;
-  const signature = hmacSign(signedPayload, ep.secret);
-
-  try {
-    const response = await fetch(ep.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Von-Signature": `t=${timestamp},v1=${signature}`,
-        "X-Von-Timestamp": String(timestamp),
-        "X-Von-Event-Type": eventType,
-        "X-Von-Delivery-Id": deliveryId,
-        "X-Von-Event-Id": eventId,
-      },
-      body: finalPayload,
-      signal: AbortSignal.timeout(ep.timeoutMs),
-    });
-
-    if (response.ok) {
-      await Promise.all([
-        db
-          .update(delivery)
-          .set({
-            status: "delivered",
-            attempts: deliveryRecord.attempts + 1,
-            lastAttemptAt: now,
-            responseStatus: response.status,
-            updatedAt: now,
-          })
-          .where(eq(delivery.id, deliveryId)),
-        db
-          .update(endpoint)
-          .set(circuitSuccessSet(now))
-          .where(eq(endpoint.id, ep.id)),
-      ]);
-
-      log.info(
-        { deliveryId, status: response.status },
-        "Webhook delivered successfully"
-      );
-    } else {
-      throw new Error(`HTTP ${response.status}`);
-    }
-  } catch (error) {
-    const attempts = deliveryRecord.attempts + 1;
-    const maxAttempts = ep.retryCount;
-    const isFinalAttempt = attempts >= maxAttempts;
-
-    const [, [endpointResult]] = await Promise.all([
-      db
-        .update(delivery)
-        .set({
-          status: isFinalAttempt ? "failed" : "pending",
-          attempts,
-          lastAttemptAt: now,
-          updatedAt: now,
-        })
-        .where(eq(delivery.id, deliveryId)),
-      db
-        .update(endpoint)
-        .set(circuitFailureSet(endpoint, now))
-        .where(eq(endpoint.id, ep.id))
-        .returning({
-          failureCount: endpoint.failureCount,
-          circuitState: endpoint.circuitState,
-        }),
-    ]);
-
-    if (
-      endpointResult?.circuitState === "open" &&
-      endpointResult.failureCount === CIRCUIT_CONFIG.failureThreshold
-    ) {
-      log.warn(
-        { endpointId: ep.id, failureCount: endpointResult.failureCount },
-        "Circuit breaker opened"
-      );
-    }
-
-    log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error).slice(0, 200) },
-      "Webhook delivery failed"
+    const transforms = await getVersionTransforms(
+      job.endpoint.version,
+      job.organizationId
     );
 
-    if (!isFinalAttempt) {
-      throw error;
+    if (!transforms) return payload;
+
+    const eventTransforms = transforms[job.eventType as string];
+    if (!eventTransforms) return payload;
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      log.error(
+        { deliveryId: job.deliveryId, payload: payload.slice(0, 100) },
+        "Invalid JSON payload"
+      );
+      await db
+        .update(delivery)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(delivery.id, job.deliveryId));
+      return null;
     }
-  }
+
+    const transformed = applyTransforms(parsed, eventTransforms);
+    log.debug(
+      { endpointId: job.endpoint.id, version: job.endpoint.version, eventType: job.eventType },
+      "Applied transforms"
+    );
+    return JSON.stringify(transformed);
+  },
+};
+
+const processWebhookDelivery = async (job: Job<WebhookDeliveryJob>) => {
+  await processDelivery(webhookConfig, job);
 };
 
 export const createWebhookWorker = () => {

@@ -1,14 +1,7 @@
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import { createConnection, type InboundForwardingJob } from "@usevon/queue";
-import {
-  CIRCUIT_CONFIG,
-  type CircuitState,
-  hmacSign,
-  isCircuitOpen,
-  shouldTransitionToHalfOpen,
-} from "@usevon/utils";
-import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
+import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
 import { createLogger } from "@usevon/utils/logger";
 import { type Job, Worker } from "bullmq";
 import { eq, sql } from "drizzle-orm";
@@ -38,89 +31,54 @@ const getInboundEndpointStateStmt = db
   .limit(1)
   .prepare("worker_get_inbound_endpoint_state");
 
-const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
-  const { deliveryId, endpoint: ep, payload, headers } = job.data;
+const BLOCKED_HEADERS = [
+  "x-von-signature",
+  "x-von-timestamp",
+  "x-von-inbound-delivery-id",
+  "authorization",
+  "host",
+];
 
-  const [[deliveryRecord], [endpointState]] = await Promise.all([
-    getInboundDeliveryStmt.execute({ id: deliveryId }),
-    getInboundEndpointStateStmt.execute({ id: ep.id }),
-  ]);
+const inboundConfig: DeliveryConfig = {
+  label: "Inbound",
+  deliveryTable: inboundDelivery,
+  endpointTable: inboundEndpoint,
+  getDeliveryStmt: getInboundDeliveryStmt,
+  getEndpointStmt: getInboundEndpointStateStmt,
+  completedStatus: "forwarded",
 
-  if (!deliveryRecord) {
-    log.warn({ deliveryId }, "Inbound delivery not found, skipping");
-    return;
-  }
+  buildStatusSet: (status) => ({
+    status,
+  }),
 
-  if (deliveryRecord.status === "forwarded") {
-    log.info({ deliveryId }, "Already forwarded, skipping");
-    return;
-  }
+  buildSuccessSet: ({ attempts, now, responseStatus }) => ({
+    status: "forwarded",
+    attempts,
+    lastAttemptAt: now,
+    forwardedAt: now,
+    responseStatus,
+  }),
 
-  if (!endpointState) {
-    log.error({ endpointId: ep.id }, "Inbound endpoint not found");
-    throw new Error(`Inbound endpoint ${ep.id} not found`);
-  }
+  buildFailureSet: ({ attempts, now, isFinalAttempt }) => ({
+    status: isFinalAttempt ? "failed" : "pending",
+    attempts,
+    lastAttemptAt: now,
+  }),
 
-  if (!endpointState.enabled) {
-    log.info(
-      { endpointId: ep.id },
-      "Inbound endpoint disabled, marking as skipped"
-    );
-    await db
-      .update(inboundDelivery)
-      .set({ status: "skipped" })
-      .where(eq(inboundDelivery.id, deliveryId));
-    return;
-  }
+  buildRequest: ({ payload, timestamp, signature, deliveryId, job }) => {
+    const originalHeaders: Record<string, string> = job.headers
+      ? JSON.parse(job.headers)
+      : {};
 
-  const circuitState = {
-    circuitState: endpointState.circuitState as CircuitState,
-    circuitOpenedAt: endpointState.circuitOpenedAt,
-    failureCount: endpointState.failureCount,
-  };
-
-  if (isCircuitOpen(circuitState)) {
-    log.info({ endpointId: ep.id }, "Circuit breaker open, marking as skipped");
-    await db
-      .update(inboundDelivery)
-      .set({ status: "circuit_open" })
-      .where(eq(inboundDelivery.id, deliveryId));
-    return;
-  }
-
-  if (shouldTransitionToHalfOpen(circuitState)) {
-    await db
-      .update(inboundEndpoint)
-      .set({ circuitState: "half_open", updatedAt: new Date() })
-      .where(eq(inboundEndpoint.id, ep.id));
-  }
-
-  const originalHeaders: Record<string, string> = headers
-    ? JSON.parse(headers)
-    : {};
-  const now = new Date();
-  const timestamp = Math.floor(now.getTime() / 1000);
-  const signedPayload = `${timestamp}.${payload}`;
-  const signature = hmacSign(signedPayload, ep.secret);
-
-  // Filter out headers that could override security-sensitive values
-  const BLOCKED_HEADERS = [
-    "x-von-signature",
-    "x-von-timestamp",
-    "x-von-inbound-delivery-id",
-    "authorization",
-    "host",
-  ];
-  const safeHeaders: Record<string, string> = {};
-  for (const [key, value] of Object.entries(originalHeaders)) {
-    if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
-      safeHeaders[key] = value;
+    const safeHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(originalHeaders)) {
+      if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
+        safeHeaders[key] = value;
+      }
     }
-  }
 
-  try {
-    const response = await fetch(ep.forwardUrl, {
-      method: "POST",
+    return {
+      url: job.endpoint.forwardUrl,
       headers: {
         ...safeHeaders,
         "X-Von-Signature": `t=${timestamp},v1=${signature}`,
@@ -128,77 +86,12 @@ const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
         "X-Von-Inbound-Delivery-Id": deliveryId,
       },
       body: payload,
-      signal: AbortSignal.timeout(ep.timeoutMs),
-    });
+    };
+  },
+};
 
-    if (response.ok) {
-      await Promise.all([
-        db
-          .update(inboundDelivery)
-          .set({
-            status: "forwarded",
-            attempts: deliveryRecord.attempts + 1,
-            lastAttemptAt: now,
-            forwardedAt: now,
-            responseStatus: response.status,
-          })
-          .where(eq(inboundDelivery.id, deliveryId)),
-        db
-          .update(inboundEndpoint)
-          .set(circuitSuccessSet(now))
-          .where(eq(inboundEndpoint.id, ep.id)),
-      ]);
-
-      log.info(
-        { deliveryId, status: response.status },
-        "Inbound webhook forwarded successfully"
-      );
-    } else {
-      throw new Error(`HTTP ${response.status}`);
-    }
-  } catch (error) {
-    const attempts = deliveryRecord.attempts + 1;
-    const maxAttempts = ep.retryCount;
-    const isFinalAttempt = attempts >= maxAttempts;
-
-    const [, [endpointResult]] = await Promise.all([
-      db
-        .update(inboundDelivery)
-        .set({
-          status: isFinalAttempt ? "failed" : "pending",
-          attempts,
-          lastAttemptAt: now,
-        })
-        .where(eq(inboundDelivery.id, deliveryId)),
-      db
-        .update(inboundEndpoint)
-        .set(circuitFailureSet(inboundEndpoint, now))
-        .where(eq(inboundEndpoint.id, ep.id))
-        .returning({
-          failureCount: inboundEndpoint.failureCount,
-          circuitState: inboundEndpoint.circuitState,
-        }),
-    ]);
-
-    if (
-      endpointResult?.circuitState === "open" &&
-      endpointResult.failureCount === CIRCUIT_CONFIG.failureThreshold
-    ) {
-      log.warn(
-        { endpointId: ep.id, failureCount: endpointResult.failureCount },
-        "Circuit breaker opened"
-      );
-    }
-
-    log.error(
-      { deliveryId, attempts, maxAttempts, error: String(error).slice(0, 200) },
-      "Inbound forwarding failed"
-    );
-
-    if (!isFinalAttempt) {
-      throw error;
-    }
-  }
+const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
+  await processDelivery(inboundConfig, job);
 };
 
 export const createInboundWorker = () => {
