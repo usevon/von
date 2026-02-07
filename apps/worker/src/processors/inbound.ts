@@ -1,16 +1,9 @@
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
-import { createConnection, type InboundForwardingJob } from "@usevon/queue";
+import type { InboundForwardingJob } from "@usevon/queue";
+import { createWorker } from "@/lib/create-worker";
 import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
-import { createLogger } from "@usevon/utils/logger";
-import { type Job, Worker } from "bullmq";
 import { eq, sql } from "drizzle-orm";
-import { env } from "@/env";
-
-const log = createLogger({
-  level: env.NODE_ENV === "development" ? "debug" : "info",
-  pretty: env.NODE_ENV === "development",
-});
 
 const getInboundDeliveryStmt = db
   .select()
@@ -31,15 +24,15 @@ const getInboundEndpointStateStmt = db
   .limit(1)
   .prepare("worker_get_inbound_endpoint_state");
 
-const BLOCKED_HEADERS = [
+const BLOCKED_HEADERS = new Set([
   "x-von-signature",
   "x-von-timestamp",
   "x-von-inbound-delivery-id",
   "authorization",
   "host",
-];
+]);
 
-const inboundConfig: DeliveryConfig = {
+const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
   label: "Inbound",
   deliveryTable: inboundDelivery,
   endpointTable: inboundEndpoint,
@@ -72,7 +65,7 @@ const inboundConfig: DeliveryConfig = {
 
     const safeHeaders: Record<string, string> = {};
     for (const [key, value] of Object.entries(originalHeaders)) {
-      if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
+      if (!BLOCKED_HEADERS.has(key.toLowerCase())) {
         safeHeaders[key] = value;
       }
     }
@@ -90,27 +83,7 @@ const inboundConfig: DeliveryConfig = {
   },
 };
 
-const processInboundForwarding = async (job: Job<InboundForwardingJob>) => {
-  await processDelivery(inboundConfig, job);
-};
-
-export const createInboundWorker = () => {
-  const worker = new Worker<InboundForwardingJob>(
-    "inbound-forwarding",
-    processInboundForwarding,
-    {
-      connection: createConnection(),
-      concurrency: env.WORKER_CONCURRENCY,
-    }
+export const createInboundWorker = () =>
+  createWorker<InboundForwardingJob>("inbound-forwarding", (job) =>
+    processDelivery(inboundConfig, job)
   );
-
-  worker.on("completed", (job) => {
-    log.debug({ jobId: job.id }, "Inbound job completed");
-  });
-
-  worker.on("failed", (job, error) => {
-    log.error({ jobId: job?.id, error: error.message }, "Inbound job failed");
-  });
-
-  return worker;
-};

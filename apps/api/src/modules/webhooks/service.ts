@@ -1,7 +1,10 @@
 import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
-import type { WebhookDeliveryJob } from "@usevon/queue";
-import { getWebhookDeliveryQueue } from "@usevon/queue";
+import {
+  type DeliveryEndpoint,
+  type WebhookDeliveryJob,
+  getWebhookDeliveryQueue,
+} from "@usevon/queue";
 import {
   BadRequestError,
   InternalServerError,
@@ -50,16 +53,6 @@ type NewEvent = {
   payload: unknown;
   idempotencyKey: string | null;
   endpointIds?: string[];
-};
-
-type DeliveryEndpoint = {
-  id: string;
-  url: string;
-  secret: string;
-  timeoutMs: number;
-  retryCount: number;
-  version: string | null;
-  events: string[] | null;
 };
 
 type BuildDeliveriesParams = {

@@ -7,19 +7,14 @@ import {
   shouldTransitionToHalfOpen,
 } from "@usevon/utils";
 import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
-import { createLogger } from "@usevon/utils/logger";
+import { log } from "@/lib/logger";
 import { eq } from "drizzle-orm";
 import type { PgColumn, PgTableWithColumns } from "drizzle-orm/pg-core";
-import { env } from "@/env";
+import type { Job } from "bullmq";
 
 type Executable = {
   execute: (params: Record<string, unknown>) => Promise<any[]>;
 };
-
-const log = createLogger({
-  level: env.NODE_ENV === "development" ? "debug" : "info",
-  pretty: env.NODE_ENV === "development",
-});
 
 type EndpointState = {
   enabled: boolean;
@@ -34,48 +29,48 @@ type CircuitColumns = {
   circuitOpenedAt: PgColumn;
 };
 
-export type DeliveryConfig = {
-  /** Label used in log messages (e.g. "Webhook", "Inbound") */
+type BaseJobData = {
+  deliveryId: string;
+  payload: string;
+  endpoint: {
+    id: string;
+    secret: string;
+    timeoutMs: number;
+    retryCount: number;
+  };
+};
+
+export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
   label: string;
-  /** The delivery table to update */
   deliveryTable: PgTableWithColumns<any>;
-  /** The endpoint table to update */
   endpointTable: PgTableWithColumns<any> & CircuitColumns;
-  /** Prepared statement: select delivery by id */
   getDeliveryStmt: Executable;
-  /** Prepared statement: select endpoint state by id */
   getEndpointStmt: Executable;
-  /** Status value that means "already completed" (e.g. "delivered" | "forwarded") */
   completedStatus: string;
-  /** Build a delivery update set for status-only changes (skipped, circuit_open) */
   buildStatusSet: (status: string) => Record<string, unknown>;
-  /** Build the success delivery update set */
   buildSuccessSet: (params: {
     attempts: number;
     now: Date;
     responseStatus: number;
   }) => Record<string, unknown>;
-  /** Build the failure delivery update set */
   buildFailureSet: (params: {
     attempts: number;
     now: Date;
     isFinalAttempt: boolean;
   }) => Record<string, unknown>;
-  /** Build the outgoing fetch request */
   buildRequest: (params: {
     payload: string;
     timestamp: number;
     signature: string;
     deliveryId: string;
-    job: any;
+    job: TJob;
   }) => { url: string; headers: Record<string, string>; body: string };
-  /** Optional pre-fetch payload transform (e.g. version transforms for webhooks) */
-  transformPayload?: (payload: string, job: any) => Promise<string | null>;
+  transformPayload?: (payload: string, job: TJob) => Promise<string | null>;
 };
 
-export async function processDelivery(
-  config: DeliveryConfig,
-  job: { data: { deliveryId: string; endpoint: { id: string; secret: string; timeoutMs: number; retryCount: number } } & Record<string, any> },
+export async function processDelivery<TJob extends BaseJobData>(
+  config: DeliveryConfig<TJob>,
+  job: Job<TJob>,
 ) {
   const { deliveryId, endpoint: ep } = job.data;
 
@@ -130,12 +125,11 @@ export async function processDelivery(
       .where(eq(config.endpointTable.id, ep.id));
   }
 
-  let finalPayload = job.data.payload as string;
+  let finalPayload = job.data.payload;
 
   if (config.transformPayload) {
     const result = await config.transformPayload(finalPayload, job.data);
     if (result === null) {
-      // Transform signaled failure (e.g. invalid JSON), delivery already updated
       return;
     }
     finalPayload = result;
