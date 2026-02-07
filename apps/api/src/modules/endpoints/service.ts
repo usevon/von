@@ -3,6 +3,7 @@ import { endpoint } from "@usevon/db/schema";
 import { type DeliveryEndpoint, getRedisClient } from "@usevon/queue";
 import {
   BadRequestError,
+  InternalServerError,
   generateId,
   generateSecret,
   isValidWebhookUrl,
@@ -77,7 +78,7 @@ export abstract class EndpointService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to create endpoint");
+        throw new InternalServerError("Failed to create endpoint");
       }
       if (params.enabled !== false) {
         await redis.del(`endpoints:${params.organizationId}`);
@@ -157,7 +158,7 @@ export abstract class EndpointService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to update endpoint");
+        throw new InternalServerError("Failed to update endpoint");
       }
       // Only invalidate if endpoint is/was enabled or enabled status is changing
       if (existing[0].enabled || params.enabled !== undefined) {

@@ -1,6 +1,6 @@
 import { db } from "@usevon/db";
 import { webhookVersion } from "@usevon/db/schema";
-import { generateId, type Transforms, toISODates } from "@usevon/utils";
+import { InternalServerError, generateId, type Transforms, toISODates } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
 import type { VersionModel } from "@/modules/versions/model";
@@ -36,7 +36,7 @@ export abstract class VersionService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to create version");
+        throw new InternalServerError("Failed to create version");
       }
       return toISODates(result[0]) as VersionModel.webhookVersion;
     }, "creating version");
@@ -113,7 +113,7 @@ export abstract class VersionService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to update version");
+        throw new InternalServerError("Failed to update version");
       }
       return toISODates(result[0]) as VersionModel.webhookVersion;
     }, "updating version");

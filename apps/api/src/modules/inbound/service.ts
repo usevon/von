@@ -3,6 +3,7 @@ import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
 import {
   BadRequestError,
+  InternalServerError,
   generateId,
   generateSecret,
   isValidWebhookUrl,
@@ -54,7 +55,7 @@ export abstract class InboundService {
     return withServiceError(async () => {
       if (!isValidWebhookUrl(params.forwardUrl)) {
         throw new BadRequestError(
-          "Invalid forward URL - must be a valid public HTTP(S) URL"
+          "Invalid forward URL: must be http(s) and not target private networks"
         );
       }
 
@@ -76,7 +77,7 @@ export abstract class InboundService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to create inbound endpoint");
+        throw new InternalServerError("Failed to create inbound endpoint");
       }
       return toISODates(result[0]) as InboundModel.inboundEndpoint;
     }, "creating inbound endpoint");
@@ -155,7 +156,7 @@ export abstract class InboundService {
     return withServiceError(async () => {
       if (params.forwardUrl && !isValidWebhookUrl(params.forwardUrl)) {
         throw new BadRequestError(
-          "Invalid forward URL - must be a valid public HTTP(S) URL"
+          "Invalid forward URL: must be http(s) and not target private networks"
         );
       }
 
@@ -192,7 +193,7 @@ export abstract class InboundService {
         .returning();
 
       if (!result[0]) {
-        throw new Error("Failed to update inbound endpoint");
+        throw new InternalServerError("Failed to update inbound endpoint");
       }
       await redis.del(`inbound:${params.endpointId}`);
       return toISODates(result[0]) as InboundModel.inboundEndpoint;
@@ -241,7 +242,7 @@ export abstract class InboundService {
           .returning();
 
         if (!result[0]) {
-          throw new Error("Failed to create inbound delivery");
+          throw new InternalServerError("Failed to create inbound delivery");
         }
         return result[0];
       });
