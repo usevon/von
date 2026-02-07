@@ -7,7 +7,7 @@ type AuthLayoutProps = {
 export default async function AuthLayout(props: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh flex-col">
-      <div className="mx-auto flex h-[5.25rem] w-full max-w-7xl items-center px-6 lg:px-10">
+      <div className="mx-auto flex h-21 w-full max-w-7xl items-center px-6 lg:px-10">
         <Logo />
       </div>
       <div className="flex flex-1 items-center justify-center px-6 py-4 lg:px-10">

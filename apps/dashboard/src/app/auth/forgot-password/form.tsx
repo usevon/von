@@ -15,7 +15,7 @@ export const ForgotPasswordForm = () => {
     onSubmit: async ({ value }) => {
       try {
         const { data, showSuccess, showError } = await toast.timed(
-          () => authClient.requestPasswordReset({ email: value.email, redirectTo: "/auth/reset-password" }),
+          () => authClient.requestPasswordReset({ email: value.email, redirectTo: `${window.location.origin}/auth/reset-password` }),
           { loading: "Sending reset link..." }
         );
 
