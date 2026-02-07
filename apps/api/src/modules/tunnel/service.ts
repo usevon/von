@@ -1,6 +1,5 @@
-import type { TunnelRequest, TunnelResponse } from "@/modules/tunnel/types";
+import type { TunnelConnection, TunnelRequest, TunnelResponse } from "@/modules/tunnel/model";
 import { generateId, timingSafeEqual } from "@usevon/utils";
-import type { TunnelConnection } from "@/modules/tunnel/model";
 
 const tunnels = new Map<string, TunnelConnection>();
 const orgTunnelCounts = new Map<string, number>();

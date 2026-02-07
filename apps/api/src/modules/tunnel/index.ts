@@ -1,10 +1,11 @@
 import { db, eq } from "@usevon/db";
 import { tunnel } from "@usevon/db/schema";
-import type { TunnelResponse } from "@/modules/tunnel/types";
+import type { TunnelResponse } from "@/modules/tunnel/model";
 import {
+  BadRequestError,
+  NotFoundError,
   generateTunnelId,
   generateTunnelSecret,
-  UnauthorizedError,
 } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
@@ -41,7 +42,7 @@ export const tunnelRegister = new Elysia()
       // New tunnel - check limit
       const currentCount = TunnelService.getOrgTunnelCount(organizationId);
       if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
-        throw new UnauthorizedError(
+        throw new BadRequestError(
           `Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`
         );
       }
@@ -78,7 +79,7 @@ export const tunnelRegister = new Elysia()
         existing.organizationId !== organizationId ||
         existing.userId !== userId
       ) {
-        throw new UnauthorizedError("Tunnel not found");
+        throw new NotFoundError("Tunnel not found");
       }
 
       // Generate new secret
