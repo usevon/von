@@ -80,54 +80,50 @@ describe("webhook delivery", () => {
   });
 
   describe("version cache", () => {
-    test("cache key format is correct", () => {
+    test("cache key includes version prefix", () => {
       const organizationId = "org_123";
       const version = "v1";
-      const cacheKey = `${organizationId}:${version}`;
+      const cacheKey = `version:${organizationId}:${version}`;
 
-      expect(cacheKey).toBe("org_123:v1");
+      expect(cacheKey).toBe("version:org_123:v1");
     });
 
-    test("cache eviction happens at limit", () => {
-      const cache = new Map<string, { transforms: null; expiresAt: number }>();
-      const CACHE_MAX_SIZE = 3;
+    test("cache key is unique per org and version", () => {
+      const key1 = `version:org_1:v1`;
+      const key2 = `version:org_2:v1`;
+      const key3 = `version:org_1:v2`;
 
-      // Fill cache to limit
-      for (let i = 0; i < CACHE_MAX_SIZE; i++) {
-        cache.set(`key${i}`, {
-          transforms: null,
-          expiresAt: Date.now() + 60_000,
-        });
-      }
-
-      expect(cache.size).toBe(CACHE_MAX_SIZE);
-
-      // Evict oldest when adding new entry
-      if (cache.size >= CACHE_MAX_SIZE) {
-        const oldestKey = cache.keys().next().value;
-        if (oldestKey) {
-          cache.delete(oldestKey);
-        }
-      }
-      cache.set("newKey", { transforms: null, expiresAt: Date.now() + 60_000 });
-
-      expect(cache.size).toBe(CACHE_MAX_SIZE);
-      expect(cache.has("key0")).toBe(false);
-      expect(cache.has("newKey")).toBe(true);
+      expect(key1).not.toBe(key2);
+      expect(key1).not.toBe(key3);
     });
 
-    test("cache expiry is respected", () => {
-      const expiresAt = Date.now() - 1000; // expired
-      const isExpired = expiresAt <= Date.now();
+    test("null transforms are not cached", () => {
+      const transforms = null;
+      const shouldCache = transforms !== null;
 
-      expect(isExpired).toBe(true);
+      expect(shouldCache).toBe(false);
     });
 
-    test("cache entry is valid when not expired", () => {
-      const expiresAt = Date.now() + 60_000; // 1 minute from now
-      const isValid = expiresAt > Date.now();
+    test("valid transforms are cached", () => {
+      const transforms = { "order.created": { remove: ["internal_id"] } };
+      const shouldCache = transforms !== null;
 
-      expect(isValid).toBe(true);
+      expect(shouldCache).toBe(true);
+    });
+
+    test("cached transforms roundtrip through JSON", () => {
+      const transforms = {
+        "order.created": {
+          remove: ["internal_id"],
+          rename: { old_name: "new_name" },
+          defaults: { version: "v1" },
+        },
+      };
+
+      const serialized = JSON.stringify(transforms);
+      const deserialized = JSON.parse(serialized);
+
+      expect(deserialized).toEqual(transforms);
     });
   });
 });

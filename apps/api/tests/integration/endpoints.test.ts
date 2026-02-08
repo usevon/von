@@ -66,7 +66,7 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
     const { data, error } = await client
       .endpoints({ id: createdEndpointId })
       .patch(
-        { enabled: false },
+        { status: "disabled" },
         {
           headers: { authorization: `Bearer ${apiKey}` },
         }
@@ -75,7 +75,7 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
     if (error) {
       throw error;
     }
-    expect(data.enabled).toBe(false);
+    expect(data.status).toBe("disabled");
   });
 
   test("DELETE /endpoints/:id deletes endpoint", async () => {

@@ -34,7 +34,7 @@ describe("Endpoints API", () => {
   describe("PATCH /endpoints/:id", () => {
     test("returns 401 without API key", async () => {
       const { error } = await client.endpoints({ id: TEST_ID }).patch({
-        enabled: false,
+        status: "disabled",
       });
 
       expect(error?.status).toBe(401);
