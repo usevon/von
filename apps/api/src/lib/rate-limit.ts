@@ -30,6 +30,14 @@ export const getClientIp = (request: Request): string => {
   return "unknown";
 };
 
+const RATE_LIMIT_SCRIPT = `
+local current = redis.call("INCR", KEYS[1])
+if current == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return current
+`;
+
 const createRateLimiter = (options: RateLimitOptions) => {
   const {
     windowMs,
@@ -47,23 +55,24 @@ const createRateLimiter = (options: RateLimitOptions) => {
       }
 
       const key = `${keyPrefix}:${identifier}`;
-      const current = await redis.incr(key);
-      if (current === 1) {
-        await redis.expire(key, windowSeconds);
-      }
+      const current = (await redis.eval(
+        RATE_LIMIT_SCRIPT,
+        1,
+        key,
+        windowSeconds
+      )) as number;
 
       const remaining = Math.max(0, max - current);
-      const ttl = await redis.ttl(key);
 
       ctx.set.headers["X-RateLimit-Limit"] = String(max);
       ctx.set.headers["X-RateLimit-Remaining"] = String(remaining);
       ctx.set.headers["X-RateLimit-Reset"] = String(
-        Math.ceil(Date.now() / 1000) + ttl
+        Math.ceil(Date.now() / 1000) + windowSeconds
       );
 
       if (current > max) {
         ctx.set.status = 429;
-        ctx.set.headers["Retry-After"] = String(ttl);
+        ctx.set.headers["Retry-After"] = String(windowSeconds);
         return { rateLimited: true };
       }
 

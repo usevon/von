@@ -46,14 +46,14 @@ export const idempotency = () =>
         return cachedResponse;
       }
     })
-    .onAfterHandle(async ({ idempotencyCacheKey, responseValue, set }) => {
+    .onAfterHandle(async ({ idempotencyCacheKey, response, set }) => {
       if (!idempotencyCacheKey) {
         return;
       }
 
       const toCache: CachedResponse = {
         status: (set.status as number) || 200,
-        body: responseValue,
+        body: response,
       };
 
       await redis.setex(
