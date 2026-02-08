@@ -12,7 +12,7 @@
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^16.1.0",
     "@phosphor-icons/react": "^2.1.10",
-    "@usevon/analytics": "workspace:*",
+    "@databuddy/sdk": "^2.3.29",
     "@usevon/ui": "workspace:*",
     "motion": "^12.23.26",
     "next": "^16.1.6",
