@@ -9,16 +9,14 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(requireOrg)
   .post(
     "/",
-    ({ organizationId, body, set }) => {
-      set.status = 201;
-      return WebhookService.createEvent({
+    async ({ organizationId, body, status }) =>
+      status(201, await WebhookService.createEvent({
         organizationId,
         eventType: body.eventType,
         payload: body.payload,
         idempotencyKey: body.idempotencyKey,
         endpointIds: body.endpointIds,
-      });
-    },
+      })),
     {
       body: WebhookModel.sendBody,
       response: { 201: WebhookModel.event },
@@ -26,13 +24,11 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   )
   .post(
     "/batch",
-    ({ organizationId, body, set }) => {
-      set.status = 201;
-      return WebhookService.createBatch({
+    async ({ organizationId, body, status }) =>
+      status(201, await WebhookService.createBatch({
         organizationId,
         events: body.events,
-      });
-    },
+      })),
     {
       body: WebhookModel.sendBatchBody,
       response: { 201: WebhookModel.batchResult },

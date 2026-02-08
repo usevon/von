@@ -1,3 +1,4 @@
+import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { t } from "elysia";
 
 const transformMappings = t.Object({
@@ -30,7 +31,7 @@ export namespace VersionModel {
     updatedAt: t.String(),
   });
 
-  export type webhookVersion = typeof webhookVersion.static;
+  export type webhookVersion = WebhookVersion;
 
   export const versionList = t.Object({
     versions: t.Array(webhookVersion),

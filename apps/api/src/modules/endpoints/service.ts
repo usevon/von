@@ -1,3 +1,4 @@
+import type { CreateEndpoint, Endpoint, EndpointStatus, UpdateEndpoint } from "@usevon/types";
 import { db } from "@usevon/db";
 import { endpoint } from "@usevon/db/schema";
 import { type DeliveryEndpoint, getRedisClient } from "@usevon/queue";
@@ -6,7 +7,6 @@ import {
   InternalServerError,
   generateSecret,
   isValidWebhookUrl,
-  toISODates,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -15,23 +15,28 @@ import type { EndpointModel } from "@/modules/endpoints/model";
 const redis = getRedisClient();
 const CACHE_TTL = 300; // 5 minutes
 
-type EndpointFields = {
-  url: string;
-  description?: string;
-  enabled?: boolean;
-  version?: string | null;
-  retryCount?: number;
-  timeoutMs?: number;
-  events?: string[] | null;
-};
-
-type CreateEndpointParams = EndpointFields & { organizationId: string };
-type UpdateEndpointParams = Partial<EndpointFields> & {
+type CreateEndpointParams = CreateEndpoint & { organizationId: string };
+type UpdateEndpointParams = UpdateEndpoint & {
   organizationId: string;
   endpointId: string;
 };
 
 type EndpointRow = typeof endpoint.$inferSelect;
+
+const toResponse = (row: EndpointRow): Endpoint => ({
+  id: row.id,
+  url: row.url,
+  description: row.description,
+  secret: row.secret,
+  status: row.status as EndpointStatus,
+  version: row.version,
+  retryCount: row.retryCount,
+  timeoutMs: row.timeoutMs,
+  events: row.events,
+  lastSuccessAt: row.lastSuccessAt?.toISOString() ?? null,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+});
 
 const buildUpdateSet = (
   params: UpdateEndpointParams,
@@ -39,7 +44,7 @@ const buildUpdateSet = (
 ) => ({
   url: params.url ?? existing.url,
   description: params.description ?? existing.description,
-  enabled: params.enabled ?? existing.enabled,
+  status: params.status ?? existing.status,
   version: params.version !== undefined ? params.version : existing.version,
   retryCount: params.retryCount ?? existing.retryCount,
   timeoutMs: params.timeoutMs ?? existing.timeoutMs,
@@ -66,7 +71,7 @@ export abstract class EndpointService {
           url: params.url,
           description: params.description ?? null,
           secret: generateSecret(),
-          enabled: params.enabled ?? true,
+          status: params.status ?? "active",
           version: params.version ?? null,
           retryCount: params.retryCount ?? 3,
           timeoutMs: params.timeoutMs ?? 30_000,
@@ -79,10 +84,10 @@ export abstract class EndpointService {
       if (!result[0]) {
         throw new InternalServerError("Failed to create endpoint");
       }
-      if (params.enabled !== false) {
+      if (params.status !== "disabled") {
         await redis.del(`endpoints:${params.organizationId}`);
       }
-      return toISODates(result[0]) as EndpointModel.endpoint;
+      return toResponse(result[0]);
     }, "creating endpoint");
   }
 
@@ -101,7 +106,7 @@ export abstract class EndpointService {
           .offset(offset),
         db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
       ]);
-      return { endpoints: endpoints.map((e) => toISODates(e) as EndpointModel.endpoint), total };
+      return { endpoints: endpoints.map((e) => toResponse(e)), total };
     }, "fetching endpoints");
   }
 
@@ -121,7 +126,7 @@ export abstract class EndpointService {
         )
         .limit(1);
 
-      return result[0] ? toISODates(result[0]) as EndpointModel.endpoint : null;
+      return result[0] ? toResponse(result[0]) : null;
     }, "fetching endpoint");
   }
 
@@ -159,11 +164,11 @@ export abstract class EndpointService {
       if (!result[0]) {
         throw new InternalServerError("Failed to update endpoint");
       }
-      // Only invalidate if endpoint is/was enabled or enabled status is changing
-      if (existing[0].enabled || params.enabled !== undefined) {
+      // Only invalidate if endpoint is/was active or status is changing
+      if (existing[0].status === "active" || params.status !== undefined) {
         await redis.del(`endpoints:${params.organizationId}`);
       }
-      return toISODates(result[0]) as EndpointModel.endpoint;
+      return toResponse(result[0]);
     }, "updating endpoint");
   }
 
@@ -201,7 +206,7 @@ export abstract class EndpointService {
 
       const conditions = [
         eq(endpoint.organizationId, organizationId),
-        eq(endpoint.enabled, true),
+        eq(endpoint.status, "active"),
       ];
       if (filterIds?.length) {
         conditions.push(inArray(endpoint.id, filterIds));

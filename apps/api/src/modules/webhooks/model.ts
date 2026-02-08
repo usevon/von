@@ -1,3 +1,4 @@
+import type { WebhookEvent, WebhookDelivery, SendEvent, SendBatch } from "@usevon/types";
 import { t } from "elysia";
 
 const eventTypePattern = "^[a-zA-Z0-9._-]+$";
@@ -10,7 +11,7 @@ export namespace WebhookModel {
     endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
   });
 
-  export type sendBody = typeof sendBody.static;
+  export type sendBody = SendEvent;
 
   export const sendBatchBody = t.Object({
     events: t.Array(
@@ -23,7 +24,7 @@ export namespace WebhookModel {
     ),
   });
 
-  export type sendBatchBody = typeof sendBatchBody.static;
+  export type sendBatchBody = SendBatch;
 
   export const event = t.Object({
     id: t.String({ format: "uuid" }),
@@ -34,7 +35,7 @@ export namespace WebhookModel {
     createdAt: t.String(),
   });
 
-  export type event = typeof event.static;
+  export type event = WebhookEvent;
 
   export const eventList = t.Object({
     events: t.Array(event),
@@ -56,11 +57,10 @@ export namespace WebhookModel {
     endpointId: t.String({ format: "uuid" }),
     status: t.String(),
     attempts: t.Number(),
-    nextAttemptAt: t.Union([t.String(), t.Null()]),
     lastAttemptAt: t.Union([t.String(), t.Null()]),
     responseStatus: t.Union([t.Number(), t.Null()]),
     createdAt: t.String(),
   });
 
-  export type delivery = typeof delivery.static;
+  export type delivery = WebhookDelivery;
 }

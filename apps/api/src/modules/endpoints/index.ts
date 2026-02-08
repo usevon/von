@@ -14,13 +14,11 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
   .use(requireOrg)
   .post(
     "/",
-    ({ organizationId, body, set }) => {
-      set.status = 201;
-      return EndpointService.create({
+    async ({ organizationId, body, status }) =>
+      status(201, await EndpointService.create({
         organizationId,
         ...body,
-      });
-    },
+      })),
     {
       body: EndpointModel.createBody,
       response: { 201: EndpointModel.endpoint },

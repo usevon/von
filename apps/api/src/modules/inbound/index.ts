@@ -15,13 +15,11 @@ export const inbound = new Elysia({ prefix: "/inbound" })
   .use(requireOrg)
   .post(
     "/",
-    ({ organizationId, body, set }) => {
-      set.status = 201;
-      return InboundService.create({
+    async ({ organizationId, body, status }) =>
+      status(201, await InboundService.create({
         organizationId,
         ...body,
-      });
-    },
+      })),
     {
       body: InboundModel.createEndpointBody,
       response: { 201: InboundModel.inboundEndpoint },
@@ -112,8 +110,8 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         return status(404, { error: "Endpoint not found" });
       }
 
-      if (!endpoint.enabled) {
-        return status(403, { error: "Endpoint is disabled" });
+      if (endpoint.status !== "active") {
+        return status(403, { error: "Endpoint is not active" });
       }
 
       const headerRecord: Record<string, string> = {};

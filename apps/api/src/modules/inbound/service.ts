@@ -1,3 +1,4 @@
+import type { CreateInboundEndpoint, EndpointStatus, InboundEndpoint, UpdateInboundEndpoint } from "@usevon/types";
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
@@ -6,7 +7,6 @@ import {
   InternalServerError,
   generateSecret,
   isValidWebhookUrl,
-  toISODates,
 } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -17,21 +17,22 @@ const CACHE_TTL = 300; // 5 minutes
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
 
-type CreateInboundEndpointParams = {
-  organizationId: string;
-  name?: string;
-  provider?: string;
-  forwardUrl: string;
-  enabled?: boolean;
-};
+const toResponse = (row: InboundEndpointRow): InboundEndpoint => ({
+  id: row.id,
+  name: row.name,
+  provider: row.provider,
+  secret: row.secret,
+  forwardUrl: row.forwardUrl,
+  status: row.status as EndpointStatus,
+  lastSuccessAt: row.lastSuccessAt?.toISOString() ?? null,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+});
 
-type UpdateInboundEndpointParams = {
+type CreateInboundEndpointParams = CreateInboundEndpoint & { organizationId: string };
+type UpdateInboundEndpointParams = UpdateInboundEndpoint & {
   organizationId: string;
   endpointId: string;
-  name?: string;
-  provider?: string;
-  forwardUrl?: string;
-  enabled?: boolean;
 };
 
 type ReceiveWebhookParams = {
@@ -69,7 +70,7 @@ export abstract class InboundService {
           provider: params.provider ?? null,
           secret: generateSecret(),
           forwardUrl: params.forwardUrl,
-          enabled: params.enabled ?? true,
+          status: params.status ?? "active",
           createdAt: now,
           updatedAt: now,
         })
@@ -78,7 +79,7 @@ export abstract class InboundService {
       if (!result[0]) {
         throw new InternalServerError("Failed to create inbound endpoint");
       }
-      return toISODates(result[0]) as InboundModel.inboundEndpoint;
+      return toResponse(result[0]);
     }, "creating inbound endpoint");
   }
 
@@ -100,7 +101,7 @@ export abstract class InboundService {
           eq(inboundEndpoint.organizationId, organizationId)
         ),
       ]);
-      return { endpoints: endpoints.map((e) => toISODates(e) as InboundModel.inboundEndpoint), total };
+      return { endpoints: endpoints.map((e) => toResponse(e)), total };
     }, "fetching inbound endpoints");
   }
 
@@ -120,7 +121,7 @@ export abstract class InboundService {
         )
         .limit(1);
 
-      return result[0] ? toISODates(result[0]) as InboundModel.inboundEndpoint : null;
+      return result[0] ? toResponse(result[0]) : null;
     }, "fetching inbound endpoint");
   }
 
@@ -180,7 +181,7 @@ export abstract class InboundService {
           name: params.name ?? existing[0].name,
           provider: params.provider ?? existing[0].provider,
           forwardUrl: params.forwardUrl ?? existing[0].forwardUrl,
-          enabled: params.enabled ?? existing[0].enabled,
+          status: params.status ?? existing[0].status,
           updatedAt: new Date(),
         })
         .where(
@@ -195,7 +196,7 @@ export abstract class InboundService {
         throw new InternalServerError("Failed to update inbound endpoint");
       }
       await redis.del(`inbound:${params.endpointId}`);
-      return toISODates(result[0]) as InboundModel.inboundEndpoint;
+      return toResponse(result[0]);
     }, "updating inbound endpoint");
   }
 

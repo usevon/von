@@ -1,10 +1,21 @@
+import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { db } from "@usevon/db";
 import { webhookVersion } from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
-import { InternalServerError, type Transforms, toISODates } from "@usevon/utils";
+import { InternalServerError, type Transforms } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
 import type { VersionModel } from "@/modules/versions/model";
+
+type VersionRow = typeof webhookVersion.$inferSelect;
+
+const toResponse = (row: VersionRow): WebhookVersion => ({
+  id: row.id,
+  version: row.version,
+  transforms: row.transforms as Record<string, TransformMappings>,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+});
 
 type VersionFields = {
   version: string;
@@ -41,7 +52,7 @@ export abstract class VersionService {
       if (!result[0]) {
         throw new InternalServerError("Failed to create version");
       }
-      return toISODates(result[0]) as VersionModel.webhookVersion;
+      return toResponse(result[0]);
     }, "creating version");
   }
 
@@ -63,7 +74,7 @@ export abstract class VersionService {
           eq(webhookVersion.organizationId, organizationId)
         ),
       ]);
-      return { versions: versions.map((v) => toISODates(v) as VersionModel.webhookVersion), total };
+      return { versions: versions.map((v) => toResponse(v)), total };
     }, "fetching versions");
   }
 
@@ -83,7 +94,7 @@ export abstract class VersionService {
         )
         .limit(1);
 
-      return result[0] ? toISODates(result[0]) as VersionModel.webhookVersion : null;
+      return result[0] ? toResponse(result[0]) : null;
     }, "fetching version");
   }
 
@@ -119,7 +130,7 @@ export abstract class VersionService {
         throw new InternalServerError("Failed to update version");
       }
       await redis.del(`version:${params.organizationId}:${params.version}`);
-      return toISODates(result[0]) as VersionModel.webhookVersion;
+      return toResponse(result[0]);
     }, "updating version");
   }
 

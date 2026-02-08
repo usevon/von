@@ -1,3 +1,4 @@
+import type { WebhookDelivery } from "@usevon/types";
 import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
 import {
@@ -9,7 +10,6 @@ import {
   BadRequestError,
   InternalServerError,
   matchesEventType,
-  toISODates,
 } from "@usevon/utils";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -18,6 +18,17 @@ import type { WebhookModel } from "@/modules/webhooks/model";
 
 type EventRow = typeof event.$inferSelect;
 type DeliveryRow = typeof delivery.$inferSelect;
+
+const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
+  id: row.id,
+  eventId: row.eventId,
+  endpointId: row.endpointId,
+  status: row.status,
+  attempts: row.attempts,
+  lastAttemptAt: row.lastAttemptAt?.toISOString() ?? null,
+  responseStatus: row.responseStatus,
+  createdAt: row.createdAt.toISOString(),
+});
 
 const toEvent = (e: EventRow): WebhookModel.event => ({
   id: e.id,
@@ -87,7 +98,6 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
         endpointId: ep.id,
         status: "pending",
         attempts: 0,
-        nextAttemptAt: now,
         createdAt: now,
         updatedAt: now,
       });
@@ -336,7 +346,7 @@ export abstract class WebhookService {
         eventId,
         orgId: organizationId,
       });
-      return rows.map((r) => toISODates(r.delivery) as WebhookModel.delivery);
+      return rows.map((r) => toDelivery(r.delivery));
     }, "fetching webhook deliveries");
   }
 }

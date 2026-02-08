@@ -1,3 +1,9 @@
+import type {
+  InboundEndpoint,
+  CreateInboundEndpoint,
+  UpdateInboundEndpoint,
+  InboundDelivery,
+} from "@usevon/types";
 import { t } from "elysia";
 
 export namespace InboundModel {
@@ -5,19 +11,25 @@ export namespace InboundModel {
     name: t.Optional(t.String({ maxLength: 255 })),
     provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.String({ format: "uri" }),
-    enabled: t.Optional(t.Boolean({ default: true })),
+    status: t.Optional(
+      t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")], {
+        default: "active",
+      })
+    ),
   });
 
-  export type createEndpointBody = typeof createEndpointBody.static;
+  export type createEndpointBody = CreateInboundEndpoint;
 
   export const updateEndpointBody = t.Object({
     name: t.Optional(t.String({ maxLength: 255 })),
     provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.Optional(t.String({ format: "uri" })),
-    enabled: t.Optional(t.Boolean()),
+    status: t.Optional(
+      t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")])
+    ),
   });
 
-  export type updateEndpointBody = typeof updateEndpointBody.static;
+  export type updateEndpointBody = UpdateInboundEndpoint;
 
   export const inboundEndpoint = t.Object({
     id: t.String({ format: "uuid" }),
@@ -25,12 +37,13 @@ export namespace InboundModel {
     provider: t.Union([t.String(), t.Null()]),
     secret: t.String(),
     forwardUrl: t.String(),
-    enabled: t.Boolean(),
+    status: t.String(),
+    lastSuccessAt: t.Union([t.String(), t.Null()]),
     createdAt: t.String(),
     updatedAt: t.String(),
   });
 
-  export type inboundEndpoint = typeof inboundEndpoint.static;
+  export type inboundEndpoint = InboundEndpoint;
 
   export const inboundEndpointList = t.Object({
     endpoints: t.Array(inboundEndpoint),
@@ -49,5 +62,5 @@ export namespace InboundModel {
     createdAt: t.String(),
   });
 
-  export type inboundDelivery = typeof inboundDelivery.static;
+  export type inboundDelivery = InboundDelivery;
 }

@@ -13,13 +13,11 @@ export const versions = new Elysia({ prefix: "/versions" })
   .use(requireOrg)
   .post(
     "/",
-    ({ organizationId, body, set }) => {
-      set.status = 201;
-      return VersionService.create({
+    async ({ organizationId, body, status }) =>
+      status(201, await VersionService.create({
         organizationId,
         ...body,
-      });
-    },
+      })),
     {
       body: VersionModel.createBody,
       response: { 201: VersionModel.webhookVersion },
