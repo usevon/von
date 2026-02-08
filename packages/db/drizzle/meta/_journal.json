@@ -15,6 +15,20 @@
       "when": 1766079480549,
       "tag": "0001_familiar_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770508891534,
+      "tag": "0002_endpoint-status-migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1707350400000,
+      "tag": "0003_drop-tunnel-last-ping-at",
+      "breakpoints": true
     }
   ]
 }
