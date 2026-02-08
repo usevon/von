@@ -22,5 +22,6 @@ export const circuitFailureSet = (table: CircuitColumns, now: Date) => {
 
 export const circuitSuccessSet = (now: Date) => ({
   ...getSuccessUpdate(),
+  lastSuccessAt: now,
   updatedAt: now,
 });

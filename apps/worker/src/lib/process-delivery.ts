@@ -17,7 +17,7 @@ type Executable = {
 };
 
 type EndpointState = {
-  enabled: boolean;
+  status: string;
   circuitState: string;
   circuitOpenedAt: Date | null;
   failureCount: number;
@@ -94,13 +94,18 @@ export async function processDelivery<TJob extends BaseJobData>(
     throw new Error(`${config.label} endpoint ${ep.id} not found`);
   }
 
-  if (!endpointState.enabled) {
+  if (endpointState.status === "disabled") {
     log.info({ endpointId: ep.id }, `${config.label} endpoint disabled, marking as skipped`);
     await db
       .update(config.deliveryTable)
       .set(config.buildStatusSet("skipped"))
       .where(eq(config.deliveryTable.id, deliveryId));
     return;
+  }
+
+  if (endpointState.status === "paused") {
+    log.info({ endpointId: ep.id }, `${config.label} endpoint paused, retrying later`);
+    throw new Error("Endpoint paused");
   }
 
   const circuitState = {

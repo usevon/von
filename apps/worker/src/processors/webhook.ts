@@ -16,7 +16,7 @@ const getDeliveryStmt = db
 
 const getEndpointStateStmt = db
   .select({
-    enabled: endpoint.enabled,
+    status: endpoint.status,
     circuitState: endpoint.circuitState,
     circuitOpenedAt: endpoint.circuitOpenedAt,
     failureCount: endpoint.failureCount,
