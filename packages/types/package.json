@@ -1,0 +1,24 @@
+{
+  "name": "@usevon/types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun run tsdown"
+  },
+  "devDependencies": {
+    "@usevon/typescript-config": "workspace:*",
+    "tsdown": "^0.16.8"
+  }
+}
