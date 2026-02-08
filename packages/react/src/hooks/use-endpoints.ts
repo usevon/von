@@ -1,18 +1,9 @@
+import type { Endpoint } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
 
-export type Endpoint = {
-  id: string;
-  url: string;
-  description: string | null;
-  secret: string;
-  enabled: boolean;
-  retryCount: number;
-  timeoutMs: number;
-  createdAt: string;
-  updatedAt: string;
-};
+export type { Endpoint };
 
-type EndpointsResponse = { endpoints: Endpoint[] };
+type EndpointsResponse = { endpoints: Endpoint[]; total: number };
 
 export const useEndpoints = createResource<EndpointsResponse, Endpoint, "endpoints">(
   "endpoints",

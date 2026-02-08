@@ -1,17 +1,9 @@
+import type { InboundEndpoint } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
 
-export type InboundEndpoint = {
-  id: string;
-  name: string | null;
-  provider: string | null;
-  secret: string;
-  forwardUrl: string;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
+export type { InboundEndpoint };
 
-type InboundResponse = { endpoints: InboundEndpoint[] };
+type InboundResponse = { endpoints: InboundEndpoint[]; total: number };
 
 export const useInbound = createResource<InboundResponse, InboundEndpoint, "endpoints">(
   "inbound",

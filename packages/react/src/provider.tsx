@@ -1,6 +1,6 @@
 import { getBearerToken } from "@usevon/auth/client";
 import type { ReactNode } from "react";
-import { createContext, useContext } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
 type Credentials = { type: "bearer"; token: string } | { type: "cookie" };
 
@@ -19,7 +19,7 @@ type VonProviderProps = {
 };
 
 export const VonProvider = (props: VonProviderProps) => {
-  const getCredentials = async (): Promise<Credentials> => {
+  const getCredentials = useCallback(async (): Promise<Credentials> => {
     if (props.apiKey) {
       return { type: "bearer", token: props.apiKey };
     }
@@ -31,15 +31,18 @@ export const VonProvider = (props: VonProviderProps) => {
       return { type: "bearer", token };
     }
     return { type: "cookie" };
-  };
+  }, [props.apiKey, props.useSession]);
+
+  const value = useMemo(
+    () => ({
+      apiUrl: props.apiUrl ?? "/api",
+      getCredentials,
+    }),
+    [props.apiUrl, getCredentials]
+  );
 
   return (
-    <VonContext.Provider
-      value={{
-        apiUrl: props.apiUrl ?? "/api",
-        getCredentials,
-      }}
-    >
+    <VonContext.Provider value={value}>
       {props.children}
     </VonContext.Provider>
   );

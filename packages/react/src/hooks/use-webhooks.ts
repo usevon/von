@@ -1,15 +1,9 @@
+import type { WebhookEvent } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
 
-export type WebhookEvent = {
-  id: string;
-  eventType: string;
-  payload: unknown;
-  idempotencyKey: string | null;
-  status: string;
-  createdAt: string;
-};
+export type { WebhookEvent };
 
-type WebhooksResponse = { events: WebhookEvent[] };
+type WebhooksResponse = { events: WebhookEvent[]; total: number };
 
 export const useWebhooks = createResource<WebhooksResponse, WebhookEvent, "events">(
   "webhooks/events",

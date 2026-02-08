@@ -19,10 +19,11 @@ export const createResource =
         credentials: creds.type === "cookie" ? "include" : undefined,
       });
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${endpoint}`);
+        const err = new Error(`Failed to fetch ${endpoint}: ${response.status}`);
+        (err as any).status = response.status;
+        throw err;
       }
-      const responseData = (await response.json()) as TResponse;
-      return (responseData[dataKey] as TItem[]) ?? [];
+      return (await response.json()) as TResponse;
     };
 
     const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -32,7 +33,8 @@ export const createResource =
     );
 
     return {
-      [dataKey]: data ?? [],
+      [dataKey]: data ? (data[dataKey] as TItem[]) : [],
+      total: (data as any)?.total ?? 0,
       isLoading,
       isRefreshing: isValidating && !isLoading,
       error,
@@ -41,6 +43,7 @@ export const createResource =
     } as {
       [P in K]: TItem[];
     } & {
+      total: number;
       isLoading: boolean;
       isRefreshing: boolean;
       error: Error | undefined;
