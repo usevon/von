@@ -37,6 +37,31 @@ export type TunnelConnection = {
   secret: string;
 };
 
+export type TunnelRelayRequest = {
+  type: "request";
+  requestId: string;
+  tunnelId: string;
+  request: TunnelRequest;
+  replyTo: string;
+};
+
+export type TunnelRelayResponse = {
+  type: "response";
+  requestId: string;
+  response: TunnelResponse;
+};
+
+export type TunnelRelayError = {
+  type: "error";
+  requestId: string;
+  error: string;
+};
+
+export type TunnelRelayMessage =
+  | TunnelRelayRequest
+  | TunnelRelayResponse
+  | TunnelRelayError;
+
 export namespace TunnelModel {
   export const registerBody = t.Object({
     port: t.Number({ minimum: 1, maximum: 65_535 }),

@@ -1,4 +1,4 @@
-import { db, eq } from "@usevon/db";
+import { db, eq, sql } from "@usevon/db";
 import { tunnel } from "@usevon/db/schema";
 import type { TunnelResponse } from "@/modules/tunnel/model";
 import {
@@ -40,8 +40,11 @@ export const tunnelRegister = new Elysia()
       }
 
       // New tunnel - check limit
-      const currentCount = TunnelService.getOrgTunnelCount(organizationId);
-      if (currentCount >= env.MAX_TUNNELS_PER_ORG) {
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(tunnel)
+        .where(eq(tunnel.organizationId, organizationId));
+      if ((countResult[0]?.count ?? 0) >= env.MAX_TUNNELS_PER_ORG) {
         throw new BadRequestError(
           `Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`
         );
@@ -160,7 +163,7 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       secret: tunnelRecord.secret,
     };
 
-    // Periodic session validation
+    // Periodic session validation + Redis TTL refresh
     connection.validationInterval = setInterval(async () => {
       const sessionOrgId = await validateSession(headers);
       if (!sessionOrgId) {
@@ -169,10 +172,12 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
           clearInterval(connection.validationInterval);
         }
         ws.close(4001, "Session expired");
+        return;
       }
+      await TunnelService.refreshTunnel(tunnelId);
     }, SESSION_VALIDATION_INTERVAL_MS);
 
-    TunnelService.setTunnel(tunnelId, connection);
+    await TunnelService.setTunnel(tunnelId, connection);
 
     log.info(`Connected: ${tunnelId}`);
   },
@@ -225,9 +230,9 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
         clearTimeout(pending.timeout);
         pending.reject(new Error("Tunnel closed"));
       }
-      TunnelService.deleteTunnel(tunnelId);
     }
 
+    TunnelService.deleteTunnel(tunnelId).catch(() => {});
     log.info(`Disconnected: ${tunnelId}`);
   },
 });
@@ -246,13 +251,12 @@ const parseTunnelParam = (
 };
 
 export const tunnelProxy = new Elysia()
-  .all("/:tunnelIdWithSecret/*", ({ params, request, set }) => {
+  .all("/:tunnelIdWithSecret/*", ({ params, request, set, status }) => {
     const parsed = parseTunnelParam(params.tunnelIdWithSecret);
     if (
       !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
     ) {
-      set.status = 401;
-      return { error: "Invalid tunnel" };
+      return status(401, { error: "Invalid tunnel" });
     }
     const path =
       new URL(request.url).pathname.replace(
@@ -266,13 +270,12 @@ export const tunnelProxy = new Elysia()
       path
     );
   })
-  .all("/:tunnelIdWithSecret", ({ params, request, set }) => {
+  .all("/:tunnelIdWithSecret", ({ params, request, set, status }) => {
     const parsed = parseTunnelParam(params.tunnelIdWithSecret);
     if (
       !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
     ) {
-      set.status = 401;
-      return { error: "Invalid tunnel" };
+      return status(401, { error: "Invalid tunnel" });
     }
     return TunnelService.handleProxy(
       parsed.tunnelId,
