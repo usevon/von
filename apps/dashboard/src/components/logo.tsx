@@ -38,6 +38,7 @@ export const Logo = () => (
       <ContextMenuItem
         className="justify-between"
         render={
+          // biome-ignore lint/a11y/useAnchorContent: content provided by ContextMenuItem children
           <a
             aria-label="Go to Website"
             href="https://usevon.com"
@@ -52,6 +53,7 @@ export const Logo = () => (
       <ContextMenuItem
         className="justify-between"
         render={
+          // biome-ignore lint/a11y/useAnchorContent: content provided by ContextMenuItem children
           <a
             aria-label="Brand Kit"
             href="https://usevon.com/brand"

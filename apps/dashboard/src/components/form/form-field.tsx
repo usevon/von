@@ -27,6 +27,7 @@ export const FormField = (props: FormFieldProps) => {
         <FieldLabel>{label}</FieldLabel>
       )}
       {children}
+      {/* biome-ignore lint/nursery/noLeakedRender: showError is boolean */}
       {showError && <FieldMessage>{meta.errors[0]}</FieldMessage>}
       {!showError && description && (
         <FieldDescription>{description}</FieldDescription>

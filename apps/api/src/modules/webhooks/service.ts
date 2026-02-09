@@ -322,6 +322,7 @@ export abstract class WebhookService {
     }, "fetching webhook event");
   }
 
+  // biome-ignore lint/nursery/useMaxParams: parameters are all distinct query concerns
   static getDeliveries(
     organizationId: string,
     eventId: string,

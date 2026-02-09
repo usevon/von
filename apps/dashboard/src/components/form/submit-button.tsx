@@ -25,6 +25,7 @@ export const SubmitButton = (props: SubmitButtonProps) => {
       disabled={!canSubmit || hasEmptyFields || isSubmitting}
       type="submit"
     >
+      {/* biome-ignore lint/nursery/noLeakedRender: ternary with safe alternates */}
       {isSubmitting ? (loadingText ?? children) : children}
     </Button>
   );
