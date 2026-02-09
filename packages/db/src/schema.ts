@@ -179,8 +179,10 @@ export const apikey = pgTable(
       onDelete: "cascade",
     }),
     environment: text("environment").notNull(),
+    scopes: text("scopes"),
     enabled: boolean("enabled").default(true),
     expiresAt: timestamp("expires_at"),
+    lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

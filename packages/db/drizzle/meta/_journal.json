@@ -36,6 +36,13 @@
       "when": 1707436800000,
       "tag": "0004_delivery-response-consolidation",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1707523200000,
+      "tag": "0005_api-key-scopes-and-usage",
+      "breakpoints": true
     }
   ]
 }
