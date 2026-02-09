@@ -1,4 +1,5 @@
 import type { EndpointStatus } from "./endpoints";
+import type { DeliveryResponse } from "./webhooks";
 
 export type InboundEndpoint = {
   id: string;
@@ -32,6 +33,6 @@ export type InboundDelivery = {
   headers: Record<string, string> | null;
   status: string;
   forwardedAt: string | null;
-  responseStatus: number | null;
+  response: DeliveryResponse;
   createdAt: string;
 };

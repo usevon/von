@@ -1,3 +1,9 @@
+export type DeliveryResponse = {
+  status?: number;
+  durationMs: number;
+  error?: string;
+} | null;
+
 export type WebhookEvent = {
   id: string;
   eventType: string;
@@ -14,7 +20,7 @@ export type WebhookDelivery = {
   status: string;
   attempts: number;
   lastAttemptAt: string | null;
-  responseStatus: number | null;
+  response: DeliveryResponse;
   createdAt: string;
 };
 

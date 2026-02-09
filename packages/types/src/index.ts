@@ -13,6 +13,7 @@ export type {
 } from "./inbound";
 
 export type {
+  DeliveryResponse,
   WebhookEvent,
   WebhookDelivery,
   SendEvent,

@@ -2,6 +2,7 @@ export type DeliveryEndpoint = {
   id: string;
   url: string;
   secret: string;
+  previousSecret?: string | null;
   timeoutMs: number;
   retryCount: number;
   version: string | null;
@@ -23,6 +24,7 @@ export type InboundForwardingJob = {
     id: string;
     forwardUrl: string;
     secret: string;
+    previousSecret?: string | null;
     timeoutMs: number;
     retryCount: number;
   };

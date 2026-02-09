@@ -13,3 +13,17 @@ export function timingSafeEqual(a: string, b: string): boolean {
 
 export const randomHex = (bytes: number): string =>
   randomBytes(bytes).toString("hex");
+
+export function buildSignatureHeader(
+  timestamp: number,
+  signedPayload: string,
+  secret: string,
+  previousSecret?: string | null,
+): string {
+  const v1 = hmacSign(signedPayload, secret);
+  if (previousSecret) {
+    const v2 = hmacSign(signedPayload, previousSecret);
+    return `t=${timestamp},v1=${v1},v2=${v2}`;
+  }
+  return `t=${timestamp},v1=${v1}`;
+}
