@@ -2,16 +2,19 @@ import { LegalDocument } from "@/components/legal-document";
 
 export default function SecurityPage() {
   return (
-    <LegalDocument title="Security" lastUpdated="January 2, 2026">
+    <LegalDocument lastUpdated="January 2, 2026" title="Security">
       <p>
-        At USEVON LLC ("<strong>Von</strong>"), security is foundational to our webhook
-        infrastructure. This page outlines our security practices and how to report vulnerabilities.
+        At USEVON LLC ("<strong>Von</strong>"), security is foundational to our
+        webhook infrastructure. This page outlines our security practices and
+        how to report vulnerabilities.
       </p>
 
       <h2>Infrastructure Security</h2>
       <ul>
         <li>All data is encrypted in transit using TLS</li>
-        <li>Infrastructure hosted on trusted cloud providers (Hetzner, Vercel)</li>
+        <li>
+          Infrastructure hosted on trusted cloud providers (Hetzner, Vercel)
+        </li>
         <li>Isolated environments for development, staging, and production</li>
       </ul>
 
@@ -33,25 +36,27 @@ export default function SecurityPage() {
 
       <h2>Data Handling</h2>
       <p>
-        Webhook payloads are processed transiently and stored according to your plan's retention
-        period. We do not access payload contents except when debugging issues with your explicit
-        permission. You can delete your data at any time through the dashboard.
+        Webhook payloads are processed transiently and stored according to your
+        plan's retention period. We do not access payload contents except when
+        debugging issues with your explicit permission. You can delete your data
+        at any time through the dashboard.
       </p>
 
       <h2>Incident Response</h2>
       <p>
-        In the event of a security incident affecting your data, we will notify affected users
-        within 72 hours via email and provide details on the nature of the incident and remediation
-        steps.
+        In the event of a security incident affecting your data, we will notify
+        affected users within 72 hours via email and provide details on the
+        nature of the incident and remediation steps.
       </p>
 
       <h2>Reporting Vulnerabilities</h2>
       <p>
-        We appreciate responsible disclosure of security vulnerabilities. If you discover a security
-        issue, please report it to us privately:
+        We appreciate responsible disclosure of security vulnerabilities. If you
+        discover a security issue, please report it to us privately:
       </p>
       <p>
-        <strong>Email:</strong> <a href="mailto:security@usevon.com">security@usevon.com</a>
+        <strong>Email:</strong>{" "}
+        <a href="mailto:security@usevon.com">security@usevon.com</a>
       </p>
       <p>Please include:</p>
       <ul>
@@ -61,9 +66,9 @@ export default function SecurityPage() {
         <li>Any suggested fixes (optional)</li>
       </ul>
       <p>
-        We will acknowledge receipt within 48 hours and aim to resolve confirmed vulnerabilities
-        promptly. We do not pursue legal action against researchers who follow responsible
-        disclosure practices.
+        We will acknowledge receipt within 48 hours and aim to resolve confirmed
+        vulnerabilities promptly. We do not pursue legal action against
+        researchers who follow responsible disclosure practices.
       </p>
 
       <h2>Contact</h2>

@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
-
 import { Form, toast } from "@usevon/ui";
+import { useRouter } from "next/navigation";
 
-import { TextField, SubmitButton, validators } from "@/components/form";
+import { SubmitButton, TextField, validators } from "@/components/form";
 import { signUp } from "@/lib/auth/client";
 
 type SignupFormProps = {
@@ -24,7 +23,12 @@ export const SignupForm = (props: SignupFormProps) => {
     onSubmit: async ({ value }) => {
       try {
         const { data, showSuccess, showError } = await toast.timed(
-          () => signUp.email({ name: value.name, email: value.email, password: value.password }),
+          () =>
+            signUp.email({
+              name: value.name,
+              email: value.email,
+              password: value.password,
+            }),
           { loading: "Creating account..." }
         );
 
@@ -54,61 +58,73 @@ export const SignupForm = (props: SignupFormProps) => {
       >
         {(field) => (
           <TextField
+            autoComplete="name"
+            disabled={form.state.isSubmitting}
             field={field}
             label="Name"
             placeholder="Name"
-            autoComplete="name"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
 
       <form.Field
         name="email"
-        validators={{ onChange: validators.compose(validators.required("Email is required"), validators.email()) }}
+        validators={{
+          onChange: validators.compose(
+            validators.required("Email is required"),
+            validators.email()
+          ),
+        }}
       >
         {(field) => (
           <TextField
+            autoComplete="email"
+            disabled={form.state.isSubmitting}
             field={field}
             label="Email"
             placeholder="Email"
             type="email"
-            autoComplete="email"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
 
       <form.Field
         name="password"
-        validators={{ onChange: validators.compose(validators.required("Password is required"), validators.minLength(8, "Password must be at least 8 characters")) }}
+        validators={{
+          onChange: validators.compose(
+            validators.required("Password is required"),
+            validators.minLength(8, "Password must be at least 8 characters")
+          ),
+        }}
       >
         {(field) => (
           <TextField
+            autoComplete="new-password"
+            description="Must be at least 8 characters"
+            disabled={form.state.isSubmitting}
             field={field}
             label="Password"
-            description="Must be at least 8 characters"
             placeholder="••••••••"
             type="password"
-            autoComplete="new-password"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => ({
-        canSubmit: state.canSubmit,
-        isSubmitting: state.isSubmitting,
-        name: state.values.name,
-        email: state.values.email,
-        password: state.values.password,
-      })}>
+      <form.Subscribe
+        selector={(state) => ({
+          canSubmit: state.canSubmit,
+          isSubmitting: state.isSubmitting,
+          name: state.values.name,
+          email: state.values.email,
+          password: state.values.password,
+        })}
+      >
         {(state) => (
           <SubmitButton
-            className="w-full"
             canSubmit={state.canSubmit}
+            className="w-full"
+            hasEmptyFields={!(state.name && state.email && state.password)}
             isSubmitting={state.isSubmitting}
-            hasEmptyFields={!state.name || !state.email || !state.password}
             loadingText="Creating account..."
           >
             Create account

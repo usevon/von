@@ -2,12 +2,29 @@ import type { MDXComponents } from "mdx/types";
 import { isValidElement, type ReactNode } from "react";
 
 import { CopyButton } from "@/components/copy-button";
-import { CodeGroup, CodeGroupTab } from "@/mdx/code-group";
-import { Properties, Property } from "@/mdx/properties";
-import { Row, Col } from "@/mdx/row-col";
-import { Timeline, TimelineItem } from "@/mdx/timeline";
 import { PageActions } from "@/components/docs/page-actions";
-import { H1, H2, H3, H4, P, A, Ul, Ol, Li, Blockquote, Hr, Table, Th, Td, Strong, InlineCode } from "@/mdx/elements";
+import { CodeGroup, CodeGroupTab } from "@/mdx/code-group";
+import {
+  A,
+  Blockquote,
+  H1,
+  H2,
+  H3,
+  H4,
+  Hr,
+  InlineCode,
+  Li,
+  Ol,
+  P,
+  Strong,
+  Table,
+  Td,
+  Th,
+  Ul,
+} from "@/mdx/elements";
+import { Properties, Property } from "@/mdx/properties";
+import { Col, Row } from "@/mdx/row-col";
+import { Timeline, TimelineItem } from "@/mdx/timeline";
 
 const getTextContent = (node: ReactNode): string => {
   if (typeof node === "string") return node;

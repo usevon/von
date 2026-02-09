@@ -1,8 +1,8 @@
 import type {
-  InboundEndpoint,
   CreateInboundEndpoint,
-  UpdateInboundEndpoint,
   InboundDelivery,
+  InboundEndpoint,
+  UpdateInboundEndpoint,
 } from "@usevon/types";
 import { t } from "elysia";
 
@@ -12,9 +12,12 @@ export namespace InboundModel {
     provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.String({ format: "uri" }),
     status: t.Optional(
-      t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")], {
-        default: "active",
-      })
+      t.Union(
+        [t.Literal("active"), t.Literal("paused"), t.Literal("disabled")],
+        {
+          default: "active",
+        }
+      )
     ),
   });
 

@@ -1,12 +1,11 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form";
+import { Form, toast } from "@usevon/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "@tanstack/react-form";
 
-import { Form, toast } from "@usevon/ui";
-
-import { TextField, SubmitButton, validators } from "@/components/form";
+import { SubmitButton, TextField, validators } from "@/components/form";
 import { signIn } from "@/lib/auth/client";
 
 type LoginFormProps = {
@@ -50,16 +49,21 @@ export const LoginForm = (props: LoginFormProps) => {
     >
       <form.Field
         name="email"
-        validators={{ onChange: validators.compose(validators.required("Email is required"), validators.email()) }}
+        validators={{
+          onChange: validators.compose(
+            validators.required("Email is required"),
+            validators.email()
+          ),
+        }}
       >
         {(field) => (
           <TextField
+            autoComplete="email"
+            disabled={form.state.isSubmitting}
             field={field}
             label="Email"
             placeholder="Email"
             type="email"
-            autoComplete="email"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
@@ -70,6 +74,8 @@ export const LoginForm = (props: LoginFormProps) => {
       >
         {(field) => (
           <TextField
+            autoComplete="current-password"
+            disabled={form.state.isSubmitting}
             field={field}
             label="Password"
             labelExtra={
@@ -77,7 +83,10 @@ export const LoginForm = (props: LoginFormProps) => {
                 className="text-muted-foreground text-xs hover:text-foreground"
                 href={{
                   pathname: "/auth/forgot-password",
-                  query: props.redirectTo && props.redirectTo !== "/" ? { redirect: props.redirectTo } : undefined,
+                  query:
+                    props.redirectTo && props.redirectTo !== "/"
+                      ? { redirect: props.redirectTo }
+                      : undefined,
                 }}
               >
                 Forgot password?
@@ -85,24 +94,24 @@ export const LoginForm = (props: LoginFormProps) => {
             }
             placeholder="••••••••"
             type="password"
-            autoComplete="current-password"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => ({
-        canSubmit: state.canSubmit,
-        isSubmitting: state.isSubmitting,
-        email: state.values.email,
-        password: state.values.password,
-      })}>
+      <form.Subscribe
+        selector={(state) => ({
+          canSubmit: state.canSubmit,
+          isSubmitting: state.isSubmitting,
+          email: state.values.email,
+          password: state.values.password,
+        })}
+      >
         {(state) => (
           <SubmitButton
-            className="w-full"
             canSubmit={state.canSubmit}
+            className="w-full"
+            hasEmptyFields={!(state.email && state.password)}
             isSubmitting={state.isSubmitting}
-            hasEmptyFields={!state.email || !state.password}
             loadingText="Signing in..."
           >
             Sign in

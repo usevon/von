@@ -1,7 +1,7 @@
 "use server";
 
-import { cache } from "react";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 import { authClient } from "@/lib/auth/client";
 
@@ -51,7 +51,9 @@ export async function listOrganizations(): Promise<Organization[]> {
   return result.data as Organization[];
 }
 
-export async function setActiveOrganization(organizationId: string): Promise<boolean> {
+export async function setActiveOrganization(
+  organizationId: string
+): Promise<boolean> {
   const result = await authClient.organization.setActive({
     organizationId,
     fetchOptions: { headers: await headers() },

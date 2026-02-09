@@ -58,33 +58,31 @@ const faqs = [
   },
 ];
 
-export const FAQ = () => {
-  return (
-    <section className="py-24">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10">
-        <div className="mb-16 max-w-2xl">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Frequently asked questions
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Everything you need to know about Von.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
-          {faqs.map((faq, index) => (
-            <div key={index} className="flex flex-col gap-2">
-              <h3 className="font-medium">{faq.question}</h3>
-              <p className="flex-1 text-sm text-muted-foreground">{faq.answer}</p>
-              <Link
-                href={faq.href}
-                className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                Learn more
-              </Link>
-            </div>
-          ))}
-        </div>
+export const FAQ = () => (
+  <section className="py-24">
+    <div className="mx-auto max-w-7xl px-6 lg:px-10">
+      <div className="mb-16 max-w-2xl">
+        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          Frequently asked questions
+        </h2>
+        <p className="mt-4 text-lg text-muted-foreground">
+          Everything you need to know about Von.
+        </p>
       </div>
-    </section>
-  );
-};
+      <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
+        {faqs.map((faq, index) => (
+          <div className="flex flex-col gap-2" key={index}>
+            <h3 className="font-medium">{faq.question}</h3>
+            <p className="flex-1 text-muted-foreground text-sm">{faq.answer}</p>
+            <Link
+              className="font-medium text-foreground text-sm underline-offset-4 hover:underline"
+              href={faq.href}
+            >
+              Learn more
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);

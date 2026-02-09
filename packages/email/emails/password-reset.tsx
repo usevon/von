@@ -23,88 +23,86 @@ export const PasswordResetEmail = ({
   email = "user@example.com",
   resetLink = "https://app.usevon.com/reset-password?token=xxx",
   requestTime = "January 19, 2026 at 12:47 AM EST",
-}: PasswordResetEmailProps) => {
-  return (
-    <Html>
-      <Head />
-      <Preview>Reset your Von password</Preview>
-      <Tailwind
-        config={{
-          theme: {
-            extend: {
-              colors: {
-                primary: "#7C3AED",
-              },
+}: PasswordResetEmailProps) => (
+  <Html>
+    <Head />
+    <Preview>Reset your Von password</Preview>
+    <Tailwind
+      config={{
+        theme: {
+          extend: {
+            colors: {
+              primary: "#7C3AED",
             },
           },
-        }}
-      >
-        <Body className="bg-[#f6f9fc] font-sans">
-          <Container className="bg-white mx-auto p-10 mb-16 max-w-[600px] rounded-lg text-left">
-            <Heading className="text-[#1a1a1a] text-2xl font-semibold leading-8 m-0 mb-6">
-              Password Reset Request
-            </Heading>
+        },
+      }}
+    >
+      <Body className="bg-[#f6f9fc] font-sans">
+        <Container className="mx-auto mb-16 max-w-[600px] rounded-lg bg-white p-10 text-left">
+          <Heading className="m-0 mb-6 font-semibold text-2xl text-[#1a1a1a] leading-8">
+            Password Reset Request
+          </Heading>
 
-            <Text className="text-[#374151] text-base leading-7 m-0 mb-4">
-              Hello,
+          <Text className="m-0 mb-4 text-[#374151] text-base leading-7">
+            Hello,
+          </Text>
+
+          <Text className="m-0 mb-4 text-[#374151] text-base leading-7">
+            We received a request to reset the password for your Von account
+            associated with <strong>{email}</strong>.
+          </Text>
+
+          <Text className="m-0 mb-4 text-[#374151] text-base leading-7">
+            Click the button below to reset your password. This link will expire
+            in 1 hour for your security.
+          </Text>
+
+          <Section className="my-8">
+            <Button
+              className="inline-block rounded-lg bg-primary px-8 py-3 text-center font-semibold text-base text-white no-underline"
+              href={resetLink}
+            >
+              Reset Password
+            </Button>
+          </Section>
+
+          <Section className="my-6 rounded-lg bg-[#f9fafb] p-5">
+            <Text className="m-0 mb-3 font-semibold text-[#1a1a1a] text-sm">
+              Request Details:
             </Text>
-
-            <Text className="text-[#374151] text-base leading-7 m-0 mb-4">
-              We received a request to reset the password for your Von account
-              associated with <strong>{email}</strong>.
+            <Text className="m-0 mb-2 text-[#6b7280] text-sm leading-5">
+              <strong>Time:</strong> {requestTime}
             </Text>
-
-            <Text className="text-[#374151] text-base leading-7 m-0 mb-4">
-              Click the button below to reset your password. This link will
-              expire in 1 hour for your security.
+            <Text className="m-0 text-[#6b7280] text-sm leading-5">
+              <strong>Email:</strong> {email}
             </Text>
+          </Section>
 
-            <Section className="my-8">
-              <Button
-                href={resetLink}
-                className="bg-primary rounded-lg text-white text-base font-semibold no-underline text-center inline-block px-8 py-3"
+          <Hr className="my-8 border-[#e5e7eb]" />
+
+          <Section>
+            <Text className="m-0 mb-3 text-[#9ca3af] text-[13px] leading-5">
+              If you did not request this password reset, you can safely ignore
+              this email. The link will expire automatically in 1 hour.
+            </Text>
+            <Text className="m-0 mb-3 text-[#9ca3af] text-[13px] leading-5">
+              Need help? Contact us at{" "}
+              <Link
+                className="text-primary no-underline"
+                href="mailto:support@usevon.com"
               >
-                Reset Password
-              </Button>
-            </Section>
-
-            <Section className="bg-[#f9fafb] rounded-lg p-5 my-6">
-              <Text className="text-[#1a1a1a] text-sm font-semibold m-0 mb-3">
-                Request Details:
-              </Text>
-              <Text className="text-[#6b7280] text-sm leading-5 m-0 mb-2">
-                <strong>Time:</strong> {requestTime}
-              </Text>
-              <Text className="text-[#6b7280] text-sm leading-5 m-0">
-                <strong>Email:</strong> {email}
-              </Text>
-            </Section>
-
-            <Hr className="border-[#e5e7eb] my-8" />
-
-            <Section>
-              <Text className="text-[#9ca3af] text-[13px] leading-5 m-0 mb-3">
-                If you did not request this password reset, you can safely ignore
-                this email. The link will expire automatically in 1 hour.
-              </Text>
-              <Text className="text-[#9ca3af] text-[13px] leading-5 m-0 mb-3">
-                Need help? Contact us at{" "}
-                <Link
-                  href="mailto:support@usevon.com"
-                  className="text-primary no-underline"
-                >
-                  support@usevon.com
-                </Link>
-              </Text>
-              <Text className="text-[#9ca3af] text-xs m-0 mt-6">
-                &copy; {new Date().getFullYear()} Von. All rights reserved.
-              </Text>
-            </Section>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
-  );
-};
+                support@usevon.com
+              </Link>
+            </Text>
+            <Text className="m-0 mt-6 text-[#9ca3af] text-xs">
+              &copy; {new Date().getFullYear()} Von. All rights reserved.
+            </Text>
+          </Section>
+        </Container>
+      </Body>
+    </Tailwind>
+  </Html>
+);
 
 export default PasswordResetEmail;

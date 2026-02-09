@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
 import { Button, InputOTP, REGEXP_ONLY_DIGITS_AND_CHARS } from "@usevon/ui";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { device, useSession } from "@/lib/auth/client";
 
@@ -25,7 +24,8 @@ export const DeviceForm = (props: DeviceFormProps) => {
 
   if (!session) {
     // Get code from URL directly to ensure it's preserved in redirect
-    const urlCode = searchParams.get("user_code") || searchParams.get("code") || userCode;
+    const urlCode =
+      searchParams.get("user_code") || searchParams.get("code") || userCode;
     const returnUrl = `/device${urlCode ? `?user_code=${urlCode}` : ""}`;
     router.push(`/auth/login?redirect=${encodeURIComponent(returnUrl)}`);
     return null;
@@ -41,7 +41,9 @@ export const DeviceForm = (props: DeviceFormProps) => {
     setStatus("loading");
     setError(false);
 
-    const { error: approveError } = await device.approve({ userCode: finalCode });
+    const { error: approveError } = await device.approve({
+      userCode: finalCode,
+    });
     if (approveError) {
       setError(true);
       setStatus("idle");
@@ -97,7 +99,7 @@ export const DeviceForm = (props: DeviceFormProps) => {
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-center text-muted-foreground text-xs">
         Signed in as {session.user.email}
       </p>
     </div>

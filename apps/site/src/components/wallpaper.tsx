@@ -1,7 +1,7 @@
 "use client";
 
-import { useMotionValue, animate } from "motion/react";
-import { useEffect, useRef, useCallback } from "react";
+import { animate, useMotionValue } from "motion/react";
+import { useCallback, useEffect, useRef } from "react";
 
 type WallpaperProps = {
   children: React.ReactNode;
@@ -29,13 +29,13 @@ const getColors = (): GradientColors => {
   const get = (name: string) => style.getPropertyValue(name).trim();
 
   return {
-    h1: parseFloat(get("--wallpaper-h1")) || 220,
+    h1: Number.parseFloat(get("--wallpaper-h1")) || 220,
     s1: get("--wallpaper-s1") || "60%",
     l1: get("--wallpaper-l1") || "18%",
-    h2: parseFloat(get("--wallpaper-h2")) || 210,
+    h2: Number.parseFloat(get("--wallpaper-h2")) || 210,
     s2: get("--wallpaper-s2") || "55%",
     l2: get("--wallpaper-l2") || "28%",
-    h3: parseFloat(get("--wallpaper-h3")) || 200,
+    h3: Number.parseFloat(get("--wallpaper-h3")) || 200,
     s3: get("--wallpaper-s3") || "45%",
     l3: get("--wallpaper-l3") || "45%",
     s4: get("--wallpaper-s4") || "50%",
@@ -57,7 +57,7 @@ export const Wallpaper = (props: WallpaperProps) => {
   useEffect(() => {
     const controls = animate(hueShift, [0, 10, -5, 0], {
       duration: 20,
-      repeat: Infinity,
+      repeat: Number.POSITIVE_INFINITY,
       ease: "easeInOut",
     });
 
@@ -106,9 +106,18 @@ export const Wallpaper = (props: WallpaperProps) => {
       const shift = hueShift.get();
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
 
-      gradient.addColorStop(0, `hsl(${colors.h1 + shift}, ${colors.s1}, ${colors.l1})`);
-      gradient.addColorStop(0.5, `hsl(${colors.h2 + shift * 0.8}, ${colors.s2}, ${colors.l2})`);
-      gradient.addColorStop(0.7, `hsl(${colors.h3 + shift * 0.5}, ${colors.s3}, ${colors.l3})`);
+      gradient.addColorStop(
+        0,
+        `hsl(${colors.h1 + shift}, ${colors.s1}, ${colors.l1})`
+      );
+      gradient.addColorStop(
+        0.5,
+        `hsl(${colors.h2 + shift * 0.8}, ${colors.s2}, ${colors.l2})`
+      );
+      gradient.addColorStop(
+        0.7,
+        `hsl(${colors.h3 + shift * 0.5}, ${colors.s3}, ${colors.l3})`
+      );
       gradient.addColorStop(0.85, `hsl(205, ${colors.s4}, ${colors.l4})`);
       gradient.addColorStop(1, `hsl(210, ${colors.s5}, ${colors.l5})`);
 
@@ -152,7 +161,7 @@ export const Wallpaper = (props: WallpaperProps) => {
           hsl(210, var(--wallpaper-s5), var(--wallpaper-l5)) 100%)`,
       }}
     >
-      <canvas ref={canvasRef} className="absolute inset-0" aria-hidden="true" />
+      <canvas aria-hidden="true" className="absolute inset-0" ref={canvasRef} />
       <div className="relative z-10">{props.children}</div>
     </div>
   );

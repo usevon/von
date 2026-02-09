@@ -1,10 +1,10 @@
 "use client";
 
 import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import { cn } from "@usevon/ui";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { cn } from "@usevon/ui";
 
 const themes = [
   { key: "system", icon: DesktopIcon, label: "System theme" },
@@ -30,11 +30,11 @@ export const ThemeSwitcher = () => {
         const isActive = theme === key;
         return (
           <button
-            key={key}
-            type="button"
             aria-label={label}
             className="relative flex size-6 cursor-pointer items-center justify-center rounded-md"
+            key={key}
             onClick={() => setTheme(key)}
+            type="button"
           >
             {isActive && (
               <motion.div
@@ -44,11 +44,11 @@ export const ThemeSwitcher = () => {
               />
             )}
             <Icon
-              size={16}
               className={cn(
                 "relative z-10",
                 isActive ? "text-foreground" : "text-muted-foreground"
               )}
+              size={16}
             />
           </button>
         );

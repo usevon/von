@@ -18,11 +18,7 @@ import {
   pollDeviceToken,
   requestDeviceCode,
 } from "@/lib/api";
-import {
-  DEFAULT_API_URL,
-  loadConfig,
-  saveConfig,
-} from "@/lib/config";
+import { DEFAULT_API_URL, loadConfig, saveConfig } from "@/lib/config";
 import { formatError } from "@/lib/helpers";
 import { selectAndSetOrganization } from "@/lib/org";
 
@@ -58,7 +54,7 @@ export const login = new Command("login")
     }
 
     // If no URL options provided, prompt for instance type
-    if (!options.local && !options.apiUrl) {
+    if (!(options.local || options.apiUrl)) {
       const instanceType = await select({
         message: "How are you connecting to Von?",
         options: [

@@ -1,11 +1,15 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema";
 import { getRedisClient, type WebhookDeliveryJob } from "@usevon/queue";
-import { applyTransforms, buildSignatureHeader, type Transforms } from "@usevon/utils";
+import {
+  applyTransforms,
+  buildSignatureHeader,
+  type Transforms,
+} from "@usevon/utils";
+import { and, eq, sql } from "drizzle-orm";
 import { createWorker } from "@/lib/create-worker";
 import { log } from "@/lib/logger";
-import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
-import { and, eq, sql } from "drizzle-orm";
+import { type DeliveryConfig, processDelivery } from "@/lib/process-delivery";
 
 const getDeliveryStmt = db
   .select()
@@ -91,7 +95,13 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
     ...(isFinalAttempt ? { response: { error, durationMs } } : {}),
   }),
 
-  buildRequest: ({ payload, timestamp, signature: signedPayload, deliveryId, job }) => ({
+  buildRequest: ({
+    payload,
+    timestamp,
+    signature: signedPayload,
+    deliveryId,
+    job,
+  }) => ({
     url: job.endpoint.url,
     headers: {
       "Content-Type": "application/json",
@@ -99,7 +109,7 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
         timestamp,
         signedPayload,
         job.endpoint.secret,
-        job.endpoint.previousSecret,
+        job.endpoint.previousSecret
       ),
       "X-Von-Timestamp": String(timestamp),
       "X-Von-Event-Type": job.eventType,
@@ -139,7 +149,11 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
 
     const transformed = applyTransforms(parsed, eventTransforms);
     log.debug(
-      { endpointId: job.endpoint.id, version: job.endpoint.version, eventType: job.eventType },
+      {
+        endpointId: job.endpoint.id,
+        version: job.endpoint.version,
+        eventType: job.eventType,
+      },
       "Applied transforms"
     );
     return JSON.stringify(transformed);

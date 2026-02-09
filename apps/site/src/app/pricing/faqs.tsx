@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type FAQ = {
   question: string;
@@ -26,8 +26,12 @@ const faqs: FAQ[] = [
     question: "Can I self-host Von?",
     answer: (
       <>
-        Yes, Von is fully open source. Our SDKs are MIT licensed and server components are AGPL-3.0, so you can deploy on your own infrastructure.{" "}
-        <Link href="/contact" className="text-foreground underline underline-offset-4">
+        Yes, Von is fully open source. Our SDKs are MIT licensed and server
+        components are AGPL-3.0, so you can deploy on your own infrastructure.{" "}
+        <Link
+          className="text-foreground underline underline-offset-4"
+          href="/contact"
+        >
           Contact us
         </Link>{" "}
         if you need a commercial license.
@@ -46,15 +50,13 @@ const faqs: FAQ[] = [
   },
 ];
 
-export const PricingFaqs = () => {
-  return (
-    <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
-      {faqs.map((faq, index) => (
-        <div key={index} className="flex flex-col gap-2">
-          <h3 className="font-medium">{faq.question}</h3>
-          <p className="text-sm text-muted-foreground">{faq.answer}</p>
-        </div>
-      ))}
-    </div>
-  );
-};
+export const PricingFaqs = () => (
+  <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+    {faqs.map((faq, index) => (
+      <div className="flex flex-col gap-2" key={index}>
+        <h3 className="font-medium">{faq.question}</h3>
+        <p className="text-muted-foreground text-sm">{faq.answer}</p>
+      </div>
+    ))}
+  </div>
+);

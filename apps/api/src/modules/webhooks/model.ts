@@ -1,4 +1,9 @@
-import type { WebhookEvent, WebhookDelivery, SendEvent, SendBatch } from "@usevon/types";
+import type {
+  SendBatch,
+  SendEvent,
+  WebhookDelivery,
+  WebhookEvent,
+} from "@usevon/types";
 import { t } from "elysia";
 
 const eventTypePattern = "^[a-zA-Z0-9._-]+$";

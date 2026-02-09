@@ -16,8 +16,12 @@ export default async function ResetPasswordPage(props: ResetPasswordPageProps) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Reset password</h1>
-        <p className="text-muted-foreground text-sm">Enter your new password below</p>
+        <h1 className="font-semibold text-2xl tracking-tight">
+          Reset password
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Enter your new password below
+        </p>
       </div>
       <ResetPasswordForm token={token ?? ""} />
       <p className="text-muted-foreground text-sm">

@@ -1,8 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
 import {
   AlertDialog,
   AlertDialogClose,
@@ -16,6 +13,8 @@ import {
   Spinner,
   toastManager,
 } from "@usevon/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { deleteUser } from "@/lib/auth/client";
 
@@ -47,7 +46,8 @@ export const DeleteAccount = () => {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. Your account and all associated data will be permanently deleted.
+            This action cannot be undone. Your account and all associated data
+            will be permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

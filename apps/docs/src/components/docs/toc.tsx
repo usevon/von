@@ -1,8 +1,8 @@
 "use client";
 
+import { cn, TabsPrimitive as Tabs } from "@usevon/ui";
 import Link from "next/link";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { TabsPrimitive as Tabs, cn } from "@usevon/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type TocItem = {
   id: string;
@@ -72,7 +72,10 @@ const useActiveHeading = (headingIds: string[]) => {
       }
     }
 
-    window.addEventListener("scroll", handleScroll, { once: true, capture: true });
+    window.addEventListener("scroll", handleScroll, {
+      once: true,
+      capture: true,
+    });
 
     return () => {
       observer.disconnect();
@@ -94,32 +97,32 @@ export const TableOfContents = () => {
 
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <p className="font-medium text-xs uppercase tracking-wider text-muted-foreground">
+      <p className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
         On This Page
       </p>
       <Tabs.Root
-        value={`#${currentId}`}
-        orientation="vertical"
         className="flex flex-col"
+        orientation="vertical"
+        value={`#${currentId}`}
       >
-        <Tabs.List className="relative flex flex-col border-l border-border">
+        <Tabs.List className="relative flex flex-col border-border border-l">
           {headings.map((item) => (
             <Tabs.Tab
-              key={item.id}
-              value={`#${item.id}`}
-              nativeButton={false}
-              render={<Link href={`#${item.id}`} />}
               className={cn(
-                "py-1 pl-3 text-sm text-muted-foreground no-underline transition-colors",
+                "py-1 pl-3 text-muted-foreground text-sm no-underline transition-colors",
                 "hover:text-foreground data-[active]:hover:text-primary",
                 "data-[active]:font-medium data-[active]:text-primary",
                 item.depth > 2 && "pl-6"
               )}
+              key={item.id}
+              nativeButton={false}
+              render={<Link href={`#${item.id}`} />}
+              value={`#${item.id}`}
             >
               {item.title}
             </Tabs.Tab>
           ))}
-          <Tabs.Indicator className="absolute left-0 top-0 w-0.5 h-[var(--active-tab-height)] translate-y-[var(--active-tab-top)] bg-primary transition-all duration-200" />
+          <Tabs.Indicator className="absolute top-0 left-0 h-[var(--active-tab-height)] w-0.5 translate-y-[var(--active-tab-top)] bg-primary transition-all duration-200" />
         </Tabs.List>
       </Tabs.Root>
     </div>

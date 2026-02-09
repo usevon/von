@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import {
   Button,
   Command,
@@ -18,9 +17,10 @@ import {
   CommandPanel,
   Kbd,
 } from "@usevon/ui";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
-import { search, searchDocuments, type SearchResult } from "@/lib/search";
+import { type SearchResult, search, searchDocuments } from "@/lib/search";
 
 export const Search = () => {
   const [open, setOpen] = useState(false);
@@ -71,19 +71,25 @@ export const Search = () => {
     };
   }, [open]);
 
-  const groupedResults = results.reduce<Record<string, SearchResult[]>>((acc, result) => {
-    if (!acc[result.section]) {
-      acc[result.section] = [];
-    }
-    acc[result.section].push(result);
-    return acc;
-  }, {});
+  const groupedResults = results.reduce<Record<string, SearchResult[]>>(
+    (acc, result) => {
+      if (!acc[result.section]) {
+        acc[result.section] = [];
+      }
+      acc[result.section].push(result);
+      return acc;
+    },
+    {}
+  );
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog onOpenChange={setOpen} open={open}>
       <CommandDialogTrigger
         render={
-          <Button variant="outline" className="w-full justify-start gap-2 text-muted-foreground">
+          <Button
+            className="w-full justify-start gap-2 text-muted-foreground"
+            variant="outline"
+          >
             <MagnifyingGlassIcon className="size-4" />
             <span className="flex-1 text-left text-sm">Search docs...</span>
             <Kbd>⌘K</Kbd>
@@ -93,9 +99,9 @@ export const Search = () => {
       <CommandDialogPopup>
         <Command>
           <CommandInput
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search documentation..."
             value={query}
-            onChange={(e) => handleSearch(e.target.value)}
           />
           <CommandPanel>
             <CommandList>
@@ -108,8 +114,8 @@ export const Search = () => {
                   {items.map((result) => (
                     <CommandItem
                       key={result.id}
-                      value={result.id}
                       onClick={() => handleSelect(result.href)}
+                      value={result.id}
                     >
                       {result.title}
                     </CommandItem>

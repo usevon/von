@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { Button } from "@usevon/ui";
-import { urls } from "@/lib/urls";
+import Link from "next/link";
 import { CodeSnippets } from "@/components/code-snippets";
 import { CTA } from "@/components/cta";
 import { FAQ } from "@/components/faq";
 import { Features } from "@/components/features";
 import { Hero } from "@/components/hero";
+import { urls } from "@/lib/urls";
 
 export default function HomePage() {
   return (
@@ -15,13 +15,13 @@ export default function HomePage() {
       <Features />
       <FAQ />
       <CTA
-        title="Ready to ship webhooks that just work?"
         description="Start sending reliable webhooks in minutes, free to get started."
+        title="Ready to ship webhooks that just work?"
       >
-        <Button size="lg" render={<Link href={urls.signup} />}>
+        <Button render={<Link href={urls.signup} />} size="lg">
           Get started
         </Button>
-        <Button size="lg" variant="outline" render={<Link href="/contact" />}>
+        <Button render={<Link href="/contact" />} size="lg" variant="outline">
           Contact sales
         </Button>
       </CTA>

@@ -1,26 +1,24 @@
 export type {
-  EndpointStatus,
-  Endpoint,
   CreateEndpoint,
+  Endpoint,
+  EndpointStatus,
   UpdateEndpoint,
 } from "./endpoints";
 
 export type {
-  InboundEndpoint,
   CreateInboundEndpoint,
-  UpdateInboundEndpoint,
   InboundDelivery,
+  InboundEndpoint,
+  UpdateInboundEndpoint,
 } from "./inbound";
-
-export type {
-  DeliveryResponse,
-  WebhookEvent,
-  WebhookDelivery,
-  SendEvent,
-  SendBatch,
-} from "./webhooks";
-
 export type {
   TransformMappings,
   WebhookVersion,
 } from "./versions";
+export type {
+  DeliveryResponse,
+  SendBatch,
+  SendEvent,
+  WebhookDelivery,
+  WebhookEvent,
+} from "./webhooks";

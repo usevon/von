@@ -2,9 +2,8 @@
 
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { useState } from "react";
-
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type CopyButtonProps = {
   value: string;
@@ -22,13 +21,13 @@ export const CopyButton = (props: CopyButtonProps) => {
 
   return (
     <Button
-      variant="ghost"
-      size="icon"
-      onClick={copy}
       className={cn(
-        "absolute right-2 top-2 z-10 opacity-0 transition-all duration-150 group-hover:opacity-70 hover:!opacity-100",
+        "hover:!opacity-100 absolute top-2 right-2 z-10 opacity-0 transition-all duration-150 group-hover:opacity-70",
         props.className
       )}
+      onClick={copy}
+      size="icon"
+      variant="ghost"
     >
       <span className="relative size-4">
         <CopyIcon

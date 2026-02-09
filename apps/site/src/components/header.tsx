@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { ArrowSquareOutIcon, CheckIcon, CopyIcon } from "@phosphor-icons/react";
+import {
+  Button,
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuTrigger,
+} from "@usevon/ui";
 import Image from "next/image";
-import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
-import { CopyIcon, CheckIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
-import { urls, docsUrl } from "@/lib/urls";
+import Link from "next/link";
+import { useState } from "react";
+import { docsUrl, urls } from "@/lib/urls";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="364.31" height="273.74" viewBox="0 0 364.31 273.74"><polyline points="273.08 92.3 185.65 91.8 272.58 0 364.31 0 364.31 91.29 181.35 273.74 91.13 273.74 91.64 91.73 0 91.98 92.4 0 183.12 0 182.9 91.79 183.87 182.51" fill="currentColor"/></svg>`;
 
@@ -20,7 +26,10 @@ export const Header = () => {
   };
 
   const handleCopyPng = async () => {
-    const svg = new Blob([LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')], { type: "image/svg+xml" });
+    const svg = new Blob(
+      [LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')],
+      { type: "image/svg+xml" }
+    );
     const url = URL.createObjectURL(svg);
     const img = document.createElement("img");
     img.onload = async () => {
@@ -33,7 +42,9 @@ export const Header = () => {
         ctx.drawImage(img, 0, 0);
         canvas.toBlob(async (blob) => {
           if (blob) {
-            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
             setCopiedPng(true);
             setTimeout(() => setCopiedPng(false), 2000);
           }
@@ -51,36 +62,56 @@ export const Header = () => {
           <ContextMenu>
             <ContextMenuTrigger
               render={
-                <Link href="/" className="flex h-7 w-20 items-center no-underline">
+                <Link
+                  className="flex h-7 w-20 items-center no-underline"
+                  href="/"
+                >
                   <Image
-                    src="/brand/von-wordmark-black.svg"
                     alt="Von"
-                    width={80}
+                    className="h-7 w-auto dark:hidden"
                     height={28}
                     priority
-                    className="h-7 w-auto dark:hidden"
+                    src="/brand/von-wordmark-black.svg"
+                    width={80}
                   />
                   <Image
-                    src="/brand/von-wordmark-white.svg"
                     alt="Von"
-                    width={80}
+                    className="hidden h-7 w-auto dark:block"
                     height={28}
                     priority
-                    className="hidden h-7 w-auto dark:block"
+                    src="/brand/von-wordmark-white.svg"
+                    width={80}
                   />
                 </Link>
               }
             />
             <ContextMenuPopup>
-              <ContextMenuItem onClick={handleCopySvg} className="justify-between">
+              <ContextMenuItem
+                className="justify-between"
+                onClick={handleCopySvg}
+              >
                 {copiedSvg ? "Copied!" : "Copy as SVG"}
-                {copiedSvg ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                {copiedSvg ? (
+                  <CheckIcon className="size-4" />
+                ) : (
+                  <CopyIcon className="size-4" />
+                )}
               </ContextMenuItem>
-              <ContextMenuItem onClick={handleCopyPng} className="justify-between">
+              <ContextMenuItem
+                className="justify-between"
+                onClick={handleCopyPng}
+              >
                 {copiedPng ? "Copied!" : "Copy as PNG"}
-                {copiedPng ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+                {copiedPng ? (
+                  <CheckIcon className="size-4" />
+                ) : (
+                  <CopyIcon className="size-4" />
+                )}
               </ContextMenuItem>
-              <ContextMenuItem render={<Link href="/brand" />} className="justify-between">
+              <ContextMenuItem
+                className="justify-between"
+                render={<Link href="/brand" />}
+              >
                 Brand Kit
                 <ArrowSquareOutIcon className="size-4" />
               </ContextMenuItem>
@@ -88,20 +119,22 @@ export const Header = () => {
           </ContextMenu>
         </div>
         <div className="flex gap-2 max-lg:hidden">
-          <Button variant="ghost" render={<Link href="/pricing" />}>
+          <Button render={<Link href="/pricing" />} variant="ghost">
             Pricing
           </Button>
-          <Button variant="ghost" render={<Link href={docsUrl()} />}>
+          <Button render={<Link href={docsUrl()} />} variant="ghost">
             Docs
           </Button>
         </div>
         <div className="flex flex-1 items-center justify-end gap-4">
-          <Button variant="outline" render={<Link href={urls.login} />} className="max-sm:hidden">
+          <Button
+            className="max-sm:hidden"
+            render={<Link href={urls.login} />}
+            variant="outline"
+          >
             Log in
           </Button>
-          <Button render={<Link href={urls.signup} />}>
-            Get started
-          </Button>
+          <Button render={<Link href={urls.signup} />}>Get started</Button>
         </div>
       </nav>
     </header>

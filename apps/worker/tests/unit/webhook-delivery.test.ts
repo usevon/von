@@ -66,7 +66,11 @@ describe("webhook delivery", () => {
     test("single secret produces v1 only", () => {
       const timestamp = 1_700_000_000;
       const signedPayload = `${timestamp}.{"test":true}`;
-      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new");
+      const header = buildSignatureHeader(
+        timestamp,
+        signedPayload,
+        "whsec_new"
+      );
 
       expect(header).toMatch(HEADER_PATTERN);
       expect(header).not.toContain("v2=");
@@ -75,7 +79,12 @@ describe("webhook delivery", () => {
     test("dual secrets produce v1 and v2", () => {
       const timestamp = 1_700_000_000;
       const signedPayload = `${timestamp}.{"test":true}`;
-      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new", "whsec_old");
+      const header = buildSignatureHeader(
+        timestamp,
+        signedPayload,
+        "whsec_new",
+        "whsec_old"
+      );
 
       expect(header).toMatch(DUAL_HEADER_PATTERN);
     });
@@ -86,7 +95,12 @@ describe("webhook delivery", () => {
       const newSecret = "whsec_new";
       const oldSecret = "whsec_old";
 
-      const header = buildSignatureHeader(timestamp, signedPayload, newSecret, oldSecret);
+      const header = buildSignatureHeader(
+        timestamp,
+        signedPayload,
+        newSecret,
+        oldSecret
+      );
       const v1Sig = hmacSign(signedPayload, newSecret);
       const v2Sig = hmacSign(signedPayload, oldSecret);
 
@@ -96,7 +110,12 @@ describe("webhook delivery", () => {
     test("null previousSecret produces single signature", () => {
       const timestamp = 1_700_000_000;
       const signedPayload = `${timestamp}.{"test":true}`;
-      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new", null);
+      const header = buildSignatureHeader(
+        timestamp,
+        signedPayload,
+        "whsec_new",
+        null
+      );
 
       expect(header).toMatch(HEADER_PATTERN);
       expect(header).not.toContain("v2=");
@@ -137,10 +156,13 @@ describe("webhook delivery", () => {
     });
 
     test("timeout response shape", () => {
-      const response = { error: "AbortError: The operation was aborted", durationMs: 30000 };
+      const response = {
+        error: "AbortError: The operation was aborted",
+        durationMs: 30_000,
+      };
 
       expect(response.error).toContain("AbortError");
-      expect(response.durationMs).toBe(30000);
+      expect(response.durationMs).toBe(30_000);
     });
 
     test("pending delivery has null response", () => {
@@ -160,9 +182,9 @@ describe("webhook delivery", () => {
     });
 
     test("cache key is unique per org and version", () => {
-      const key1 = `version:org_1:v1`;
-      const key2 = `version:org_2:v1`;
-      const key3 = `version:org_1:v2`;
+      const key1 = "version:org_1:v1";
+      const key2 = "version:org_2:v1";
+      const key3 = "version:org_1:v2";
 
       expect(key1).not.toBe(key2);
       expect(key1).not.toBe(key3);

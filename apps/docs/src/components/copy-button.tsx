@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@usevon/ui";
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
+import { Button } from "@usevon/ui";
 import { useState } from "react";
 
 type CopyButtonProps = {
@@ -20,10 +20,10 @@ export const CopyButton = (props: CopyButtonProps) => {
 
   return (
     <Button
-      variant="ghost"
-      size="icon"
+      className={`absolute top-1.5 right-1.5 z-10 opacity-70 hover:opacity-100 ${props.className || ""}`}
       onClick={copy}
-      className={`absolute right-1.5 top-1.5 z-10 opacity-70 hover:opacity-100 ${props.className || ""}`}
+      size="icon"
+      variant="ghost"
     >
       {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
     </Button>

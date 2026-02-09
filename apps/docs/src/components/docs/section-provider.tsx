@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 type SectionContextValue = {
   sections: string[];
@@ -37,7 +44,8 @@ export const SectionProvider = (props: SectionProviderProps) => {
   }, []);
 
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined" || sections.length === 0) return;
+    if (typeof IntersectionObserver === "undefined" || sections.length === 0)
+      return;
 
     const observer = new IntersectionObserver(
       (entries) => {

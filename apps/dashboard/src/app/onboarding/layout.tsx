@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-
-import { Logo } from "@/components/logo";
 import { getSession, listOrganizations } from "@/app/actions/user";
+import { Logo } from "@/components/logo";
 
 type OnboardingLayoutProps = {
   children: React.ReactNode;

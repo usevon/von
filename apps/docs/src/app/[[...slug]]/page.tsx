@@ -1,21 +1,20 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { Pagination } from "@/components/docs/pagination";
 import { TableOfContents } from "@/components/docs/toc";
 import { HomePage } from "@/components/home-page";
-
+import AuthenticationContent from "@/content/authentication.mdx";
 // Content imports
 import GettingStartedContent from "@/content/getting-started.mdx";
-import AuthenticationContent from "@/content/authentication.mdx";
 import IntroductionContent from "@/content/introduction.mdx";
-import SendingContent from "@/content/sending.mdx";
 import ReceivingContent from "@/content/receiving.mdx";
+import CliContent from "@/content/sdk/cli.mdx";
+import ReactSdkContent from "@/content/sdk/react.mdx";
+import TypeScriptSdkContent from "@/content/sdk/typescript.mdx";
+import SendingContent from "@/content/sending.mdx";
 import VerificationContent from "@/content/verification.mdx";
 import VersioningContent from "@/content/versioning.mdx";
-import TypeScriptSdkContent from "@/content/sdk/typescript.mdx";
-import ReactSdkContent from "@/content/sdk/react.mdx";
-import CliContent from "@/content/sdk/cli.mdx";
 
 type DocsPageProps = {
   params: Promise<{ slug?: string[] }>;
@@ -66,7 +65,8 @@ const contentMap: Record<string, ContentEntry> = {
   versioning: {
     Component: VersioningContent,
     title: "Versioning",
-    description: "Learn how to evolve webhook payloads without breaking integrations.",
+    description:
+      "Learn how to evolve webhook payloads without breaking integrations.",
   },
   "sdk/typescript": {
     Component: TypeScriptSdkContent,
@@ -90,7 +90,9 @@ const getContent = (slug: string[]): ContentEntry | null => {
   return contentMap[key] ?? null;
 };
 
-export async function generateMetadata(props: DocsPageProps): Promise<Metadata> {
+export async function generateMetadata(
+  props: DocsPageProps
+): Promise<Metadata> {
   const params = await props.params;
   const slug = params.slug ?? [];
   const content = getContent(slug);
@@ -134,7 +136,7 @@ export default async function DocsPage(props: DocsPageProps) {
   return (
     <div className="flex gap-12">
       <div className="min-w-0 max-w-4xl flex-1">
-        <article className="prose prose-headings:no-underline prose-h4:border-none pb-16">
+        <article className="prose prose-h4:border-none pb-16 prose-headings:no-underline">
           <Content />
         </article>
         <Pagination />

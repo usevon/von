@@ -1,12 +1,12 @@
+import { Databuddy } from "@databuddy/sdk/react";
 import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
-import { Databuddy } from "@databuddy/sdk/react";
 
 import "@/index.css";
-import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
 import { Footer } from "@/components/footer";
+import { Providers } from "@/components/providers";
 import { ScrollReset } from "@/components/scroll-reset";
+import { Sidebar } from "@/components/sidebar";
 
 const familjen = Familjen_Grotesk({
   variable: "--font-familjen",
@@ -29,11 +29,11 @@ export default function RootLayout(props: RootLayoutProps) {
         <Databuddy
           clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
           disabled={process.env.NODE_ENV === "development"}
-          trackPerformance
-          trackWebVitals
           trackErrors
           trackInteractions
+          trackPerformance
           trackScrollDepth
+          trackWebVitals
         />
         <Providers>
           <div className="flex min-h-svh flex-col">

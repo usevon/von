@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button, GitHubIcon, Spinner, toast } from "@usevon/ui";
+import { useState } from "react";
 
 import { signIn } from "@/lib/auth/client";
 
 const GoogleIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+  <svg aria-hidden="true" className={className} viewBox="0 0 24 24">
     <path
       d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z"
       fill="#EA4335"
@@ -33,8 +32,11 @@ type OAuthButtonsProps = {
 };
 
 export const OAuthButtons = ({ redirectTo, mode }: OAuthButtonsProps) => {
-  const [loadingProvider, setLoadingProvider] = useState<"google" | "github" | null>(null);
-  const successMessage = mode === "signup" ? "Account created!" : "Welcome back!";
+  const [loadingProvider, setLoadingProvider] = useState<
+    "google" | "github" | null
+  >(null);
+  const successMessage =
+    mode === "signup" ? "Account created!" : "Welcome back!";
   const isLoading = loadingProvider !== null;
 
   const handleGoogleSignIn = async () => {
@@ -52,7 +54,7 @@ export const OAuthButtons = ({ redirectTo, mode }: OAuthButtonsProps) => {
           toast.error(ctx.error.message || "Failed to sign in with Google");
           setLoadingProvider(null);
         },
-      },
+      }
     );
   };
 
@@ -71,18 +73,36 @@ export const OAuthButtons = ({ redirectTo, mode }: OAuthButtonsProps) => {
           toast.error(ctx.error.message || "Failed to sign in with GitHub");
           setLoadingProvider(null);
         },
-      },
+      }
     );
   };
 
   return (
     <div className="flex gap-3">
-      <Button variant="outline" className="flex-1" onClick={handleGoogleSignIn} disabled={isLoading}>
-        {loadingProvider === "google" ? <Spinner className="size-4" /> : <GoogleIcon className="size-4" />}
+      <Button
+        className="flex-1"
+        disabled={isLoading}
+        onClick={handleGoogleSignIn}
+        variant="outline"
+      >
+        {loadingProvider === "google" ? (
+          <Spinner className="size-4" />
+        ) : (
+          <GoogleIcon className="size-4" />
+        )}
         Google
       </Button>
-      <Button variant="outline" className="flex-1" onClick={handleGitHubSignIn} disabled={isLoading}>
-        {loadingProvider === "github" ? <Spinner className="size-4" /> : <GitHubIcon className="size-4" />}
+      <Button
+        className="flex-1"
+        disabled={isLoading}
+        onClick={handleGitHubSignIn}
+        variant="outline"
+      >
+        {loadingProvider === "github" ? (
+          <Spinner className="size-4" />
+        ) : (
+          <GitHubIcon className="size-4" />
+        )}
         GitHub
       </Button>
     </div>

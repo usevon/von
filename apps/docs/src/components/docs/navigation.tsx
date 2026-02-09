@@ -1,11 +1,17 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { Tabs } from "@base-ui/react/tabs";
+import {
+  BookOpenIcon,
+  CodeIcon,
+  HouseIcon,
+  KeyIcon,
+  RocketLaunchIcon,
+} from "@phosphor-icons/react";
 import { cn } from "@usevon/ui";
-import { HouseIcon, RocketLaunchIcon, BookOpenIcon, CodeIcon, KeyIcon } from "@phosphor-icons/react";
+import { usePathname, useRouter } from "next/navigation";
 
-import { topLinks, navigation } from "@/lib/navigation";
+import { navigation, topLinks } from "@/lib/navigation";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   house: HouseIcon,
@@ -40,10 +46,10 @@ export const Navigation = () => {
 
   return (
     <Tabs.Root
-      value={activeHref}
+      className="flex flex-col"
       onValueChange={(value) => router.push(value as string)}
       orientation="vertical"
-      className="flex flex-col"
+      value={activeHref}
     >
       <Tabs.List className="relative flex flex-col gap-y-4">
         {/* Top links */}
@@ -52,13 +58,13 @@ export const Navigation = () => {
             const Icon = link.icon ? iconMap[link.icon] : null;
             return (
               <Tabs.Tab
-                key={link.href}
-                value={link.href}
                 className={cn(
-                  "flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-md px-3 text-sm font-medium outline-none",
+                  "flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-md px-3 font-medium text-sm outline-none",
                   "text-muted-foreground hover:text-foreground",
                   "data-[active]:text-foreground"
                 )}
+                key={link.href}
+                value={link.href}
               >
                 {Icon && <Icon className="size-4" />}
                 {link.title}
@@ -69,19 +75,19 @@ export const Navigation = () => {
 
         {/* Sections */}
         {navigation.map((section) => (
-          <div key={section.title} className="flex flex-col gap-2">
-            <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="flex flex-col gap-2" key={section.title}>
+            <h4 className="px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
               {section.title}
             </h4>
             <div className="flex flex-col">
               {section.items.map((item) => (
                 <Tabs.Tab
-                  key={item.href}
-                  value={item.href}
                   className={cn(
-                    "flex h-8 w-full cursor-pointer items-center justify-start rounded-md px-3 text-sm font-medium outline-none",
+                    "flex h-8 w-full cursor-pointer items-center justify-start rounded-md px-3 font-medium text-sm outline-none",
                     "text-muted-foreground hover:text-foreground data-[active]:text-foreground"
                   )}
+                  key={item.href}
+                  value={item.href}
                 >
                   {item.title}
                 </Tabs.Tab>

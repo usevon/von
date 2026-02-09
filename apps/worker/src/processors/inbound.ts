@@ -2,9 +2,9 @@ import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import type { InboundForwardingJob } from "@usevon/queue";
 import { buildSignatureHeader } from "@usevon/utils";
-import { createWorker } from "@/lib/create-worker";
-import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
 import { eq, sql } from "drizzle-orm";
+import { createWorker } from "@/lib/create-worker";
+import { type DeliveryConfig, processDelivery } from "@/lib/process-delivery";
 
 const getInboundDeliveryStmt = db
   .select()
@@ -60,7 +60,13 @@ const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
     ...(isFinalAttempt ? { response: { error, durationMs } } : {}),
   }),
 
-  buildRequest: ({ payload, timestamp, signature: signedPayload, deliveryId, job }) => {
+  buildRequest: ({
+    payload,
+    timestamp,
+    signature: signedPayload,
+    deliveryId,
+    job,
+  }) => {
     const originalHeaders: Record<string, string> = job.headers
       ? JSON.parse(job.headers)
       : {};
@@ -80,7 +86,7 @@ const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
           timestamp,
           signedPayload,
           job.endpoint.secret,
-          job.endpoint.previousSecret,
+          job.endpoint.previousSecret
         ),
         "X-Von-Timestamp": String(timestamp),
         "X-Von-Inbound-Delivery-Id": deliveryId,

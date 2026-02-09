@@ -1,4 +1,4 @@
-import type { TransformMappings, WebhookVersion } from "@usevon/types";
+import type { WebhookVersion } from "@usevon/types";
 import { t } from "elysia";
 
 const transformMappings = t.Object({

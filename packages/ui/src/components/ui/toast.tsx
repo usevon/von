@@ -8,9 +8,8 @@ import {
   WarningCircleIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-
-import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const toastManager = Toast.createToastManager();
 const anchoredToastManager = Toast.createToastManager();
@@ -63,7 +62,7 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
           // Horizontal positioning
           "data-[position*=left]:left-(--toast-inset)",
           "data-[position*=right]:right-(--toast-inset)",
-          "data-[position*=center]:-translate-x-1/2 data-[position*=center]:left-1/2",
+          "data-[position*=center]:left-1/2 data-[position*=center]:-translate-x-1/2"
         )}
         data-position={position}
         data-slot="toast-viewport"
@@ -114,7 +113,7 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
                 "data-expanded:data-ending-style:data-[swipe-direction=left]:transform-[translateX(calc(var(--toast-swipe-movement-x)-100%-var(--toast-inset)))_translateY(var(--toast-calc-offset-y))]",
                 "data-expanded:data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+100%+var(--toast-inset)))_translateY(var(--toast-calc-offset-y))]",
                 "data-expanded:data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-100%-var(--toast-inset)))]",
-                "data-expanded:data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+100%+var(--toast-inset)))]",
+                "data-expanded:data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+100%+var(--toast-inset)))]"
               )}
               data-position={position}
               key={toast.id}
@@ -209,7 +208,7 @@ function AnchoredToasts() {
                   "relative text-balance border bg-popover bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
                   tooltipStyle
                     ? "rounded-md shadow-black/5 shadow-md before:rounded-[calc(var(--radius-md)-1px)]"
-                    : "rounded-lg shadow-lg before:rounded-[calc(var(--radius-lg)-1px)]",
+                    : "rounded-lg shadow-lg before:rounded-[calc(var(--radius-lg)-1px)]"
                 )}
                 data-slot="toast-popup"
                 toast={toast}
@@ -281,14 +280,16 @@ async function toastPromise<T>(
   try {
     const result = await promise;
     const duration = Math.round(performance.now() - startTime);
-    const successMessage = typeof options.success === "function"
-      ? options.success(result)
-      : options.success;
+    const successMessage =
+      typeof options.success === "function"
+        ? options.success(result)
+        : options.success;
 
     toastManager.update(toastId, {
-      title: process.env.NODE_ENV === "development"
-        ? `${successMessage} (${duration}ms)`
-        : successMessage,
+      title:
+        process.env.NODE_ENV === "development"
+          ? `${successMessage} (${duration}ms)`
+          : successMessage,
       type: "success",
       timeout: 4000,
     });
@@ -296,14 +297,14 @@ async function toastPromise<T>(
     return result;
   } catch (err) {
     const duration = Math.round(performance.now() - startTime);
-    const errorMessage = typeof options.error === "function"
-      ? options.error(err)
-      : options.error;
+    const errorMessage =
+      typeof options.error === "function" ? options.error(err) : options.error;
 
     toastManager.update(toastId, {
-      title: process.env.NODE_ENV === "development"
-        ? `${errorMessage} (${duration}ms)`
-        : errorMessage,
+      title:
+        process.env.NODE_ENV === "development"
+          ? `${errorMessage} (${duration}ms)`
+          : errorMessage,
       type: "error",
       timeout: 4000,
     });
@@ -319,7 +320,12 @@ type ToastTimedOptions = {
 async function toastTimed<T>(
   fn: () => Promise<T>,
   options?: ToastTimedOptions
-): Promise<{ data: T; duration: number; showSuccess: (title: string) => void; showError: (title: string) => void }> {
+): Promise<{
+  data: T;
+  duration: number;
+  showSuccess: (title: string) => void;
+  showError: (title: string) => void;
+}> {
   const startTime = performance.now();
 
   const toastId = options?.loading
@@ -336,7 +342,11 @@ async function toastTimed<T>(
     showSuccess: (title: string) => {
       const message = isDev ? `${title} (${duration}ms)` : title;
       if (toastId) {
-        toastManager.update(toastId, { title: message, type: "success", timeout: 4000 });
+        toastManager.update(toastId, {
+          title: message,
+          type: "success",
+          timeout: 4000,
+        });
       } else {
         toastManager.add({ title: message, type: "success" });
       }
@@ -344,7 +354,11 @@ async function toastTimed<T>(
     showError: (title: string) => {
       const message = isDev ? `${title} (${duration}ms)` : title;
       if (toastId) {
-        toastManager.update(toastId, { title: message, type: "error", timeout: 4000 });
+        toastManager.update(toastId, {
+          title: message,
+          type: "error",
+          timeout: 4000,
+        });
       } else {
         toastManager.add({ title: message, type: "error" });
       }

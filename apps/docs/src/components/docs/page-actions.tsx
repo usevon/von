@@ -1,22 +1,21 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import {
-  Button,
-  Menu,
-  MenuTrigger,
-  MenuPopup,
-  MenuItem,
-} from "@usevon/ui";
-import { FileTextIcon, CaretDownIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
+  ArrowSquareOutIcon,
+  CaretDownIcon,
+  FileTextIcon,
+} from "@phosphor-icons/react";
+import { Button, Menu, MenuItem, MenuPopup, MenuTrigger } from "@usevon/ui";
+import { usePathname } from "next/navigation";
 
-const getMarkdownUrl = (pathname: string) => {
-  return pathname === "/" ? "/index.md" : `${pathname}.md`;
-};
+const getMarkdownUrl = (pathname: string) =>
+  pathname === "/" ? "/index.md" : `${pathname}.md`;
 
 const getGitHubPath = (pathname: string) => {
   const slug = pathname === "/" ? "" : pathname.slice(1);
-  const filePath = slug ? `src/content/${slug}.mdx` : "src/components/home-page.tsx";
+  const filePath = slug
+    ? `src/content/${slug}.mdx`
+    : "src/components/home-page.tsx";
   return `https://github.com/usevon/von/blob/main/apps/docs/${filePath}`;
 };
 
@@ -29,7 +28,10 @@ export const PageActions = () => {
   };
 
   const handleOpenIn = async (target: string) => {
-    const fullMarkdownUrl = new URL(markdownUrl, window.location.origin).toString();
+    const fullMarkdownUrl = new URL(
+      markdownUrl,
+      window.location.origin
+    ).toString();
     const prompt = `Read ${fullMarkdownUrl}, I want to ask questions about it.`;
 
     const urls: Record<string, string> = {
@@ -43,11 +45,11 @@ export const PageActions = () => {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 not-prose my-6">
+    <div className="not-prose my-6 flex flex-wrap items-center gap-2">
       <Button
-        variant="outline"
-        className="gap-1.5 active:scale-[0.97] transition-transform"
+        className="gap-1.5 transition-transform active:scale-[0.97]"
         onClick={handleOpenMarkdown}
+        variant="outline"
       >
         <FileTextIcon className="size-4" />
         View as Markdown
@@ -56,22 +58,34 @@ export const PageActions = () => {
       <Menu>
         <MenuTrigger
           render={
-            <Button variant="outline" className="gap-1.5 active:scale-[0.97] transition-transform">
+            <Button
+              className="gap-1.5 transition-transform active:scale-[0.97]"
+              variant="outline"
+            >
               Open In
               <CaretDownIcon className="size-4" />
             </Button>
           }
         />
         <MenuPopup align="start">
-          <MenuItem onClick={() => handleOpenIn("github")} className="justify-between">
+          <MenuItem
+            className="justify-between"
+            onClick={() => handleOpenIn("github")}
+          >
             Open in GitHub
             <ArrowSquareOutIcon className="size-4" />
           </MenuItem>
-          <MenuItem onClick={() => handleOpenIn("chatgpt")} className="justify-between">
+          <MenuItem
+            className="justify-between"
+            onClick={() => handleOpenIn("chatgpt")}
+          >
             Open in ChatGPT
             <ArrowSquareOutIcon className="size-4" />
           </MenuItem>
-          <MenuItem onClick={() => handleOpenIn("claude")} className="justify-between">
+          <MenuItem
+            className="justify-between"
+            onClick={() => handleOpenIn("claude")}
+          >
             Open in Claude
             <ArrowSquareOutIcon className="size-4" />
           </MenuItem>

@@ -1,6 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["API_KEY_SIGNING_SECRET", "BETTER_AUTH_SECRET", "VON_API_KEY"],
+  "globalPassThroughEnv": [
+    "API_KEY_SIGNING_SECRET",
+    "BETTER_AUTH_SECRET",
+    "VON_API_KEY"
+  ],
   "remoteCache": {
     "signature": true
   },

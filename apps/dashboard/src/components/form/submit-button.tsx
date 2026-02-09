@@ -10,7 +10,14 @@ type SubmitButtonProps = {
 };
 
 export const SubmitButton = (props: SubmitButtonProps) => {
-  const { canSubmit, isSubmitting, hasEmptyFields = false, children, loadingText, className } = props;
+  const {
+    canSubmit,
+    isSubmitting,
+    hasEmptyFields = false,
+    children,
+    loadingText,
+    className,
+  } = props;
 
   return (
     <Button

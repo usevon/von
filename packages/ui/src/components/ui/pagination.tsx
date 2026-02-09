@@ -1,10 +1,13 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { CaretLeftIcon, CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react";
+import {
+  CaretLeftIcon,
+  CaretRightIcon,
+  DotsThreeIcon,
+} from "@phosphor-icons/react";
 import type * as React from "react";
-
-import { cn } from "@/lib/utils";
 import { type Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -55,7 +58,7 @@ function PaginationLink({
             size,
             variant: isActive ? "outline" : "ghost",
           }),
-          className,
+          className
         ),
     "data-active": isActive,
     "data-slot": "pagination-link",

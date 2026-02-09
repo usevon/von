@@ -1,16 +1,16 @@
-import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import { db } from "@usevon/db";
-import { delivery, endpoint, event } from "@usevon/db/schema";
+import { delivery, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
-  type WebhookDeliveryJob,
   getWebhookDeliveryQueue,
+  type WebhookDeliveryJob,
 } from "@usevon/queue";
+import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import {
   BadRequestError,
   InternalServerError,
-  NotFoundError,
   matchesEventType,
+  NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -39,7 +39,6 @@ const toEvent = (e: EventRow): WebhookModel.event => ({
   status: "pending",
   createdAt: e.createdAt.toISOString(),
 });
-
 
 type CreateEventParams = {
   organizationId: string;
@@ -152,9 +151,7 @@ export abstract class WebhookService {
     .limit(1)
     .prepare("get_event");
 
-  static createEvent(
-    params: CreateEventParams
-  ): Promise<WebhookModel.event> {
+  static createEvent(params: CreateEventParams): Promise<WebhookModel.event> {
     return withServiceError(async () => {
       const result = await WebhookService.createBatch({
         organizationId: params.organizationId,
@@ -335,7 +332,7 @@ export abstract class WebhookService {
       to?: string;
     },
     limit = 20,
-    offset = 0,
+    offset = 0
   ): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
     return withServiceError(async () => {
       const conditions = [
@@ -372,7 +369,7 @@ export abstract class WebhookService {
             .from(delivery)
             .innerJoin(event, eq(delivery.eventId, event.id))
             .where(where)
-            .as("filtered"),
+            .as("filtered")
         ),
       ]);
 
@@ -386,7 +383,7 @@ export abstract class WebhookService {
   static replayEvent(
     organizationId: string,
     eventId: string,
-    endpointIds?: string[],
+    endpointIds?: string[]
   ): Promise<WebhookModel.replayResult> {
     return withServiceError(async () => {
       const [eventRecord] = await WebhookService.getEventStmt.execute({
@@ -400,7 +397,7 @@ export abstract class WebhookService {
 
       const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
         organizationId,
-        endpointIds,
+        endpointIds
       );
 
       const targets = allEndpoints.filter((ep) =>
@@ -452,7 +449,7 @@ export abstract class WebhookService {
   static replayBulk(
     organizationId: string,
     since: string,
-    filters?: { status?: string; endpointId?: string },
+    filters?: { status?: string; endpointId?: string }
   ): Promise<WebhookModel.bulkReplayResult> {
     return withServiceError(async () => {
       const conditions = [
@@ -483,7 +480,7 @@ export abstract class WebhookService {
       const endpointIdsSet = new Set(failedDeliveries.map((d) => d.endpointId));
       const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
         organizationId,
-        [...endpointIdsSet],
+        [...endpointIdsSet]
       );
       const activeEndpoints = new Map(allEndpoints.map((ep) => [ep.id, ep]));
 

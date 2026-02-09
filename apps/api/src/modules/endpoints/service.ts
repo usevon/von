@@ -1,18 +1,23 @@
-import type { CreateEndpoint, Endpoint, EndpointStatus, UpdateEndpoint } from "@usevon/types";
 import { db } from "@usevon/db";
 import { delivery, endpoint, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
-  type WebhookDeliveryJob,
   getRedisClient,
   getWebhookDeliveryQueue,
+  type WebhookDeliveryJob,
 } from "@usevon/queue";
+import type {
+  CreateEndpoint,
+  Endpoint,
+  EndpointStatus,
+  UpdateEndpoint,
+} from "@usevon/types";
 import {
   BadRequestError,
-  InternalServerError,
-  NotFoundError,
   generateSecret,
+  InternalServerError,
   isValidWebhookUrl,
+  NotFoundError,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
@@ -249,7 +254,7 @@ export abstract class EndpointService {
     organizationId: string,
     endpointId: string,
     payload?: unknown,
-    eventType?: string,
+    eventType?: string
   ): Promise<EndpointModel.testResponse> {
     return withServiceError(async () => {
       const ep = await db
@@ -267,7 +272,7 @@ export abstract class EndpointService {
         .where(
           and(
             eq(endpoint.id, endpointId),
-            eq(endpoint.organizationId, organizationId),
+            eq(endpoint.organizationId, organizationId)
           )
         )
         .limit(1);
@@ -278,7 +283,10 @@ export abstract class EndpointService {
 
       const now = new Date();
       const type = eventType ?? "von.test";
-      const testPayload = payload ?? { test: true, timestamp: now.toISOString() };
+      const testPayload = payload ?? {
+        test: true,
+        timestamp: now.toISOString(),
+      };
       const payloadStr = JSON.stringify(testPayload);
 
       const eventId = crypto.randomUUID();
@@ -316,7 +324,7 @@ export abstract class EndpointService {
 
   static rotateSecret(
     organizationId: string,
-    endpointId: string,
+    endpointId: string
   ): Promise<EndpointModel.rotateResponse> {
     return withServiceError(async () => {
       const existing = await db
@@ -325,7 +333,7 @@ export abstract class EndpointService {
         .where(
           and(
             eq(endpoint.id, endpointId),
-            eq(endpoint.organizationId, organizationId),
+            eq(endpoint.organizationId, organizationId)
           )
         )
         .limit(1);
@@ -354,7 +362,7 @@ export abstract class EndpointService {
 
   static clearPreviousSecret(
     organizationId: string,
-    endpointId: string,
+    endpointId: string
   ): Promise<boolean> {
     return withServiceError(async () => {
       const result = await db
@@ -366,7 +374,7 @@ export abstract class EndpointService {
         .where(
           and(
             eq(endpoint.id, endpointId),
-            eq(endpoint.organizationId, organizationId),
+            eq(endpoint.organizationId, organizationId)
           )
         )
         .returning({ id: endpoint.id });

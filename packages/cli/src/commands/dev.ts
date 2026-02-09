@@ -1,11 +1,11 @@
 import { type FSWatcher, watch } from "node:fs";
 import { log, note, spinner } from "@clack/prompts";
-import { TunnelManager } from "@/lib/tunnel";
 import { Command } from "commander";
 import pc from "picocolors";
 import { registerTunnel } from "@/lib/api";
 import { getConfigPath, loadConfig, requireAuth } from "@/lib/config";
 import { formatError, validatePort } from "@/lib/helpers";
+import { TunnelManager } from "@/lib/tunnel";
 import type { TunnelInfo } from "@/lib/types";
 
 export const dev = new Command("dev")
@@ -39,7 +39,10 @@ export const dev = new Command("dev")
       const tunnels: TunnelInfo[] = [];
 
       for (const port of ports) {
-        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(token, port);
+        const { tunnelId, tunnelUrl, wsUrl } = await registerTunnel(
+          token,
+          port
+        );
         tunnels.push({ port, tunnelId, tunnelUrl, wsUrl });
       }
 

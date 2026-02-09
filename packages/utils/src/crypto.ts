@@ -1,4 +1,9 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  timingSafeEqual as nodeTimingSafeEqual,
+  randomBytes,
+} from "node:crypto";
 
 export const hashSha256 = (data: string): string =>
   createHash("sha256").update(data).digest("hex");
@@ -18,7 +23,7 @@ export function buildSignatureHeader(
   timestamp: number,
   signedPayload: string,
   secret: string,
-  previousSecret?: string | null,
+  previousSecret?: string | null
 ): string {
   const v1 = hmacSign(signedPayload, secret);
   if (previousSecret) {

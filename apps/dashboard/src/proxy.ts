@@ -1,5 +1,5 @@
 import { getSessionCookie } from "@usevon/auth";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { COOKIE_PREFIX } from "@/lib/auth";
 

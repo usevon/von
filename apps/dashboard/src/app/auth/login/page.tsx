@@ -1,9 +1,7 @@
-import Link from "next/link";
-
 import { Separator } from "@usevon/ui";
-
-import { OAuthButtons } from "@/components/auth/oauth";
+import Link from "next/link";
 import { LoginForm } from "@/app/auth/login/form";
+import { OAuthButtons } from "@/components/auth/oauth";
 
 export const metadata = {
   title: "Sign in - Von",
@@ -32,10 +30,10 @@ export default async function LoginPage(props: LoginPageProps) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="font-semibold text-2xl tracking-tight">Welcome back</h1>
         <p className="text-muted-foreground text-sm">Sign in to your account</p>
       </div>
-      <OAuthButtons redirectTo={redirectTo} mode="login" />
+      <OAuthButtons mode="login" redirectTo={redirectTo} />
       <div className="flex items-center gap-2">
         <Separator className="flex-1" />
         <span className="text-muted-foreground text-xs">or</span>

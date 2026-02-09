@@ -19,7 +19,9 @@ export const createResource =
         credentials: creds.type === "cookie" ? "include" : undefined,
       });
       if (!response.ok) {
-        const err = new Error(`Failed to fetch ${endpoint}: ${response.status}`);
+        const err = new Error(
+          `Failed to fetch ${endpoint}: ${response.status}`
+        );
         (err as any).status = response.status;
         throw err;
       }

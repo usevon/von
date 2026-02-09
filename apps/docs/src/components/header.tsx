@@ -1,62 +1,83 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { Button, ContextMenu, ContextMenuTrigger, ContextMenuPopup, ContextMenuItem } from "@usevon/ui";
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+import {
+  Button,
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuTrigger,
+} from "@usevon/ui";
+import Image from "next/image";
+import Link from "next/link";
+import { appUrl, siteUrl } from "@/lib/urls";
 import { MobileNavigation } from "./docs/mobile-navigation";
 import { Search } from "./docs/search";
-import { siteUrl, appUrl } from "@/lib/urls";
 
-export const Header = () => {
-  return (
-    <header className="sticky top-0 z-50 border-b bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_2%)] dark:bg-[color-mix(in_srgb,var(--color-background),white_2%)]">
-      <div className="flex h-14 items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4">
-          <MobileNavigation />
-          <ContextMenu>
-            <ContextMenuTrigger
+export const Header = () => (
+  <header className="sticky top-0 z-50 border-b bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_2%)] dark:bg-[color-mix(in_srgb,var(--color-background),white_2%)]">
+    <div className="flex h-14 items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center gap-4">
+        <MobileNavigation />
+        <ContextMenu>
+          <ContextMenuTrigger
+            render={
+              <Link
+                className="flex h-6 w-20 items-center no-underline"
+                href="/"
+              >
+                <Image
+                  alt="Von"
+                  className="h-6 w-auto dark:hidden"
+                  height={24}
+                  priority
+                  src="/brand/von-wordmark-black.svg"
+                  width={80}
+                />
+                <Image
+                  alt="Von"
+                  className="hidden h-6 w-auto dark:block"
+                  height={24}
+                  priority
+                  src="/brand/von-wordmark-white.svg"
+                  width={80}
+                />
+              </Link>
+            }
+          />
+          <ContextMenuPopup>
+            <ContextMenuItem
+              className="justify-between"
               render={
-                <Link href="/" className="flex h-6 w-20 items-center no-underline">
-                  <Image
-                    src="/brand/von-wordmark-black.svg"
-                    alt="Von"
-                    width={80}
-                    height={24}
-                    priority
-                    className="h-6 w-auto dark:hidden"
-                  />
-                  <Image
-                    src="/brand/von-wordmark-white.svg"
-                    alt="Von"
-                    width={80}
-                    height={24}
-                    priority
-                    className="hidden h-6 w-auto dark:block"
-                  />
-                </Link>
+                <a href={siteUrl()} rel="noopener noreferrer" target="_blank" />
               }
-            />
-            <ContextMenuPopup>
-              <ContextMenuItem render={<a href={siteUrl()} target="_blank" rel="noopener noreferrer" />} className="justify-between">
-                Go to Website
-                <ArrowSquareOutIcon className="size-4" />
-              </ContextMenuItem>
-              <ContextMenuItem render={<a href={siteUrl("/brand")} target="_blank" rel="noopener noreferrer" />} className="justify-between">
-                Brand Kit
-                <ArrowSquareOutIcon className="size-4" />
-              </ContextMenuItem>
-            </ContextMenuPopup>
-          </ContextMenu>
-        </div>
-        <div className="flex-1" />
-        <div className="flex items-center gap-2">
-          <Search />
-          <Button variant="default" size="sm" render={<Link href={appUrl()} />}>
-            Dashboard
-          </Button>
-        </div>
+            >
+              Go to Website
+              <ArrowSquareOutIcon className="size-4" />
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="justify-between"
+              render={
+                <a
+                  href={siteUrl("/brand")}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                />
+              }
+            >
+              Brand Kit
+              <ArrowSquareOutIcon className="size-4" />
+            </ContextMenuItem>
+          </ContextMenuPopup>
+        </ContextMenu>
       </div>
-    </header>
-  );
-};
+      <div className="flex-1" />
+      <div className="flex items-center gap-2">
+        <Search />
+        <Button render={<Link href={appUrl()} />} size="sm" variant="default">
+          Dashboard
+        </Button>
+      </div>
+    </div>
+  </header>
+);

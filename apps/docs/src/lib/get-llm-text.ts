@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
 import remarkMdx from "remark-mdx";
+import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
+import { unified } from "unified";
+import { navigation, topLinks } from "./navigation";
 import { remarkStripJsx } from "./remark-strip-jsx";
-import { topLinks, navigation } from "./navigation";
 
 type PageInfo = {
   slug: string;

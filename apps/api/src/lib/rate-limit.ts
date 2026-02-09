@@ -85,14 +85,12 @@ const createRateLimiter = (options: RateLimitOptions) => {
     });
 };
 
-export const rateLimit = (
-  options: Omit<RateLimitOptions, "getKey">
-) => createRateLimiter(options);
+export const rateLimit = (options: Omit<RateLimitOptions, "getKey">) =>
+  createRateLimiter(options);
 
-export const userRateLimit = (
-  options: Omit<RateLimitOptions, "getKey">
-) => createRateLimiter({
-  ...options,
-  keyPrefix: options.keyPrefix ?? "rl:user",
-  getKey: (ctx) => ctx.userId ?? null,
-});
+export const userRateLimit = (options: Omit<RateLimitOptions, "getKey">) =>
+  createRateLimiter({
+    ...options,
+    keyPrefix: options.keyPrefix ?? "rl:user",
+    getKey: (ctx) => ctx.userId ?? null,
+  });

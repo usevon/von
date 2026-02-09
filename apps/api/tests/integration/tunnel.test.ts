@@ -11,7 +11,7 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
   describe("Registration", () => {
     test("POST /register creates a new tunnel", async () => {
       const { data, error } = await client.register.post(
-        { port: 54321 },
+        { port: 54_321 },
         { headers }
       );
 
@@ -28,7 +28,7 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
 
     test("POST /register returns same tunnel for same port", async () => {
       const { data, error } = await client.register.post(
-        { port: 54321 },
+        { port: 54_321 },
         { headers }
       );
 
@@ -40,10 +40,7 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
     });
 
     test("POST /register rejects invalid port", async () => {
-      const { error } = await client.register.post(
-        { port: 0 },
-        { headers }
-      );
+      const { error } = await client.register.post({ port: 0 }, { headers });
 
       expect(error).toBeDefined();
     });
@@ -84,9 +81,7 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
     test("POST /rotate/:tunnelId returns 401 without auth", async () => {
       if (!tunnelId) return;
 
-      const { error } = await client
-        .rotate({ tunnelId })
-        .post(null);
+      const { error } = await client.rotate({ tunnelId }).post(null);
 
       expect(error).toBeDefined();
       expect(error?.status).toBe(401);
@@ -121,7 +116,7 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
     });
 
     test("returns 502 for valid secret but no WebSocket connection", async () => {
-      if (!tunnelId || !tunnelSecret) return;
+      if (!(tunnelId && tunnelSecret)) return;
 
       const { error } = await client.t[`${tunnelId}-${tunnelSecret}`].get();
 

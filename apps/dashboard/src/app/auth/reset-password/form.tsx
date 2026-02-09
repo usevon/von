@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
-
 import { Form, toast } from "@usevon/ui";
+import { useRouter } from "next/navigation";
 
-import { TextField, SubmitButton, validators } from "@/components/form";
+import { SubmitButton, TextField, validators } from "@/components/form";
 import { authClient } from "@/lib/auth/client";
 
 type ResetPasswordFormProps = {
@@ -27,7 +26,11 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
         }
 
         const { data, showSuccess, showError } = await toast.timed(
-          () => authClient.resetPassword({ newPassword: value.password, token: props.token }),
+          () =>
+            authClient.resetPassword({
+              newPassword: value.password,
+              token: props.token,
+            }),
           { loading: "Resetting password..." }
         );
 
@@ -53,32 +56,39 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
     >
       <form.Field
         name="password"
-        validators={{ onChange: validators.compose(validators.required("Password is required"), validators.minLength(8, "Password must be at least 8 characters")) }}
+        validators={{
+          onChange: validators.compose(
+            validators.required("Password is required"),
+            validators.minLength(8, "Password must be at least 8 characters")
+          ),
+        }}
       >
         {(field) => (
           <TextField
+            autoComplete="new-password"
+            description="Must be at least 8 characters"
+            disabled={form.state.isSubmitting}
             field={field}
             label="New password"
-            description="Must be at least 8 characters"
             placeholder="••••••••"
             type="password"
-            autoComplete="new-password"
-            disabled={form.state.isSubmitting}
           />
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => ({
-        canSubmit: state.canSubmit,
-        isSubmitting: state.isSubmitting,
-        password: state.values.password,
-      })}>
+      <form.Subscribe
+        selector={(state) => ({
+          canSubmit: state.canSubmit,
+          isSubmitting: state.isSubmitting,
+          password: state.values.password,
+        })}
+      >
         {(state) => (
           <SubmitButton
-            className="w-full"
             canSubmit={state.canSubmit}
-            isSubmitting={state.isSubmitting}
+            className="w-full"
             hasEmptyFields={!state.password}
+            isSubmitting={state.isSubmitting}
             loadingText="Resetting..."
           >
             Reset password

@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
-
 import { Form, toast } from "@usevon/ui";
+import { useRouter } from "next/navigation";
 
-import { TextField, SubmitButton, validators } from "@/components/form";
+import { SubmitButton, TextField, validators } from "@/components/form";
 import { organization } from "@/lib/auth/client";
 
 const generateSlug = (name: string) => {
@@ -53,32 +52,39 @@ export const OnboardingForm = () => {
     >
       <form.Field
         name="name"
-        validators={{ onChange: validators.minLength(4, "Team name must be at least 4 characters") }}
+        validators={{
+          onChange: validators.minLength(
+            4,
+            "Team name must be at least 4 characters"
+          ),
+        }}
       >
         {(field) => (
           <TextField
-            field={field}
-            label="Team name"
-            description="Must be at least 4 characters"
-            placeholder="Acme Inc."
             autoComplete="organization"
             autoFocus
+            description="Must be at least 4 characters"
             disabled={form.state.isSubmitting}
+            field={field}
+            label="Team name"
+            placeholder="Acme Inc."
           />
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => ({
-        canSubmit: state.canSubmit,
-        isSubmitting: state.isSubmitting,
-        name: state.values.name,
-      })}>
+      <form.Subscribe
+        selector={(state) => ({
+          canSubmit: state.canSubmit,
+          isSubmitting: state.isSubmitting,
+          name: state.values.name,
+        })}
+      >
         {(state) => (
           <SubmitButton
-            className="w-full"
             canSubmit={state.canSubmit}
-            isSubmitting={state.isSubmitting}
+            className="w-full"
             hasEmptyFields={!state.name.trim() || state.name.trim().length < 4}
+            isSubmitting={state.isSubmitting}
             loadingText="Creating team..."
           >
             Create team

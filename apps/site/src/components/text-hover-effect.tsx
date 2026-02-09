@@ -1,8 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { motion, useMotionValue, useMotionTemplate, useSpring } from "motion/react";
 import { cn } from "@usevon/ui";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+} from "motion/react";
+import { useRef, useState } from "react";
 
 type TextHoverEffectProps = {
   text: string;
@@ -40,37 +45,52 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
 
   return (
     <svg
-      ref={svgRef}
-      width="100%"
+      className={cn("select-none", className)}
       height="100%"
-      viewBox="0 0 200 40"
-      xmlns="http://www.w3.org/2000/svg"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      className={cn("select-none", className)}
+      ref={svgRef}
+      viewBox="0 0 200 40"
+      width="100%"
+      xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <linearGradient
-          id="textGradient"
           gradientUnits="userSpaceOnUse"
+          id="textGradient"
           x1="0%"
-          y1="0%"
           x2="0%"
+          y1="0%"
           y2="100%"
         >
-          <stop offset="0%" className="[stop-color:hsl(220,60%,18%)] dark:[stop-color:hsl(215,20%,12%)]" />
-          <stop offset="50%" className="[stop-color:hsl(210,55%,28%)] dark:[stop-color:hsl(215,18%,18%)]" />
-          <stop offset="70%" className="[stop-color:hsl(200,45%,45%)] dark:[stop-color:hsl(210,15%,28%)]" />
-          <stop offset="85%" className="[stop-color:hsl(205,50%,55%)] dark:[stop-color:hsl(210,12%,38%)]" />
-          <stop offset="100%" className="[stop-color:hsl(210,55%,60%)] dark:[stop-color:hsl(210,10%,50%)]" />
+          <stop
+            className="[stop-color:hsl(220,60%,18%)] dark:[stop-color:hsl(215,20%,12%)]"
+            offset="0%"
+          />
+          <stop
+            className="[stop-color:hsl(210,55%,28%)] dark:[stop-color:hsl(215,18%,18%)]"
+            offset="50%"
+          />
+          <stop
+            className="[stop-color:hsl(200,45%,45%)] dark:[stop-color:hsl(210,15%,28%)]"
+            offset="70%"
+          />
+          <stop
+            className="[stop-color:hsl(205,50%,55%)] dark:[stop-color:hsl(210,12%,38%)]"
+            offset="85%"
+          />
+          <stop
+            className="[stop-color:hsl(210,55%,60%)] dark:[stop-color:hsl(210,10%,50%)]"
+            offset="100%"
+          />
         </linearGradient>
 
         <motion.radialGradient
-          id="revealMask"
-          gradientUnits="userSpaceOnUse"
           cx={cx}
           cy={cy}
+          gradientUnits="userSpaceOnUse"
+          id="revealMask"
           r={rPercent}
         >
           <stop offset="0%" stopColor="white" />
@@ -78,33 +98,39 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
         </motion.radialGradient>
 
         <mask id="textMask">
-          <rect x="0" y="0" width="100%" height="100%" fill="url(#revealMask)" />
+          <rect
+            fill="url(#revealMask)"
+            height="100%"
+            width="100%"
+            x="0"
+            y="0"
+          />
         </mask>
       </defs>
 
       {/* Base outline text */}
       <text
+        className="fill-transparent stroke-foreground/20 font-bold font-sans"
+        dominantBaseline="middle"
+        fontSize="48"
+        strokeWidth="0.4"
+        textAnchor="middle"
         x="50%"
         y="50%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        strokeWidth="0.4"
-        fontSize="48"
-        className="fill-transparent stroke-foreground/20 font-sans font-bold"
       >
         {text}
       </text>
 
       {/* Gradient text revealed by mask */}
       <text
+        className="font-bold font-sans"
+        dominantBaseline="middle"
+        fill="url(#textGradient)"
+        fontSize="48"
+        mask="url(#textMask)"
+        textAnchor="middle"
         x="50%"
         y="50%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="48"
-        fill="url(#textGradient)"
-        mask="url(#textMask)"
-        className="font-sans font-bold"
       >
         {text}
       </text>

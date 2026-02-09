@@ -5,11 +5,11 @@ import {
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "@usevon/utils";
-import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
-import { log } from "@/lib/logger";
+import type { Job } from "bullmq";
 import { eq } from "drizzle-orm";
 import type { PgColumn, PgTableWithColumns } from "drizzle-orm/pg-core";
-import type { Job } from "bullmq";
+import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
+import { log } from "@/lib/logger";
 
 type Executable = {
   execute: (params: Record<string, unknown>) => Promise<any[]>;
@@ -73,7 +73,7 @@ export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
 
 export async function processDelivery<TJob extends BaseJobData>(
   config: DeliveryConfig<TJob>,
-  job: Job<TJob>,
+  job: Job<TJob>
 ) {
   const { deliveryId, endpoint: ep } = job.data;
 
@@ -98,7 +98,10 @@ export async function processDelivery<TJob extends BaseJobData>(
   }
 
   if (endpointState.status === "disabled") {
-    log.info({ endpointId: ep.id }, `${config.label} endpoint disabled, marking as skipped`);
+    log.info(
+      { endpointId: ep.id },
+      `${config.label} endpoint disabled, marking as skipped`
+    );
     await db
       .update(config.deliveryTable)
       .set(config.buildStatusSet("skipped"))
@@ -107,7 +110,10 @@ export async function processDelivery<TJob extends BaseJobData>(
   }
 
   if (endpointState.status === "paused") {
-    log.info({ endpointId: ep.id }, `${config.label} endpoint paused, retrying later`);
+    log.info(
+      { endpointId: ep.id },
+      `${config.label} endpoint paused, retrying later`
+    );
     throw new Error("Endpoint paused");
   }
 
@@ -171,12 +177,14 @@ export async function processDelivery<TJob extends BaseJobData>(
       await Promise.all([
         db
           .update(config.deliveryTable)
-          .set(config.buildSuccessSet({
-            attempts: deliveryRecord.attempts + 1,
-            now,
-            responseStatus: response.status,
-            durationMs,
-          }))
+          .set(
+            config.buildSuccessSet({
+              attempts: deliveryRecord.attempts + 1,
+              now,
+              responseStatus: response.status,
+              durationMs,
+            })
+          )
           .where(eq(config.deliveryTable.id, deliveryId)),
         db
           .update(config.endpointTable)
@@ -186,7 +194,7 @@ export async function processDelivery<TJob extends BaseJobData>(
 
       log.info(
         { deliveryId, status: response.status },
-        `${config.label} delivered successfully`,
+        `${config.label} delivered successfully`
       );
     } else {
       throw new Error(`HTTP ${response.status}`);
@@ -200,13 +208,15 @@ export async function processDelivery<TJob extends BaseJobData>(
     const [, [endpointResult]] = await Promise.all([
       db
         .update(config.deliveryTable)
-        .set(config.buildFailureSet({
-          attempts,
-          now,
-          isFinalAttempt,
-          durationMs,
-          error: String(error).slice(0, 500),
-        }))
+        .set(
+          config.buildFailureSet({
+            attempts,
+            now,
+            isFinalAttempt,
+            durationMs,
+            error: String(error).slice(0, 500),
+          })
+        )
         .where(eq(config.deliveryTable.id, deliveryId)),
       db
         .update(config.endpointTable)
@@ -224,13 +234,13 @@ export async function processDelivery<TJob extends BaseJobData>(
     ) {
       log.warn(
         { endpointId: ep.id, failureCount: endpointResult.failureCount },
-        "Circuit breaker opened",
+        "Circuit breaker opened"
       );
     }
 
     log.error(
       { deliveryId, attempts, maxAttempts, error: String(error).slice(0, 200) },
-      `${config.label} delivery failed`,
+      `${config.label} delivery failed`
     );
 
     if (!isFinalAttempt) {

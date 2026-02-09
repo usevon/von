@@ -1,10 +1,9 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { tv, type VariantProps } from "tailwind-variants";
 import type * as React from "react";
-
-import { cn } from "@/lib/utils";
+import { tv, type VariantProps } from "tailwind-variants";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const groupVariants = tv({
   base: "flex w-fit *:focus-visible:z-10 has-[>[data-slot=group]]:gap-2 *:has-focus-visible:z-10",
@@ -14,9 +13,9 @@ const groupVariants = tv({
   variants: {
     orientation: {
       horizontal:
-        "*:not-first:before:-start-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-end-[0.5px] *:not-first:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-e-none *:not-first:border-s-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-e-0 *:not-first:before:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-e-none *:after:absolute *:after:start-full *:after:h-full *:after:w-px *:pointer-coarse:after:min-w-auto",
+        "*:not-first:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-e-none *:not-first:border-s-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-e-0 *:not-first:before:-start-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-end-[0.5px] *:not-first:before:rounded-s-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-e-none *:after:absolute *:after:start-full *:after:h-full *:after:w-px *:pointer-coarse:after:min-w-auto",
       vertical:
-        "*:not-first:before:-top-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-bottom-[0.5px] flex-col *:not-first:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-b-none *:not-first:border-t-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-b-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:hidden *:not-first:before:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-b-none *:after:absolute *:after:top-full *:after:h-px *:pointer-coarse:after:min-h-auto *:after:w-full dark:*:last:before:hidden dark:*:first:before:block",
+        "flex-col *:not-first:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:rounded-b-none *:not-first:border-t-0 *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:border-b-0 *:not-first:before:-top-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:-bottom-[0.5px] *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:hidden *:not-first:before:rounded-t-none *:not-nth-last-[1_of_:not(span[data-base-ui-focus-guard],span[data-base-ui-inert])]:before:rounded-b-none *:after:absolute *:after:top-full *:after:h-px *:pointer-coarse:after:min-h-auto *:after:w-full dark:*:last:before:hidden dark:*:first:before:block",
     },
   },
 });
@@ -51,8 +50,8 @@ function GroupText({
 }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
-      "relative inline-flex items-center whitespace-nowrap rounded-lg border border-border bg-muted bg-clip-padding px-[calc(--spacing(3)-1px)] text-muted-foreground text-base sm:text-sm shadow-xs outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/64 dark:before:shadow-[0_-1px_--theme(--color-white/8%)] [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 [&_svg]:-mx-0.5",
-      className,
+      "relative inline-flex items-center whitespace-nowrap rounded-lg border border-border bg-muted bg-clip-padding px-[calc(--spacing(3)-1px)] text-base text-muted-foreground shadow-xs outline-none transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] sm:text-sm dark:bg-input/64 dark:before:shadow-[0_-1px_--theme(--color-white/8%)] [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:-mx-0.5 [&_svg]:shrink-0",
+      className
     ),
     "data-slot": "group-text",
   };
@@ -73,8 +72,8 @@ function GroupSeparator({
   return (
     <Separator
       className={cn(
-        "[[data-slot=input-control]:focus-within+&,[data-slot=select-trigger]:focus-visible+*+&]:-translate-x-px pointer-events-none relative z-20 has-[+[data-slot=input-control]:focus-within,+[data-slot=select-trigger]:focus-visible+*,+[data-slot=number-field]:focus-within]:translate-x-px has-[+[data-slot=input-control]:focus-within,+[data-slot=select-trigger]:focus-visible+*,+[data-slot=number-field]:focus-within]:bg-ring [[data-slot=input-control]:focus-within+&,[data-slot=select-trigger]:focus-visible+*+&,[data-slot=number-field]:focus-within+&]:bg-ring",
-        className,
+        "pointer-events-none relative z-20 has-[+[data-slot=input-control]:focus-within,+[data-slot=select-trigger]:focus-visible+*,+[data-slot=number-field]:focus-within]:translate-x-px has-[+[data-slot=input-control]:focus-within,+[data-slot=select-trigger]:focus-visible+*,+[data-slot=number-field]:focus-within]:bg-ring [[data-slot=input-control]:focus-within+&,[data-slot=select-trigger]:focus-visible+*+&,[data-slot=number-field]:focus-within+&]:bg-ring [[data-slot=input-control]:focus-within+&,[data-slot=select-trigger]:focus-visible+*+&]:-translate-x-px",
+        className
       )}
       orientation={orientation}
       {...props}

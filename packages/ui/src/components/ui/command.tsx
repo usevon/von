@@ -3,7 +3,6 @@
 import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import * as React from "react";
-import { cn } from "@/lib/utils";
 import {
   Autocomplete,
   AutocompleteCollection,
@@ -15,6 +14,7 @@ import {
   AutocompleteList,
   AutocompleteSeparator,
 } from "@/components/ui/autocomplete";
+import { cn } from "@/lib/utils";
 
 const CommandInputContext = React.createContext<{
   inputRef: React.RefObject<HTMLInputElement | null> | null;
@@ -43,7 +43,7 @@ function CommandDialogBackdrop({
     <CommandDialogPrimitive.Backdrop
       className={cn(
         "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm transition-all duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
-        className,
+        className
       )}
       data-slot="command-dialog-backdrop"
       {...props}
@@ -59,7 +59,7 @@ function CommandDialogViewport({
     <CommandDialogPrimitive.Viewport
       className={cn(
         "fixed inset-0 z-50 flex flex-col items-center px-4 py-[max(--spacing(4),4vh)] sm:py-[10vh]",
-        className,
+        className
       )}
       data-slot="command-dialog-viewport"
       {...props}
@@ -80,8 +80,8 @@ function CommandDialogPopup({
       <CommandDialogViewport>
         <CommandDialogPrimitive.Popup
           className={cn(
-            "-translate-y-[calc(1.25rem*var(--nested-dialogs))] relative row-start-2 flex max-h-100 min-h-0 w-full min-w-0 max-w-xl scale-[calc(1-0.1*var(--nested-dialogs))] flex-col rounded-2xl border bg-popover bg-clip-padding text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-lg transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:bg-muted/50 before:shadow-[0_1px_--theme(--color-black/4%)] data-nested:data-ending-style:translate-y-8 data-nested:data-starting-style:translate-y-8 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
-            className,
+            "relative row-start-2 flex max-h-100 min-h-0 w-full min-w-0 max-w-xl -translate-y-[calc(1.25rem*var(--nested-dialogs))] scale-[calc(1-0.1*var(--nested-dialogs))] flex-col rounded-2xl border bg-popover bg-clip-padding text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-lg transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:bg-muted/50 before:shadow-[0_1px_--theme(--color-black/4%)] data-nested:data-ending-style:translate-y-8 data-nested:data-starting-style:translate-y-8 data-nested-dialog-open:origin-top data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 **:data-[slot=scroll-area-viewport]:data-has-overflow-y:pe-1 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
+            className
           )}
           data-slot="command-dialog-popup"
           initialFocus={inputRef}
@@ -114,7 +114,7 @@ function Command({
 
 function CommandInput({
   className,
-  placeholder = undefined,
+  placeholder,
   ...props
 }: React.ComponentProps<typeof AutocompleteInput>) {
   const { inputRef } = React.useContext(CommandInputContext);
@@ -124,7 +124,7 @@ function CommandInput({
       <AutocompleteInput
         className={cn(
           "border-transparent! bg-transparent! shadow-none before:hidden has-focus-visible:ring-0",
-          className,
+          className
         )}
         placeholder={placeholder}
         ref={inputRef}
@@ -165,7 +165,7 @@ function CommandEmpty({
 function CommandPanel({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className="-mx-px relative min-h-0 rounded-t-xl border bg-popover bg-clip-padding shadow-xs [clip-path:inset(0_1px)] before:pointer-events-none before:absolute before:inset-0 before:rounded-t-[calc(var(--radius-xl)-1px)] **:data-[slot=scroll-area-scrollbar]:mt-2 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]"
+      className="relative -mx-px min-h-0 rounded-t-xl border bg-popover bg-clip-padding shadow-xs [clip-path:inset(0_1px)] before:pointer-events-none before:absolute before:inset-0 before:rounded-t-[calc(var(--radius-xl)-1px)] **:data-[slot=scroll-area-scrollbar]:mt-2 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]"
       {...props}
     />
   );
@@ -234,7 +234,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<"kbd">) {
     <span
       className={cn(
         "ms-auto font-medium text-muted-foreground/72 text-xs tracking-widest",
-        className,
+        className
       )}
       data-slot="command-shortcut"
       {...props}
@@ -247,7 +247,7 @@ function CommandFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       className={cn(
         "flex items-center justify-between gap-2 rounded-b-[calc(var(--radius-2xl)-1px)] px-5 py-3 text-muted-foreground text-xs",
-        className,
+        className
       )}
       data-slot="command-footer"
       {...props}

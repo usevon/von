@@ -5,7 +5,8 @@ export type { WebhookEvent };
 
 type WebhooksResponse = { events: WebhookEvent[]; total: number };
 
-export const useWebhooks = createResource<WebhooksResponse, WebhookEvent, "events">(
-  "webhooks/events",
+export const useWebhooks = createResource<
+  WebhooksResponse,
+  WebhookEvent,
   "events"
-);
+>("webhooks/events", "events");

@@ -1,7 +1,7 @@
 "use client";
 
+import { Separator } from "@usevon/ui";
 import { Children, isValidElement, type ReactNode } from "react";
-import { cn, Separator } from "@usevon/ui";
 
 type TimelineProps = {
   children: ReactNode;
@@ -13,16 +13,16 @@ export const Timeline = (props: TimelineProps) => {
   return (
     <ul className="relative my-8 space-y-8">
       {children.map((child, index) => (
-        <li key={index} className="relative pl-10">
+        <li className="relative pl-10" key={index}>
           {/* Vertical line connecting circles */}
           {index !== children.length - 1 && (
             <Separator
+              className="absolute top-6 left-[11px] h-[calc(100%+2rem)]"
               orientation="vertical"
-              className="absolute left-[11px] top-6 h-[calc(100%+2rem)]"
             />
           )}
           {/* Number circle */}
-          <div className="absolute left-0 top-0 flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          <div className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
             {index + 1}
           </div>
           {child}
@@ -48,10 +48,10 @@ export const TimelineItem = (props: TimelineItemProps) => {
 
   return (
     <div className="space-y-3">
-      <h3 id={id} className="font-semibold text-foreground scroll-mt-6">
+      <h3 className="scroll-mt-6 font-semibold text-foreground" id={id}>
         {props.title}
       </h3>
-      <div className="text-muted-foreground prose-p:my-2">{props.children}</div>
+      <div className="prose-p:my-2 text-muted-foreground">{props.children}</div>
     </div>
   );
 };

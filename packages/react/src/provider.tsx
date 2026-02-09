@@ -42,9 +42,7 @@ export const VonProvider = (props: VonProviderProps) => {
   );
 
   return (
-    <VonContext.Provider value={value}>
-      {props.children}
-    </VonContext.Provider>
+    <VonContext.Provider value={value}>{props.children}</VonContext.Provider>
   );
 };
 

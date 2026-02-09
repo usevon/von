@@ -1,21 +1,19 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@usevon/ui";
+import { ThemeProvider } from "next-themes";
 
 type ProvidersProps = {
   children: React.ReactNode;
 };
 
-export const Providers = (props: ProvidersProps) => {
-  return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      disableTransitionOnChange
-      enableSystem
-    >
-      <ToastProvider>{props.children}</ToastProvider>
-    </ThemeProvider>
-  );
-};
+export const Providers = (props: ProvidersProps) => (
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="system"
+    disableTransitionOnChange
+    enableSystem
+  >
+    <ToastProvider>{props.children}</ToastProvider>
+  </ThemeProvider>
+);

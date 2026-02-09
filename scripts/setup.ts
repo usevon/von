@@ -27,7 +27,9 @@ const ROOT = process.cwd();
 const APPS = join(ROOT, "apps");
 
 const run = (cmd: string) =>
-  (execSync(cmd, { stdio: "pipe", encoding: "utf-8", cwd: ROOT }) as string).trim();
+  (
+    execSync(cmd, { stdio: "pipe", encoding: "utf-8", cwd: ROOT }) as string
+  ).trim();
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -139,7 +141,9 @@ function createEnvFiles(secrets: { authSecret: string }) {
     let content = readFileSync(examplePath, "utf-8");
 
     if ("replacements" in app) {
-      for (const [placeholder, replacement] of Object.entries(app.replacements)) {
+      for (const [placeholder, replacement] of Object.entries(
+        app.replacements
+      )) {
         content = content.replace(placeholder, replacement);
       }
     }

@@ -80,24 +80,26 @@ export const InputOTP = (props: InputOTPProps) => {
     >
       {groups.map((group, groupIdx) => (
         <Fragment key={groupIdx}>
-          {groupIdx > 0 && (
-            <span className="text-muted-foreground">-</span>
-          )}
+          {groupIdx > 0 && <span className="text-muted-foreground">-</span>}
           <div className="flex flex-1 items-center gap-1.5">
             {group.map((slot, slotIdx) => (
               <Input
-                key={slotIdx}
-                value={slot.char || ""}
-                readOnly
-                tabIndex={-1}
                 aria-invalid={props.error || undefined}
                 className={cn(
                   "h-12 flex-1 px-0 text-center font-mono text-xl [&_input]:text-center [&_input]:text-xl",
-                  slot.isActive && !props.error && "border-ring ring-[3px] ring-ring/24",
-                  slot.isActive && props.error && "ring-[3px] ring-destructive/24"
+                  slot.isActive &&
+                    !props.error &&
+                    "border-ring ring-[3px] ring-ring/24",
+                  slot.isActive &&
+                    props.error &&
+                    "ring-[3px] ring-destructive/24"
                 )}
                 data-active={slot.isActive || undefined}
                 data-slot="input-otp-slot"
+                key={slotIdx}
+                readOnly
+                tabIndex={-1}
+                value={slot.char || ""}
               />
             ))}
           </div>

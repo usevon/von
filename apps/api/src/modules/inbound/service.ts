@@ -1,11 +1,16 @@
-import type { CreateInboundEndpoint, EndpointStatus, InboundEndpoint, UpdateInboundEndpoint } from "@usevon/types";
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
+import type {
+  CreateInboundEndpoint,
+  EndpointStatus,
+  InboundEndpoint,
+  UpdateInboundEndpoint,
+} from "@usevon/types";
 import {
   BadRequestError,
-  InternalServerError,
   generateSecret,
+  InternalServerError,
   isValidWebhookUrl,
 } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
@@ -29,7 +34,9 @@ const toResponse = (row: InboundEndpointRow): InboundEndpoint => ({
   updatedAt: row.updatedAt.toISOString(),
 });
 
-type CreateInboundEndpointParams = CreateInboundEndpoint & { organizationId: string };
+type CreateInboundEndpointParams = CreateInboundEndpoint & {
+  organizationId: string;
+};
 type UpdateInboundEndpointParams = UpdateInboundEndpoint & {
   organizationId: string;
   endpointId: string;
@@ -262,7 +269,9 @@ export abstract class InboundService {
         headers: delivery.headers ? JSON.parse(delivery.headers) : null,
         status: delivery.status,
         forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
-        response: (delivery.response as import("@usevon/types").DeliveryResponse) ?? null,
+        response:
+          (delivery.response as import("@usevon/types").DeliveryResponse) ??
+          null,
         createdAt: delivery.createdAt.toISOString(),
       };
     }, "receiving webhook");

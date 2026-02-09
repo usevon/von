@@ -1,8 +1,11 @@
 import { ErrorIllustration } from "@usevon/ui";
-
+import {
+  getSession,
+  listOrganizations,
+  setActiveOrganization,
+} from "@/app/actions/user";
 import { Logo } from "@/components/logo";
 import { Logout } from "@/components/logout";
-import { getSession, listOrganizations, setActiveOrganization } from "@/app/actions/user";
 
 type TeamLayoutProps = {
   children: React.ReactNode;
@@ -24,13 +27,17 @@ export default async function TeamLayout(props: TeamLayoutProps) {
         <div className="flex flex-1 flex-col items-center justify-center">
           <ErrorIllustration left="4" right="4" />
           <div className="mt-8 flex flex-col items-center gap-4 text-center">
-            <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
+            <h1 className="font-semibold text-2xl text-foreground sm:text-3xl">
               Page not found
             </h1>
             <p className="max-w-md text-lg text-muted-foreground">
               You are logged in as {session?.user?.email}
             </p>
-            <Logout label="Sign in as a different user" loadingLabel="Signing out..." size="lg" />
+            <Logout
+              label="Sign in as a different user"
+              loadingLabel="Signing out..."
+              size="lg"
+            />
           </div>
         </div>
       </div>

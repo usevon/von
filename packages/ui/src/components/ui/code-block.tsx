@@ -1,9 +1,8 @@
 "use client";
 
 import { highlight } from "sugar-high";
-
-import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/ui/copy-button";
+import { cn } from "@/lib/utils";
 
 type CodeBlockProps = {
   code: string;

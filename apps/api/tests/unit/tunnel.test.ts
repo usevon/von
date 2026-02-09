@@ -238,25 +238,41 @@ describe("TunnelService", () => {
     test("returns 413 when content-length exceeds 1MB", async () => {
       await TunnelService.setTunnel("t-1", createMockConnection());
 
-      const set = { status: undefined as number | string | undefined, headers: {} as Record<string, string> };
+      const set = {
+        status: undefined as number | string | undefined,
+        headers: {} as Record<string, string>,
+      };
       const request = new Request("http://localhost/t/t-1-secret/test", {
         method: "POST",
         headers: { "content-length": "2000000" },
         body: "x",
       });
 
-      const result = await TunnelService.handleProxy("t-1", request, set, "/test");
+      const result = await TunnelService.handleProxy(
+        "t-1",
+        request,
+        set,
+        "/test"
+      );
       expect(set.status).toBe(413);
       expect(result).toEqual({ error: "Payload exceeds 1MB limit" });
     });
 
     test("returns 502 when tunnel is not connected", async () => {
-      const set = { status: undefined as number | string | undefined, headers: {} as Record<string, string> };
+      const set = {
+        status: undefined as number | string | undefined,
+        headers: {} as Record<string, string>,
+      };
       const request = new Request("http://localhost/t/fake-secret/test", {
         method: "GET",
       });
 
-      const result = await TunnelService.handleProxy("fake", request, set, "/test");
+      const result = await TunnelService.handleProxy(
+        "fake",
+        request,
+        set,
+        "/test"
+      );
       expect(set.status).toBe(502);
       expect(result).toEqual({ error: "Tunnel not connected" });
     });
@@ -265,7 +281,10 @@ describe("TunnelService", () => {
       const conn = createMockConnection();
       await TunnelService.setTunnel("t-1", conn);
 
-      const set = { status: undefined as number | string | undefined, headers: {} as Record<string, string> };
+      const set = {
+        status: undefined as number | string | undefined,
+        headers: {} as Record<string, string>,
+      };
       const request = new Request("http://localhost/t/t-1-secret/api/data", {
         method: "GET",
       });
@@ -298,10 +317,18 @@ describe("TunnelService", () => {
       const conn = createMockConnection();
       await TunnelService.setTunnel("t-1", conn);
 
-      const set = { status: undefined as number | string | undefined, headers: {} as Record<string, string> };
+      const set = {
+        status: undefined as number | string | undefined,
+        headers: {} as Record<string, string>,
+      };
       const request = new Request("http://localhost/test", { method: "GET" });
 
-      const proxyPromise = TunnelService.handleProxy("t-1", request, set, "/test");
+      const proxyPromise = TunnelService.handleProxy(
+        "t-1",
+        request,
+        set,
+        "/test"
+      );
 
       await new Promise((r) => setTimeout(r, 10));
       for (const [, pending] of conn.pending) {
@@ -376,5 +403,4 @@ describe("TunnelService", () => {
       await TunnelService.refreshTunnel("nonexistent");
     });
   });
-
 });

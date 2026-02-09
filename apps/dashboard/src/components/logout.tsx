@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
 import { Button, Spinner, toastManager } from "@usevon/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { signOut } from "@/lib/auth/client";
 
@@ -36,7 +35,12 @@ export const Logout = (props: LogoutProps) => {
   };
 
   return (
-    <Button disabled={isLoading} onClick={handleLogout} size={size} variant="outline">
+    <Button
+      disabled={isLoading}
+      onClick={handleLogout}
+      size={size}
+      variant="outline"
+    >
       {isLoading ? (
         <>
           <Spinner />

@@ -1,4 +1,4 @@
-import { topLinks, navigation } from "./navigation";
+import { navigation, topLinks } from "./navigation";
 
 export type SearchResult = {
   id: string;

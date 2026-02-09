@@ -1,13 +1,22 @@
 export const H1 = (props: React.ComponentPropsWithoutRef<"h1">) => (
-  <h1 {...props} className="mb-0 text-3xl font-semibold tracking-tight text-foreground" />
+  <h1
+    {...props}
+    className="mb-0 font-semibold text-3xl text-foreground tracking-tight"
+  />
 );
 
 export const H2 = (props: React.ComponentPropsWithoutRef<"h2">) => (
-  <h2 {...props} className="mt-10 scroll-mt-24 border-b border-border pb-2 text-xl font-semibold tracking-tight text-foreground" />
+  <h2
+    {...props}
+    className="mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-foreground text-xl tracking-tight"
+  />
 );
 
 export const H3 = (props: React.ComponentPropsWithoutRef<"h3">) => (
-  <h3 {...props} className="mt-8 scroll-mt-24 text-lg font-semibold text-foreground" />
+  <h3
+    {...props}
+    className="mt-8 scroll-mt-24 font-semibold text-foreground text-lg"
+  />
 );
 
 export const H4 = (props: React.ComponentPropsWithoutRef<"h4">) => (
@@ -15,11 +24,14 @@ export const H4 = (props: React.ComponentPropsWithoutRef<"h4">) => (
 );
 
 export const P = (props: React.ComponentPropsWithoutRef<"p">) => (
-  <p {...props} className="mt-2 leading-7 text-muted-foreground" />
+  <p {...props} className="mt-2 text-muted-foreground leading-7" />
 );
 
 export const A = (props: React.ComponentPropsWithoutRef<"a">) => (
-  <a {...props} className="text-primary underline underline-offset-4 hover:text-primary/80" />
+  <a
+    {...props}
+    className="text-primary underline underline-offset-4 hover:text-primary/80"
+  />
 );
 
 export const Ul = (props: React.ComponentPropsWithoutRef<"ul">) => (
@@ -34,8 +46,13 @@ export const Li = (props: React.ComponentPropsWithoutRef<"li">) => (
   <li {...props} className="mt-2" />
 );
 
-export const Blockquote = (props: React.ComponentPropsWithoutRef<"blockquote">) => (
-  <blockquote {...props} className="mt-4 border-l-4 border-border pl-4 italic text-muted-foreground" />
+export const Blockquote = (
+  props: React.ComponentPropsWithoutRef<"blockquote">
+) => (
+  <blockquote
+    {...props}
+    className="mt-4 border-border border-l-4 pl-4 text-muted-foreground italic"
+  />
 );
 
 export const Hr = (props: React.ComponentPropsWithoutRef<"hr">) => (
@@ -47,11 +64,17 @@ export const Table = (props: React.ComponentPropsWithoutRef<"table">) => (
 );
 
 export const Th = (props: React.ComponentPropsWithoutRef<"th">) => (
-  <th {...props} className="border-b border-border px-4 py-2 text-left font-semibold text-foreground" />
+  <th
+    {...props}
+    className="border-border border-b px-4 py-2 text-left font-semibold text-foreground"
+  />
 );
 
 export const Td = (props: React.ComponentPropsWithoutRef<"td">) => (
-  <td {...props} className="border-b border-border px-4 py-2 text-muted-foreground" />
+  <td
+    {...props}
+    className="border-border border-b px-4 py-2 text-muted-foreground"
+  />
 );
 
 export const Strong = (props: React.ComponentPropsWithoutRef<"strong">) => (
@@ -59,5 +82,8 @@ export const Strong = (props: React.ComponentPropsWithoutRef<"strong">) => (
 );
 
 export const InlineCode = (props: React.ComponentPropsWithoutRef<"code">) => (
-  <code {...props} className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm" />
+  <code
+    {...props}
+    className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm"
+  />
 );

@@ -1,11 +1,11 @@
 import { createConnection } from "@usevon/queue";
-import { log } from "@/lib/logger";
 import { type Job, Worker } from "bullmq";
 import { env } from "@/env";
+import { log } from "@/lib/logger";
 
 export function createWorker<T>(
   name: string,
-  processor: (job: Job<T>) => Promise<void>,
+  processor: (job: Job<T>) => Promise<void>
 ) {
   const worker = new Worker<T>(name, processor, {
     connection: createConnection(),

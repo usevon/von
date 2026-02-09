@@ -12,13 +12,15 @@ export default async function DevicePage(props: DevicePageProps) {
 
   return (
     <div className="relative flex min-h-svh items-center justify-center p-4">
-      <div className="absolute left-0 top-0 m-4">
+      <div className="absolute top-0 left-0 m-4">
         <Logo />
       </div>
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Authorize device</h1>
+            <h1 className="font-semibold text-2xl tracking-tight">
+              Authorize device
+            </h1>
             <p className="text-muted-foreground text-sm">
               Enter the code shown in your CLI
             </p>

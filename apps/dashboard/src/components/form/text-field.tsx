@@ -17,10 +17,25 @@ type TextFieldProps = {
 };
 
 export const TextField = (props: TextFieldProps) => {
-  const { field, label, labelExtra, description, placeholder, autoComplete, autoFocus, disabled, type = "text" } = props;
+  const {
+    field,
+    label,
+    labelExtra,
+    description,
+    placeholder,
+    autoComplete,
+    autoFocus,
+    disabled,
+    type = "text",
+  } = props;
 
   return (
-    <FormField field={field} label={label} labelExtra={labelExtra} description={description}>
+    <FormField
+      description={description}
+      field={field}
+      label={label}
+      labelExtra={labelExtra}
+    >
       <Input
         autoComplete={autoComplete}
         autoFocus={autoFocus}

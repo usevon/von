@@ -1,69 +1,66 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
-
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuPopup,
   ContextMenuTrigger,
 } from "@usevon/ui";
+import Image from "next/image";
+import Link from "next/link";
 
-export const Logo = () => {
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger
+export const Logo = () => (
+  <ContextMenu>
+    <ContextMenuTrigger
+      render={
+        <Link className="flex h-7 w-20 items-center" href="/">
+          <Image
+            alt="Von"
+            className="h-7 w-auto dark:hidden"
+            height={28}
+            priority
+            src="/brand/von-wordmark-black.svg"
+            width={80}
+          />
+          <Image
+            alt="Von"
+            className="hidden h-7 w-auto dark:block"
+            height={28}
+            priority
+            src="/brand/von-wordmark-white.svg"
+            width={80}
+          />
+        </Link>
+      }
+    />
+    <ContextMenuPopup>
+      <ContextMenuItem
+        className="justify-between"
         render={
-          <Link href="/" className="flex h-7 w-20 items-center">
-            <Image
-              src="/brand/von-wordmark-black.svg"
-              alt="Von"
-              width={80}
-              height={28}
-              priority
-              className="h-7 w-auto dark:hidden"
-            />
-            <Image
-              src="/brand/von-wordmark-white.svg"
-              alt="Von"
-              width={80}
-              height={28}
-              priority
-              className="hidden h-7 w-auto dark:block"
-            />
-          </Link>
+          <a
+            href="https://usevon.com"
+            rel="noopener noreferrer"
+            target="_blank"
+          />
         }
-      />
-      <ContextMenuPopup>
-        <ContextMenuItem
-          render={
-            <a
-              href="https://usevon.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
-          className="justify-between"
-        >
-          Go to Website
-          <ArrowSquareOutIcon className="size-4" />
-        </ContextMenuItem>
-        <ContextMenuItem
-          render={
-            <a
-              href="https://usevon.com/brand"
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
-          className="justify-between"
-        >
-          Brand Kit
-          <ArrowSquareOutIcon className="size-4" />
-        </ContextMenuItem>
-      </ContextMenuPopup>
-    </ContextMenu>
-  );
-};
+      >
+        Go to Website
+        <ArrowSquareOutIcon className="size-4" />
+      </ContextMenuItem>
+      <ContextMenuItem
+        className="justify-between"
+        render={
+          <a
+            href="https://usevon.com/brand"
+            rel="noopener noreferrer"
+            target="_blank"
+          />
+        }
+      >
+        Brand Kit
+        <ArrowSquareOutIcon className="size-4" />
+      </ContextMenuItem>
+    </ContextMenuPopup>
+  </ContextMenu>
+);

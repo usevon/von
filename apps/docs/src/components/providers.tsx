@@ -6,10 +6,13 @@ type ProvidersProps = {
   children: React.ReactNode;
 };
 
-export const Providers = (props: ProvidersProps) => {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      {props.children}
-    </ThemeProvider>
-  );
-};
+export const Providers = (props: ProvidersProps) => (
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="system"
+    disableTransitionOnChange
+    enableSystem
+  >
+    {props.children}
+  </ThemeProvider>
+);

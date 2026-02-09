@@ -1,6 +1,6 @@
-import { contentPages, getLLMText, getPageBySlug } from "@/lib/get-llm-text";
 import { notFound } from "next/navigation";
 import { type NextRequest, NextResponse } from "next/server";
+import { contentPages, getLLMText, getPageBySlug } from "@/lib/get-llm-text";
 
 export const revalidate = false;
 

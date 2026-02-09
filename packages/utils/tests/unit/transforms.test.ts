@@ -8,7 +8,10 @@ describe("applyTransforms", () => {
   });
 
   test("removes multiple fields", () => {
-    const result = applyTransforms({ a: 1, b: 2, c: 3 }, { remove: ["a", "c"] });
+    const result = applyTransforms(
+      { a: 1, b: 2, c: 3 },
+      { remove: ["a", "c"] }
+    );
     expect(result).toEqual({ b: 2 });
   });
 
@@ -18,7 +21,10 @@ describe("applyTransforms", () => {
   });
 
   test("renames fields", () => {
-    const result = applyTransforms({ old: "value" }, { rename: { old: "new" } });
+    const result = applyTransforms(
+      { old: "value" },
+      { rename: { old: "new" } }
+    );
     expect(result).toEqual({ new: "value" });
   });
 

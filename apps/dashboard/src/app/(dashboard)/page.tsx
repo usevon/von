@@ -17,7 +17,9 @@ export default async function DashboardPage() {
 
   // If user has active org, redirect to /{slug}
   if (session.session.activeOrganizationId) {
-    const activeOrg = orgs.find((o) => o.id === session.session.activeOrganizationId);
+    const activeOrg = orgs.find(
+      (o) => o.id === session.session.activeOrganizationId
+    );
     if (activeOrg) {
       redirect(`/${activeOrg.slug}`);
     }

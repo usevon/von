@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { Button } from "@usevon/ui";
 import { CheckIcon } from "@phosphor-icons/react/ssr";
+import { Button } from "@usevon/ui";
+import Link from "next/link";
 import { urls } from "@/lib/urls";
 
 const plans = [
@@ -38,47 +38,54 @@ const plans = [
   },
 ];
 
-export const PricingPlans = () => {
-  return (
-    <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-2 md:grid-cols-2">
-      {plans.map((plan) => (
-        <div
-          key={plan.name}
-          className="flex flex-col justify-between gap-6 rounded-xl bg-foreground/[0.025] p-6 dark:bg-white/5"
-        >
-          <div>
-            <div className="mb-6">
-              <h3 className="text-xl font-medium">{plan.name}</h3>
-              <p className="mt-4 flex items-baseline gap-1">
-                <span className="text-3xl font-semibold">{plan.price}</span>
-                {plan.period && (
-                  <span className="text-muted-foreground">{plan.period}</span>
-                )}
-              </p>
-              <p className="mt-2 min-h-10 text-sm text-muted-foreground">
-                {plan.description}
-              </p>
-            </div>
-            <ul className="space-y-2 text-sm/6">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex gap-3">
-                  <CheckIcon weight="bold" className="mt-0.5 size-4 shrink-0" />
-                  <span className="text-muted-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
+export const PricingPlans = () => (
+  <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-2 md:grid-cols-2">
+    {plans.map((plan) => (
+      <div
+        className="flex flex-col justify-between gap-6 rounded-xl bg-foreground/[0.025] p-6 dark:bg-white/5"
+        key={plan.name}
+      >
+        <div>
+          <div className="mb-6">
+            <h3 className="font-medium text-xl">{plan.name}</h3>
+            <p className="mt-4 flex items-baseline gap-1">
+              <span className="font-semibold text-3xl">{plan.price}</span>
+              {plan.period && (
+                <span className="text-muted-foreground">{plan.period}</span>
+              )}
+            </p>
+            <p className="mt-2 min-h-10 text-muted-foreground text-sm">
+              {plan.description}
+            </p>
           </div>
-          {plan.highlighted ? (
-            <Button size="lg" render={<Link href={plan.href} />} className="w-full">
-              {plan.cta}
-            </Button>
-          ) : (
-            <Button size="lg" variant="outline" render={<Link href={plan.href} />} className="w-full">
-              {plan.cta}
-            </Button>
-          )}
+          <ul className="space-y-2 text-sm/6">
+            {plan.features.map((feature) => (
+              <li className="flex gap-3" key={feature}>
+                <CheckIcon className="mt-0.5 size-4 shrink-0" weight="bold" />
+                <span className="text-muted-foreground">{feature}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      ))}
-    </div>
-  );
-};
+        {plan.highlighted ? (
+          <Button
+            className="w-full"
+            render={<Link href={plan.href} />}
+            size="lg"
+          >
+            {plan.cta}
+          </Button>
+        ) : (
+          <Button
+            className="w-full"
+            render={<Link href={plan.href} />}
+            size="lg"
+            variant="outline"
+          >
+            {plan.cta}
+          </Button>
+        )}
+      </div>
+    ))}
+  </div>
+);

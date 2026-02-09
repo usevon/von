@@ -5,7 +5,7 @@ export function appUrl(path: string) {
   return `${APP_URL}${path}`;
 }
 
-export function docsUrl(path: string = "") {
+export function docsUrl(path = "") {
   return `${DOCS_URL}${path}`;
 }
 

@@ -1,4 +1,4 @@
-import type { Endpoint, CreateEndpoint, UpdateEndpoint } from "@usevon/types";
+import type { CreateEndpoint, Endpoint, UpdateEndpoint } from "@usevon/types";
 import { t } from "elysia";
 
 export namespace EndpointModel {
@@ -6,9 +6,12 @@ export namespace EndpointModel {
     url: t.String({ format: "uri" }),
     description: t.Optional(t.String({ maxLength: 500 })),
     status: t.Optional(
-      t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")], {
-        default: "active",
-      })
+      t.Union(
+        [t.Literal("active"), t.Literal("paused"), t.Literal("disabled")],
+        {
+          default: "active",
+        }
+      )
     ),
     version: t.Optional(t.String({ maxLength: 50 })),
     retryCount: t.Optional(t.Number({ default: 3, minimum: 0, maximum: 10 })),

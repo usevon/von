@@ -1,5 +1,10 @@
-import { CheckIcon, MinusIcon, InfoIcon } from "@phosphor-icons/react/ssr";
-import { Tooltip, TooltipTrigger, TooltipPopup, TooltipProvider } from "@usevon/ui";
+import { CheckIcon, InfoIcon, MinusIcon } from "@phosphor-icons/react/ssr";
+import {
+  Tooltip,
+  TooltipPopup,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@usevon/ui";
 
 const comparisonFeatures = [
   {
@@ -7,7 +12,8 @@ const comparisonFeatures = [
     features: [
       {
         name: "Webhooks/month",
-        description: "Number of webhook deliveries included in your plan each month.",
+        description:
+          "Number of webhook deliveries included in your plan each month.",
         hobby: "25,000",
         pro: "100,000 included",
       },
@@ -90,23 +96,25 @@ type FeatureTooltipProps = {
   description: string;
 };
 
-const FeatureTooltip = (props: FeatureTooltipProps) => {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger className="inline-flex items-center gap-1.5 text-left">
-          {props.name}
-          <InfoIcon className="size-4 text-muted-foreground/50 transition-colors hover:text-muted-foreground" />
-        </TooltipTrigger>
-        <TooltipPopup className="whitespace-nowrap">{props.description}</TooltipPopup>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
+const FeatureTooltip = (props: FeatureTooltipProps) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger className="inline-flex items-center gap-1.5 text-left">
+        {props.name}
+        <InfoIcon className="size-4 text-muted-foreground/50 transition-colors hover:text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipPopup className="whitespace-nowrap">
+        {props.description}
+      </TooltipPopup>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 const renderFeatureValue = (value: boolean | string) => {
   if (value === true) {
-    return <CheckIcon weight="bold" className="mx-auto size-5 text-foreground" />;
+    return (
+      <CheckIcon className="mx-auto size-5 text-foreground" weight="bold" />
+    );
   }
   if (value === false) {
     return <MinusIcon className="mx-auto size-5 text-muted-foreground/40" />;
@@ -126,7 +134,7 @@ export const ComparisonTable = () => {
         </colgroup>
         <thead className="sticky top-[5.25rem] z-10 bg-background shadow-[inset_0_-1px_0_var(--color-border)]">
           <tr>
-            <th className="pb-4 pr-3 text-base font-medium text-foreground">
+            <th className="pr-3 pb-4 font-medium text-base text-foreground">
               Compare features
             </th>
             <th className="pb-4 text-center font-semibold text-foreground">
@@ -141,16 +149,19 @@ export const ComparisonTable = () => {
           <tbody key={group.category}>
             <tr>
               <th
+                className="border-border border-t border-b pt-8 pb-4 font-medium text-foreground"
                 colSpan={3}
-                className="border-b border-t border-border pb-4 pt-8 font-medium text-foreground"
               >
                 {group.category}
               </th>
             </tr>
             {group.features.map((feature) => (
-              <tr key={feature.name} className="border-b border-border/50">
+              <tr className="border-border/50 border-b" key={feature.name}>
                 <th className="py-3 pr-3 font-normal text-muted-foreground">
-                  <FeatureTooltip name={feature.name} description={feature.description} />
+                  <FeatureTooltip
+                    description={feature.description}
+                    name={feature.name}
+                  />
                 </th>
                 <td className="py-3 text-center text-muted-foreground">
                   {renderFeatureValue(feature.hobby)}
@@ -166,13 +177,13 @@ export const ComparisonTable = () => {
 
       {/* Mobile comparison */}
       <div className="mt-8 space-y-8 sm:hidden">
-        <h2 className="text-lg font-semibold">Compare features</h2>
+        <h2 className="font-semibold text-lg">Compare features</h2>
         {comparisonFeatures.map((group) => (
           <div key={group.category}>
             <h3 className="font-medium text-foreground">{group.category}</h3>
             <div className="mt-4 space-y-4">
               {group.features.map((feature) => (
-                <div key={feature.name} className="text-sm">
+                <div className="text-sm" key={feature.name}>
                   <p className="text-muted-foreground">{feature.name}</p>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center gap-1">
