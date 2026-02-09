@@ -22,6 +22,14 @@ export class BadRequestError extends Error {
   }
 }
 
+export class ForbiddenError extends Error {
+  status = 403;
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export class InternalServerError extends Error {
   status = 500;
   constructor(message = "Internal server error") {

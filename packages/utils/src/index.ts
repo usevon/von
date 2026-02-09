@@ -6,9 +6,16 @@ export {
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "@/circuit-breaker";
-export { buildSignatureHeader, hashSha256, hmacSign, randomHex, timingSafeEqual } from "@/crypto";
+export {
+  buildSignatureHeader,
+  hashSha256,
+  hmacSign,
+  randomHex,
+  timingSafeEqual,
+} from "@/crypto";
 export {
   BadRequestError,
+  ForbiddenError,
   InternalServerError,
   NotFoundError,
   UnauthorizedError,
