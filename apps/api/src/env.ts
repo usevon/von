@@ -17,6 +17,8 @@ export const env = createEnv({
     GITHUB_CLIENT_ID: z.string().optional(),
     GITHUB_CLIENT_SECRET: z.string().optional(),
     MAX_TUNNELS_PER_ORG: z.coerce.number().default(3),
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().default("Von <noreply@usevon.com>"),
   },
   runtimeEnv: process.env,
 });

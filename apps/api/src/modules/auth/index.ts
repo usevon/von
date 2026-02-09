@@ -18,8 +18,11 @@ import { Elysia } from "elysia";
 import mailchecker from "mailchecker";
 import isEmail from "validator/es/lib/isEmail.js";
 
+import { PasswordResetEmail, render } from "@usevon/email";
+
 import { env } from "@/env";
 import { userRateLimit } from "@/lib/rate-limit";
+import { resendClient } from "@/lib/resend";
 
 const redis = getRedisClient();
 
@@ -85,8 +88,22 @@ const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {
-      // TODO: Integrate email provider (Resend, SendGrid, etc.)
-      console.log(`[Auth] Password reset requested for ${user.email}: ${url}`);
+      const html = await render(
+        PasswordResetEmail({
+          email: user.email,
+          resetLink: url,
+          requestTime: new Date().toLocaleString("en-US", {
+            dateStyle: "long",
+            timeStyle: "short",
+          }),
+        })
+      );
+
+      await resendClient.sendEmail({
+        to: user.email,
+        subject: "Reset your Von password",
+        html,
+      });
     },
   },
   user: {
