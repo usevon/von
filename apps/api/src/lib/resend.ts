@@ -3,15 +3,15 @@ import { Resend } from "resend";
 import { env } from "@/env";
 import { log } from "@/lib/logger";
 
-export interface SendEmailParams {
+export type SendEmailParams = {
   to: string | string[];
   subject: string;
   html: string;
   from?: string;
-}
+};
 
 class ResendClient {
-  private resend: Resend | null = null;
+  private readonly resend: Resend | null = null;
 
   constructor() {
     if (!env.RESEND_API_KEY) {
@@ -38,10 +38,7 @@ class ResendClient {
     const result = await this.resend.emails.send({ from, to, subject, html });
 
     if (result.error) {
-      log.error(
-        { error: result.error, to, subject },
-        "Failed to send email"
-      );
+      log.error({ error: result.error, to, subject }, "Failed to send email");
       throw new Error(`Email send failed: ${result.error.message}`);
     }
 

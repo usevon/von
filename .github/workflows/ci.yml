@@ -65,7 +65,7 @@ jobs:
         run: bun run lint
 
       - name: Build packages
-        run: bun run build
+        run: turbo run build --filter=@usevon/api... --filter=@usevon/worker...
 
       - name: Run database migrations
         working-directory: packages/db

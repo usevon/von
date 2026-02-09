@@ -11,14 +11,13 @@ import {
 } from "@usevon/auth";
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
+import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 import { ForbiddenError, UnauthorizedError } from "@usevon/utils";
 import { APIError } from "better-auth/api";
 import { Elysia } from "elysia";
 import mailchecker from "mailchecker";
 import isEmail from "validator/es/lib/isEmail.js";
-
-import { PasswordResetEmail, render } from "@usevon/email";
 
 import { env } from "@/env";
 import { userRateLimit } from "@/lib/rate-limit";
