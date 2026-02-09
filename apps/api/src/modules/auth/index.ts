@@ -13,7 +13,7 @@ import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
-import { ForbiddenError, UnauthorizedError } from "@usevon/utils";
+import { ForbiddenError } from "@usevon/utils";
 import { APIError } from "better-auth/api";
 import { Elysia } from "elysia";
 import mailchecker from "mailchecker";
@@ -128,7 +128,9 @@ const auth = betterAuth({
   plugins: [
     emailHarmony({
       validator: (email) => {
-        if (!isEmail(email)) return false;
+        if (!isEmail(email)) {
+          return false;
+        }
         if (!mailchecker.isValid(email)) {
           throw new APIError("BAD_REQUEST", {
             message: "Disposable email addresses are not allowed",
@@ -228,64 +230,85 @@ const auth = betterAuth({
   },
 });
 
-export const requireOrg = new Elysia({ name: "require-org" })
-  .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
-  .resolve(
-    { as: "scoped" },
-    async ({
-      headers,
-    }): Promise<{
-      organizationId: string;
-      userId: string;
-      scopes: string[];
-    }> => {
-      const authHeader = headers.authorization;
+async function resolveAuth(headers: Record<string, string | null>): Promise<{
+  organizationId: string;
+  userId: string;
+  scopes: string[];
+} | null> {
+  const authHeader = headers.authorization;
 
-      if (authHeader?.startsWith("Bearer ")) {
-        const rawKey = authHeader.slice(7);
-        const result = await auth.api.verifyApiKey({
-          body: { key: rawKey },
-        });
-
-        if (result.valid && result.key?.organizationId) {
-          const keyId = result.key.id;
-          const now = Math.floor(Date.now() / 1000);
-          const day = new Date().toISOString().slice(0, 10);
-          // Track usage metrics in Redis (flushed to DB periodically)
-          redis.set(`api:lastUsed:${keyId}`, String(now));
-          redis.sadd("api:lastUsed:dirty", keyId);
-          redis.incr(`api:usage:${keyId}:${day}`);
-          redis.expire(`api:usage:${keyId}:${day}`, 90 * 86_400);
-
-          return {
-            organizationId: result.key.organizationId,
-            userId: result.key.userId ?? "",
-            scopes: parseScopes(
-              (result.key as { scopes?: string | null }).scopes ?? null
-            ),
-          };
-        }
-      }
-
-      const data = await auth.api.getSession({
-        headers: headers as HeadersInit,
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const rawKey = authHeader.slice(7);
+      const result = await auth.api.verifyApiKey({
+        body: { key: rawKey },
       });
-      if (data?.session?.activeOrganizationId) {
+
+      if (result.valid && result.key?.organizationId) {
+        const keyId = result.key.id;
+        const now = Math.floor(Date.now() / 1000);
+        const day = new Date().toISOString().slice(0, 10);
+        redis.set(`api:lastUsed:${keyId}`, String(now));
+        redis.sadd("api:lastUsed:dirty", keyId);
+        redis.incr(`api:usage:${keyId}:${day}`);
+        redis.expire(`api:usage:${keyId}:${day}`, 90 * 86_400);
+
         return {
-          organizationId: data.session.activeOrganizationId,
-          userId: data.user?.id ?? "",
-          scopes: ["*"],
+          organizationId: result.key.organizationId,
+          userId: result.key.userId ?? "",
+          scopes: parseScopes(
+            (result.key as { scopes?: string | null }).scopes ?? null
+          ),
         };
       }
-
-      throw new UnauthorizedError("Please sign in or provide a valid API key.");
+    } catch {
+      // Invalid key — fall through to session check
     }
-  );
+  }
+
+  try {
+    const data = await auth.api.getSession({
+      headers: headers as HeadersInit,
+    });
+    if (data?.session?.activeOrganizationId) {
+      return {
+        organizationId: data.session.activeOrganizationId,
+        userId: data.user?.id ?? "",
+        scopes: ["*"],
+      };
+    }
+  } catch {
+    // No valid session
+  }
+
+  return null;
+}
+
+export const requireOrg = new Elysia({ name: "require-org" })
+  .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
+  .resolve({ as: "scoped" }, async ({ headers, status }) => {
+    const result = await resolveAuth(headers);
+    if (!result) {
+      return status(401, {
+        error: "Please sign in or provide a valid API key.",
+      }) as never;
+    }
+    return result;
+  });
 
 export const requireScope = (scope: string) =>
   new Elysia({ name: `scope:${scope}` })
-    .use(requireOrg)
-    .onBeforeHandle(({ scopes }) => {
+    .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
+    .resolve({ as: "scoped" }, async ({ headers, status }) => {
+      const result = await resolveAuth(headers);
+      if (!result) {
+        return status(401, {
+          error: "Please sign in or provide a valid API key.",
+        }) as never;
+      }
+      return result;
+    })
+    .onBeforeHandle({ as: "scoped" }, ({ scopes }) => {
       if (!hasScope(scopes, scope)) {
         throw new ForbiddenError("API key lacks required scope");
       }
