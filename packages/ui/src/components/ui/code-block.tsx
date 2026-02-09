@@ -18,7 +18,7 @@ export const CodeBlock = (props: CodeBlockProps) => {
     const lines = props.code.split("\n");
     const highlightedLines = lines.map((line, idx) => {
       const highlighted = highlight(line || " ");
-      const isActive = props.activeLines!.has(idx);
+      const isActive = props.activeLines?.has(idx);
       if (isActive) {
         return `<div class="-mx-4 px-4 w-[calc(100%+2rem)] bg-primary/10">${highlighted}</div>`;
       }
@@ -39,6 +39,7 @@ export const CodeBlock = (props: CodeBlockProps) => {
           props.preClassName
         )}
       >
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sugar-high produces sanitized HTML for syntax highlighting */}
         <code dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
     </div>

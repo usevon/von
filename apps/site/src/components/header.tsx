@@ -25,14 +25,14 @@ export const Header = () => {
     setTimeout(() => setCopiedSvg(false), 2000);
   };
 
-  const handleCopyPng = async () => {
+  const handleCopyPng = () => {
     const svg = new Blob(
       [LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')],
       { type: "image/svg+xml" }
     );
     const url = URL.createObjectURL(svg);
     const img = document.createElement("img");
-    img.onload = async () => {
+    img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width * 2;
       canvas.height = img.height * 2;

@@ -16,7 +16,9 @@ type SignupPageProps = {
  * Only allows internal paths (starting with / but not //).
  */
 export function getSafeRedirect(url: string | undefined): string {
-  if (!url) return "/";
+  if (!url) {
+    return "/";
+  }
   if (url.startsWith("/") && !url.startsWith("//")) {
     return url;
   }

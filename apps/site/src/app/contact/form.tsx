@@ -21,6 +21,8 @@ type ContactFormProps = {
   className?: string;
 };
 
+const EMAIL_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
 export const ContactForm = (props: ContactFormProps) => {
   const {
     register,
@@ -45,7 +47,7 @@ export const ContactForm = (props: ContactFormProps) => {
           {...register("name", { required: "Name is required" })}
           aria-invalid={errors.name ? "true" : undefined}
         />
-        {errors.name && <FieldError>{errors.name.message}</FieldError>}
+        {errors.name ? <FieldError>{errors.name.message}</FieldError> : null}
       </Field>
 
       <Field>
@@ -55,13 +57,13 @@ export const ContactForm = (props: ContactFormProps) => {
           {...register("email", {
             required: "Email is required",
             pattern: {
-              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+              value: EMAIL_PATTERN,
               message: "Invalid email address",
             },
           })}
           aria-invalid={errors.email ? "true" : undefined}
         />
-        {errors.email && <FieldError>{errors.email.message}</FieldError>}
+        {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
       </Field>
 
       <Field>
@@ -71,7 +73,9 @@ export const ContactForm = (props: ContactFormProps) => {
           aria-invalid={errors.message ? "true" : undefined}
           className="h-40"
         />
-        {errors.message && <FieldError>{errors.message.message}</FieldError>}
+        {errors.message ? (
+          <FieldError>{errors.message.message}</FieldError>
+        ) : null}
       </Field>
 
       <Button disabled={isSubmitting} size="lg" type="submit">

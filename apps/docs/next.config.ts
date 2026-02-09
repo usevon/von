@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveExtensions: [".mdx", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
   },
-  async rewrites() {
+  rewrites() {
     return [
       // Rewrite .md URLs to LLM routes
       { source: "/index.md", destination: "/llms/index" },

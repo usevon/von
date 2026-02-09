@@ -5,10 +5,18 @@ import { Button, Tabs, TabsList, TabsPanel, TabsTab } from "@usevon/ui";
 import { Children, isValidElement, type ReactNode, useState } from "react";
 
 const getTextContent = (node: ReactNode): string => {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (!node) return "";
-  if (Array.isArray(node)) return node.map(getTextContent).join("");
+  if (typeof node === "string") {
+    return node;
+  }
+  if (typeof node === "number") {
+    return String(node);
+  }
+  if (!node) {
+    return "";
+  }
+  if (Array.isArray(node)) {
+    return node.map(getTextContent).join("");
+  }
   if (isValidElement(node)) {
     return getTextContent((node.props as { children?: ReactNode }).children);
   }

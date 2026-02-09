@@ -15,12 +15,14 @@ const useHeadings = () => {
 
   useEffect(() => {
     const article = document.querySelector("article");
-    if (!article) return;
+    if (!article) {
+      return;
+    }
 
     const elements = article.querySelectorAll("h2[id], h3[id]");
     const items: TocItem[] = [];
 
-    elements.forEach((el) => {
+    for (const el of elements) {
       const id = el.getAttribute("id");
       const title = el.textContent;
       if (id && title) {
@@ -30,7 +32,7 @@ const useHeadings = () => {
           depth: el.tagName === "H2" ? 2 : 3,
         });
       }
-    });
+    }
 
     setHeadings(items);
   }, []);
@@ -43,7 +45,9 @@ const useActiveHeading = (headingIds: string[]) => {
   const hasScrolled = useRef(false);
 
   useEffect(() => {
-    if (!headingIds?.length) return;
+    if (!headingIds?.length) {
+      return;
+    }
 
     setActiveId(headingIds[0] ?? null);
     hasScrolled.current = false;
@@ -54,7 +58,9 @@ const useActiveHeading = (headingIds: string[]) => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!hasScrolled.current) return;
+        if (!hasScrolled.current) {
+          return;
+        }
 
         for (const entry of entries) {
           if (entry.isIntersecting) {
@@ -91,7 +97,9 @@ export const TableOfContents = () => {
   const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
   const activeId = useActiveHeading(headingIds);
 
-  if (!headings.length) return null;
+  if (!headings.length) {
+    return null;
+  }
 
   const currentId = activeId ?? headings[0]?.id ?? "";
 

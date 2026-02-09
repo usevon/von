@@ -44,8 +44,9 @@ export const SectionProvider = (props: SectionProviderProps) => {
   }, []);
 
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined" || sections.length === 0)
+    if (typeof IntersectionObserver === "undefined" || sections.length === 0) {
       return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -63,7 +64,9 @@ export const SectionProvider = (props: SectionProviderProps) => {
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el !== null);
 
-    elements.forEach((el) => observer.observe(el));
+    for (const el of elements) {
+      observer.observe(el);
+    }
 
     return () => observer.disconnect();
   }, [sections]);

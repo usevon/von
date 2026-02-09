@@ -27,10 +27,18 @@ import { Col, Row } from "@/mdx/row-col";
 import { Timeline, TimelineItem } from "@/mdx/timeline";
 
 const getTextContent = (node: ReactNode): string => {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (!node) return "";
-  if (Array.isArray(node)) return node.map(getTextContent).join("");
+  if (typeof node === "string") {
+    return node;
+  }
+  if (typeof node === "number") {
+    return String(node);
+  }
+  if (!node) {
+    return "";
+  }
+  if (Array.isArray(node)) {
+    return node.map(getTextContent).join("");
+  }
   if (isValidElement(node)) {
     return getTextContent((node.props as { children?: ReactNode }).children);
   }
@@ -53,7 +61,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       const code = getTextContent(props.children);
       return (
         <div className="group relative">
-          {code && <CopyButton value={code} />}
+          {code ? <CopyButton value={code} /> : null}
           <pre {...props} />
         </div>
       );

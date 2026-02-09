@@ -235,7 +235,9 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       }
     }
 
-    TunnelService.deleteTunnel(tunnelId).catch(() => {});
+    TunnelService.deleteTunnel(tunnelId).catch(() => {
+      /* intentionally swallowed */
+    });
     log.info(`Disconnected: ${tunnelId}`);
   },
 });

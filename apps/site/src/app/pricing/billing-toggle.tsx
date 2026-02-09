@@ -50,9 +50,9 @@ export const PricingPlans = () => (
             <h3 className="font-medium text-xl">{plan.name}</h3>
             <p className="mt-4 flex items-baseline gap-1">
               <span className="font-semibold text-3xl">{plan.price}</span>
-              {plan.period && (
+              {plan.period ? (
                 <span className="text-muted-foreground">{plan.period}</span>
-              )}
+              ) : null}
             </p>
             <p className="mt-2 min-h-10 text-muted-foreground text-sm">
               {plan.description}

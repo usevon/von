@@ -22,7 +22,7 @@ export const createResource =
         const err = new Error(
           `Failed to fetch ${endpoint}: ${response.status}`
         );
-        (err as any).status = response.status;
+        (err as Error & { status?: number }).status = response.status;
         throw err;
       }
       return (await response.json()) as TResponse;
@@ -36,7 +36,7 @@ export const createResource =
 
     return {
       [dataKey]: data ? (data[dataKey] as TItem[]) : [],
-      total: (data as any)?.total ?? 0,
+      total: (data as TResponse & { total?: number })?.total ?? 0,
       isLoading,
       isRefreshing: isValidating && !isLoading,
       error,

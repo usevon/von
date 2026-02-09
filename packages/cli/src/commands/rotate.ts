@@ -18,7 +18,9 @@ export const rotate = new Command("rotate")
     }
 
     const port = validatePort(options.port);
-    if (!port) return;
+    if (!port) {
+      return;
+    }
 
     const organizationId = config.organizationId;
     if (!organizationId) {

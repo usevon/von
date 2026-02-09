@@ -16,7 +16,7 @@ type TextHoverEffectProps = {
 
 export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hovered, setHovered] = useState(false);
+  const [_hovered, setHovered] = useState(false);
 
   const cx = useMotionValue("50%");
   const cy = useMotionValue("50%");
@@ -24,7 +24,9 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) {
+      return;
+    }
     const rect = svg.getBoundingClientRect();
     cx.set(`${((e.clientX - rect.left) / rect.width) * 100}%`);
     cy.set(`${((e.clientY - rect.top) / rect.height) * 100}%`);
@@ -45,12 +47,14 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
 
   return (
     <svg
+      aria-hidden="true"
       className={cn("select-none", className)}
       height="100%"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
       ref={svgRef}
+      role="presentation"
       viewBox="0 0 200 40"
       width="100%"
       xmlns="http://www.w3.org/2000/svg"

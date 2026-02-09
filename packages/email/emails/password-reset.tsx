@@ -13,11 +13,11 @@ import {
   Text,
 } from "@react-email/components";
 
-interface PasswordResetEmailProps {
+type PasswordResetEmailProps = {
   email?: string;
   resetLink?: string;
   requestTime?: string;
-}
+};
 
 export const PasswordResetEmail = ({
   email = "user@example.com",

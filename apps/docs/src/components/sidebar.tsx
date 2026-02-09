@@ -10,7 +10,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { siteUrl } from "@/lib/urls";
-import { Navigation } from "./docs/navigation";
 import { Search } from "./docs/search";
 
 export const Sidebar = () => (
@@ -43,7 +42,13 @@ export const Sidebar = () => (
           <ContextMenuItem
             className="justify-between"
             render={
-              <a href={siteUrl()} rel="noopener noreferrer" target="_blank" />
+              // biome-ignore lint/a11y/useAnchorContent: content is provided by ContextMenuItem render pattern
+              <a
+                aria-label="Go to Website"
+                href={siteUrl()}
+                rel="noopener noreferrer"
+                target="_blank"
+              />
             }
           >
             Go to Website
@@ -52,7 +57,9 @@ export const Sidebar = () => (
           <ContextMenuItem
             className="justify-between"
             render={
+              // biome-ignore lint/a11y/useAnchorContent: content is provided by ContextMenuItem render pattern
               <a
+                aria-label="Brand Kit"
                 href={siteUrl("/brand")}
                 rel="noopener noreferrer"
                 target="_blank"

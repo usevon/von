@@ -1,7 +1,6 @@
-import type { Endpoint } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
 
-export type { Endpoint };
+type Endpoint = import("@usevon/types").Endpoint;
 
 type EndpointsResponse = { endpoints: Endpoint[]; total: number };
 
@@ -10,3 +9,5 @@ export const useEndpoints = createResource<
   Endpoint,
   "endpoints"
 >("endpoints", "endpoints");
+
+export type { Endpoint } from "@usevon/types";

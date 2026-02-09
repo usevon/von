@@ -27,11 +27,10 @@ export const FormField = (props: FormFieldProps) => {
         <FieldLabel>{label}</FieldLabel>
       )}
       {children}
-      {showError ? (
-        <FieldMessage>{meta.errors[0]}</FieldMessage>
-      ) : description ? (
+      {showError && <FieldMessage>{meta.errors[0]}</FieldMessage>}
+      {!showError && description && (
         <FieldDescription>{description}</FieldDescription>
-      ) : null}
+      )}
     </Field>
   );
 };

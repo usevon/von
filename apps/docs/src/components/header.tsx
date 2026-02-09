@@ -49,7 +49,13 @@ export const Header = () => (
             <ContextMenuItem
               className="justify-between"
               render={
-                <a href={siteUrl()} rel="noopener noreferrer" target="_blank" />
+                // biome-ignore lint/a11y/useAnchorContent: content is provided by ContextMenuItem render pattern
+                <a
+                  aria-label="Go to Website"
+                  href={siteUrl()}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                />
               }
             >
               Go to Website
@@ -58,7 +64,9 @@ export const Header = () => (
             <ContextMenuItem
               className="justify-between"
               render={
+                // biome-ignore lint/a11y/useAnchorContent: content is provided by ContextMenuItem render pattern
                 <a
+                  aria-label="Brand Kit"
                   href={siteUrl("/brand")}
                   rel="noopener noreferrer"
                   target="_blank"

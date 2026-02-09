@@ -70,7 +70,7 @@ function ComboboxInput({
   // single mode
   return (
     <div className="relative w-full has-disabled:opacity-64">
-      {startAddon && (
+      {startAddon ? (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 start-px z-10 flex items-center ps-[calc(--spacing(3)-1px)] opacity-80 has-[+[data-size=sm]]:ps-[calc(--spacing(2.5)-1px)] [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:-mx-0.5"
@@ -78,7 +78,7 @@ function ComboboxInput({
         >
           {startAddon}
         </div>
-      )}
+      ) : null}
       <ComboboxPrimitive.Input
         className={cn(
           startAddon &&
@@ -92,7 +92,7 @@ function ComboboxInput({
         render={<Input className="has-disabled:opacity-100" size={sizeValue} />}
         {...props}
       />
-      {showTrigger && (
+      {showTrigger ? (
         <ComboboxTrigger
           className={cn(
             "absolute top-1/2 inline-flex size-8 shrink-0 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-transparent opacity-80 outline-none transition-opacity pointer-coarse:after:absolute pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 hover:opacity-100 has-[+[data-slot=combobox-clear]]:hidden sm:size-7 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -101,8 +101,8 @@ function ComboboxInput({
         >
           <CaretUpDownIcon />
         </ComboboxTrigger>
-      )}
-      {showClear && (
+      ) : null}
+      {showClear ? (
         <ComboboxClear
           className={cn(
             "absolute top-1/2 inline-flex size-8 shrink-0 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-transparent opacity-80 outline-none transition-opacity pointer-coarse:after:absolute pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 hover:opacity-100 has-[+[data-slot=combobox-clear]]:hidden sm:size-7 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -111,7 +111,7 @@ function ComboboxInput({
         >
           <XIcon />
         </ComboboxClear>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -182,6 +182,7 @@ function ComboboxItem({
     >
       <ComboboxPrimitive.ItemIndicator className="col-start-1">
         <svg
+          aria-hidden="true"
           fill="none"
           height="24"
           stroke="currentColor"
@@ -333,7 +334,9 @@ function ComboboxChips({
       onMouseDown={(e) => {
         const target = e.target as HTMLElement;
         const isChip = target.closest('[data-slot="combobox-chip"]');
-        if (isChip || !chipsRef?.current) return;
+        if (isChip || !chipsRef?.current) {
+          return;
+        }
         e.preventDefault();
         const input: HTMLInputElement | null =
           chipsRef.current.querySelector("input");
@@ -344,7 +347,7 @@ function ComboboxChips({
       ref={chipsRef as React.Ref<HTMLDivElement> | null}
       {...props}
     >
-      {startAddon && (
+      {startAddon ? (
         <div
           aria-hidden="true"
           className="flex shrink-0 items-center ps-2 opacity-80 has-[~[data-size=sm]]:has-[+[data-slot=combobox-chip]]:pe-1.5 has-[~[data-size=sm]]:ps-1.5 has-[+[data-slot=combobox-chip]]:pe-2 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-ms-0.5 [&_svg]:-me-1.5"
@@ -352,7 +355,7 @@ function ComboboxChips({
         >
           {startAddon}
         </div>
-      )}
+      ) : null}
       {children}
     </ComboboxPrimitive.Chips>
   );

@@ -18,6 +18,7 @@ export const ErrorIllustration = (props: ErrorIllustrationProps) => (
     </span>
 
     <svg
+      aria-hidden="true"
       className="h-[12rem] w-[8rem] text-foreground opacity-20 sm:h-[16rem] sm:w-[10rem]"
       fill="none"
       stroke="currentColor"

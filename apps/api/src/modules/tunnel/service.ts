@@ -90,6 +90,8 @@ subscriber.on("message", async (_channel: string, raw: string) => {
         }
         break;
       }
+      default:
+        break;
     }
   } catch (err) {
     log.error(`Failed to handle relay message: ${err}`);
@@ -131,7 +133,7 @@ export abstract class TunnelService {
     await redis.expire(`tunnel:conn:${tunnelId}`, CONN_KEY_TTL);
   }
 
-  static async getOrgTunnelCount(orgId: string): Promise<number> {
+  static getOrgTunnelCount(orgId: string): Promise<number> {
     return redis.scard(`tunnel:org:${orgId}`);
   }
 

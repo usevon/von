@@ -22,11 +22,11 @@ export const Property = (props: PropertyProps) => (
         {props.name}
       </code>
       <span className="text-muted-foreground text-xs">{props.type}</span>
-      {props.required && (
+      {props.required ? (
         <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive text-xs">
           required
         </span>
-      )}
+      ) : null}
     </div>
     <div className="text-muted-foreground text-sm">{props.children}</div>
   </div>

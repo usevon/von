@@ -166,7 +166,7 @@ describe("webhook delivery", () => {
     });
 
     test("pending delivery has null response", () => {
-      const response = null;
+      const response: null = null;
 
       expect(response).toBeNull();
     });
@@ -191,7 +191,7 @@ describe("webhook delivery", () => {
     });
 
     test("null transforms are not cached", () => {
-      const transforms = null;
+      const transforms: null = null;
       const shouldCache = transforms !== null;
 
       expect(shouldCache).toBe(false);

@@ -30,7 +30,9 @@ export const Pagination = () => {
   const nextPage =
     actualIndex < allPages.length - 1 ? allPages[actualIndex + 1] : null;
 
-  if (!(prevPage || nextPage)) return null;
+  if (!(prevPage || nextPage)) {
+    return null;
+  }
 
   return (
     <div className="mt-16 flex items-center justify-between border-border border-t pt-6">

@@ -23,7 +23,9 @@ export const dev = new Command("dev")
     const ports: number[] = [];
     for (const p of options.port as string[]) {
       const port = validatePort(p);
-      if (!port) return;
+      if (!port) {
+        return;
+      }
       ports.push(port);
     }
 

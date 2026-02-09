@@ -441,7 +441,7 @@ export abstract class WebhookService {
 
       return {
         replayed: deliveryRecords.length,
-        deliveryIds: deliveryRecords.map((d) => d.id!),
+        deliveryIds: deliveryRecords.map((d) => d.id as string),
       };
     }, "replaying event");
   }
@@ -490,7 +490,9 @@ export abstract class WebhookService {
 
       for (const failed of failedDeliveries) {
         const ep = activeEndpoints.get(failed.endpointId);
-        if (!ep) continue;
+        if (!ep) {
+          continue;
+        }
 
         const deliveryId = crypto.randomUUID();
         deliveryRecords.push({

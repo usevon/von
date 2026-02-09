@@ -1,3 +1,5 @@
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type ValidatorFn = (props: { value: string }) => string | undefined;
 
 export const required =
@@ -15,8 +17,10 @@ export const minLength =
 export const email =
   (msg?: string): ValidatorFn =>
   ({ value }) => {
-    if (!value) return;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    if (!value) {
+      return;
+    }
+    return EMAIL_REGEX.test(value)
       ? undefined
       : (msg ?? "Please enter a valid email address");
   };
@@ -26,7 +30,9 @@ export const compose =
   (props) => {
     for (const validator of validators) {
       const error = validator(props);
-      if (error) return error;
+      if (error) {
+        return error;
+      }
     }
     return;
   };

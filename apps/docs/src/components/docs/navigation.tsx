@@ -22,17 +22,23 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 const isPathActive = (pathname: string, href: string) => {
-  if (href === "/") return pathname === "/";
+  if (href === "/") {
+    return pathname === "/";
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
 const findActiveHref = (pathname: string) => {
   for (const link of topLinks) {
-    if (isPathActive(pathname, link.href)) return link.href;
+    if (isPathActive(pathname, link.href)) {
+      return link.href;
+    }
   }
   for (const section of navigation) {
     for (const item of section.items) {
-      if (isPathActive(pathname, item.href)) return item.href;
+      if (isPathActive(pathname, item.href)) {
+        return item.href;
+      }
     }
   }
   return null;
@@ -66,7 +72,7 @@ export const Navigation = () => {
                 key={link.href}
                 value={link.href}
               >
-                {Icon && <Icon className="size-4" />}
+                {Icon ? <Icon className="size-4" /> : null}
                 {link.title}
               </Tabs.Tab>
             );

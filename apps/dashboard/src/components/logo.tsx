@@ -39,6 +39,7 @@ export const Logo = () => (
         className="justify-between"
         render={
           <a
+            aria-label="Go to Website"
             href="https://usevon.com"
             rel="noopener noreferrer"
             target="_blank"
@@ -52,6 +53,7 @@ export const Logo = () => (
         className="justify-between"
         render={
           <a
+            aria-label="Brand Kit"
             href="https://usevon.com/brand"
             rel="noopener noreferrer"
             target="_blank"

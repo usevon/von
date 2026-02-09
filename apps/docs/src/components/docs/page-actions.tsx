@@ -27,7 +27,7 @@ export const PageActions = () => {
     window.open(markdownUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleOpenIn = async (target: string) => {
+  const handleOpenIn = (target: string) => {
     const fullMarkdownUrl = new URL(
       markdownUrl,
       window.location.origin

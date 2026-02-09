@@ -2,7 +2,7 @@ import { contentPages } from "@/lib/get-llm-text";
 
 export const revalidate = false;
 
-export async function GET() {
+export function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? "https://docs.usevon.com";
 
   const lines = [

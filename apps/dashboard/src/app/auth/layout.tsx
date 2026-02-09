@@ -4,7 +4,7 @@ type AuthLayoutProps = {
   children: React.ReactNode;
 };
 
-export default async function AuthLayout(props: AuthLayoutProps) {
+export default function AuthLayout(props: AuthLayoutProps) {
   return (
     <div className="flex min-h-svh flex-col">
       <div className="mx-auto flex h-21 w-full max-w-7xl items-center px-6 lg:px-10">

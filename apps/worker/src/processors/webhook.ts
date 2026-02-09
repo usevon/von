@@ -120,17 +120,23 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
   }),
 
   transformPayload: async (payload, job) => {
-    if (!job.endpoint.version) return payload;
+    if (!job.endpoint.version) {
+      return payload;
+    }
 
     const transforms = await getVersionTransforms(
       job.endpoint.version,
       job.organizationId
     );
 
-    if (!transforms) return payload;
+    if (!transforms) {
+      return payload;
+    }
 
     const eventTransforms = transforms[job.eventType];
-    if (!eventTransforms) return payload;
+    if (!eventTransforms) {
+      return payload;
+    }
 
     let parsed: Record<string, unknown>;
     try {

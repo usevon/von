@@ -32,7 +32,9 @@ function buildContentPages(): PageInfo[] {
   // Add navigation items (skip llms.txt)
   for (const section of navigation) {
     for (const item of section.items) {
-      if (item.href === "/llms.txt") continue;
+      if (item.href === "/llms.txt") {
+        continue;
+      }
       const slug = item.href.slice(1);
       const filePath = filePathOverrides[slug] ?? `${slug}.mdx`;
       pages.push({ slug, title: item.title, filePath });

@@ -43,8 +43,8 @@ export const loadConfig = (): VonConfig => {
     // Migrate legacy config: dashboardUrl/tunnelUrl -> apiUrl
     if (parsed.dashboardUrl && !parsed.apiUrl) {
       parsed.apiUrl = parsed.dashboardUrl.replace(":3001", ":8080");
-      delete parsed.dashboardUrl;
-      delete parsed.tunnelUrl;
+      parsed.dashboardUrl = undefined;
+      parsed.tunnelUrl = undefined;
     }
 
     return { ...DEFAULT_CONFIG, ...parsed };

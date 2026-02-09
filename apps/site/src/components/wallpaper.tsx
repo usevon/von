@@ -66,10 +66,14 @@ export const Wallpaper = (props: WallpaperProps) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     refreshColors();
 
@@ -161,7 +165,12 @@ export const Wallpaper = (props: WallpaperProps) => {
           hsl(210, var(--wallpaper-s5), var(--wallpaper-l5)) 100%)`,
       }}
     >
-      <canvas aria-hidden="true" className="absolute inset-0" ref={canvasRef} />
+      <canvas
+        aria-hidden="true"
+        className="absolute inset-0"
+        ref={canvasRef}
+        tabIndex={-1}
+      />
       <div className="relative z-10">{props.children}</div>
     </div>
   );

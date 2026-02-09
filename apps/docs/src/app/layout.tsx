@@ -27,7 +27,7 @@ export default function RootLayout(props: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={`${familjen.variable} antialiased`}>
         <Databuddy
-          clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
+          clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID ?? ""}
           disabled={process.env.NODE_ENV === "development"}
           trackErrors
           trackInteractions

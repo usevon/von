@@ -29,17 +29,16 @@ function Group({
   className?: string;
   orientation?: VariantProps<typeof groupVariants>["orientation"];
   children: React.ReactNode;
-} & React.ComponentProps<"div">) {
+} & React.ComponentProps<"fieldset">) {
   return (
-    <div
+    <fieldset
       className={cn(groupVariants({ orientation }), className)}
       data-orientation={orientation}
       data-slot="group"
-      role="group"
       {...props}
     >
       {children}
-    </div>
+    </fieldset>
   );
 }
 

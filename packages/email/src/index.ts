@@ -1,5 +1,3 @@
-import { render } from "@react-email/components";
-
-export { render };
+export { render } from "@react-email/components";
 
 export * from "../emails/index.js";

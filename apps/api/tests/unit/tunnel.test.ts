@@ -8,7 +8,9 @@ function createMockConnection(
   const sent: string[] = [];
   return {
     send: (data: string) => sent.push(data),
-    close: () => {},
+    close: () => {
+      /* noop */
+    },
     pending: new Map(),
     headers: {},
     organizationId: "org-1",
@@ -163,7 +165,7 @@ describe("TunnelService", () => {
       // Simulate CLI responding
       const pending = conn.pending.get("req-1");
       expect(pending).toBeDefined();
-      pending!.resolve({
+      pending?.resolve({
         requestId: "req-1",
         status: 200,
         headers: { "content-type": "application/json" },
@@ -210,7 +212,7 @@ describe("TunnelService", () => {
       // Resolve the pending request
       const pending = conn.pending.get("req-local");
       expect(pending).toBeDefined();
-      pending!.resolve({
+      pending?.resolve({
         requestId: "req-local",
         status: 201,
         headers: {},

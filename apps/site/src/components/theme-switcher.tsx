@@ -36,13 +36,13 @@ export const ThemeSwitcher = () => {
             onClick={() => setTheme(key)}
             type="button"
           >
-            {isActive && (
+            {isActive ? (
               <motion.div
                 className="absolute inset-0 rounded-md bg-background shadow-sm"
                 layoutId="activeTheme"
                 transition={{ type: "spring", duration: 0.5 }}
               />
-            )}
+            ) : null}
             <Icon
               className={cn(
                 "relative z-10",

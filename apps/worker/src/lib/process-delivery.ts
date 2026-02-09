@@ -12,7 +12,7 @@ import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
 import { log } from "@/lib/logger";
 
 type Executable = {
-  execute: (params: Record<string, unknown>) => Promise<any[]>;
+  execute: (params: Record<string, unknown>) => Promise<unknown[]>;
 };
 
 type EndpointState = {
@@ -42,7 +42,9 @@ type BaseJobData = {
 
 export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
   label: string;
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTableWithColumns requires generic parameter
   deliveryTable: PgTableWithColumns<any>;
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTableWithColumns requires generic parameter
   endpointTable: PgTableWithColumns<any> & CircuitColumns;
   getDeliveryStmt: Executable;
   getEndpointStmt: Executable;
@@ -78,7 +80,7 @@ export async function processDelivery<TJob extends BaseJobData>(
   const { deliveryId, endpoint: ep } = job.data;
 
   const [[deliveryRecord], [endpointState]] = await Promise.all([
-    config.getDeliveryStmt.execute({ id: deliveryId }) as Promise<any[]>,
+    config.getDeliveryStmt.execute({ id: deliveryId }) as Promise<unknown[]>,
     config.getEndpointStmt.execute({ id: ep.id }) as Promise<EndpointState[]>,
   ]);
 

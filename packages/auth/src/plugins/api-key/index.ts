@@ -30,7 +30,7 @@ function generateRandomString(length: number): string {
     // Reject bytes >= 248 to eliminate modulo bias (248 = 62 * 4)
     if (byte < 248) {
       result += chars[byte % 62];
-      i++;
+      i += 1;
     }
   }
   return result;

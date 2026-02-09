@@ -55,7 +55,9 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
 
   describe("Secret rotation", () => {
     test("POST /rotate/:tunnelId rotates the secret", async () => {
-      if (!tunnelId) return;
+      if (!tunnelId) {
+        return;
+      }
 
       const { data, error } = await client
         .rotate({ tunnelId })
@@ -79,7 +81,9 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
     });
 
     test("POST /rotate/:tunnelId returns 401 without auth", async () => {
-      if (!tunnelId) return;
+      if (!tunnelId) {
+        return;
+      }
 
       const { error } = await client.rotate({ tunnelId }).post(null);
 
@@ -116,7 +120,9 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
     });
 
     test("returns 502 for valid secret but no WebSocket connection", async () => {
-      if (!(tunnelId && tunnelSecret)) return;
+      if (!(tunnelId && tunnelSecret)) {
+        return;
+      }
 
       const { error } = await client.t[`${tunnelId}-${tunnelSecret}`].get();
 
