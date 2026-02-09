@@ -1,0 +1,32 @@
+{
+  "name": "@usevon/email",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": {
+      "default": "./dist/src/index.js",
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./templates/*": {
+      "default": "./dist/emails/*.js",
+      "import": "./dist/emails/*.js",
+      "types": "./dist/emails/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "email dev -p 3002"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "react-email": "^5.2.5",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.4.5"
+  }
+}
