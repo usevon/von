@@ -41,6 +41,7 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-that-is-at-least-32-chars!!
       BETTER_AUTH_URL: http://localhost:8080
       NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:8080
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ vars.TURBO_TEAM }}
       TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
@@ -68,7 +69,7 @@ jobs:
         run: bun run lint
 
       - name: Build packages
-        run: turbo run build --filter=@usevon/api... --filter=@usevon/worker...
+        run: bun run build
 
       - name: Run database migrations
         working-directory: packages/db
