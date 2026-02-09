@@ -89,4 +89,48 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
         404: ErrorResponse,
       },
     }
+  )
+  .post(
+    "/:id/test",
+    async ({ organizationId, params, body }) =>
+      EndpointService.testEndpoint(
+        organizationId,
+        params.id,
+        body.payload,
+        body.eventType,
+      ),
+    {
+      params: IdParam,
+      body: EndpointModel.testBody,
+      response: {
+        200: EndpointModel.testResponse,
+        404: ErrorResponse,
+      },
+    }
+  )
+  .post(
+    "/:id/rotate",
+    async ({ organizationId, params }) =>
+      EndpointService.rotateSecret(organizationId, params.id),
+    {
+      params: IdParam,
+      response: {
+        200: EndpointModel.rotateResponse,
+        404: ErrorResponse,
+      },
+    }
+  )
+  .delete(
+    "/:id/previous-secret",
+    async ({ organizationId, params }) => {
+      await EndpointService.clearPreviousSecret(organizationId, params.id);
+      return { success: true };
+    },
+    {
+      params: IdParam,
+      response: {
+        200: SuccessResponse,
+        404: ErrorResponse,
+      },
+    }
   );

@@ -59,4 +59,23 @@ export namespace EndpointModel {
   });
 
   export type endpointList = typeof endpointList.static;
+
+  export const testBody = t.Object({
+    payload: t.Optional(t.Unknown()),
+    eventType: t.Optional(t.String({ maxLength: 100 })),
+  });
+
+  export const testResponse = t.Object({
+    eventId: t.String({ format: "uuid" }),
+    deliveryId: t.String({ format: "uuid" }),
+  });
+
+  export type testResponse = typeof testResponse.static;
+
+  export const rotateResponse = t.Object({
+    secret: t.String(),
+    previousSecret: t.String(),
+  });
+
+  export type rotateResponse = typeof rotateResponse.static;
 }

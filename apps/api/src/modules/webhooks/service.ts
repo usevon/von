@@ -1,6 +1,6 @@
-import type { WebhookDelivery } from "@usevon/types";
+import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import { db } from "@usevon/db";
-import { delivery, event } from "@usevon/db/schema";
+import { delivery, endpoint, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
   type WebhookDeliveryJob,
@@ -9,9 +9,10 @@ import {
 import {
   BadRequestError,
   InternalServerError,
+  NotFoundError,
   matchesEventType,
 } from "@usevon/utils";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { withServiceError } from "@/lib/service-utils";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
@@ -26,7 +27,7 @@ const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
   status: row.status,
   attempts: row.attempts,
   lastAttemptAt: row.lastAttemptAt?.toISOString() ?? null,
-  responseStatus: row.responseStatus,
+  response: (row.response as DeliveryResponse) ?? null,
   createdAt: row.createdAt.toISOString(),
 });
 
@@ -99,7 +100,6 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
         status: "pending",
         attempts: 0,
         createdAt: now,
-        updatedAt: now,
       });
       allJobs.push({
         name: "webhook-delivery",
@@ -133,7 +133,7 @@ const enqueueJobs = async (
     const failedDeliveryIds = jobsToEnqueue.map((j) => j.data.deliveryId);
     await db
       .update(delivery)
-      .set({ status: "failed", updatedAt: new Date() })
+      .set({ status: "failed" })
       .where(inArray(delivery.id, failedDeliveryIds));
     throw new InternalServerError("Failed to enqueue webhook deliveries");
   }
@@ -151,18 +151,6 @@ export abstract class WebhookService {
     )
     .limit(1)
     .prepare("get_event");
-
-  private static getDeliveriesStmt = db
-    .select({ delivery })
-    .from(delivery)
-    .innerJoin(event, eq(delivery.eventId, event.id))
-    .where(
-      and(
-        eq(delivery.eventId, sql.placeholder("eventId")),
-        eq(event.organizationId, sql.placeholder("orgId"))
-      )
-    )
-    .prepare("get_deliveries");
 
   static createEvent(
     params: CreateEventParams
@@ -339,14 +327,202 @@ export abstract class WebhookService {
 
   static getDeliveries(
     organizationId: string,
-    eventId: string
-  ): Promise<WebhookModel.delivery[]> {
+    eventId: string,
+    filters?: {
+      status?: string;
+      endpointId?: string;
+      from?: string;
+      to?: string;
+    },
+    limit = 20,
+    offset = 0,
+  ): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
     return withServiceError(async () => {
-      const rows = await WebhookService.getDeliveriesStmt.execute({
+      const conditions = [
+        eq(delivery.eventId, eventId),
+        eq(event.organizationId, organizationId),
+      ];
+
+      if (filters?.status) {
+        conditions.push(eq(delivery.status, filters.status));
+      }
+      if (filters?.endpointId) {
+        conditions.push(eq(delivery.endpointId, filters.endpointId));
+      }
+      if (filters?.from) {
+        conditions.push(gte(delivery.createdAt, new Date(filters.from)));
+      }
+      if (filters?.to) {
+        conditions.push(lte(delivery.createdAt, new Date(filters.to)));
+      }
+
+      const where = and(...conditions);
+
+      const [rows, total] = await Promise.all([
+        db
+          .select({ delivery })
+          .from(delivery)
+          .innerJoin(event, eq(delivery.eventId, event.id))
+          .where(where)
+          .limit(limit)
+          .offset(offset),
+        db.$count(
+          db
+            .select({ id: delivery.id })
+            .from(delivery)
+            .innerJoin(event, eq(delivery.eventId, event.id))
+            .where(where)
+            .as("filtered"),
+        ),
+      ]);
+
+      return {
+        deliveries: rows.map((r) => toDelivery(r.delivery)),
+        total,
+      };
+    }, "fetching webhook deliveries");
+  }
+
+  static replayEvent(
+    organizationId: string,
+    eventId: string,
+    endpointIds?: string[],
+  ): Promise<WebhookModel.replayResult> {
+    return withServiceError(async () => {
+      const [eventRecord] = await WebhookService.getEventStmt.execute({
         eventId,
         orgId: organizationId,
       });
-      return rows.map((r) => toDelivery(r.delivery));
-    }, "fetching webhook deliveries");
+
+      if (!eventRecord) {
+        throw new NotFoundError("Event not found");
+      }
+
+      const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+        organizationId,
+        endpointIds,
+      );
+
+      const targets = allEndpoints.filter((ep) =>
+        matchesEventType(eventRecord.eventType, ep.events)
+      );
+
+      if (targets.length === 0) {
+        return { replayed: 0, deliveryIds: [] };
+      }
+
+      const now = new Date();
+      const payloadStr = eventRecord.payload;
+      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
+
+      for (const ep of targets) {
+        const deliveryId = crypto.randomUUID();
+        deliveryRecords.push({
+          id: deliveryId,
+          eventId: eventRecord.id,
+          endpointId: ep.id,
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+        });
+        jobs.push({
+          name: "webhook-delivery",
+          data: {
+            deliveryId,
+            eventId: eventRecord.id,
+            payload: payloadStr,
+            eventType: eventRecord.eventType,
+            endpoint: ep,
+            organizationId,
+          },
+        });
+      }
+
+      await db.insert(delivery).values(deliveryRecords);
+      await getWebhookDeliveryQueue().addBulk(jobs);
+
+      return {
+        replayed: deliveryRecords.length,
+        deliveryIds: deliveryRecords.map((d) => d.id!),
+      };
+    }, "replaying event");
+  }
+
+  static replayBulk(
+    organizationId: string,
+    since: string,
+    filters?: { status?: string; endpointId?: string },
+  ): Promise<WebhookModel.bulkReplayResult> {
+    return withServiceError(async () => {
+      const conditions = [
+        eq(event.organizationId, organizationId),
+        gte(delivery.createdAt, new Date(since)),
+        eq(delivery.status, filters?.status ?? "failed"),
+      ];
+
+      if (filters?.endpointId) {
+        conditions.push(eq(delivery.endpointId, filters.endpointId));
+      }
+
+      const failedDeliveries = await db
+        .select({
+          eventId: delivery.eventId,
+          endpointId: delivery.endpointId,
+          eventType: event.eventType,
+          payload: event.payload,
+        })
+        .from(delivery)
+        .innerJoin(event, eq(delivery.eventId, event.id))
+        .where(and(...conditions));
+
+      if (failedDeliveries.length === 0) {
+        return { replayed: 0 };
+      }
+
+      const endpointIdsSet = new Set(failedDeliveries.map((d) => d.endpointId));
+      const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+        organizationId,
+        [...endpointIdsSet],
+      );
+      const activeEndpoints = new Map(allEndpoints.map((ep) => [ep.id, ep]));
+
+      const now = new Date();
+      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
+
+      for (const failed of failedDeliveries) {
+        const ep = activeEndpoints.get(failed.endpointId);
+        if (!ep) continue;
+
+        const deliveryId = crypto.randomUUID();
+        deliveryRecords.push({
+          id: deliveryId,
+          eventId: failed.eventId,
+          endpointId: failed.endpointId,
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+        });
+        jobs.push({
+          name: "webhook-delivery",
+          data: {
+            deliveryId,
+            eventId: failed.eventId,
+            payload: failed.payload,
+            eventType: failed.eventType,
+            endpoint: ep,
+            organizationId,
+          },
+        });
+      }
+
+      if (deliveryRecords.length > 0) {
+        await db.insert(delivery).values(deliveryRecords);
+        await getWebhookDeliveryQueue().addBulk(jobs);
+      }
+
+      return { replayed: deliveryRecords.length };
+    }, "replaying bulk events");
   }
 }

@@ -51,6 +51,15 @@ export namespace WebhookModel {
 
   export type batchResult = typeof batchResult.static;
 
+  export const deliveryResponse = t.Union([
+    t.Object({
+      status: t.Optional(t.Number()),
+      durationMs: t.Number(),
+      error: t.Optional(t.String()),
+    }),
+    t.Null(),
+  ]);
+
   export const delivery = t.Object({
     id: t.String({ format: "uuid" }),
     eventId: t.String({ format: "uuid" }),
@@ -58,9 +67,48 @@ export namespace WebhookModel {
     status: t.String(),
     attempts: t.Number(),
     lastAttemptAt: t.Union([t.String(), t.Null()]),
-    responseStatus: t.Union([t.Number(), t.Null()]),
+    response: deliveryResponse,
     createdAt: t.String(),
   });
 
   export type delivery = WebhookDelivery;
+
+  export const deliveryList = t.Object({
+    deliveries: t.Array(delivery),
+    total: t.Number(),
+  });
+
+  export type deliveryList = typeof deliveryList.static;
+
+  export const deliveryQuery = t.Object({
+    status: t.Optional(t.String()),
+    endpointId: t.Optional(t.String({ format: "uuid" })),
+    from: t.Optional(t.String()),
+    to: t.Optional(t.String()),
+    limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
+    offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
+  });
+
+  export const replayBody = t.Object({
+    endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+  });
+
+  export const bulkReplayBody = t.Object({
+    since: t.String(),
+    status: t.Optional(t.String()),
+    endpointId: t.Optional(t.String({ format: "uuid" })),
+  });
+
+  export const replayResult = t.Object({
+    replayed: t.Number(),
+    deliveryIds: t.Array(t.String({ format: "uuid" })),
+  });
+
+  export type replayResult = typeof replayResult.static;
+
+  export const bulkReplayResult = t.Object({
+    replayed: t.Number(),
+  });
+
+  export type bulkReplayResult = typeof bulkReplayResult.static;
 }

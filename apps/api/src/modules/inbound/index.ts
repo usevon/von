@@ -127,6 +127,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
           id: endpoint.id,
           forwardUrl: endpoint.forwardUrl,
           secret: endpoint.secret,
+          previousSecret: endpoint.previousSecret,
           timeoutMs: endpoint.timeoutMs,
           retryCount: endpoint.retryCount,
         },

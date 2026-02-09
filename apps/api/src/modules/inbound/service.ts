@@ -41,6 +41,7 @@ type ReceiveWebhookParams = {
     id: string;
     forwardUrl: string;
     secret: string;
+    previousSecret?: string | null;
     timeoutMs: number;
     retryCount: number;
   };
@@ -261,7 +262,7 @@ export abstract class InboundService {
         headers: delivery.headers ? JSON.parse(delivery.headers) : null,
         status: delivery.status,
         forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
-        responseStatus: delivery.responseStatus,
+        response: (delivery.response as import("@usevon/types").DeliveryResponse) ?? null,
         createdAt: delivery.createdAt.toISOString(),
       };
     }, "receiving webhook");

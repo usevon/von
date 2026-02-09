@@ -66,4 +66,58 @@ export const webhookEvents = new Elysia({ prefix: "/webhooks" })
         404: ErrorResponse,
       },
     }
+  )
+  .get(
+    "/events/:id/deliveries",
+    ({ organizationId, params, query }) =>
+      WebhookService.getDeliveries(
+        organizationId,
+        params.id,
+        {
+          status: query.status,
+          endpointId: query.endpointId,
+          from: query.from,
+          to: query.to,
+        },
+        query.limit ?? 20,
+        query.offset ?? 0,
+      ),
+    {
+      params: IdParam,
+      query: WebhookModel.deliveryQuery,
+      response: WebhookModel.deliveryList,
+    }
+  )
+  .post(
+    "/events/:id/replay",
+    async ({ organizationId, params, body }) =>
+      WebhookService.replayEvent(
+        organizationId,
+        params.id,
+        body.endpointIds,
+      ),
+    {
+      params: IdParam,
+      body: WebhookModel.replayBody,
+      response: {
+        200: WebhookModel.replayResult,
+        404: ErrorResponse,
+      },
+    }
+  )
+  .post(
+    "/events/replay",
+    async ({ organizationId, body }) =>
+      WebhookService.replayBulk(
+        organizationId,
+        body.since,
+        {
+          status: body.status,
+          endpointId: body.endpointId,
+        },
+      ),
+    {
+      body: WebhookModel.bulkReplayBody,
+      response: WebhookModel.bulkReplayResult,
+    }
   );

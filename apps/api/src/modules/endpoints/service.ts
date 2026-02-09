@@ -1,10 +1,16 @@
 import type { CreateEndpoint, Endpoint, EndpointStatus, UpdateEndpoint } from "@usevon/types";
 import { db } from "@usevon/db";
-import { endpoint } from "@usevon/db/schema";
-import { type DeliveryEndpoint, getRedisClient } from "@usevon/queue";
+import { delivery, endpoint, event } from "@usevon/db/schema";
+import {
+  type DeliveryEndpoint,
+  type WebhookDeliveryJob,
+  getRedisClient,
+  getWebhookDeliveryQueue,
+} from "@usevon/queue";
 import {
   BadRequestError,
   InternalServerError,
+  NotFoundError,
   generateSecret,
   isValidWebhookUrl,
 } from "@usevon/utils";
@@ -217,6 +223,7 @@ export abstract class EndpointService {
           id: endpoint.id,
           url: endpoint.url,
           secret: endpoint.secret,
+          previousSecret: endpoint.previousSecret,
           timeoutMs: endpoint.timeoutMs,
           retryCount: endpoint.retryCount,
           version: endpoint.version,
@@ -236,5 +243,140 @@ export abstract class EndpointService {
 
       return result;
     }, "fetching enabled endpoints");
+  }
+
+  static testEndpoint(
+    organizationId: string,
+    endpointId: string,
+    payload?: unknown,
+    eventType?: string,
+  ): Promise<EndpointModel.testResponse> {
+    return withServiceError(async () => {
+      const ep = await db
+        .select({
+          id: endpoint.id,
+          url: endpoint.url,
+          secret: endpoint.secret,
+          previousSecret: endpoint.previousSecret,
+          timeoutMs: endpoint.timeoutMs,
+          retryCount: endpoint.retryCount,
+          version: endpoint.version,
+          events: endpoint.events,
+        })
+        .from(endpoint)
+        .where(
+          and(
+            eq(endpoint.id, endpointId),
+            eq(endpoint.organizationId, organizationId),
+          )
+        )
+        .limit(1);
+
+      if (!ep[0]) {
+        throw new NotFoundError("Endpoint not found");
+      }
+
+      const now = new Date();
+      const type = eventType ?? "von.test";
+      const testPayload = payload ?? { test: true, timestamp: now.toISOString() };
+      const payloadStr = JSON.stringify(testPayload);
+
+      const eventId = crypto.randomUUID();
+      const deliveryId = crypto.randomUUID();
+
+      await db.insert(event).values({
+        id: eventId,
+        organizationId,
+        eventType: type,
+        payload: payloadStr,
+        createdAt: now,
+      });
+
+      await db.insert(delivery).values({
+        id: deliveryId,
+        eventId,
+        endpointId,
+        status: "pending",
+        attempts: 0,
+        createdAt: now,
+      });
+
+      await getWebhookDeliveryQueue().add("webhook-delivery", {
+        deliveryId,
+        eventId,
+        payload: payloadStr,
+        eventType: type,
+        endpoint: ep[0],
+        organizationId,
+      } satisfies WebhookDeliveryJob);
+
+      return { eventId, deliveryId };
+    }, "testing endpoint");
+  }
+
+  static rotateSecret(
+    organizationId: string,
+    endpointId: string,
+  ): Promise<EndpointModel.rotateResponse> {
+    return withServiceError(async () => {
+      const existing = await db
+        .select()
+        .from(endpoint)
+        .where(
+          and(
+            eq(endpoint.id, endpointId),
+            eq(endpoint.organizationId, organizationId),
+          )
+        )
+        .limit(1);
+
+      if (!existing[0]) {
+        throw new NotFoundError("Endpoint not found");
+      }
+
+      const newSecret = generateSecret();
+      const previousSecret = existing[0].secret;
+
+      await db
+        .update(endpoint)
+        .set({
+          secret: newSecret,
+          previousSecret,
+          updatedAt: new Date(),
+        })
+        .where(eq(endpoint.id, endpointId));
+
+      await redis.del(`endpoints:${organizationId}`);
+
+      return { secret: newSecret, previousSecret };
+    }, "rotating endpoint secret");
+  }
+
+  static clearPreviousSecret(
+    organizationId: string,
+    endpointId: string,
+  ): Promise<boolean> {
+    return withServiceError(async () => {
+      const result = await db
+        .update(endpoint)
+        .set({
+          previousSecret: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(endpoint.id, endpointId),
+            eq(endpoint.organizationId, organizationId),
+          )
+        )
+        .returning({ id: endpoint.id });
+
+      if (result.length === 0) {
+        throw new NotFoundError("Endpoint not found");
+      }
+
+      await redis.del(`endpoints:${organizationId}`);
+      return true;
+    }, "clearing previous secret");
   }
 }

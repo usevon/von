@@ -58,7 +58,14 @@ export namespace InboundModel {
     headers: t.Union([t.Record(t.String(), t.String()), t.Null()]),
     status: t.String(),
     forwardedAt: t.Union([t.String(), t.Null()]),
-    responseStatus: t.Union([t.Number(), t.Null()]),
+    response: t.Union([
+      t.Object({
+        status: t.Optional(t.Number()),
+        durationMs: t.Number(),
+        error: t.Optional(t.String()),
+      }),
+      t.Null(),
+    ]),
     createdAt: t.String(),
   });
 
