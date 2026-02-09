@@ -25,7 +25,8 @@
     "db:push": "bun --env-file=.env run --filter @usevon/db db:push",
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
-    "test": "bun test packages/ apps/worker/ apps/api/"
+    "test": "bun test packages/ apps/worker/ apps/api/tests/unit/",
+    "test:integration": "cd apps/api && bun test tests/integration/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
