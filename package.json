@@ -20,9 +20,12 @@
     "build": "turbo run build --filter=@usevon/site... --filter=@usevon/dashboard... --filter=@usevon/api... --filter=@usevon/worker...",
     "build:docs": "turbo run build --filter=@usevon/docs...",
     "start": "turbo run start --filter=!@usevon/cli --filter=!@usevon/sdk",
+    "db:migrate": "bun --env-file=.env run --filter @usevon/db db:migrate",
+    "db:generate": "bun --env-file=.env run --filter @usevon/db db:generate",
+    "db:push": "bun --env-file=.env run --filter @usevon/db db:push",
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
-    "test": "bun test packages/ apps/worker/"
+    "test": "bun test packages/ apps/worker/ apps/api/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
