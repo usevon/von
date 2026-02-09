@@ -1,16 +1,16 @@
 import { db, eq, sql } from "@usevon/db";
 import { tunnel } from "@usevon/db/schema";
-import type { TunnelResponse } from "@/modules/tunnel/model";
 import {
   BadRequestError,
-  NotFoundError,
   generateTunnelId,
   generateTunnelSecret,
+  NotFoundError,
 } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
 import { env } from "@/env";
-import { requireOrg, validateSession } from "@/modules/auth";
+import { requireScope, validateSession } from "@/modules/auth";
+import type { TunnelResponse } from "@/modules/tunnel/model";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
 
@@ -21,8 +21,8 @@ const log = createLogger({ name: "tunnel" });
 
 const SESSION_VALIDATION_INTERVAL_MS = 30_000;
 
-export const tunnelRegister = new Elysia()
-  .use(requireOrg)
+export const tunnelRegisterWrite = new Elysia()
+  .use(requireScope("write:tunnels"))
   .post(
     "/register",
     async ({ body, organizationId, userId }) => {
@@ -100,10 +100,13 @@ export const tunnelRegister = new Elysia()
     {
       response: TunnelModel.rotateResponse,
     }
-  )
-  .get("/tunnels", ({ organizationId }) => {
-    return { tunnels: TunnelService.getActiveTunnels(organizationId) };
-  });
+  );
+
+export const tunnelRegisterRead = new Elysia()
+  .use(requireScope("read:tunnels"))
+  .get("/tunnels", ({ organizationId }) => ({
+    tunnels: TunnelService.getActiveTunnels(organizationId),
+  }));
 
 export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
   async open(ws) {

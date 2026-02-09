@@ -1,7 +1,7 @@
 import { NotFoundError } from "@usevon/utils";
 import { Elysia, t } from "elysia";
 import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
-import { requireOrg } from "@/modules/auth";
+import { requireScope } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
 import { VersionService } from "@/modules/versions/service";
 
@@ -9,20 +9,8 @@ const VersionParam = t.Object({
   version: t.String(),
 });
 
-export const versions = new Elysia({ prefix: "/versions" })
-  .use(requireOrg)
-  .post(
-    "/",
-    async ({ organizationId, body, status }) =>
-      status(201, await VersionService.create({
-        organizationId,
-        ...body,
-      })),
-    {
-      body: VersionModel.createBody,
-      response: { 201: VersionModel.webhookVersion },
-    }
-  )
+export const versionsRead = new Elysia({ prefix: "/versions" })
+  .use(requireScope("read:versions"))
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -54,6 +42,24 @@ export const versions = new Elysia({ prefix: "/versions" })
         200: VersionModel.webhookVersion,
         404: ErrorResponse,
       },
+    }
+  );
+
+export const versionsWrite = new Elysia({ prefix: "/versions" })
+  .use(requireScope("write:versions"))
+  .post(
+    "/",
+    async ({ organizationId, body, status }) =>
+      status(
+        201,
+        await VersionService.create({
+          organizationId,
+          ...body,
+        })
+      ),
+    {
+      body: VersionModel.createBody,
+      response: { 201: VersionModel.webhookVersion },
     }
   )
   .patch(

@@ -6,24 +6,12 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
-import { requireOrg } from "@/modules/auth";
+import { requireScope } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
 import { EndpointService } from "@/modules/endpoints/service";
 
-export const endpoints = new Elysia({ prefix: "/endpoints" })
-  .use(requireOrg)
-  .post(
-    "/",
-    async ({ organizationId, body, status }) =>
-      status(201, await EndpointService.create({
-        organizationId,
-        ...body,
-      })),
-    {
-      body: EndpointModel.createBody,
-      response: { 201: EndpointModel.endpoint },
-    }
-  )
+export const endpointsRead = new Elysia({ prefix: "/endpoints" })
+  .use(requireScope("read:endpoints"))
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -52,6 +40,24 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
         200: EndpointModel.endpoint,
         404: ErrorResponse,
       },
+    }
+  );
+
+export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
+  .use(requireScope("write:endpoints"))
+  .post(
+    "/",
+    async ({ organizationId, body, status }) =>
+      status(
+        201,
+        await EndpointService.create({
+          organizationId,
+          ...body,
+        })
+      ),
+    {
+      body: EndpointModel.createBody,
+      response: { 201: EndpointModel.endpoint },
     }
   )
   .patch(
@@ -97,7 +103,7 @@ export const endpoints = new Elysia({ prefix: "/endpoints" })
         organizationId,
         params.id,
         body.payload,
-        body.eventType,
+        body.eventType
       ),
     {
       params: IdParam,

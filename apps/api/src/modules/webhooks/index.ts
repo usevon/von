@@ -1,22 +1,25 @@
 import { NotFoundError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam, PaginationQuery } from "@/lib/models";
-import { requireOrg } from "@/modules/auth";
+import { requireScope } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
 import { WebhookService } from "@/modules/webhooks/service";
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
-  .use(requireOrg)
+  .use(requireScope("write:webhooks"))
   .post(
     "/",
     async ({ organizationId, body, status }) =>
-      status(201, await WebhookService.createEvent({
-        organizationId,
-        eventType: body.eventType,
-        payload: body.payload,
-        idempotencyKey: body.idempotencyKey,
-        endpointIds: body.endpointIds,
-      })),
+      status(
+        201,
+        await WebhookService.createEvent({
+          organizationId,
+          eventType: body.eventType,
+          payload: body.payload,
+          idempotencyKey: body.idempotencyKey,
+          endpointIds: body.endpointIds,
+        })
+      ),
     {
       body: WebhookModel.sendBody,
       response: { 201: WebhookModel.event },
@@ -25,18 +28,21 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   .post(
     "/batch",
     async ({ organizationId, body, status }) =>
-      status(201, await WebhookService.createBatch({
-        organizationId,
-        events: body.events,
-      })),
+      status(
+        201,
+        await WebhookService.createBatch({
+          organizationId,
+          events: body.events,
+        })
+      ),
     {
       body: WebhookModel.sendBatchBody,
       response: { 201: WebhookModel.batchResult },
     }
   );
 
-export const webhookEvents = new Elysia({ prefix: "/webhooks" })
-  .use(requireOrg)
+export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
+  .use(requireScope("read:webhooks"))
   .get(
     "/events",
     ({ organizationId, query }) =>
@@ -80,22 +86,21 @@ export const webhookEvents = new Elysia({ prefix: "/webhooks" })
           to: query.to,
         },
         query.limit ?? 20,
-        query.offset ?? 0,
+        query.offset ?? 0
       ),
     {
       params: IdParam,
       query: WebhookModel.deliveryQuery,
       response: WebhookModel.deliveryList,
     }
-  )
+  );
+
+export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
+  .use(requireScope("write:webhooks"))
   .post(
     "/events/:id/replay",
     async ({ organizationId, params, body }) =>
-      WebhookService.replayEvent(
-        organizationId,
-        params.id,
-        body.endpointIds,
-      ),
+      WebhookService.replayEvent(organizationId, params.id, body.endpointIds),
     {
       params: IdParam,
       body: WebhookModel.replayBody,
@@ -108,14 +113,10 @@ export const webhookEvents = new Elysia({ prefix: "/webhooks" })
   .post(
     "/events/replay",
     async ({ organizationId, body }) =>
-      WebhookService.replayBulk(
-        organizationId,
-        body.since,
-        {
-          status: body.status,
-          endpointId: body.endpointId,
-        },
-      ),
+      WebhookService.replayBulk(organizationId, body.since, {
+        status: body.status,
+        endpointId: body.endpointId,
+      }),
     {
       body: WebhookModel.bulkReplayBody,
       response: WebhookModel.bulkReplayResult,

@@ -5,16 +5,18 @@ import {
   deviceAuthorization,
   drizzleAdapter,
   emailHarmony,
+  hasScope,
   organization,
+  parseScopes,
 } from "@usevon/auth";
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
-import { UnauthorizedError } from "@usevon/utils";
+import { ForbiddenError, UnauthorizedError } from "@usevon/utils";
 import { APIError } from "better-auth/api";
-import isEmail from "validator/es/lib/isEmail.js";
-import mailchecker from "mailchecker";
 import { Elysia } from "elysia";
+import mailchecker from "mailchecker";
+import isEmail from "validator/es/lib/isEmail.js";
 
 import { env } from "@/env";
 import { userRateLimit } from "@/lib/rate-limit";
@@ -24,7 +26,8 @@ const redis = getRedisClient();
 type SessionInsert = typeof schema.session.$inferInsert;
 
 function buildSocialProviders() {
-  const providers: Record<string, { clientId: string; clientSecret: string }> = {};
+  const providers: Record<string, { clientId: string; clientSecret: string }> =
+    {};
 
   if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
     providers.google = {
@@ -42,9 +45,11 @@ function buildSocialProviders() {
 
   if (Object.keys(providers).length === 0) {
     if (env.NODE_ENV === "development") {
-      console.log("[Auth] No OAuth providers configured — social login disabled in development");
+      console.log(
+        "[Auth] No OAuth providers configured — social login disabled in development"
+      );
     }
-    return undefined;
+    return;
   }
 
   return providers;
@@ -209,35 +214,66 @@ const auth = betterAuth({
 
 export const requireOrg = new Elysia({ name: "require-org" })
   .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
-  .resolve({ as: "scoped" }, async ({ headers }): Promise<{ organizationId: string; userId: string }> => {
-    const authHeader = headers.authorization;
+  .resolve(
+    { as: "scoped" },
+    async ({
+      headers,
+    }): Promise<{
+      organizationId: string;
+      userId: string;
+      scopes: string[];
+    }> => {
+      const authHeader = headers.authorization;
 
-    if (authHeader?.startsWith("Bearer ")) {
-      const rawKey = authHeader.slice(7);
-      const result = await auth.api.verifyApiKey({
-        body: { key: rawKey },
+      if (authHeader?.startsWith("Bearer ")) {
+        const rawKey = authHeader.slice(7);
+        const result = await auth.api.verifyApiKey({
+          body: { key: rawKey },
+        });
+
+        if (result.valid && result.key?.organizationId) {
+          const keyId = result.key.id;
+          const now = Math.floor(Date.now() / 1000);
+          const day = new Date().toISOString().slice(0, 10);
+          // Track usage metrics in Redis (flushed to DB periodically)
+          redis.set(`api:lastUsed:${keyId}`, String(now));
+          redis.sadd("api:lastUsed:dirty", keyId);
+          redis.incr(`api:usage:${keyId}:${day}`);
+          redis.expire(`api:usage:${keyId}:${day}`, 90 * 86_400);
+
+          return {
+            organizationId: result.key.organizationId,
+            userId: result.key.userId ?? "",
+            scopes: parseScopes(
+              (result.key as { scopes?: string | null }).scopes ?? null
+            ),
+          };
+        }
+      }
+
+      const data = await auth.api.getSession({
+        headers: headers as HeadersInit,
       });
-
-      if (result.valid && result.key?.organizationId) {
+      if (data?.session?.activeOrganizationId) {
         return {
-          organizationId: result.key.organizationId,
-          userId: result.key.userId ?? "",
+          organizationId: data.session.activeOrganizationId,
+          userId: data.user?.id ?? "",
+          scopes: ["*"],
         };
       }
-    }
 
-    const data = await auth.api.getSession({
-      headers: headers as HeadersInit,
+      throw new UnauthorizedError("Please sign in or provide a valid API key.");
+    }
+  );
+
+export const requireScope = (scope: string) =>
+  new Elysia({ name: `scope:${scope}` })
+    .use(requireOrg)
+    .onBeforeHandle(({ scopes }) => {
+      if (!hasScope(scopes, scope)) {
+        throw new ForbiddenError("API key lacks required scope");
+      }
     });
-    if (data?.session?.activeOrganizationId) {
-      return {
-        organizationId: data.session.activeOrganizationId,
-        userId: data.user?.id ?? "",
-      };
-    }
-
-    throw new UnauthorizedError("Please sign in or provide a valid API key.");
-  });
 
 export async function validateSession(
   headers: Record<string, string>

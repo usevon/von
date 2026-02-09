@@ -4,11 +4,20 @@ import { Elysia } from "elysia";
 import { env } from "@/env";
 import { idempotency } from "@/lib/idempotency";
 import { auth } from "@/modules/auth";
-import { endpoints } from "@/modules/endpoints";
-import { inbound, inboundPublic } from "@/modules/inbound";
-import { tunnelProxy, tunnelRegister, tunnelWs } from "@/modules/tunnel";
-import { versions } from "@/modules/versions";
-import { webhookEvents, webhooks } from "@/modules/webhooks";
+import { endpointsRead, endpointsWrite } from "@/modules/endpoints";
+import { inboundPublic, inboundRead, inboundWrite } from "@/modules/inbound";
+import {
+  tunnelProxy,
+  tunnelRegisterRead,
+  tunnelRegisterWrite,
+  tunnelWs,
+} from "@/modules/tunnel";
+import { versionsRead, versionsWrite } from "@/modules/versions";
+import {
+  webhookEventsRead,
+  webhookEventsWrite,
+  webhooks,
+} from "@/modules/webhooks";
 
 const getCorsOrigins = () => {
   if (env.CORS_ORIGINS) {
@@ -43,14 +52,19 @@ export const app = new Elysia({
   .use(idempotency())
   .use(corsMiddleware)
   .mount(auth.handler)
-  .use(tunnelRegister)
+  .use(tunnelRegisterWrite)
+  .use(tunnelRegisterRead)
   .use(tunnelWs)
   .use(inboundPublic)
   .use(webhooks)
-  .use(webhookEvents)
-  .use(endpoints)
-  .use(inbound)
-  .use(versions)
-  .group("/t", (app) => app.use(tunnelProxy));
+  .use(webhookEventsRead)
+  .use(webhookEventsWrite)
+  .use(endpointsRead)
+  .use(endpointsWrite)
+  .use(inboundRead)
+  .use(inboundWrite)
+  .use(versionsRead)
+  .use(versionsWrite)
+  .group("/t", (group) => group.use(tunnelProxy));
 
 export type App = typeof app;

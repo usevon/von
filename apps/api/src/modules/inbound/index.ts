@@ -7,24 +7,12 @@ import {
   SuccessResponse,
 } from "@/lib/models";
 import { rateLimit } from "@/lib/rate-limit";
-import { requireOrg } from "@/modules/auth";
+import { requireScope } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
 
-export const inbound = new Elysia({ prefix: "/inbound" })
-  .use(requireOrg)
-  .post(
-    "/",
-    async ({ organizationId, body, status }) =>
-      status(201, await InboundService.create({
-        organizationId,
-        ...body,
-      })),
-    {
-      body: InboundModel.createEndpointBody,
-      response: { 201: InboundModel.inboundEndpoint },
-    }
-  )
+export const inboundRead = new Elysia({ prefix: "/inbound" })
+  .use(requireScope("read:inbound"))
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -53,6 +41,24 @@ export const inbound = new Elysia({ prefix: "/inbound" })
         200: InboundModel.inboundEndpoint,
         404: ErrorResponse,
       },
+    }
+  );
+
+export const inboundWrite = new Elysia({ prefix: "/inbound" })
+  .use(requireScope("write:inbound"))
+  .post(
+    "/",
+    async ({ organizationId, body, status }) =>
+      status(
+        201,
+        await InboundService.create({
+          organizationId,
+          ...body,
+        })
+      ),
+    {
+      body: InboundModel.createEndpointBody,
+      response: { 201: InboundModel.inboundEndpoint },
     }
   )
   .patch(
