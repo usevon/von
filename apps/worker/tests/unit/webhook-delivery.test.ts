@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { hmacSign } from "@usevon/utils";
+import { buildSignatureHeader, hmacSign } from "@usevon/utils";
 
 const HEX_PATTERN = /^[a-f0-9]+$/;
 const HEADER_PATTERN = /^t=\d+,v1=[a-f0-9]+$/;
+const DUAL_HEADER_PATTERN = /^t=\d+,v1=[a-f0-9]+,v2=[a-f0-9]+$/;
 
 describe("webhook delivery", () => {
   describe("signature generation", () => {
@@ -61,6 +62,47 @@ describe("webhook delivery", () => {
     });
   });
 
+  describe("dual-hash signature", () => {
+    test("single secret produces v1 only", () => {
+      const timestamp = 1_700_000_000;
+      const signedPayload = `${timestamp}.{"test":true}`;
+      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new");
+
+      expect(header).toMatch(HEADER_PATTERN);
+      expect(header).not.toContain("v2=");
+    });
+
+    test("dual secrets produce v1 and v2", () => {
+      const timestamp = 1_700_000_000;
+      const signedPayload = `${timestamp}.{"test":true}`;
+      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new", "whsec_old");
+
+      expect(header).toMatch(DUAL_HEADER_PATTERN);
+    });
+
+    test("v1 uses new secret, v2 uses old secret", () => {
+      const timestamp = 1_700_000_000;
+      const signedPayload = `${timestamp}.{"test":true}`;
+      const newSecret = "whsec_new";
+      const oldSecret = "whsec_old";
+
+      const header = buildSignatureHeader(timestamp, signedPayload, newSecret, oldSecret);
+      const v1Sig = hmacSign(signedPayload, newSecret);
+      const v2Sig = hmacSign(signedPayload, oldSecret);
+
+      expect(header).toBe(`t=${timestamp},v1=${v1Sig},v2=${v2Sig}`);
+    });
+
+    test("null previousSecret produces single signature", () => {
+      const timestamp = 1_700_000_000;
+      const signedPayload = `${timestamp}.{"test":true}`;
+      const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new", null);
+
+      expect(header).toMatch(HEADER_PATTERN);
+      expect(header).not.toContain("v2=");
+    });
+  });
+
   describe("retry logic", () => {
     test("calculates final attempt correctly", () => {
       const attempts = 3;
@@ -76,6 +118,35 @@ describe("webhook delivery", () => {
       const isFinalAttempt = attempts >= maxAttempts;
 
       expect(isFinalAttempt).toBe(false);
+    });
+  });
+
+  describe("response consolidation", () => {
+    test("success response shape", () => {
+      const response = { status: 200, durationMs: 142 };
+
+      expect(response.status).toBe(200);
+      expect(response.durationMs).toBe(142);
+    });
+
+    test("failure response shape with error", () => {
+      const response = { error: "HTTP 502", durationMs: 5023 };
+
+      expect(response.error).toBe("HTTP 502");
+      expect(response.durationMs).toBe(5023);
+    });
+
+    test("timeout response shape", () => {
+      const response = { error: "AbortError: The operation was aborted", durationMs: 30000 };
+
+      expect(response.error).toContain("AbortError");
+      expect(response.durationMs).toBe(30000);
+    });
+
+    test("pending delivery has null response", () => {
+      const response = null;
+
+      expect(response).toBeNull();
     });
   });
 

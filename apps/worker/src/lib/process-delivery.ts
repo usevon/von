@@ -2,7 +2,6 @@ import { db } from "@usevon/db";
 import {
   CIRCUIT_CONFIG,
   type CircuitState,
-  hmacSign,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "@usevon/utils";
@@ -35,6 +34,7 @@ type BaseJobData = {
   endpoint: {
     id: string;
     secret: string;
+    previousSecret?: string | null;
     timeoutMs: number;
     retryCount: number;
   };
@@ -52,11 +52,14 @@ export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
     attempts: number;
     now: Date;
     responseStatus: number;
+    durationMs: number;
   }) => Record<string, unknown>;
   buildFailureSet: (params: {
     attempts: number;
     now: Date;
     isFinalAttempt: boolean;
+    durationMs: number;
+    error: string;
   }) => Record<string, unknown>;
   buildRequest: (params: {
     payload: string;
@@ -143,15 +146,16 @@ export async function processDelivery<TJob extends BaseJobData>(
   const now = new Date();
   const timestamp = Math.floor(now.getTime() / 1000);
   const signedPayload = `${timestamp}.${finalPayload}`;
-  const signature = hmacSign(signedPayload, ep.secret);
 
   const request = config.buildRequest({
     payload: finalPayload,
     timestamp,
-    signature,
+    signature: signedPayload,
     deliveryId,
     job: job.data,
   });
+
+  const start = performance.now();
 
   try {
     const response = await fetch(request.url, {
@@ -161,6 +165,8 @@ export async function processDelivery<TJob extends BaseJobData>(
       signal: AbortSignal.timeout(ep.timeoutMs),
     });
 
+    const durationMs = Math.round(performance.now() - start);
+
     if (response.ok) {
       await Promise.all([
         db
@@ -169,6 +175,7 @@ export async function processDelivery<TJob extends BaseJobData>(
             attempts: deliveryRecord.attempts + 1,
             now,
             responseStatus: response.status,
+            durationMs,
           }))
           .where(eq(config.deliveryTable.id, deliveryId)),
         db
@@ -185,6 +192,7 @@ export async function processDelivery<TJob extends BaseJobData>(
       throw new Error(`HTTP ${response.status}`);
     }
   } catch (error) {
+    const durationMs = Math.round(performance.now() - start);
     const attempts = deliveryRecord.attempts + 1;
     const maxAttempts = ep.retryCount;
     const isFinalAttempt = attempts >= maxAttempts;
@@ -192,7 +200,13 @@ export async function processDelivery<TJob extends BaseJobData>(
     const [, [endpointResult]] = await Promise.all([
       db
         .update(config.deliveryTable)
-        .set(config.buildFailureSet({ attempts, now, isFinalAttempt }))
+        .set(config.buildFailureSet({
+          attempts,
+          now,
+          isFinalAttempt,
+          durationMs,
+          error: String(error).slice(0, 500),
+        }))
         .where(eq(config.deliveryTable.id, deliveryId)),
       db
         .update(config.endpointTable)

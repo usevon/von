@@ -1,6 +1,7 @@
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
 import type { InboundForwardingJob } from "@usevon/queue";
+import { buildSignatureHeader } from "@usevon/utils";
 import { createWorker } from "@/lib/create-worker";
 import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
 import { eq, sql } from "drizzle-orm";
@@ -44,21 +45,22 @@ const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
     status,
   }),
 
-  buildSuccessSet: ({ attempts, now, responseStatus }) => ({
+  buildSuccessSet: ({ attempts, now, responseStatus, durationMs }) => ({
     status: "forwarded",
     attempts,
     lastAttemptAt: now,
     forwardedAt: now,
-    responseStatus,
+    response: { status: responseStatus, durationMs },
   }),
 
-  buildFailureSet: ({ attempts, now, isFinalAttempt }) => ({
+  buildFailureSet: ({ attempts, now, isFinalAttempt, durationMs, error }) => ({
     status: isFinalAttempt ? "failed" : "pending",
     attempts,
     lastAttemptAt: now,
+    ...(isFinalAttempt ? { response: { error, durationMs } } : {}),
   }),
 
-  buildRequest: ({ payload, timestamp, signature, deliveryId, job }) => {
+  buildRequest: ({ payload, timestamp, signature: signedPayload, deliveryId, job }) => {
     const originalHeaders: Record<string, string> = job.headers
       ? JSON.parse(job.headers)
       : {};
@@ -74,7 +76,12 @@ const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
       url: job.endpoint.forwardUrl,
       headers: {
         ...safeHeaders,
-        "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+        "X-Von-Signature": buildSignatureHeader(
+          timestamp,
+          signedPayload,
+          job.endpoint.secret,
+          job.endpoint.previousSecret,
+        ),
         "X-Von-Timestamp": String(timestamp),
         "X-Von-Inbound-Delivery-Id": deliveryId,
       },

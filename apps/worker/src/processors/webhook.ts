@@ -1,7 +1,7 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, webhookVersion } from "@usevon/db/schema";
 import { getRedisClient, type WebhookDeliveryJob } from "@usevon/queue";
-import { applyTransforms, type Transforms } from "@usevon/utils";
+import { applyTransforms, buildSignatureHeader, type Transforms } from "@usevon/utils";
 import { createWorker } from "@/lib/create-worker";
 import { log } from "@/lib/logger";
 import { processDelivery, type DeliveryConfig } from "@/lib/process-delivery";
@@ -75,29 +75,32 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
 
   buildStatusSet: (status) => ({
     status,
-    updatedAt: new Date(),
   }),
 
-  buildSuccessSet: ({ attempts, now, responseStatus }) => ({
+  buildSuccessSet: ({ attempts, now, responseStatus, durationMs }) => ({
     status: "delivered",
     attempts,
     lastAttemptAt: now,
-    responseStatus,
-    updatedAt: now,
+    response: { status: responseStatus, durationMs },
   }),
 
-  buildFailureSet: ({ attempts, now, isFinalAttempt }) => ({
+  buildFailureSet: ({ attempts, now, isFinalAttempt, durationMs, error }) => ({
     status: isFinalAttempt ? "failed" : "pending",
     attempts,
     lastAttemptAt: now,
-    updatedAt: now,
+    ...(isFinalAttempt ? { response: { error, durationMs } } : {}),
   }),
 
-  buildRequest: ({ payload, timestamp, signature, deliveryId, job }) => ({
+  buildRequest: ({ payload, timestamp, signature: signedPayload, deliveryId, job }) => ({
     url: job.endpoint.url,
     headers: {
       "Content-Type": "application/json",
-      "X-Von-Signature": `t=${timestamp},v1=${signature}`,
+      "X-Von-Signature": buildSignatureHeader(
+        timestamp,
+        signedPayload,
+        job.endpoint.secret,
+        job.endpoint.previousSecret,
+      ),
       "X-Von-Timestamp": String(timestamp),
       "X-Von-Event-Type": job.eventType,
       "X-Von-Delivery-Id": deliveryId,
@@ -129,7 +132,7 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
       );
       await db
         .update(delivery)
-        .set({ status: "failed", updatedAt: new Date() })
+        .set({ status: "failed" })
         .where(eq(delivery.id, job.deliveryId));
       return null;
     }
