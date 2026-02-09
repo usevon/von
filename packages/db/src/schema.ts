@@ -204,6 +204,7 @@ export const endpoint = pgTable(
     url: text("url").notNull(),
     description: text("description"),
     secret: text("secret").notNull(),
+    previousSecret: text("previous_secret"),
     status: text("status").default("active").notNull(),
     version: date("version"),
     retryCount: integer("retry_count").default(3).notNull(),
@@ -236,7 +237,7 @@ export const event = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("event_organization_id_idx").on(table.organizationId),
+    index("event_org_created_idx").on(table.organizationId, table.createdAt),
     unique("event_org_idempotency_unique").on(
       table.organizationId,
       table.idempotencyKey
@@ -257,18 +258,12 @@ export const delivery = pgTable(
     status: text("status").default("pending").notNull(),
     attempts: integer("attempts").default(0).notNull(),
     lastAttemptAt: timestamp("last_attempt_at"),
-    responseStatus: integer("response_status"),
-    responseBody: text("response_body"),
+    response: jsonb("response"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
   },
   (table) => [
     index("delivery_event_id_idx").on(table.eventId),
-    index("delivery_endpoint_id_idx").on(table.endpointId),
-    index("delivery_status_idx").on(table.status),
+    index("delivery_endpoint_status_idx").on(table.endpointId, table.status),
   ]
 );
 
@@ -282,6 +277,7 @@ export const inboundEndpoint = pgTable(
     name: text("name"),
     provider: text("provider"),
     secret: text("secret").notNull(),
+    previousSecret: text("previous_secret"),
     forwardUrl: text("forward_url").notNull(),
     status: text("status").default("active").notNull(),
     retryCount: integer("retry_count").default(3).notNull(),
@@ -315,13 +311,15 @@ export const inboundDelivery = pgTable(
     attempts: integer("attempts").default(0).notNull(),
     lastAttemptAt: timestamp("last_attempt_at"),
     forwardedAt: timestamp("forwarded_at"),
-    responseStatus: integer("response_status"),
-    responseBody: text("response_body"),
+    response: jsonb("response"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("inbound_delivery_endpoint_id_idx").on(table.inboundEndpointId),
-    index("inbound_delivery_status_idx").on(table.status),
+    index("inbound_delivery_endpoint_status_idx").on(
+      table.inboundEndpointId,
+      table.status
+    ),
   ]
 );
 

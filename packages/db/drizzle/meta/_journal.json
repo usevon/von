@@ -29,6 +29,13 @@
       "when": 1707350400000,
       "tag": "0003_drop-tunnel-last-ping-at",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1707436800000,
+      "tag": "0004_delivery-response-consolidation",
+      "breakpoints": true
     }
   ]
 }
