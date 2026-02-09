@@ -36,6 +36,7 @@ function serializeApiKey(apiKey: ApiKey): string {
     createdAt: apiKey.createdAt.toISOString(),
     updatedAt: apiKey.updatedAt.toISOString(),
     expiresAt: apiKey.expiresAt?.toISOString() ?? null,
+    lastUsedAt: apiKey.lastUsedAt?.toISOString() ?? null,
   });
 }
 
@@ -51,6 +52,7 @@ function deserializeApiKey(data: unknown): ApiKey | null {
       createdAt: new Date(parsed.createdAt),
       updatedAt: new Date(parsed.updatedAt),
       expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
+      lastUsedAt: parsed.lastUsedAt ? new Date(parsed.lastUsedAt) : null,
     } as ApiKey;
   } catch {
     return null;

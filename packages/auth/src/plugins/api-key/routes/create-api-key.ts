@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ERROR_CODES } from "@/plugins/api-key";
 import { setApiKey } from "@/plugins/api-key/adapter";
 import { hashKey } from "@/plugins/api-key/crypto";
+import { VALID_SCOPES } from "@/plugins/api-key/scopes";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
 const API_KEY_TABLE_NAME = "apikey";
@@ -35,10 +36,11 @@ export function createApiKey({
         expiresIn: z.number().min(1).optional(),
         environment: z.enum(["dev", "staging", "prod"]),
         organizationId: z.string().optional(),
+        scopes: z.array(z.string()).optional(),
       }),
     },
     async (ctx) => {
-      const { name, expiresIn, environment, organizationId } = ctx.body;
+      const { name, expiresIn, environment, organizationId, scopes } = ctx.body;
 
       const session = await getSessionFromCtx(ctx);
       if (!session) {
@@ -81,6 +83,16 @@ export function createApiKey({
         }
       }
 
+      if (scopes) {
+        const validScopeSet = new Set<string>(VALID_SCOPES);
+        const invalid = scopes.filter((s) => !validScopeSet.has(s));
+        if (invalid.length > 0) {
+          throw new APIError("BAD_REQUEST", {
+            message: `Invalid scopes: ${invalid.join(", ")}`,
+          });
+        }
+      }
+
       const key = await keyGenerator(environment);
       const hashed = hashKey(key);
       const start = key.substring(0, startLength);
@@ -92,8 +104,10 @@ export function createApiKey({
         userId: session.user.id,
         organizationId: organizationId ?? null,
         environment,
+        scopes: scopes ? JSON.stringify(scopes) : null,
         enabled: true,
         expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
+        lastUsedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

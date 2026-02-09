@@ -45,6 +45,11 @@ export const apiKeySchema = () =>
           required: true,
           input: false,
         },
+        scopes: {
+          type: "string",
+          required: false,
+          input: false,
+        },
         enabled: {
           type: "boolean",
           required: false,
@@ -52,6 +57,11 @@ export const apiKeySchema = () =>
           defaultValue: true,
         },
         expiresAt: {
+          type: "date",
+          required: false,
+          input: false,
+        },
+        lastUsedAt: {
           type: "date",
           required: false,
           input: false,

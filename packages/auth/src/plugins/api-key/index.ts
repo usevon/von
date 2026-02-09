@@ -14,12 +14,24 @@ const MAX_EXPIRES_DAYS = 365;
 const MAX_KEYS_PER_USER = 20;
 
 function generateRandomString(length: number): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
-  const randomValues = new Uint8Array(length);
+  // Generate extra bytes to account for rejection sampling
+  const randomValues = new Uint8Array(length * 2);
   crypto.getRandomValues(randomValues);
-  for (let i = 0; i < length; i++) {
-    result += chars[randomValues[i] % chars.length];
+  for (let i = 0, j = 0; i < length; j++) {
+    if (j >= randomValues.length) {
+      // Extremely unlikely: refill random bytes
+      crypto.getRandomValues(randomValues);
+      j = 0;
+    }
+    const byte = randomValues[j];
+    // Reject bytes >= 248 to eliminate modulo bias (248 = 62 * 4)
+    if (byte < 248) {
+      result += chars[byte % 62];
+      i++;
+    }
   }
   return result;
 }

@@ -6,6 +6,7 @@ import {
 import { z } from "zod";
 import { ERROR_CODES } from "@/plugins/api-key";
 import { setApiKey } from "@/plugins/api-key/adapter";
+import { VALID_SCOPES } from "@/plugins/api-key/scopes";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
 const API_KEY_TABLE_NAME = "apikey";
@@ -25,6 +26,7 @@ export function updateApiKey({
         keyId: z.string(),
         name: z.string().min(1).max(maxNameLength).optional(),
         enabled: z.boolean().optional(),
+        scopes: z.array(z.string()).optional(),
       }),
     },
     async (ctx) => {
@@ -35,7 +37,7 @@ export function updateApiKey({
         });
       }
 
-      const { keyId, name, enabled } = ctx.body;
+      const { keyId, name, enabled, scopes } = ctx.body;
 
       const apiKey = await ctx.context.adapter.findOne<ApiKey>({
         model: API_KEY_TABLE_NAME,
@@ -54,6 +56,16 @@ export function updateApiKey({
         });
       }
 
+      if (scopes) {
+        const validScopeSet = new Set<string>(VALID_SCOPES);
+        const invalid = scopes.filter((s) => !validScopeSet.has(s));
+        if (invalid.length > 0) {
+          throw new APIError("BAD_REQUEST", {
+            message: `Invalid scopes: ${invalid.join(", ")}`,
+          });
+        }
+      }
+
       const update: Partial<ApiKey> = {
         updatedAt: new Date(),
       };
@@ -63,6 +75,9 @@ export function updateApiKey({
       }
       if (enabled !== undefined) {
         update.enabled = enabled;
+      }
+      if (scopes !== undefined) {
+        update.scopes = JSON.stringify(scopes);
       }
 
       const updated = await ctx.context.adapter.update<ApiKey>({
