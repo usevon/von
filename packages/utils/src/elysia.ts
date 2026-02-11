@@ -5,6 +5,7 @@ import {
   BadRequestError,
   InternalServerError,
   NotFoundError,
+  TooManyRequestsError,
   UnauthorizedError,
 } from "@/errors";
 
@@ -39,6 +40,7 @@ export const vonBase = (opts: VonBaseOptions) =>
       UnauthorizedError,
       NotFoundError,
       BadRequestError,
+      TooManyRequestsError,
       InternalServerError,
     })
     .onError(({ code, error, set }) => {

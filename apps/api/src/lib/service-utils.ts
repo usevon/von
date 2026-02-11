@@ -2,6 +2,7 @@ import {
   BadRequestError,
   InternalServerError,
   NotFoundError,
+  TooManyRequestsError,
   UnauthorizedError,
 } from "@usevon/utils";
 import { log } from "@/lib/logger";
@@ -10,6 +11,7 @@ const isKnownError = (error: unknown): boolean =>
   error instanceof BadRequestError ||
   error instanceof NotFoundError ||
   error instanceof UnauthorizedError ||
+  error instanceof TooManyRequestsError ||
   error instanceof InternalServerError;
 
 export const withServiceError = async <T>(

@@ -12,6 +12,10 @@ export const UnauthorizedError = createHttpError(401, "Unauthorized");
 export const NotFoundError = createHttpError(404, "Not found");
 export const BadRequestError = createHttpError(400, "Bad request");
 export const ForbiddenError = createHttpError(403, "Forbidden");
+export const TooManyRequestsError = createHttpError(
+  429,
+  "Too many requests"
+);
 export const InternalServerError = createHttpError(
   500,
   "Internal server error"
