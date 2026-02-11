@@ -1,4 +1,4 @@
-import { NotFoundError } from "@usevon/utils";
+import { NotFoundError, TooManyRequestsError } from "@usevon/utils";
 import { Elysia, t } from "elysia";
 import {
   ErrorResponse,
@@ -7,6 +7,8 @@ import {
   SuccessResponse,
 } from "@/lib/models";
 import { rateLimit } from "@/lib/rate-limit";
+import { checkThroughputLimit } from "@/lib/throughput-limit";
+import { getOrgPlan } from "@/lib/org-plan";
 import { requireScope } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
@@ -120,6 +122,18 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         return status(403, { error: "Endpoint is not active" });
       }
 
+      const plan = await getOrgPlan(endpoint.organizationId);
+      const { allowed } = await checkThroughputLimit(
+        endpoint.organizationId,
+        plan,
+        1
+      );
+      if (!allowed) {
+        throw new TooManyRequestsError(
+          "Throughput limit exceeded. Try again shortly."
+        );
+      }
+
       const headerRecord: Record<string, string> = {};
       for (const [key, value] of Object.entries(headers)) {
         if (typeof value === "string") {
@@ -129,6 +143,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
 
       return InboundService.receive({
         endpointId: params.id,
+        organizationId: endpoint.organizationId,
         endpoint: {
           id: endpoint.id,
           forwardUrl: endpoint.forwardUrl,
@@ -149,6 +164,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         403: ErrorResponse,
         404: ErrorResponse,
         413: ErrorResponse,
+        429: ErrorResponse,
       },
     }
   );

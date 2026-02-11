@@ -1,12 +1,14 @@
 import { NotFoundError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam, PaginationQuery } from "@/lib/models";
+import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { requireScope } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
 import { WebhookService } from "@/modules/webhooks/service";
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(requireScope("write:webhooks"))
+  .use(orgThroughputLimit)
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -97,6 +99,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
 
 export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
   .use(requireScope("write:webhooks"))
+  .use(orgThroughputLimit)
   .post(
     "/events/:id/replay",
     async ({ organizationId, params, body }) =>

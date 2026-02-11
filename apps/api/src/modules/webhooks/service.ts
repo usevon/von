@@ -2,20 +2,32 @@ import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
+  getRedisClient,
   getWebhookDeliveryQueue,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
 import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import {
   BadRequestError,
+  getPlanLimits,
   InternalServerError,
   matchesEventType,
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { getOrgPlan } from "@/lib/org-plan";
 import { withServiceError } from "@/lib/service-utils";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
+
+const redis = getRedisClient();
+const DELIVERY_TTL = 45 * 86_400; // 45 days
+
+function getMonthKey(orgId: string): string {
+  const now = new Date();
+  const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `org:deliveries:${orgId}:${month}`;
+}
 
 type EventRow = typeof event.$inferSelect;
 type DeliveryRow = typeof delivery.$inferSelect;
@@ -182,6 +194,14 @@ export abstract class WebhookService {
         }
       }
 
+      const plan = await getOrgPlan(params.organizationId);
+      const limits = getPlanLimits(plan);
+      const monthKey = getMonthKey(params.organizationId);
+      const currentUsage = Number(await redis.get(monthKey)) || 0;
+      if (!limits.hasOverage && currentUsage >= limits.monthlyDeliveries) {
+        throw new BadRequestError("Monthly delivery quota exceeded");
+      }
+
       const now = new Date();
       const nowIso = now.toISOString();
       const idempotencyKeys = params.events
@@ -271,6 +291,14 @@ export abstract class WebhookService {
       });
 
       await enqueueJobs(allJobs, insertedIds);
+
+      const deliveryCount = allDeliveries.filter((d) =>
+        insertedIds.has(d.eventId)
+      ).length;
+      if (deliveryCount > 0) {
+        await redis.incrby(monthKey, deliveryCount);
+        await redis.expire(monthKey, DELIVERY_TTL);
+      }
 
       for (const e of newEvents) {
         if (insertedIds.has(e.id)) {
