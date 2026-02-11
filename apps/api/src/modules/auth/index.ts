@@ -247,17 +247,17 @@ async function resolveAuth(headers: Record<string, string | null>): Promise<{
       if (result.valid && result.key?.organizationId) {
         const keyId = result.key.id;
         const now = Math.floor(Date.now() / 1000);
-        const day = new Date().toISOString().slice(0, 10);
         redis.set(`api:lastUsed:${keyId}`, String(now));
         redis.sadd("api:lastUsed:dirty", keyId);
-        redis.incr(`api:usage:${keyId}:${day}`);
-        redis.expire(`api:usage:${keyId}:${day}`, 90 * 86_400);
 
         return {
           organizationId: result.key.organizationId,
           userId: result.key.userId ?? "",
           scopes: parseScopes(
-            (result.key as { scopes?: string | null }).scopes ?? null
+            (result.key as Record<string, unknown>).scopes as
+              | string
+              | string[]
+              | null
           ),
         };
       }

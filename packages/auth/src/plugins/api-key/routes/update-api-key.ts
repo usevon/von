@@ -77,7 +77,7 @@ export function updateApiKey({
         update.enabled = enabled;
       }
       if (scopes !== undefined) {
-        update.scopes = JSON.stringify(scopes);
+        update.scopes = scopes;
       }
 
       const updated = await ctx.context.adapter.update<ApiKey>({

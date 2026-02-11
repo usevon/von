@@ -17,7 +17,7 @@ export type ApiKey = {
   userId: string;
   organizationId: string | null;
   environment: string;
-  scopes: string | null;
+  scopes: string[] | null;
   enabled: boolean;
   expiresAt: Date | null;
   lastUsedAt: Date | null;

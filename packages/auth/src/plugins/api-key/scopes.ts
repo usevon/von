@@ -16,9 +16,12 @@ export const VALID_SCOPES = [
 
 export type Scope = (typeof VALID_SCOPES)[number];
 
-export function parseScopes(raw: string | null): string[] {
+export function parseScopes(raw: string | string[] | null): string[] {
   if (!raw) {
     return ["*"];
+  }
+  if (Array.isArray(raw)) {
+    return raw;
   }
   try {
     return JSON.parse(raw);

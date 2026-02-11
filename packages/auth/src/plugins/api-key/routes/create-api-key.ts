@@ -104,7 +104,7 @@ export function createApiKey({
         userId: session.user.id,
         organizationId: organizationId ?? null,
         environment,
-        scopes: scopes ? JSON.stringify(scopes) : null,
+        scopes: scopes ?? null,
         enabled: true,
         expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
         lastUsedAt: null,

@@ -94,6 +94,7 @@ export const organization = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     logo: text("logo"),
+    plan: text("plan").default("hobby").notNull(),
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
   },
@@ -179,7 +180,7 @@ export const apikey = pgTable(
       onDelete: "cascade",
     }),
     environment: text("environment").notNull(),
-    scopes: text("scopes"),
+    scopes: jsonb("scopes").$type<string[]>(),
     enabled: boolean("enabled").default(true),
     expiresAt: timestamp("expires_at"),
     lastUsedAt: timestamp("last_used_at"),
@@ -190,7 +191,7 @@ export const apikey = pgTable(
       .notNull(),
   },
   (table) => [
-    index("apikey_key_idx").on(table.key),
+    uniqueIndex("apikey_key_uidx").on(table.key),
     index("apikey_user_id_idx").on(table.userId),
     index("apikey_organization_id_idx").on(table.organizationId),
   ]
