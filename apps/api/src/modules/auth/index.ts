@@ -141,6 +141,18 @@ const auth = betterAuth({
     }),
     bearer(),
     organization({
+      schema: {
+        organization: {
+          fields: {
+            plan: {
+              type: "string",
+              required: false,
+              defaultValue: "hobby",
+              input: false,
+            },
+          },
+        },
+      },
       organizationHooks: {
         afterAddMember: async ({ member }) => {
           await db
