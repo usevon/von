@@ -1,9 +1,7 @@
 import { db, eq } from "@usevon/db";
 import { apikey } from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
-import { createLogger } from "@usevon/utils/logger";
-
-const log = createLogger({ name: "api-key-flush" });
+import { log } from "@/lib/logger";
 
 async function flushLastUsed() {
   const redis = getRedisClient();
