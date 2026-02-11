@@ -1,39 +1,15 @@
-export class UnauthorizedError extends Error {
-  status = 401;
-  constructor(message = "Unauthorized") {
-    super(message);
-    this.name = "UnauthorizedError";
-  }
+function createHttpError(status: number, defaultMessage: string) {
+  return class extends Error {
+    status = status;
+    constructor(message = defaultMessage) {
+      super(message);
+      this.name = this.constructor.name;
+    }
+  };
 }
 
-export class NotFoundError extends Error {
-  status = 404;
-  constructor(message = "Not found") {
-    super(message);
-    this.name = "NotFoundError";
-  }
-}
-
-export class BadRequestError extends Error {
-  status = 400;
-  constructor(message = "Bad request") {
-    super(message);
-    this.name = "BadRequestError";
-  }
-}
-
-export class ForbiddenError extends Error {
-  status = 403;
-  constructor(message = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
-
-export class InternalServerError extends Error {
-  status = 500;
-  constructor(message = "Internal server error") {
-    super(message);
-    this.name = "InternalServerError";
-  }
-}
+export const UnauthorizedError = createHttpError(401, "Unauthorized");
+export const NotFoundError = createHttpError(404, "Not found");
+export const BadRequestError = createHttpError(400, "Bad request");
+export const ForbiddenError = createHttpError(403, "Forbidden");
+export const InternalServerError = createHttpError(500, "Internal server error");
