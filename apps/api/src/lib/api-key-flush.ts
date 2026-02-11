@@ -28,4 +28,4 @@ async function flushLastUsed() {
   }
 }
 
-setInterval(flushLastUsed, 60_000);
+setInterval(flushLastUsed, 300_000);
