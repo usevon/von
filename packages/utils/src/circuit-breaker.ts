@@ -11,30 +11,21 @@ export type CircuitBreakerState = {
   failureCount: number;
 };
 
-export function isCircuitOpen(state: CircuitBreakerState): boolean {
-  if (state.circuitState !== "open") {
-    return false;
-  }
-  if (!state.circuitOpenedAt) {
-    return false;
-  }
+function getElapsedSinceOpen(state: CircuitBreakerState): number | null {
+  if (state.circuitState !== "open" || !state.circuitOpenedAt) return null;
+  return Date.now() - state.circuitOpenedAt.getTime();
+}
 
-  const timeSinceOpen = Date.now() - state.circuitOpenedAt.getTime();
-  return timeSinceOpen < CIRCUIT_CONFIG.resetTimeoutMs;
+export function isCircuitOpen(state: CircuitBreakerState): boolean {
+  const elapsed = getElapsedSinceOpen(state);
+  return elapsed !== null && elapsed < CIRCUIT_CONFIG.resetTimeoutMs;
 }
 
 export function shouldTransitionToHalfOpen(
   state: CircuitBreakerState
 ): boolean {
-  if (state.circuitState !== "open") {
-    return false;
-  }
-  if (!state.circuitOpenedAt) {
-    return false;
-  }
-
-  const timeSinceOpen = Date.now() - state.circuitOpenedAt.getTime();
-  return timeSinceOpen >= CIRCUIT_CONFIG.resetTimeoutMs;
+  const elapsed = getElapsedSinceOpen(state);
+  return elapsed !== null && elapsed >= CIRCUIT_CONFIG.resetTimeoutMs;
 }
 
 export function getSuccessUpdate(): {
