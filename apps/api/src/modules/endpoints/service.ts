@@ -20,6 +20,7 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
+import { reserveMonthlyQuota } from "@/lib/delivery-quota";
 import { withServiceError } from "@/lib/service-utils";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
@@ -253,6 +254,7 @@ export abstract class EndpointService {
   static testEndpoint(
     organizationId: string,
     endpointId: string,
+    plan: string,
     payload?: unknown,
     eventType?: string
   ): Promise<EndpointModel.testResponse> {
@@ -288,6 +290,8 @@ export abstract class EndpointService {
         timestamp: now.toISOString(),
       };
       const payloadStr = JSON.stringify(testPayload);
+
+      await reserveMonthlyQuota(organizationId, plan, 1);
 
       const eventId = crypto.randomUUID();
       const deliveryId = crypto.randomUUID();

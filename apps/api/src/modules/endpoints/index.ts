@@ -6,6 +6,7 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
+import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { requireScope } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
 import { EndpointService } from "@/modules/endpoints/service";
@@ -45,6 +46,7 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
 
 export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   .use(requireScope("write:endpoints"))
+  .use(orgThroughputLimit)
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -98,10 +100,11 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   )
   .post(
     "/:id/test",
-    async ({ organizationId, params, body }) =>
+    async ({ organizationId, plan, params, body }) =>
       EndpointService.testEndpoint(
         organizationId,
         params.id,
+        plan,
         body.payload,
         body.eventType
       ),
