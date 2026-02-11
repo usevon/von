@@ -3,8 +3,6 @@ import { getPlanLimits, TooManyRequestsError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { getOrgPlan } from "@/lib/org-plan";
 
-const redis = getRedisClient();
-
 const TOKEN_BUCKET_SCRIPT = `
 local key = KEYS[1]
 local rate = tonumber(ARGV[1])
@@ -44,9 +42,9 @@ export async function checkThroughputLimit(
 ): Promise<{ allowed: boolean; remaining: number }> {
   const limits = getPlanLimits(plan);
   const key = `org:throughput:${orgId}`;
-  const now = Date.now() / 1000; // seconds with fractional precision
+  const now = Date.now() / 1000;
 
-  const result = (await redis.eval(
+  const result = (await getRedisClient().eval(
     TOKEN_BUCKET_SCRIPT,
     1,
     key,

@@ -1,8 +1,6 @@
 import { getRedisClient } from "@usevon/queue";
 import { getPlanLimits, TooManyRequestsError } from "@usevon/utils";
 
-const redis = getRedisClient();
-
 export const DELIVERY_TTL = 45 * 86_400; // 45 days
 
 export function getMonthKey(orgId: string): string {
@@ -46,7 +44,7 @@ export async function reserveMonthlyQuota(
   const limits = getPlanLimits(plan);
   const monthKey = getMonthKey(orgId);
 
-  const result = (await redis.eval(
+  const result = (await getRedisClient().eval(
     RESERVE_QUOTA_SCRIPT,
     1,
     monthKey,
