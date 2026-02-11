@@ -12,7 +12,9 @@ export type CircuitBreakerState = {
 };
 
 function getElapsedSinceOpen(state: CircuitBreakerState): number | null {
-  if (state.circuitState !== "open" || !state.circuitOpenedAt) return null;
+  if (state.circuitState !== "open" || !state.circuitOpenedAt) {
+    return null;
+  }
   return Date.now() - state.circuitOpenedAt.getTime();
 }
 

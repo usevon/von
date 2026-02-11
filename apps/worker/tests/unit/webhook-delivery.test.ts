@@ -8,11 +8,7 @@ describe("dual-hash signature", () => {
   test("single secret produces v1 only", () => {
     const timestamp = 1_700_000_000;
     const signedPayload = `${timestamp}.{"test":true}`;
-    const header = buildSignatureHeader(
-      timestamp,
-      signedPayload,
-      "whsec_new"
-    );
+    const header = buildSignatureHeader(timestamp, signedPayload, "whsec_new");
 
     expect(header).toMatch(HEADER_PATTERN);
     expect(header).not.toContain("v2=");
