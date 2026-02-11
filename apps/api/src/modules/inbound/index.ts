@@ -144,6 +144,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
       return InboundService.receive({
         endpointId: params.id,
         organizationId: endpoint.organizationId,
+        plan,
         endpoint: {
           id: endpoint.id,
           forwardUrl: endpoint.forwardUrl,

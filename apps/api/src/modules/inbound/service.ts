@@ -10,24 +10,16 @@ import type {
 import {
   BadRequestError,
   generateSecret,
-  getPlanLimits,
   InternalServerError,
   isValidWebhookUrl,
 } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
-import { getOrgPlan } from "@/lib/org-plan";
+import { reserveMonthlyQuota } from "@/lib/delivery-quota";
 import { withServiceError } from "@/lib/service-utils";
 import type { InboundModel } from "@/modules/inbound/model";
 
 const redis = getRedisClient();
 const CACHE_TTL = 300; // 5 minutes
-const DELIVERY_TTL = 45 * 86_400; // 45 days
-
-function getMonthKey(orgId: string): string {
-  const now = new Date();
-  const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  return `org:deliveries:${orgId}:${month}`;
-}
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
 
@@ -54,6 +46,7 @@ type UpdateInboundEndpointParams = UpdateInboundEndpoint & {
 type ReceiveWebhookParams = {
   endpointId: string;
   organizationId: string;
+  plan: string;
   endpoint: {
     id: string;
     forwardUrl: string;
@@ -241,13 +234,7 @@ export abstract class InboundService {
     params: ReceiveWebhookParams
   ): Promise<InboundModel.inboundDelivery> {
     return withServiceError(async () => {
-      const plan = await getOrgPlan(params.organizationId);
-      const limits = getPlanLimits(plan);
-      const monthKey = getMonthKey(params.organizationId);
-      const currentUsage = Number(await redis.get(monthKey)) || 0;
-      if (!limits.hasOverage && currentUsage >= limits.monthlyDeliveries) {
-        throw new BadRequestError("Monthly delivery quota exceeded");
-      }
+      await reserveMonthlyQuota(params.organizationId, params.plan, 1);
 
       const now = new Date();
       const deliveryId = crypto.randomUUID();
@@ -272,9 +259,6 @@ export abstract class InboundService {
         }
         return result[0];
       });
-
-      await redis.incrby(monthKey, 1);
-      await redis.expire(monthKey, DELIVERY_TTL);
 
       const queue = getInboundForwardingQueue();
       await queue.add("inbound-forwarding", {

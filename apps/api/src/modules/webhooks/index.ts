@@ -11,11 +11,12 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(orgThroughputLimit)
   .post(
     "/",
-    async ({ organizationId, body, status }) =>
+    async ({ organizationId, plan, body, status }) =>
       status(
         201,
         await WebhookService.createEvent({
           organizationId,
+          plan,
           eventType: body.eventType,
           payload: body.payload,
           idempotencyKey: body.idempotencyKey,
@@ -29,11 +30,12 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   )
   .post(
     "/batch",
-    async ({ organizationId, body, status }) =>
+    async ({ organizationId, plan, body, status }) =>
       status(
         201,
         await WebhookService.createBatch({
           organizationId,
+          plan,
           events: body.events,
         })
       ),
@@ -102,8 +104,13 @@ export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
   .use(orgThroughputLimit)
   .post(
     "/events/:id/replay",
-    async ({ organizationId, params, body }) =>
-      WebhookService.replayEvent(organizationId, params.id, body.endpointIds),
+    async ({ organizationId, plan, params, body }) =>
+      WebhookService.replayEvent(
+        organizationId,
+        params.id,
+        plan,
+        body.endpointIds
+      ),
     {
       params: IdParam,
       body: WebhookModel.replayBody,
@@ -115,8 +122,8 @@ export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
   )
   .post(
     "/events/replay",
-    async ({ organizationId, body }) =>
-      WebhookService.replayBulk(organizationId, body.since, {
+    async ({ organizationId, plan, body }) =>
+      WebhookService.replayBulk(organizationId, body.since, plan, {
         status: body.status,
         endpointId: body.endpointId,
       }),

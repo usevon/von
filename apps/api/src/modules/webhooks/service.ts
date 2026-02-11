@@ -2,32 +2,21 @@ import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
-  getRedisClient,
   getWebhookDeliveryQueue,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
 import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import {
   BadRequestError,
-  getPlanLimits,
   InternalServerError,
   matchesEventType,
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { getOrgPlan } from "@/lib/org-plan";
+import { reserveMonthlyQuota } from "@/lib/delivery-quota";
 import { withServiceError } from "@/lib/service-utils";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
-
-const redis = getRedisClient();
-const DELIVERY_TTL = 45 * 86_400; // 45 days
-
-function getMonthKey(orgId: string): string {
-  const now = new Date();
-  const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  return `org:deliveries:${orgId}:${month}`;
-}
 
 type EventRow = typeof event.$inferSelect;
 type DeliveryRow = typeof delivery.$inferSelect;
@@ -54,6 +43,7 @@ const toEvent = (e: EventRow): WebhookModel.event => ({
 
 type CreateEventParams = {
   organizationId: string;
+  plan: string;
   eventType: string;
   payload: unknown;
   idempotencyKey?: string;
@@ -62,6 +52,7 @@ type CreateEventParams = {
 
 type CreateBatchParams = {
   organizationId: string;
+  plan: string;
   events: Array<{
     eventType: string;
     payload: unknown;
@@ -167,6 +158,7 @@ export abstract class WebhookService {
     return withServiceError(async () => {
       const result = await WebhookService.createBatch({
         organizationId: params.organizationId,
+        plan: params.plan,
         events: [
           {
             eventType: params.eventType,
@@ -192,14 +184,6 @@ export abstract class WebhookService {
         if (JSON.stringify(evt.payload).length > 1_000_000) {
           throw new BadRequestError("Payload exceeds 1MB limit");
         }
-      }
-
-      const plan = await getOrgPlan(params.organizationId);
-      const limits = getPlanLimits(plan);
-      const monthKey = getMonthKey(params.organizationId);
-      const currentUsage = Number(await redis.get(monthKey)) || 0;
-      if (!limits.hasOverage && currentUsage >= limits.monthlyDeliveries) {
-        throw new BadRequestError("Monthly delivery quota exceeded");
       }
 
       const now = new Date();
@@ -262,6 +246,12 @@ export abstract class WebhookService {
         now,
       });
 
+      await reserveMonthlyQuota(
+        params.organizationId,
+        params.plan,
+        allDeliveries.length
+      );
+
       const insertedIds = await db.transaction(async (tx) => {
         const inserted = await tx
           .insert(event)
@@ -291,14 +281,6 @@ export abstract class WebhookService {
       });
 
       await enqueueJobs(allJobs, insertedIds);
-
-      const deliveryCount = allDeliveries.filter((d) =>
-        insertedIds.has(d.eventId)
-      ).length;
-      if (deliveryCount > 0) {
-        await redis.incrby(monthKey, deliveryCount);
-        await redis.expire(monthKey, DELIVERY_TTL);
-      }
 
       for (const e of newEvents) {
         if (insertedIds.has(e.id)) {
@@ -412,6 +394,7 @@ export abstract class WebhookService {
   static replayEvent(
     organizationId: string,
     eventId: string,
+    plan: string,
     endpointIds?: string[]
   ): Promise<WebhookModel.replayResult> {
     return withServiceError(async () => {
@@ -436,6 +419,8 @@ export abstract class WebhookService {
       if (targets.length === 0) {
         return { replayed: 0, deliveryIds: [] };
       }
+
+      await reserveMonthlyQuota(organizationId, plan, targets.length);
 
       const now = new Date();
       const payloadStr = eventRecord.payload;
@@ -478,6 +463,7 @@ export abstract class WebhookService {
   static replayBulk(
     organizationId: string,
     since: string,
+    plan: string,
     filters?: { status?: string; endpointId?: string }
   ): Promise<WebhookModel.bulkReplayResult> {
     return withServiceError(async () => {
@@ -546,6 +532,7 @@ export abstract class WebhookService {
       }
 
       if (deliveryRecords.length > 0) {
+        await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
         await db.insert(delivery).values(deliveryRecords);
         await getWebhookDeliveryQueue().addBulk(jobs);
       }
