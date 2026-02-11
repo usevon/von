@@ -55,6 +55,14 @@ Switch active organization.
 von switch
 ```
 
+### `von status`
+
+Show current login status, active organization, and API URL.
+
+```bash
+von status
+```
+
 ### `von dev`
 
 Start dev tunnel for local webhook testing.

@@ -109,4 +109,4 @@ app.use('/api', async (req, res, next) => {
 
 ## License
 
-MIT - see [LICENSE-MIT](../../LICENSE-MIT)
+AGPL-3.0 - see [LICENSE-AGPL](../../LICENSE-AGPL)

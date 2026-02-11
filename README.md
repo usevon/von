@@ -144,9 +144,10 @@ For security concerns, see our [Security Policy](.github/SECURITY.md).
 Von uses dual licensing:
 
 **AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
-- `apps/` - api, dashboard, site, worker
+- `apps/` - api, dashboard, docs, site, worker
 - `packages/auth` - authentication
 - `packages/db` - database schema
+- `packages/email` - transactional emails
 - `packages/queue` - job queue
 - `packages/utils` - shared utilities
 
@@ -154,5 +155,6 @@ Von uses dual licensing:
 - `packages/cli` - CLI
 - `packages/react` - React hooks
 - `packages/sdk` - TypeScript SDK
+- `packages/types` - shared type definitions
 - `packages/typescript-config` - shared TypeScript config
 - `packages/ui` - UI components
