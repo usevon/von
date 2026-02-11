@@ -1,8 +1,7 @@
-import { createEnv, z } from "@usevon/utils/env";
+import { z } from "zod";
 
-export const env = createEnv({
-  server: {
+export const env = z
+  .object({
     DATABASE_URL: z.string().url(),
-  },
-  runtimeEnv: process.env,
-});
+  })
+  .parse(process.env);

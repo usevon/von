@@ -23,7 +23,8 @@
   "dependencies": {
     "@usevon/utils": "workspace:*",
     "drizzle-orm": "^0.44.7",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -1,7 +1,7 @@
-import { createEnv, z } from "@usevon/utils/env";
+import { z } from "zod";
 
-export const env = createEnv({
-  server: {
+export const env = z
+  .object({
     PORT: z.coerce.number().default(8080),
     NODE_ENV: z
       .enum(["development", "production", "test"])
@@ -19,6 +19,5 @@ export const env = createEnv({
     MAX_TUNNELS_PER_ORG: z.coerce.number().default(3),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default("Von <noreply@usevon.com>"),
-  },
-  runtimeEnv: process.env,
-});
+  })
+  .parse(process.env);

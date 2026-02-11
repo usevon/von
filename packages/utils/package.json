@@ -30,10 +30,6 @@
       "types": "./dist/transforms.d.mts",
       "default": "./dist/transforms.mjs"
     },
-    "./env": {
-      "types": "./dist/env.d.mts",
-      "default": "./dist/env.mjs"
-    },
     "./logger": {
       "types": "./dist/logger.d.mts",
       "default": "./dist/logger.mjs"
@@ -48,8 +44,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@t3-oss/env-core": "^0.11.1",
-    "zod": "^3.24.1",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0"
   },
