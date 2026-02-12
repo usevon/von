@@ -1,4 +1,3 @@
-import { NotFoundError, TooManyRequestsError } from "@usevon/utils";
 import { Elysia, t } from "elysia";
 import {
   ErrorResponse,
@@ -9,12 +8,13 @@ import {
 import { rateLimit } from "@/lib/rate-limit";
 import { checkThroughputLimit } from "@/lib/throughput-limit";
 import { getOrgPlan } from "@/lib/org-plan";
-import { requireScope } from "@/modules/auth";
+import { vonAuth } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
 
 export const inboundRead = new Elysia({ prefix: "/inbound" })
-  .use(requireScope("read:inbound"))
+  .use(vonAuth("read:inbound"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -30,10 +30,10 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
   )
   .get(
     "/:id",
-    async ({ organizationId, params }) => {
+    async ({ organizationId, params, status }) => {
       const endpoint = await InboundService.getById(organizationId, params.id);
       if (!endpoint) {
-        throw new NotFoundError();
+        return status(404, { error: "Endpoint not found" });
       }
       return endpoint;
     },
@@ -47,7 +47,8 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
   );
 
 export const inboundWrite = new Elysia({ prefix: "/inbound" })
-  .use(requireScope("write:inbound"))
+  .use(vonAuth("write:inbound"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -65,14 +66,14 @@ export const inboundWrite = new Elysia({ prefix: "/inbound" })
   )
   .patch(
     "/:id",
-    async ({ organizationId, params, body }) => {
+    async ({ organizationId, params, body, status }) => {
       const endpoint = await InboundService.update({
         organizationId,
         endpointId: params.id,
         ...body,
       });
       if (!endpoint) {
-        throw new NotFoundError();
+        return status(404, { error: "Endpoint not found" });
       }
       return endpoint;
     },
@@ -129,7 +130,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         1
       );
       if (!allowed) {
-        throw new TooManyRequestsError();
+        return status(429, { error: "Too many requests" });
       }
 
       const headerRecord: Record<string, string> = {};

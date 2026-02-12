@@ -1,5 +1,5 @@
 import { getRedisClient } from "@usevon/queue";
-import { getPlanLimits, TooManyRequestsError } from "@usevon/utils";
+import { getPlanLimits } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { getOrgPlan } from "@/lib/org-plan";
 
@@ -62,7 +62,7 @@ export async function checkThroughputLimit(
 
 export const orgThroughputLimit = new Elysia({
   name: "org-throughput-limit",
-}).resolve({ as: "scoped" }, async ({ set, ...ctx }) => {
+}).resolve({ as: "scoped" }, async ({ set, status, ...ctx }) => {
   const organizationId =
     "organizationId" in ctx ? (ctx.organizationId as string) : undefined;
   if (!organizationId) return { plan: "hobby" };
@@ -79,7 +79,7 @@ export const orgThroughputLimit = new Elysia({
 
   if (!allowed) {
     set.headers["Retry-After"] = "1";
-    throw new TooManyRequestsError();
+    return status(429, { error: "Too many requests" });
   }
 
   return { plan };

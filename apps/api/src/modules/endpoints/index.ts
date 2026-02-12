@@ -1,4 +1,3 @@
-import { NotFoundError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import {
   ErrorResponse,
@@ -7,12 +6,13 @@ import {
   SuccessResponse,
 } from "@/lib/models";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
-import { requireScope } from "@/modules/auth";
+import { vonAuth } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
 import { EndpointService } from "@/modules/endpoints/service";
 
 export const endpointsRead = new Elysia({ prefix: "/endpoints" })
-  .use(requireScope("read:endpoints"))
+  .use(vonAuth("read:endpoints"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -28,10 +28,10 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
   )
   .get(
     "/:id",
-    async ({ organizationId, params }) => {
+    async ({ organizationId, params, status }) => {
       const endpoint = await EndpointService.getById(organizationId, params.id);
       if (!endpoint) {
-        throw new NotFoundError();
+        return status(404, { error: "Endpoint not found" });
       }
       return endpoint;
     },
@@ -45,8 +45,9 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
   );
 
 export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
-  .use(requireScope("write:endpoints"))
+  .use(vonAuth("write:endpoints"))
   .use(orgThroughputLimit)
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse } })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -64,14 +65,14 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   )
   .patch(
     "/:id",
-    async ({ organizationId, params, body }) => {
+    async ({ organizationId, params, body, status }) => {
       const endpoint = await EndpointService.update({
         organizationId,
         endpointId: params.id,
         ...body,
       });
       if (!endpoint) {
-        throw new NotFoundError();
+        return status(404, { error: "Endpoint not found" });
       }
       return endpoint;
     },

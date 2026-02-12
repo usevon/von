@@ -1,14 +1,14 @@
-import { NotFoundError } from "@usevon/utils";
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam, PaginationQuery } from "@/lib/models";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
-import { requireScope } from "@/modules/auth";
+import { vonAuth } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
 import { WebhookService } from "@/modules/webhooks/service";
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
-  .use(requireScope("write:webhooks"))
+  .use(vonAuth("write:webhooks"))
   .use(orgThroughputLimit)
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse } })
   .post(
     "/",
     async ({ organizationId, plan, body, status }) =>
@@ -46,7 +46,8 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
   );
 
 export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
-  .use(requireScope("read:webhooks"))
+  .use(vonAuth("read:webhooks"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get(
     "/events",
     ({ organizationId, query }) =>
@@ -62,10 +63,10 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
   )
   .get(
     "/events/:id",
-    async ({ organizationId, params }) => {
+    async ({ organizationId, params, status }) => {
       const event = await WebhookService.getEvent(organizationId, params.id);
       if (!event) {
-        throw new NotFoundError();
+        return status(404, { error: "Event not found" });
       }
       return event;
     },
@@ -100,8 +101,9 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
   );
 
 export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
-  .use(requireScope("write:webhooks"))
+  .use(vonAuth("write:webhooks"))
   .use(orgThroughputLimit)
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse } })
   .post(
     "/events/:id/replay",
     async ({ organizationId, plan, params, body }) =>

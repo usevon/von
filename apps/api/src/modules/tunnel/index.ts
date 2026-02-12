@@ -1,15 +1,11 @@
 import { db, eq, sql } from "@usevon/db";
 import { tunnel } from "@usevon/db/schema";
-import {
-  BadRequestError,
-  generateTunnelId,
-  generateTunnelSecret,
-  NotFoundError,
-} from "@usevon/utils";
+import { generateTunnelId, generateTunnelSecret } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
+import { ErrorResponse } from "@/lib/models";
 import { env } from "@/env";
-import { requireScope, validateSession } from "@/modules/auth";
+import { vonAuth, validateSession } from "@/modules/auth";
 import type { TunnelResponse } from "@/modules/tunnel/model";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
@@ -22,10 +18,11 @@ const log = createLogger({ name: "tunnel" });
 const SESSION_VALIDATION_INTERVAL_MS = 30_000;
 
 export const tunnelRegisterWrite = new Elysia()
-  .use(requireScope("write:tunnels"))
+  .use(vonAuth("write:tunnels"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .post(
     "/register",
-    async ({ body, organizationId, userId }) => {
+    async ({ body, organizationId, userId, status }) => {
       const tunnelId = generateTunnelId(organizationId, userId, body.port);
 
       // Check if tunnel exists in DB
@@ -45,9 +42,9 @@ export const tunnelRegisterWrite = new Elysia()
         .from(tunnel)
         .where(eq(tunnel.organizationId, organizationId));
       if ((countResult[0]?.count ?? 0) >= env.MAX_TUNNELS_PER_ORG) {
-        throw new BadRequestError(
-          `Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`
-        );
+        return status(400, {
+          error: `Maximum ${env.MAX_TUNNELS_PER_ORG} tunnels per organization`,
+        });
       }
 
       // Generate secret and save to DB
@@ -64,12 +61,15 @@ export const tunnelRegisterWrite = new Elysia()
     },
     {
       body: TunnelModel.registerBody,
-      response: TunnelModel.registerResponse,
+      response: {
+        200: TunnelModel.registerResponse,
+        400: ErrorResponse,
+      },
     }
   )
   .post(
     "/rotate/:tunnelId",
-    async ({ params, organizationId, userId }) => {
+    async ({ params, organizationId, userId, status }) => {
       // Verify tunnel belongs to this user/org
       const [existing] = await db
         .select()
@@ -82,7 +82,7 @@ export const tunnelRegisterWrite = new Elysia()
         existing.organizationId !== organizationId ||
         existing.userId !== userId
       ) {
-        throw new NotFoundError();
+        return status(404, { error: "Tunnel not found" });
       }
 
       // Generate new secret
@@ -98,12 +98,16 @@ export const tunnelRegisterWrite = new Elysia()
       return { secret };
     },
     {
-      response: TunnelModel.rotateResponse,
+      response: {
+        200: TunnelModel.rotateResponse,
+        404: ErrorResponse,
+      },
     }
   );
 
 export const tunnelRegisterRead = new Elysia()
-  .use(requireScope("read:tunnels"))
+  .use(vonAuth("read:tunnels"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get("/tunnels", ({ organizationId }) => ({
     tunnels: TunnelService.getActiveTunnels(organizationId),
   }));

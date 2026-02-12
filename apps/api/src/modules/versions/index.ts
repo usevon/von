@@ -1,7 +1,6 @@
-import { NotFoundError } from "@usevon/utils";
 import { Elysia, t } from "elysia";
 import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
-import { requireScope } from "@/modules/auth";
+import { vonAuth } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
 import { VersionService } from "@/modules/versions/service";
 
@@ -10,7 +9,8 @@ const VersionParam = t.Object({
 });
 
 export const versionsRead = new Elysia({ prefix: "/versions" })
-  .use(requireScope("read:versions"))
+  .use(vonAuth("read:versions"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -26,13 +26,13 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
   )
   .get(
     "/:version",
-    async ({ organizationId, params }) => {
+    async ({ organizationId, params, status }) => {
       const version = await VersionService.getByVersion(
         organizationId,
         params.version
       );
       if (!version) {
-        throw new NotFoundError();
+        return status(404, { error: "Version not found" });
       }
       return version;
     },
@@ -46,7 +46,8 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
   );
 
 export const versionsWrite = new Elysia({ prefix: "/versions" })
-  .use(requireScope("write:versions"))
+  .use(vonAuth("write:versions"))
+  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -64,14 +65,14 @@ export const versionsWrite = new Elysia({ prefix: "/versions" })
   )
   .patch(
     "/:version",
-    async ({ organizationId, params, body }) => {
+    async ({ organizationId, params, body, status }) => {
       const version = await VersionService.update({
         organizationId,
         version: params.version,
         ...body,
       });
       if (!version) {
-        throw new NotFoundError();
+        return status(404, { error: "Version not found" });
       }
       return version;
     },
