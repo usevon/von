@@ -62,8 +62,9 @@ export async function checkThroughputLimit(
 
 export const orgThroughputLimit = new Elysia({
   name: "org-throughput-limit",
-}).derive({ as: "scoped" }, async ({ set, ...ctx }) => {
-  const { organizationId } = ctx as unknown as { organizationId: string };
+}).resolve({ as: "scoped" }, async ({ set, ...ctx }) => {
+  const organizationId =
+    "organizationId" in ctx ? (ctx.organizationId as string) : undefined;
   if (!organizationId) return { plan: "hobby" };
   const plan = await getOrgPlan(organizationId);
   const limits = getPlanLimits(plan);
