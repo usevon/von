@@ -12,7 +12,7 @@ type CachedResponse = {
 
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
-    .derive(async ({ request, set }) => {
+    .derive({ as: "global" }, async ({ request, set }) => {
       const method = request.method;
 
       if (!["POST", "PUT", "PATCH"].includes(method)) {
@@ -41,12 +41,12 @@ export const idempotency = () =>
 
       return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
     })
-    .onBeforeHandle(({ idempotencyCached, cachedResponse }) => {
+    .onBeforeHandle({ as: "global" }, ({ idempotencyCached, cachedResponse }) => {
       if (idempotencyCached) {
         return cachedResponse;
       }
     })
-    .onAfterHandle(async ({ idempotencyCacheKey, response, set }) => {
+    .onAfterHandle({ as: "global" }, async ({ idempotencyCacheKey, response, set }) => {
       if (!idempotencyCacheKey) {
         return;
       }

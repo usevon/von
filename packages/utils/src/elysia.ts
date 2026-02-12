@@ -47,7 +47,7 @@ export const vonBase = (opts: VonBaseOptions) =>
       TooManyRequestsError,
       InternalServerError,
     })
-    .onError(({ code, error, set }) => {
+    .onError({ as: "global" }, ({ code, error, set }) => {
       // Handle Elysia built-in codes
       if (code === "VALIDATION") {
         set.status = 400;

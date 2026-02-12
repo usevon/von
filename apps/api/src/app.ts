@@ -33,6 +33,7 @@ const getCorsOrigins = () => {
 const corsMiddleware = cors({ origin: getCorsOrigins(), credentials: true });
 
 const securityHeaders = new Elysia({ name: "security-headers" }).onAfterHandle(
+  { as: "global" },
   ({ set }) => {
     set.headers["X-Content-Type-Options"] = "nosniff";
     set.headers["X-Frame-Options"] = "DENY";

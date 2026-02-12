@@ -47,7 +47,7 @@ const createRateLimiter = (options: RateLimitOptions) => {
   } = options;
   const windowSeconds = Math.ceil(windowMs / 1000);
 
-  return new Elysia({ name: `rate-limit:${keyPrefix}` }).onBeforeHandle(
+  return new Elysia().onBeforeHandle({ as: "scoped" },
     async (ctx: RateLimitContext) => {
       const identifier = getKey(ctx);
       if (!identifier) return;
