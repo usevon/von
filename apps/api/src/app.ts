@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
+import { log } from "@/lib/logger";
 import { idempotency } from "@/lib/idempotency";
 import { auth } from "@/modules/auth";
 import { endpointsRead, endpointsWrite } from "@/modules/endpoints";
@@ -48,7 +49,7 @@ export const app = new Elysia({
   ...baseElysiaOptions,
 })
   .use(securityHeaders)
-  .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production" }))
+  .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production", logger: log }))
   .use(idempotency())
   .use(corsMiddleware)
   .mount(auth.handler)

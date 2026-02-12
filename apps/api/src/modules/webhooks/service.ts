@@ -14,7 +14,6 @@ import {
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { reserveMonthlyQuota } from "@/lib/delivery-quota";
-import { withServiceError } from "@/lib/service-utils";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
 
@@ -137,7 +136,7 @@ const enqueueJobs = async (
       .update(delivery)
       .set({ status: "failed" })
       .where(inArray(delivery.id, failedDeliveryIds));
-    throw new InternalServerError("Failed to enqueue webhook deliveries");
+    throw new InternalServerError();
   }
 };
 
@@ -154,186 +153,180 @@ export abstract class WebhookService {
     .limit(1)
     .prepare("get_event");
 
-  static createEvent(params: CreateEventParams): Promise<WebhookModel.event> {
-    return withServiceError(async () => {
-      const result = await WebhookService.createBatch({
-        organizationId: params.organizationId,
-        plan: params.plan,
-        events: [
-          {
-            eventType: params.eventType,
-            payload: params.payload,
-            idempotencyKey: params.idempotencyKey,
-            endpointIds: params.endpointIds,
-          },
-        ],
-      });
-      const created = result.events[0];
-      if (!created) {
-        throw new InternalServerError("Failed to create webhook event");
-      }
-      return created;
-    }, "creating webhook event");
+  static async createEvent(
+    params: CreateEventParams
+  ): Promise<WebhookModel.event> {
+    const result = await WebhookService.createBatch({
+      organizationId: params.organizationId,
+      plan: params.plan,
+      events: [
+        {
+          eventType: params.eventType,
+          payload: params.payload,
+          idempotencyKey: params.idempotencyKey,
+          endpointIds: params.endpointIds,
+        },
+      ],
+    });
+    const created = result.events[0];
+    if (!created) {
+      throw new InternalServerError();
+    }
+    return created;
   }
 
-  static createBatch(
+  static async createBatch(
     params: CreateBatchParams
   ): Promise<WebhookModel.batchResult> {
-    return withServiceError(async () => {
-      for (const evt of params.events) {
-        if (JSON.stringify(evt.payload).length > 1_000_000) {
-          throw new BadRequestError("Payload exceeds 1MB limit");
-        }
+    for (const evt of params.events) {
+      if (JSON.stringify(evt.payload).length > 1_000_000) {
+        throw new BadRequestError("Payload exceeds 1MB limit");
       }
+    }
 
-      const now = new Date();
-      const nowIso = now.toISOString();
-      const idempotencyKeys = params.events
-        .map((e) => e.idempotencyKey)
-        .filter((k): k is string => !!k);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const idempotencyKeys = params.events
+      .map((e) => e.idempotencyKey)
+      .filter((k): k is string => !!k);
 
-      const [existingEvents, allEndpoints] = await Promise.all([
-        idempotencyKeys.length > 0
-          ? db
-              .select()
-              .from(event)
-              .where(
-                and(
-                  eq(event.organizationId, params.organizationId),
-                  inArray(event.idempotencyKey, idempotencyKeys)
-                )
+    const [existingEvents, allEndpoints] = await Promise.all([
+      idempotencyKeys.length > 0
+        ? db
+            .select()
+            .from(event)
+            .where(
+              and(
+                eq(event.organizationId, params.organizationId),
+                inArray(event.idempotencyKey, idempotencyKeys)
               )
-          : [],
-        EndpointService.getEnabledEndpointsForDelivery(params.organizationId),
-      ]);
+            )
+        : [],
+      EndpointService.getEnabledEndpointsForDelivery(params.organizationId),
+    ]);
 
-      const existingByKey = new Map(
-        existingEvents.flatMap((e) =>
-          e.idempotencyKey ? [[e.idempotencyKey, e] as const] : []
+    const existingByKey = new Map(
+      existingEvents.flatMap((e) =>
+        e.idempotencyKey ? [[e.idempotencyKey, e] as const] : []
+      )
+    );
+    const endpointsById = new Map(allEndpoints.map((ep) => [ep.id, ep]));
+
+    const results: WebhookModel.event[] = [];
+    const newEvents: NewEvent[] = [];
+
+    for (const evt of params.events) {
+      const existing = evt.idempotencyKey
+        ? existingByKey.get(evt.idempotencyKey)
+        : undefined;
+      if (existing) {
+        results.push(toEvent(existing));
+        continue;
+      }
+      newEvents.push({
+        id: crypto.randomUUID(),
+        eventType: evt.eventType,
+        payload: evt.payload,
+        idempotencyKey: evt.idempotencyKey ?? null,
+        endpointIds: evt.endpointIds,
+      });
+    }
+
+    if (newEvents.length === 0) {
+      return { created: 0, events: results };
+    }
+
+    const { allDeliveries, allJobs } = buildDeliveriesAndJobs({
+      newEvents,
+      allEndpoints,
+      endpointsById,
+      organizationId: params.organizationId,
+      now,
+    });
+
+    await reserveMonthlyQuota(
+      params.organizationId,
+      params.plan,
+      allDeliveries.length
+    );
+
+    const insertedIds = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(event)
+        .values(
+          newEvents.map((e) => ({
+            id: e.id,
+            organizationId: params.organizationId,
+            eventType: e.eventType,
+            payload: JSON.stringify(e.payload),
+            idempotencyKey: e.idempotencyKey,
+            createdAt: now,
+          }))
         )
+        .onConflictDoNothing({
+          target: [event.organizationId, event.idempotencyKey],
+        })
+        .returning({ id: event.id });
+
+      const insertedIdSet = new Set(inserted.map((e) => e.id));
+      const deliveriesToInsert = allDeliveries.filter((d) =>
+        insertedIdSet.has(d.eventId)
       );
-      const endpointsById = new Map(allEndpoints.map((ep) => [ep.id, ep]));
+      if (deliveriesToInsert.length > 0) {
+        await tx.insert(delivery).values(deliveriesToInsert);
+      }
+      return insertedIdSet;
+    });
 
-      const results: WebhookModel.event[] = [];
-      const newEvents: NewEvent[] = [];
+    await enqueueJobs(allJobs, insertedIds);
 
-      for (const evt of params.events) {
-        const existing = evt.idempotencyKey
-          ? existingByKey.get(evt.idempotencyKey)
-          : undefined;
-        if (existing) {
-          results.push(toEvent(existing));
-          continue;
-        }
-        newEvents.push({
-          id: crypto.randomUUID(),
-          eventType: evt.eventType,
-          payload: evt.payload,
-          idempotencyKey: evt.idempotencyKey ?? null,
-          endpointIds: evt.endpointIds,
+    for (const e of newEvents) {
+      if (insertedIds.has(e.id)) {
+        results.push({
+          id: e.id,
+          eventType: e.eventType,
+          payload: e.payload,
+          idempotencyKey: e.idempotencyKey,
+          status: "pending",
+          createdAt: nowIso,
         });
       }
+    }
 
-      if (newEvents.length === 0) {
-        return { created: 0, events: results };
-      }
-
-      const { allDeliveries, allJobs } = buildDeliveriesAndJobs({
-        newEvents,
-        allEndpoints,
-        endpointsById,
-        organizationId: params.organizationId,
-        now,
-      });
-
-      await reserveMonthlyQuota(
-        params.organizationId,
-        params.plan,
-        allDeliveries.length
-      );
-
-      const insertedIds = await db.transaction(async (tx) => {
-        const inserted = await tx
-          .insert(event)
-          .values(
-            newEvents.map((e) => ({
-              id: e.id,
-              organizationId: params.organizationId,
-              eventType: e.eventType,
-              payload: JSON.stringify(e.payload),
-              idempotencyKey: e.idempotencyKey,
-              createdAt: now,
-            }))
-          )
-          .onConflictDoNothing({
-            target: [event.organizationId, event.idempotencyKey],
-          })
-          .returning({ id: event.id });
-
-        const insertedIdSet = new Set(inserted.map((e) => e.id));
-        const deliveriesToInsert = allDeliveries.filter((d) =>
-          insertedIdSet.has(d.eventId)
-        );
-        if (deliveriesToInsert.length > 0) {
-          await tx.insert(delivery).values(deliveriesToInsert);
-        }
-        return insertedIdSet;
-      });
-
-      await enqueueJobs(allJobs, insertedIds);
-
-      for (const e of newEvents) {
-        if (insertedIds.has(e.id)) {
-          results.push({
-            id: e.id,
-            eventType: e.eventType,
-            payload: e.payload,
-            idempotencyKey: e.idempotencyKey,
-            status: "pending",
-            createdAt: nowIso,
-          });
-        }
-      }
-
-      return { created: insertedIds.size, events: results };
-    }, "creating webhook batch");
+    return { created: insertedIds.size, events: results };
   }
 
-  static getEvents(
+  static async getEvents(
     organizationId: string,
     limit: number,
     offset: number
   ): Promise<WebhookModel.eventList> {
-    return withServiceError(async () => {
-      const [events, total] = await Promise.all([
-        db
-          .select()
-          .from(event)
-          .where(eq(event.organizationId, organizationId))
-          .orderBy(event.createdAt)
-          .limit(limit)
-          .offset(offset),
-        db.$count(event, eq(event.organizationId, organizationId)),
-      ]);
-      return { events: events.map(toEvent), total };
-    }, "fetching webhook events");
+    const [events, total] = await Promise.all([
+      db
+        .select()
+        .from(event)
+        .where(eq(event.organizationId, organizationId))
+        .orderBy(event.createdAt)
+        .limit(limit)
+        .offset(offset),
+      db.$count(event, eq(event.organizationId, organizationId)),
+    ]);
+    return { events: events.map(toEvent), total };
   }
 
-  static getEvent(
+  static async getEvent(
     organizationId: string,
     eventId: string
   ): Promise<WebhookModel.event | null> {
-    return withServiceError(async () => {
-      const [result] = await WebhookService.getEventStmt.execute({
-        eventId,
-        orgId: organizationId,
-      });
-      return result ? toEvent(result) : null;
-    }, "fetching webhook event");
+    const [result] = await WebhookService.getEventStmt.execute({
+      eventId,
+      orgId: organizationId,
+    });
+    return result ? toEvent(result) : null;
   }
 
   // biome-ignore lint/nursery/useMaxParams: parameters are all distinct query concerns
-  static getDeliveries(
+  static async getDeliveries(
     organizationId: string,
     eventId: string,
     filters?: {
@@ -345,199 +338,193 @@ export abstract class WebhookService {
     limit = 20,
     offset = 0
   ): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
-    return withServiceError(async () => {
-      const conditions = [
-        eq(delivery.eventId, eventId),
-        eq(event.organizationId, organizationId),
-      ];
+    const conditions = [
+      eq(delivery.eventId, eventId),
+      eq(event.organizationId, organizationId),
+    ];
 
-      if (filters?.status) {
-        conditions.push(eq(delivery.status, filters.status));
-      }
-      if (filters?.endpointId) {
-        conditions.push(eq(delivery.endpointId, filters.endpointId));
-      }
-      if (filters?.from) {
-        conditions.push(gte(delivery.createdAt, new Date(filters.from)));
-      }
-      if (filters?.to) {
-        conditions.push(lte(delivery.createdAt, new Date(filters.to)));
-      }
+    if (filters?.status) {
+      conditions.push(eq(delivery.status, filters.status));
+    }
+    if (filters?.endpointId) {
+      conditions.push(eq(delivery.endpointId, filters.endpointId));
+    }
+    if (filters?.from) {
+      conditions.push(gte(delivery.createdAt, new Date(filters.from)));
+    }
+    if (filters?.to) {
+      conditions.push(lte(delivery.createdAt, new Date(filters.to)));
+    }
 
-      const where = and(...conditions);
+    const where = and(...conditions);
 
-      const [rows, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
+      db
+        .select({ delivery })
+        .from(delivery)
+        .innerJoin(event, eq(delivery.eventId, event.id))
+        .where(where)
+        .limit(limit)
+        .offset(offset),
+      db.$count(
         db
-          .select({ delivery })
+          .select({ id: delivery.id })
           .from(delivery)
           .innerJoin(event, eq(delivery.eventId, event.id))
           .where(where)
-          .limit(limit)
-          .offset(offset),
-        db.$count(
-          db
-            .select({ id: delivery.id })
-            .from(delivery)
-            .innerJoin(event, eq(delivery.eventId, event.id))
-            .where(where)
-            .as("filtered")
-        ),
-      ]);
+          .as("filtered")
+      ),
+    ]);
 
-      return {
-        deliveries: rows.map((r) => toDelivery(r.delivery)),
-        total,
-      };
-    }, "fetching webhook deliveries");
+    return {
+      deliveries: rows.map((r) => toDelivery(r.delivery)),
+      total,
+    };
   }
 
-  static replayEvent(
+  static async replayEvent(
     organizationId: string,
     eventId: string,
     plan: string,
     endpointIds?: string[]
   ): Promise<WebhookModel.replayResult> {
-    return withServiceError(async () => {
-      const [eventRecord] = await WebhookService.getEventStmt.execute({
-        eventId,
-        orgId: organizationId,
+    const [eventRecord] = await WebhookService.getEventStmt.execute({
+      eventId,
+      orgId: organizationId,
+    });
+
+    if (!eventRecord) {
+      throw new NotFoundError();
+    }
+
+    const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+      organizationId,
+      endpointIds
+    );
+
+    const targets = allEndpoints.filter((ep) =>
+      matchesEventType(eventRecord.eventType, ep.events)
+    );
+
+    if (targets.length === 0) {
+      return { replayed: 0, deliveryIds: [] };
+    }
+
+    await reserveMonthlyQuota(organizationId, plan, targets.length);
+
+    const now = new Date();
+    const payloadStr = eventRecord.payload;
+    const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+    const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
+
+    for (const ep of targets) {
+      const deliveryId = crypto.randomUUID();
+      deliveryRecords.push({
+        id: deliveryId,
+        eventId: eventRecord.id,
+        endpointId: ep.id,
+        status: "pending",
+        attempts: 0,
+        createdAt: now,
       });
-
-      if (!eventRecord) {
-        throw new NotFoundError("Event not found");
-      }
-
-      const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
-        organizationId,
-        endpointIds
-      );
-
-      const targets = allEndpoints.filter((ep) =>
-        matchesEventType(eventRecord.eventType, ep.events)
-      );
-
-      if (targets.length === 0) {
-        return { replayed: 0, deliveryIds: [] };
-      }
-
-      await reserveMonthlyQuota(organizationId, plan, targets.length);
-
-      const now = new Date();
-      const payloadStr = eventRecord.payload;
-      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
-      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
-
-      for (const ep of targets) {
-        const deliveryId = crypto.randomUUID();
-        deliveryRecords.push({
-          id: deliveryId,
+      jobs.push({
+        name: "webhook-delivery",
+        data: {
+          deliveryId,
           eventId: eventRecord.id,
-          endpointId: ep.id,
-          status: "pending",
-          attempts: 0,
-          createdAt: now,
-        });
-        jobs.push({
-          name: "webhook-delivery",
-          data: {
-            deliveryId,
-            eventId: eventRecord.id,
-            payload: payloadStr,
-            eventType: eventRecord.eventType,
-            endpoint: ep,
-            organizationId,
-          },
-        });
-      }
+          payload: payloadStr,
+          eventType: eventRecord.eventType,
+          endpoint: ep,
+          organizationId,
+        },
+      });
+    }
 
-      await db.insert(delivery).values(deliveryRecords);
-      await getWebhookDeliveryQueue().addBulk(jobs);
+    await db.insert(delivery).values(deliveryRecords);
+    await getWebhookDeliveryQueue().addBulk(jobs);
 
-      return {
-        replayed: deliveryRecords.length,
-        deliveryIds: deliveryRecords.map((d) => d.id as string),
-      };
-    }, "replaying event");
+    return {
+      replayed: deliveryRecords.length,
+      deliveryIds: deliveryRecords.map((d) => d.id as string),
+    };
   }
 
-  static replayBulk(
+  static async replayBulk(
     organizationId: string,
     since: string,
     plan: string,
     filters?: { status?: string; endpointId?: string }
   ): Promise<WebhookModel.bulkReplayResult> {
-    return withServiceError(async () => {
-      const conditions = [
-        eq(event.organizationId, organizationId),
-        gte(delivery.createdAt, new Date(since)),
-        eq(delivery.status, filters?.status ?? "failed"),
-      ];
+    const conditions = [
+      eq(event.organizationId, organizationId),
+      gte(delivery.createdAt, new Date(since)),
+      eq(delivery.status, filters?.status ?? "failed"),
+    ];
 
-      if (filters?.endpointId) {
-        conditions.push(eq(delivery.endpointId, filters.endpointId));
+    if (filters?.endpointId) {
+      conditions.push(eq(delivery.endpointId, filters.endpointId));
+    }
+
+    const failedDeliveries = await db
+      .select({
+        eventId: delivery.eventId,
+        endpointId: delivery.endpointId,
+        eventType: event.eventType,
+        payload: event.payload,
+      })
+      .from(delivery)
+      .innerJoin(event, eq(delivery.eventId, event.id))
+      .where(and(...conditions));
+
+    if (failedDeliveries.length === 0) {
+      return { replayed: 0 };
+    }
+
+    const endpointIdsSet = new Set(failedDeliveries.map((d) => d.endpointId));
+    const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
+      organizationId,
+      [...endpointIdsSet]
+    );
+    const activeEndpoints = new Map(allEndpoints.map((ep) => [ep.id, ep]));
+
+    const now = new Date();
+    const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+    const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
+
+    for (const failed of failedDeliveries) {
+      const ep = activeEndpoints.get(failed.endpointId);
+      if (!ep) {
+        continue;
       }
 
-      const failedDeliveries = await db
-        .select({
-          eventId: delivery.eventId,
-          endpointId: delivery.endpointId,
-          eventType: event.eventType,
-          payload: event.payload,
-        })
-        .from(delivery)
-        .innerJoin(event, eq(delivery.eventId, event.id))
-        .where(and(...conditions));
-
-      if (failedDeliveries.length === 0) {
-        return { replayed: 0 };
-      }
-
-      const endpointIdsSet = new Set(failedDeliveries.map((d) => d.endpointId));
-      const allEndpoints = await EndpointService.getEnabledEndpointsForDelivery(
-        organizationId,
-        [...endpointIdsSet]
-      );
-      const activeEndpoints = new Map(allEndpoints.map((ep) => [ep.id, ep]));
-
-      const now = new Date();
-      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
-      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
-
-      for (const failed of failedDeliveries) {
-        const ep = activeEndpoints.get(failed.endpointId);
-        if (!ep) {
-          continue;
-        }
-
-        const deliveryId = crypto.randomUUID();
-        deliveryRecords.push({
-          id: deliveryId,
+      const deliveryId = crypto.randomUUID();
+      deliveryRecords.push({
+        id: deliveryId,
+        eventId: failed.eventId,
+        endpointId: failed.endpointId,
+        status: "pending",
+        attempts: 0,
+        createdAt: now,
+      });
+      jobs.push({
+        name: "webhook-delivery",
+        data: {
+          deliveryId,
           eventId: failed.eventId,
-          endpointId: failed.endpointId,
-          status: "pending",
-          attempts: 0,
-          createdAt: now,
-        });
-        jobs.push({
-          name: "webhook-delivery",
-          data: {
-            deliveryId,
-            eventId: failed.eventId,
-            payload: failed.payload,
-            eventType: failed.eventType,
-            endpoint: ep,
-            organizationId,
-          },
-        });
-      }
+          payload: failed.payload,
+          eventType: failed.eventType,
+          endpoint: ep,
+          organizationId,
+        },
+      });
+    }
 
-      if (deliveryRecords.length > 0) {
-        await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
-        await db.insert(delivery).values(deliveryRecords);
-        await getWebhookDeliveryQueue().addBulk(jobs);
-      }
+    if (deliveryRecords.length > 0) {
+      await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
+      await db.insert(delivery).values(deliveryRecords);
+      await getWebhookDeliveryQueue().addBulk(jobs);
+    }
 
-      return { replayed: deliveryRecords.length };
-    }, "replaying bulk events");
+    return { replayed: deliveryRecords.length };
   }
 }

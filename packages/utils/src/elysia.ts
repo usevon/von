@@ -1,5 +1,6 @@
 import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
+import type { Logger } from "pino";
 import { Elysia } from "elysia";
 import {
   BadRequestError,
@@ -22,6 +23,7 @@ export const baseElysiaOptions = {
 type VonBaseOptions = {
   name: string;
   isProd: boolean;
+  logger?: Logger;
 };
 
 /**
@@ -56,9 +58,12 @@ export const vonBase = (opts: VonBaseOptions) =>
         return { error: "Not found" };
       }
 
-      // Handle custom errors with status property
       const status = "status" in error ? (error.status as number) : 500;
       const message = "message" in error ? error.message : String(error);
+
+      if (status >= 500 && opts.logger) {
+        opts.logger.error({ error }, message);
+      }
 
       set.status = status;
       return {
