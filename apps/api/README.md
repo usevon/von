@@ -50,9 +50,6 @@ DASHBOARD_URL=http://localhost:3001
 # CORS (comma-separated origins for production)
 # CORS_ORIGINS=https://app.usevon.com
 
-# API URL (used for public-facing links)
-# API_URL=https://api.usevon.com
-
 # API key HMAC signing (enables API key auth when set)
 # API_KEY_SIGNING_SECRET=your-api-key-signing-secret
 
@@ -64,6 +61,9 @@ DASHBOARD_URL=http://localhost:3001
 
 # Tunnels
 MAX_TUNNELS_PER_ORG=3
+
+# Webhooks
+WEBHOOK_BATCH_MAX_EVENTS=100
 
 # Email (optional)
 # RESEND_API_KEY=...

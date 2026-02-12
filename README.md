@@ -57,7 +57,8 @@ cp apps/worker/.env.example apps/worker/.env
 cp apps/docs/.env.example apps/docs/.env
 cp apps/site/.env.example apps/site/.env
 
-# Edit .env files to set BETTER_AUTH_SECRET and API_KEY_SIGNING_SECRET
+# Edit apps/api/.env to set BETTER_AUTH_SECRET
+# Optionally set API_KEY_SIGNING_SECRET and SECRET_ENCRYPTION_KEY
 
 # Push database schema
 bun run --cwd apps/api db:push
