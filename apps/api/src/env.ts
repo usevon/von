@@ -10,7 +10,6 @@ export const env = z
     BETTER_AUTH_URL: z.string().url().optional(),
     DASHBOARD_URL: z.string().url().optional(),
     CORS_ORIGINS: z.string().optional(),
-    API_URL: z.string().url().optional(),
     API_KEY_SIGNING_SECRET: z.string().optional(),
     SECRET_ENCRYPTION_KEY: z.string().optional(),
     GOOGLE_CLIENT_ID: z.string().optional(),

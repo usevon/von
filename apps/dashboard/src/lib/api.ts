@@ -1,9 +1,7 @@
 import { treaty } from "@elysiajs/eden";
 import type { App } from "@usevon/api";
+import { env } from "@/env";
 
-const API_URL =
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8080";
+const API_URL = env.NEXT_PUBLIC_API_URL;
 
 export const api = treaty<App>(API_URL);
