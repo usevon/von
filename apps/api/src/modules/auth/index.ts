@@ -22,8 +22,10 @@ import isEmail from "validator/es/lib/isEmail.js";
 import { env } from "@/env";
 import { rateLimit } from "@/lib/rate-limit";
 import { resendClient } from "@/lib/resend";
+import { createSecondaryStorage } from "@/modules/auth/storage";
 
 const redis = getRedisClient();
+const secondaryStorage = createSecondaryStorage(redis);
 
 type SessionInsert = typeof schema.session.$inferInsert;
 
@@ -64,19 +66,7 @@ const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: [env.DASHBOARD_URL ?? "http://localhost:3001"],
-  secondaryStorage: {
-    get: async (key) => await redis.get(key),
-    set: async (key, value, ttl) => {
-      if (ttl) {
-        await redis.setex(key, ttl, value);
-      } else {
-        await redis.set(key, value);
-      }
-    },
-    delete: async (key) => {
-      await redis.del(key);
-    },
-  },
+  secondaryStorage,
   rateLimit: {
     enabled: true,
     window: 60,
@@ -168,19 +158,7 @@ const auth = betterAuth({
             storage: "secondary-storage",
             fallbackToDatabase: true,
             signingSecret: env.API_KEY_SIGNING_SECRET,
-            secondaryStorage: {
-              get: async (key) => await redis.get(key),
-              set: async (key, value, ttl) => {
-                if (ttl) {
-                  await redis.setex(key, ttl, value);
-                } else {
-                  await redis.set(key, value);
-                }
-              },
-              delete: async (key) => {
-                await redis.del(key);
-              },
-            },
+            secondaryStorage,
           }),
         ]
       : []),
