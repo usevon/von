@@ -3,6 +3,7 @@ import { TooManyRequestsError } from "@usevon/utils";
 import { Elysia } from "elysia";
 
 const redis = getRedisClient();
+const RATE_LIMIT_REDIS_TIMEOUT_MS = 100;
 
 type RateLimitContext = {
   request: Request;
@@ -14,6 +15,7 @@ type RateLimitOptions = {
   max: number;
   keyPrefix?: string;
   getKey?: (ctx: RateLimitContext) => string | null;
+  failOpen?: boolean;
 };
 
 export const getClientIp = (request: Request): string => {
@@ -38,16 +40,38 @@ end
 return current
 `;
 
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T> =>
+  await new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("Rate limiter timed out"));
+    }, timeoutMs);
+
+    void promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
+
 const createRateLimiter = (options: RateLimitOptions) => {
   const {
     windowMs,
     max,
     keyPrefix = "ratelimit",
     getKey = (ctx) => getClientIp(ctx.request),
+    failOpen = true,
   } = options;
   const windowSeconds = Math.ceil(windowMs / 1000);
 
-  return new Elysia().onBeforeHandle({ as: "scoped" },
+  return new Elysia().onBeforeHandle(
+    { as: "scoped" },
     async (ctx: RateLimitContext) => {
       const identifier = getKey(ctx);
       if (!identifier) return;
@@ -56,15 +80,22 @@ const createRateLimiter = (options: RateLimitOptions) => {
 
       let current: number;
       try {
-        current = (await redis.eval(
-          RATE_LIMIT_SCRIPT,
-          1,
-          key,
-          windowSeconds
+        current = (await withTimeout(
+          redis.eval(
+            RATE_LIMIT_SCRIPT,
+            1,
+            key,
+            windowSeconds
+          ) as Promise<number>,
+          RATE_LIMIT_REDIS_TIMEOUT_MS
         )) as number;
       } catch {
-        // Fail open — allow request if Redis is unavailable
-        return;
+        if (failOpen) {
+          return;
+        }
+        throw new TooManyRequestsError(
+          "Rate limiter unavailable, please retry"
+        );
       }
 
       const remaining = Math.max(0, max - current);

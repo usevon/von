@@ -242,7 +242,9 @@ const auth = betterAuth({
   },
 });
 
-async function resolveAuth(headers: Record<string, string | undefined>): Promise<{
+async function resolveAuth(
+  headers: Record<string, string | undefined>
+): Promise<{
   organizationId: string;
   userId: string;
   scopes: string[];
@@ -298,7 +300,14 @@ async function resolveAuth(headers: Record<string, string | undefined>): Promise
 
 export const vonAuth = (scope: string) =>
   new Elysia({ name: `auth:${scope}` })
-    .use(rateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
+    .use(
+      rateLimit({
+        windowMs: 60_000,
+        max: 200,
+        keyPrefix: "rl:auth",
+        failOpen: env.NODE_ENV !== "production",
+      })
+    )
     .resolve({ as: "scoped" }, async ({ headers, status }) => {
       const result = await resolveAuth(headers);
       if (!result) {
