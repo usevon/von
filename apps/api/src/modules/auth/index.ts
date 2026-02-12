@@ -1,9 +1,4 @@
-import {
-  betterAuth,
-  drizzleAdapter,
-  hasScope,
-  parseScopes,
-} from "@usevon/auth";
+import { betterAuth, drizzleAdapter, hasScope } from "@usevon/auth";
 import { db } from "@usevon/db";
 import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
@@ -15,6 +10,10 @@ import { rateLimit } from "@/lib/rate-limit";
 import { resendClient } from "@/lib/resend";
 import { authDatabaseHooks, buildAuthPlugins } from "@/modules/auth/plugins";
 import { buildSocialProviders } from "@/modules/auth/providers";
+import {
+  resolveAuth,
+  validateSession as validateAuthSession,
+} from "@/modules/auth/service";
 import { createSecondaryStorage } from "@/modules/auth/storage";
 
 const redis = getRedisClient();
@@ -80,62 +79,6 @@ const auth = betterAuth({
   databaseHooks: authDatabaseHooks,
 });
 
-async function resolveAuth(
-  headers: Record<string, string | undefined>
-): Promise<{
-  organizationId: string;
-  userId: string;
-  scopes: string[];
-} | null> {
-  const authHeader = headers.authorization;
-
-  if (authHeader?.startsWith("Bearer ")) {
-    try {
-      const rawKey = authHeader.slice(7);
-      const result = await auth.api.verifyApiKey({
-        body: { key: rawKey },
-      });
-
-      if (result.valid && result.key?.organizationId) {
-        const keyId = result.key.id;
-        const now = Math.floor(Date.now() / 1000);
-        redis.set(`api:lastUsed:${keyId}`, String(now));
-        redis.sadd("api:lastUsed:dirty", keyId);
-
-        return {
-          organizationId: result.key.organizationId,
-          userId: result.key.userId ?? "",
-          scopes: parseScopes(
-            (result.key as Record<string, unknown>).scopes as
-              | string
-              | string[]
-              | null
-          ),
-        };
-      }
-    } catch {
-      // Invalid key — fall through to session check
-    }
-  }
-
-  try {
-    const data = await auth.api.getSession({
-      headers: headers as HeadersInit,
-    });
-    if (data?.session?.activeOrganizationId) {
-      return {
-        organizationId: data.session.activeOrganizationId,
-        userId: data.user?.id ?? "",
-        scopes: ["*"],
-      };
-    }
-  } catch {
-    // No valid session
-  }
-
-  return null;
-}
-
 export const vonAuth = (scope: string) =>
   new Elysia({ name: `auth:${scope}` })
     .use(
@@ -147,7 +90,7 @@ export const vonAuth = (scope: string) =>
       })
     )
     .resolve({ as: "scoped" }, async ({ headers, status }) => {
-      const result = await resolveAuth(headers);
+      const result = await resolveAuth(auth, redis, headers);
       if (!result) {
         return status(401, {
           error: "Please sign in or provide a valid API key.",
@@ -162,14 +105,7 @@ export const vonAuth = (scope: string) =>
 export async function validateSession(
   headers: Record<string, string>
 ): Promise<string | null> {
-  try {
-    const session = await auth.api.getSession({
-      headers: headers as HeadersInit,
-    });
-    return session?.session?.activeOrganizationId ?? null;
-  } catch {
-    return null;
-  }
+  return validateAuthSession(auth, headers);
 }
 
 export { auth };
