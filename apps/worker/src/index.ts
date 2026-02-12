@@ -1,8 +1,26 @@
 import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
 import { log } from "@/lib/logger";
+import { startRetentionCleanup } from "@/lib/retention";
 import { createInboundWorker } from "@/processors/inbound";
 import { createWebhookWorker } from "@/processors/webhook";
+
+const CONNECTION_AUTH_REGEX = /\/\/[^@/]+@/;
+
+const redactConnectionUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    if (!(parsed.username || parsed.password)) {
+      return parsed.toString();
+    }
+
+    parsed.username = "***";
+    parsed.password = parsed.password ? "***" : "";
+    return parsed.toString();
+  } catch {
+    return url.replace(CONNECTION_AUTH_REGEX, "//***@");
+  }
+};
 
 const [redis, db] = await Promise.all([
   checkRedisConnection(),
@@ -10,7 +28,7 @@ const [redis, db] = await Promise.all([
 ]);
 
 if (!redis.ok) {
-  log.error({ url: redis.url }, "Redis connection failed");
+  log.error({ url: redactConnectionUrl(redis.url) }, "Redis connection failed");
   process.exit(1);
 }
 
@@ -21,11 +39,13 @@ if (!db.ok) {
 
 const webhookWorker = createWebhookWorker();
 const inboundWorker = createInboundWorker();
+const stopRetentionCleanup = startRetentionCleanup();
 
 log.info("Von Worker started");
 
 const shutdown = async () => {
   log.info("Shutting down worker...");
+  stopRetentionCleanup();
   await Promise.all([webhookWorker.close(), inboundWorker.close()]);
   process.exit(0);
 };
