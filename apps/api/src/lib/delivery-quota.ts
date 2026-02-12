@@ -58,7 +58,7 @@ export async function reserveMonthlyQuota(
   const currentUsage = result[1];
 
   if (!allowed) {
-    throw new TooManyRequestsError("Monthly delivery quota exceeded");
+    throw new TooManyRequestsError();
   }
 
   return { allowed, currentUsage };

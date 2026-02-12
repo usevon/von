@@ -32,7 +32,7 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
         params.version
       );
       if (!version) {
-        throw new NotFoundError("Version not found");
+        throw new NotFoundError();
       }
       return version;
     },
@@ -71,7 +71,7 @@ export const versionsWrite = new Elysia({ prefix: "/versions" })
         ...body,
       });
       if (!version) {
-        throw new NotFoundError("Version not found");
+        throw new NotFoundError();
       }
       return version;
     },

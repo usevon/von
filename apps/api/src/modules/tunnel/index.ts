@@ -82,7 +82,7 @@ export const tunnelRegisterWrite = new Elysia()
         existing.organizationId !== organizationId ||
         existing.userId !== userId
       ) {
-        throw new NotFoundError("Tunnel not found");
+        throw new NotFoundError();
       }
 
       // Generate new secret

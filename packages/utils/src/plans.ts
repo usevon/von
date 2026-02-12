@@ -4,7 +4,6 @@ export type PlanLimits = {
   monthlyDeliveries: number;
   ratePerSecond: number;
   burstPerSecond: number;
-  retentionDays: number;
   hasOverage: boolean;
 };
 
@@ -13,14 +12,12 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     monthlyDeliveries: 25_000,
     ratePerSecond: 25,
     burstPerSecond: 25,
-    retentionDays: 3,
     hasOverage: false,
   },
   pro: {
     monthlyDeliveries: 100_000,
     ratePerSecond: 100,
     burstPerSecond: 150,
-    retentionDays: 90,
     hasOverage: true,
   },
 };

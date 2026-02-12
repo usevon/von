@@ -78,9 +78,7 @@ export const orgThroughputLimit = new Elysia({
 
   if (!allowed) {
     set.headers["Retry-After"] = "1";
-    throw new TooManyRequestsError(
-      "Throughput limit exceeded, try again shortly"
-    );
+    throw new TooManyRequestsError();
   }
 
   return { plan };

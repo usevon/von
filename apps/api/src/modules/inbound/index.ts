@@ -33,7 +33,7 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
     async ({ organizationId, params }) => {
       const endpoint = await InboundService.getById(organizationId, params.id);
       if (!endpoint) {
-        throw new NotFoundError("Inbound endpoint not found");
+        throw new NotFoundError();
       }
       return endpoint;
     },
@@ -72,7 +72,7 @@ export const inboundWrite = new Elysia({ prefix: "/inbound" })
         ...body,
       });
       if (!endpoint) {
-        throw new NotFoundError("Inbound endpoint not found");
+        throw new NotFoundError();
       }
       return endpoint;
     },
@@ -129,9 +129,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         1
       );
       if (!allowed) {
-        throw new TooManyRequestsError(
-          "Throughput limit exceeded. Try again shortly."
-        );
+        throw new TooManyRequestsError();
       }
 
       const headerRecord: Record<string, string> = {};

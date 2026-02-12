@@ -96,11 +96,11 @@ describe("reserveMonthlyQuota", () => {
     );
   });
 
-  test("throws with correct message when quota exceeded", async () => {
+  test("throws with default message when quota exceeded", async () => {
     mockRedis.eval.mockResolvedValue([0, 24999]);
 
     await expect(reserveMonthlyQuota("org-1", "hobby", 2)).rejects.toThrow(
-      "Monthly delivery quota exceeded"
+      "Too many requests"
     );
   });
 

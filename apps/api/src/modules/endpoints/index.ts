@@ -31,7 +31,7 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
     async ({ organizationId, params }) => {
       const endpoint = await EndpointService.getById(organizationId, params.id);
       if (!endpoint) {
-        throw new NotFoundError("Endpoint not found");
+        throw new NotFoundError();
       }
       return endpoint;
     },
@@ -71,7 +71,7 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
         ...body,
       });
       if (!endpoint) {
-        throw new NotFoundError("Endpoint not found");
+        throw new NotFoundError();
       }
       return endpoint;
     },

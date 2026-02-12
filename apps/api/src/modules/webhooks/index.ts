@@ -65,7 +65,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
     async ({ organizationId, params }) => {
       const event = await WebhookService.getEvent(organizationId, params.id);
       if (!event) {
-        throw new NotFoundError("Event not found");
+        throw new NotFoundError();
       }
       return event;
     },
