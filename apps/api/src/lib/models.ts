@@ -1,4 +1,4 @@
-import { type Static, t } from "elysia";
+import { t } from "elysia";
 
 export const PaginationQuery = t.Object({
   limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
@@ -18,7 +18,7 @@ export const SuccessResponse = t.Object({
   success: t.Boolean(),
 });
 
-export type PaginationQueryType = Static<typeof PaginationQuery>;
-export type IdParamType = Static<typeof IdParam>;
-export type ErrorResponseType = Static<typeof ErrorResponse>;
-export type SuccessResponseType = Static<typeof SuccessResponse>;
+export type PaginationQueryType = typeof PaginationQuery.static;
+export type IdParamType = typeof IdParam.static;
+export type ErrorResponseType = typeof ErrorResponse.static;
+export type SuccessResponseType = typeof SuccessResponse.static;

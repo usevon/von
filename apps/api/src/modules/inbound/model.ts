@@ -1,9 +1,3 @@
-import type {
-  CreateInboundEndpoint,
-  InboundDelivery,
-  InboundEndpoint,
-  UpdateInboundEndpoint,
-} from "@usevon/types";
 import { t } from "elysia";
 
 export namespace InboundModel {
@@ -21,7 +15,7 @@ export namespace InboundModel {
     ),
   });
 
-  export type createEndpointBody = CreateInboundEndpoint;
+  export type createEndpointBody = typeof createEndpointBody.static;
 
   export const updateEndpointBody = t.Object({
     name: t.Optional(t.String({ maxLength: 255 })),
@@ -32,7 +26,7 @@ export namespace InboundModel {
     ),
   });
 
-  export type updateEndpointBody = UpdateInboundEndpoint;
+  export type updateEndpointBody = typeof updateEndpointBody.static;
 
   export const inboundEndpoint = t.Object({
     id: t.String({ format: "uuid" }),
@@ -46,7 +40,7 @@ export namespace InboundModel {
     updatedAt: t.String(),
   });
 
-  export type inboundEndpoint = InboundEndpoint;
+  export type inboundEndpoint = typeof inboundEndpoint.static;
 
   export const inboundEndpointList = t.Object({
     endpoints: t.Array(inboundEndpoint),
@@ -72,5 +66,5 @@ export namespace InboundModel {
     createdAt: t.String(),
   });
 
-  export type inboundDelivery = InboundDelivery;
+  export type inboundDelivery = typeof inboundDelivery.static;
 }

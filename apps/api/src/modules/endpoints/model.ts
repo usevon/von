@@ -1,4 +1,3 @@
-import type { CreateEndpoint, Endpoint, UpdateEndpoint } from "@usevon/types";
 import { t } from "elysia";
 
 export namespace EndpointModel {
@@ -21,7 +20,7 @@ export namespace EndpointModel {
     events: t.Optional(t.Array(t.String({ maxLength: 100 }))),
   });
 
-  export type createBody = CreateEndpoint;
+  export type createBody = typeof createBody.static;
 
   export const updateBody = t.Object({
     url: t.Optional(t.String({ format: "uri" })),
@@ -37,7 +36,7 @@ export namespace EndpointModel {
     ),
   });
 
-  export type updateBody = UpdateEndpoint;
+  export type updateBody = typeof updateBody.static;
 
   export const endpoint = t.Object({
     id: t.String({ format: "uuid" }),
@@ -54,7 +53,7 @@ export namespace EndpointModel {
     updatedAt: t.String(),
   });
 
-  export type endpoint = Endpoint;
+  export type endpoint = typeof endpoint.static;
 
   export const endpointList = t.Object({
     endpoints: t.Array(endpoint),
