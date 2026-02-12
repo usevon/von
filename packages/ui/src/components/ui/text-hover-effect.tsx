@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@usevon/ui";
 import {
   motion,
   useMotionTemplate,
@@ -8,6 +7,7 @@ import {
   useSpring,
 } from "motion/react";
 import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type TextHoverEffectProps = {
   text: string;
@@ -112,7 +112,6 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
         </mask>
       </defs>
 
-      {/* Base outline text */}
       <text
         className="fill-transparent stroke-foreground/20 font-bold font-sans"
         dominantBaseline="middle"
@@ -125,7 +124,6 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
         {text}
       </text>
 
-      {/* Gradient text revealed by mask */}
       <text
         className="font-bold font-sans"
         dominantBaseline="middle"

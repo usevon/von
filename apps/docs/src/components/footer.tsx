@@ -1,10 +1,9 @@
 "use client";
 
-import { Button, DiscordIcon, GitHubIcon } from "@usevon/ui";
+import { Button, DiscordIcon, GitHubIcon, TextHoverEffect } from "@usevon/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { siteUrl } from "@/lib/urls";
-import { TextHoverEffect } from "./text-hover-effect";
 import { ThemeSwitcher } from "./theme-switcher";
 
 const footerLinks = {

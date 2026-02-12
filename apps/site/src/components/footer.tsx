@@ -1,9 +1,8 @@
 "use client";
 
-import { Button, DiscordIcon, GitHubIcon } from "@usevon/ui";
+import { Button, DiscordIcon, GitHubIcon, TextHoverEffect } from "@usevon/ui";
 import Image from "next/image";
 import Link from "next/link";
-import { TextHoverEffect } from "@/components/text-hover-effect";
 import { docsUrl } from "@/lib/urls";
 import { ThemeSwitcher } from "./theme-switcher";
 
