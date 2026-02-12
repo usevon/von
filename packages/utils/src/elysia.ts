@@ -4,6 +4,7 @@ import type { Logger } from "pino";
 import { Elysia } from "elysia";
 import {
   BadRequestError,
+  ForbiddenError,
   InternalServerError,
   NotFoundError,
   TooManyRequestsError,
@@ -40,6 +41,7 @@ export const vonBase = (opts: VonBaseOptions) =>
   new Elysia({ name: `${opts.name}-base` })
     .error({
       UnauthorizedError,
+      ForbiddenError,
       NotFoundError,
       BadRequestError,
       TooManyRequestsError,
@@ -58,6 +60,19 @@ export const vonBase = (opts: VonBaseOptions) =>
         return { error: "Not found" };
       }
 
+      // Handle registered error classes with toResponse()
+      if ("toResponse" in error && "status" in error) {
+        const status = error.status as number;
+        if (status >= 500 && opts.logger) {
+          opts.logger.error({ error }, error.message);
+        }
+        set.status = status;
+        return status === 500 && opts.isProd
+          ? { error: "Internal server error" }
+          : (error as { toResponse: () => { error: string } }).toResponse();
+      }
+
+      // Fallback for unregistered errors
       const status = "status" in error ? (error.status as number) : 500;
       const message = "message" in error ? error.message : String(error);
 

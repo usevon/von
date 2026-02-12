@@ -5,6 +5,9 @@ function createHttpError(status: number, defaultMessage: string) {
       super(message);
       this.name = this.constructor.name;
     }
+    toResponse() {
+      return { error: this.message };
+    }
   };
 }
 
