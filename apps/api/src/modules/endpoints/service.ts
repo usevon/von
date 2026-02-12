@@ -3,7 +3,6 @@ import { delivery, endpoint, event } from "@usevon/db/schema";
 import {
   type DeliveryEndpoint,
   getRedisClient,
-  getWebhookDeliveryQueue,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
 import type {
@@ -19,12 +18,13 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
-import { releaseMonthlyQuota, reserveMonthlyQuota } from "@/lib/delivery-quota";
+import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import {
-  decryptOptionalSecret,
   decryptSecret,
   encryptSecret,
+  withDecryptedSecretFields,
 } from "@/lib/secret-cipher";
+import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
 const redis = getRedisClient();
@@ -37,14 +37,6 @@ type UpdateEndpointParams = UpdateEndpoint & {
 };
 
 type EndpointRow = typeof endpoint.$inferSelect;
-
-const withDecryptedEndpointSecrets = <T extends { secret: string }>(
-  row: T & { previousSecret?: string | null }
-): T & { previousSecret?: string | null } => ({
-  ...row,
-  secret: decryptSecret(row.secret),
-  previousSecret: decryptOptionalSecret(row.previousSecret),
-});
 
 const toResponse = (row: EndpointRow): EndpointModel.endpoint => ({
   id: row.id,
@@ -222,7 +214,7 @@ export abstract class EndpointService {
       const cached = await redis.get(`endpoints:${organizationId}`);
       if (cached) {
         const parsed = JSON.parse(cached) as DeliveryEndpoint[];
-        return parsed.map((row) => withDecryptedEndpointSecrets(row));
+        return parsed.map((row) => withDecryptedSecretFields(row));
       }
     }
 
@@ -256,7 +248,7 @@ export abstract class EndpointService {
       );
     }
 
-    return result.map((row) => withDecryptedEndpointSecrets(row));
+    return result.map((row) => withDecryptedSecretFields(row));
   }
 
   static async testEndpoint(
@@ -298,10 +290,7 @@ export abstract class EndpointService {
     };
     const payloadStr = JSON.stringify(testPayload);
 
-    await reserveMonthlyQuota(organizationId, plan, 1);
-    let releaseQuota = true;
-
-    try {
+    return withReservedMonthlyQuota(organizationId, plan, 1, async () => {
       const eventId = crypto.randomUUID();
       const deliveryId = crypto.randomUUID();
 
@@ -322,32 +311,24 @@ export abstract class EndpointService {
         createdAt: now,
       });
 
-      const deliveryEndpoint = withDecryptedEndpointSecrets(ep[0]);
+      const deliveryEndpoint = withDecryptedSecretFields(ep[0]!);
 
-      try {
-        await getWebhookDeliveryQueue().add("webhook-delivery", {
-          deliveryId,
-          eventId,
-          payload: payloadStr,
-          eventType: type,
-          endpoint: deliveryEndpoint,
-          organizationId,
-        } satisfies WebhookDeliveryJob);
-      } catch {
-        await db
-          .update(delivery)
-          .set({ status: "failed" })
-          .where(eq(delivery.id, deliveryId));
-        throw new InternalServerError();
-      }
+      await enqueueWebhookDispatchJobs([
+        {
+          name: "webhook-delivery",
+          data: {
+            deliveryId,
+            eventId,
+            payload: payloadStr,
+            eventType: type,
+            endpoint: deliveryEndpoint,
+            organizationId,
+          } satisfies WebhookDeliveryJob,
+        },
+      ]);
 
-      releaseQuota = false;
       return { eventId, deliveryId };
-    } finally {
-      if (releaseQuota) {
-        await releaseMonthlyQuota(organizationId, 1);
-      }
-    }
+    });
   }
 
   static async rotateSecret(

@@ -68,3 +68,18 @@ export const decryptOptionalSecret = (
   }
   return decryptSecret(value);
 };
+
+type SecretFields = {
+  secret: string;
+  previousSecret?: string | null;
+};
+
+export const withDecryptedSecretFields = <T extends SecretFields>(
+  row: T
+): T => ({
+  ...row,
+  secret: decryptSecret(row.secret),
+  previousSecret: decryptOptionalSecret(
+    row.previousSecret
+  ) as T["previousSecret"],
+});

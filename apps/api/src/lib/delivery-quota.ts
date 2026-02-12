@@ -107,3 +107,19 @@ export async function releaseMonthlyQuota(
 
   return { currentUsage };
 }
+
+export async function withReservedMonthlyQuota<T>(
+  orgId: string,
+  plan: string,
+  requestedCount: number,
+  run: () => Promise<T>
+): Promise<T> {
+  await reserveMonthlyQuota(orgId, plan, requestedCount);
+
+  try {
+    return await run();
+  } catch (error) {
+    await releaseMonthlyQuota(orgId, requestedCount);
+    throw error;
+  }
+}

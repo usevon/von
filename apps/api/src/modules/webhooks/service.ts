@@ -1,10 +1,6 @@
 import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
-import {
-  type DeliveryEndpoint,
-  getWebhookDeliveryQueue,
-  type WebhookDeliveryJob,
-} from "@usevon/queue";
+import type { DeliveryEndpoint, WebhookDeliveryJob } from "@usevon/queue";
 import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import {
   BadRequestError,
@@ -13,7 +9,12 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { releaseMonthlyQuota, reserveMonthlyQuota } from "@/lib/delivery-quota";
+import {
+  releaseMonthlyQuota,
+  reserveMonthlyQuota,
+  withReservedMonthlyQuota,
+} from "@/lib/delivery-quota";
+import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
 
@@ -117,27 +118,6 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
   }
 
   return { allDeliveries, allJobs };
-};
-
-const enqueueJobs = async (
-  allJobs: Array<{ name: string; data: WebhookDeliveryJob }>,
-  insertedIds: Set<string>
-) => {
-  const jobsToEnqueue = allJobs.filter((j) => insertedIds.has(j.data.eventId));
-  if (jobsToEnqueue.length === 0) {
-    return;
-  }
-
-  try {
-    await getWebhookDeliveryQueue().addBulk(jobsToEnqueue);
-  } catch (_err) {
-    const failedDeliveryIds = jobsToEnqueue.map((j) => j.data.deliveryId);
-    await db
-      .update(delivery)
-      .set({ status: "failed" })
-      .where(inArray(delivery.id, failedDeliveryIds));
-    throw new InternalServerError();
-  }
 };
 
 export abstract class WebhookService {
@@ -291,7 +271,10 @@ export abstract class WebhookService {
         reservedDeliveries = insertedDeliveryCount;
       }
 
-      await enqueueJobs(allJobs, insertedIds);
+      const jobsToEnqueue = allJobs.filter((j) =>
+        insertedIds.has(j.data.eventId)
+      );
+      await enqueueWebhookDispatchJobs(jobsToEnqueue);
       reservedDeliveries = 0;
     } catch (error) {
       if (reservedDeliveries > 0) {
@@ -430,64 +413,48 @@ export abstract class WebhookService {
       return { replayed: 0, deliveryIds: [] };
     }
 
-    await reserveMonthlyQuota(organizationId, plan, targets.length);
-    let releaseQuota = true;
+    return withReservedMonthlyQuota(
+      organizationId,
+      plan,
+      targets.length,
+      async () => {
+        const now = new Date();
+        const payloadStr = eventRecord.payload;
+        const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+        const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
 
-    try {
-      const now = new Date();
-      const payloadStr = eventRecord.payload;
-      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
-      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
-
-      for (const ep of targets) {
-        const deliveryId = crypto.randomUUID();
-        deliveryRecords.push({
-          id: deliveryId,
-          eventId: eventRecord.id,
-          endpointId: ep.id,
-          status: "pending",
-          attempts: 0,
-          createdAt: now,
-        });
-        jobs.push({
-          name: "webhook-delivery",
-          data: {
-            deliveryId,
+        for (const ep of targets) {
+          const deliveryId = crypto.randomUUID();
+          deliveryRecords.push({
+            id: deliveryId,
             eventId: eventRecord.id,
-            payload: payloadStr,
-            eventType: eventRecord.eventType,
-            endpoint: ep,
-            organizationId,
-          },
-        });
-      }
+            endpointId: ep.id,
+            status: "pending",
+            attempts: 0,
+            createdAt: now,
+          });
+          jobs.push({
+            name: "webhook-delivery",
+            data: {
+              deliveryId,
+              eventId: eventRecord.id,
+              payload: payloadStr,
+              eventType: eventRecord.eventType,
+              endpoint: ep,
+              organizationId,
+            },
+          });
+        }
 
-      await db.insert(delivery).values(deliveryRecords);
-      try {
-        await getWebhookDeliveryQueue().addBulk(jobs);
-      } catch {
-        await db
-          .update(delivery)
-          .set({ status: "failed" })
-          .where(
-            inArray(
-              delivery.id,
-              deliveryRecords.map((d) => d.id as string)
-            )
-          );
-        throw new InternalServerError();
-      }
+        await db.insert(delivery).values(deliveryRecords);
+        await enqueueWebhookDispatchJobs(jobs);
 
-      releaseQuota = false;
-      return {
-        replayed: deliveryRecords.length,
-        deliveryIds: deliveryRecords.map((d) => d.id as string),
-      };
-    } finally {
-      if (releaseQuota) {
-        await releaseMonthlyQuota(organizationId, targets.length);
+        return {
+          replayed: deliveryRecords.length,
+          deliveryIds: deliveryRecords.map((d) => d.id as string),
+        };
       }
-    }
+    );
   }
 
   static async replayBulk(
@@ -561,32 +528,15 @@ export abstract class WebhookService {
     }
 
     if (deliveryRecords.length > 0) {
-      await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
-      let releaseQuota = true;
-
-      try {
-        await db.insert(delivery).values(deliveryRecords);
-        try {
-          await getWebhookDeliveryQueue().addBulk(jobs);
-        } catch {
-          await db
-            .update(delivery)
-            .set({ status: "failed" })
-            .where(
-              inArray(
-                delivery.id,
-                deliveryRecords.map((d) => d.id as string)
-              )
-            );
-          throw new InternalServerError();
+      await withReservedMonthlyQuota(
+        organizationId,
+        plan,
+        deliveryRecords.length,
+        async () => {
+          await db.insert(delivery).values(deliveryRecords);
+          await enqueueWebhookDispatchJobs(jobs);
         }
-
-        releaseQuota = false;
-      } finally {
-        if (releaseQuota) {
-          await releaseMonthlyQuota(organizationId, deliveryRecords.length);
-        }
-      }
+      );
     }
 
     return { replayed: deliveryRecords.length };

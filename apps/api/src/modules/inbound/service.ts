@@ -1,6 +1,6 @@
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
-import { getInboundForwardingQueue, getRedisClient } from "@usevon/queue";
+import { getRedisClient } from "@usevon/queue";
 import type {
   CreateInboundEndpoint,
   EndpointStatus,
@@ -14,11 +14,12 @@ import {
   isSafeWebhookUrl,
 } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
-import { releaseMonthlyQuota, reserveMonthlyQuota } from "@/lib/delivery-quota";
+import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
+import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
 import {
-  decryptOptionalSecret,
   decryptSecret,
   encryptSecret,
+  withDecryptedSecretFields,
 } from "@/lib/secret-cipher";
 import type { InboundModel } from "@/modules/inbound/model";
 
@@ -26,14 +27,6 @@ const redis = getRedisClient();
 const CACHE_TTL = 300; // 5 minutes
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
-
-const withDecryptedInboundSecrets = <T extends { secret: string }>(
-  row: T & { previousSecret?: string | null }
-): T & { previousSecret?: string | null } => ({
-  ...row,
-  secret: decryptSecret(row.secret),
-  previousSecret: decryptOptionalSecret(row.previousSecret),
-});
 
 const toResponse = (row: InboundEndpointRow): InboundEndpoint => ({
   id: row.id,
@@ -148,7 +141,7 @@ export abstract class InboundService {
     const cached = await redis.get(`inbound:${endpointId}`);
     if (cached) {
       const parsed = JSON.parse(cached) as InboundEndpointRow;
-      return withDecryptedInboundSecrets(parsed);
+      return withDecryptedSecretFields(parsed);
     }
 
     const result = await db
@@ -165,7 +158,7 @@ export abstract class InboundService {
       );
     }
 
-    return result[0] ? withDecryptedInboundSecrets(result[0]) : null;
+    return result[0] ? withDecryptedSecretFields(result[0]) : null;
   }
 
   static async update(
@@ -239,66 +232,54 @@ export abstract class InboundService {
   static async receive(
     params: ReceiveWebhookParams
   ): Promise<InboundModel.inboundDelivery> {
-    await reserveMonthlyQuota(params.organizationId, params.plan, 1);
-    let releaseQuota = true;
+    return withReservedMonthlyQuota(
+      params.organizationId,
+      params.plan,
+      1,
+      async () => {
+        const now = new Date();
+        const deliveryId = crypto.randomUUID();
+        const payloadStr = JSON.stringify(params.payload);
+        const headersStr = JSON.stringify(params.headers);
 
-    try {
-      const now = new Date();
-      const deliveryId = crypto.randomUUID();
-      const payloadStr = JSON.stringify(params.payload);
-      const headersStr = JSON.stringify(params.headers);
+        const delivery = await db.transaction(async (tx) => {
+          const result = await tx
+            .insert(inboundDelivery)
+            .values({
+              id: deliveryId,
+              inboundEndpointId: params.endpointId,
+              payload: payloadStr,
+              headers: headersStr,
+              status: "pending",
+              createdAt: now,
+            })
+            .returning();
 
-      const delivery = await db.transaction(async (tx) => {
-        const result = await tx
-          .insert(inboundDelivery)
-          .values({
-            id: deliveryId,
-            inboundEndpointId: params.endpointId,
-            payload: payloadStr,
-            headers: headersStr,
-            status: "pending",
-            createdAt: now,
-          })
-          .returning();
+          if (!result[0]) {
+            throw new InternalServerError();
+          }
+          return result[0];
+        });
 
-        if (!result[0]) {
-          throw new InternalServerError();
-        }
-        return result[0];
-      });
-
-      const queue = getInboundForwardingQueue();
-      try {
-        await queue.add("inbound-forwarding", {
+        await enqueueInboundForwardingJob({
           deliveryId,
           endpoint: params.endpoint,
           payload: payloadStr,
           headers: headersStr,
         });
-      } catch {
-        await db
-          .update(inboundDelivery)
-          .set({ status: "failed" })
-          .where(eq(inboundDelivery.id, deliveryId));
-        throw new InternalServerError();
-      }
 
-      releaseQuota = false;
-      return {
-        id: delivery.id,
-        payload: delivery.payload ? JSON.parse(delivery.payload) : null,
-        headers: delivery.headers ? JSON.parse(delivery.headers) : null,
-        status: delivery.status,
-        forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
-        response:
-          (delivery.response as import("@usevon/types").DeliveryResponse) ??
-          null,
-        createdAt: delivery.createdAt.toISOString(),
-      };
-    } finally {
-      if (releaseQuota) {
-        await releaseMonthlyQuota(params.organizationId, 1);
+        return {
+          id: delivery.id,
+          payload: delivery.payload ? JSON.parse(delivery.payload) : null,
+          headers: delivery.headers ? JSON.parse(delivery.headers) : null,
+          status: delivery.status,
+          forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
+          response:
+            (delivery.response as import("@usevon/types").DeliveryResponse) ??
+            null,
+          createdAt: delivery.createdAt.toISOString(),
+        };
       }
-    }
+    );
   }
 }
