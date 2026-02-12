@@ -25,18 +25,16 @@ export const createVonAuth = (
   } = options;
 
   return (scope: string) => {
-    let plugin = new Elysia({ name: `auth:${scope}` });
-
-    if (useRateLimit) {
-      plugin = plugin.use(
-        rateLimit({
-          windowMs: rateLimitWindowMs,
-          max: rateLimitMax,
-          keyPrefix: rateLimitKeyPrefix,
-          failOpen: rateLimitFailOpen,
-        })
-      );
-    }
+    const plugin = useRateLimit
+      ? new Elysia({ name: `auth:${scope}` }).use(
+          rateLimit({
+            windowMs: rateLimitWindowMs,
+            max: rateLimitMax,
+            keyPrefix: rateLimitKeyPrefix,
+            failOpen: rateLimitFailOpen,
+          })
+        )
+      : new Elysia({ name: `auth:${scope}` });
 
     return plugin.resolve({ as: "scoped" }, async ({ headers, status }) => {
       const result = await resolveAuth(deps.auth, deps.redis, headers);

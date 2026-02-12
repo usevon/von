@@ -23,7 +23,7 @@ export const buildRequestFingerprint = async (
 
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
-    .derive({ as: "global" }, async ({ request, set }) => {
+    .resolve({ as: "global" }, async ({ request, set }) => {
       const method = request.method;
 
       if (!["POST", "PUT", "PATCH"].includes(method)) {

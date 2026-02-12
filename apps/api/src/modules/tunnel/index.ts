@@ -3,9 +3,9 @@ import { tunnel } from "@usevon/db/schema";
 import { generateTunnelId, generateTunnelSecret } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
-import { ErrorResponse } from "@/lib/models";
 import { env } from "@/env";
-import { vonAuth, validateSession } from "@/modules/auth";
+import { ErrorResponse } from "@/lib/models";
+import { validateSession, vonAuth } from "@/modules/auth";
 import type { TunnelResponse } from "@/modules/tunnel/model";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
@@ -16,6 +16,32 @@ export { TunnelService } from "@/modules/tunnel/service";
 const log = createLogger({ name: "tunnel" });
 
 const SESSION_VALIDATION_INTERVAL_MS = 30_000;
+
+const parseTunnelResponseMessage = (
+  message: unknown
+): TunnelResponse | null => {
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    "requestId" in message
+  ) {
+    return message as TunnelResponse;
+  }
+
+  if (typeof message === "string") {
+    return JSON.parse(message) as TunnelResponse;
+  }
+
+  if (message instanceof ArrayBuffer) {
+    return JSON.parse(new TextDecoder().decode(message)) as TunnelResponse;
+  }
+
+  if (ArrayBuffer.isView(message)) {
+    return JSON.parse(new TextDecoder().decode(message)) as TunnelResponse;
+  }
+
+  return null;
+};
 
 export const tunnelRegisterWrite = new Elysia()
   .use(vonAuth("write:tunnels"))
@@ -208,21 +234,8 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
     }
 
     try {
-      let response: TunnelResponse;
-
-      if (
-        typeof message === "object" &&
-        message !== null &&
-        "requestId" in message
-      ) {
-        response = message as TunnelResponse;
-      } else if (typeof message === "string") {
-        response = JSON.parse(message);
-      } else if (message instanceof ArrayBuffer) {
-        response = JSON.parse(new TextDecoder().decode(message));
-      } else if (ArrayBuffer.isView(message)) {
-        response = JSON.parse(new TextDecoder().decode(message));
-      } else {
+      const response = parseTunnelResponseMessage(message);
+      if (!response) {
         log.error(`Unknown message type: ${typeof message}`);
         return;
       }
@@ -278,8 +291,7 @@ export const tunnelProxy = new Elysia()
       const parsed = parseTunnelParam(params.tunnelIdWithSecret);
       if (
         !(
-          parsed &&
-          TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
         )
       ) {
         return status(401, { error: "Invalid tunnel" });
@@ -304,8 +316,7 @@ export const tunnelProxy = new Elysia()
       const parsed = parseTunnelParam(params.tunnelIdWithSecret);
       if (
         !(
-          parsed &&
-          TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
         )
       ) {
         return status(401, { error: "Invalid tunnel" });

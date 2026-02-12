@@ -1,13 +1,14 @@
 import { Elysia, t } from "elysia";
+import { env } from "@/env";
 import {
   ErrorResponse,
   IdParam,
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
+import { getOrgPlan } from "@/lib/org-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkThroughputLimit } from "@/lib/throughput-limit";
-import { getOrgPlan } from "@/lib/org-plan";
 import { vonAuth } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
@@ -104,7 +105,14 @@ export const inboundWrite = new Elysia({ prefix: "/inbound" })
 const MAX_PAYLOAD_SIZE = 1_000_000; // 1MB
 
 export const inboundPublic = new Elysia({ prefix: "/in" })
-  .use(rateLimit({ windowMs: 60_000, max: 100, keyPrefix: "rl:inbound" }))
+  .use(
+    rateLimit({
+      windowMs: 60_000,
+      max: 100,
+      keyPrefix: "rl:inbound",
+      failOpen: env.NODE_ENV !== "production",
+    })
+  )
   .post(
     "/:id",
     async ({ params, body, headers, status }) => {
