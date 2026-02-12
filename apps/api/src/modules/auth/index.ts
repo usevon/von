@@ -8,7 +8,10 @@ import { resendClient } from "@/lib/resend";
 import { createVonAuth } from "@/modules/auth/middleware";
 import { authDatabaseHooks, buildAuthPlugins } from "@/modules/auth/plugins";
 import { buildSocialProviders } from "@/modules/auth/providers";
-import { validateSession as validateAuthSession } from "@/modules/auth/service";
+import {
+  validateSession as validateAuthSession,
+  validateSessionWithUser as validateAuthSessionWithUser,
+} from "@/modules/auth/service";
 import { createSecondaryStorage } from "@/modules/auth/storage";
 
 const redis = getRedisClient();
@@ -81,10 +84,16 @@ export const vonAuth = createVonAuth(
   }
 );
 
-export async function validateSession(
+export function validateSession(
   headers: Record<string, string>
 ): Promise<string | null> {
   return validateAuthSession(auth, headers);
+}
+
+export function validateSessionWithUser(
+  headers: Record<string, string>
+): Promise<{ organizationId: string; userId: string } | null> {
+  return validateAuthSessionWithUser(auth, headers);
 }
 
 export { auth };

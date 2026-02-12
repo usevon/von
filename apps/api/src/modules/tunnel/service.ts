@@ -1,6 +1,7 @@
 import { createConnection, getRedisClient } from "@usevon/queue";
 import { timingSafeEqual } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
+import { env } from "@/env";
 import type {
   TunnelConnection,
   TunnelRelayMessage,
@@ -245,9 +246,9 @@ export abstract class TunnelService {
       request.headers.get("content-length") ?? "0",
       10
     );
-    if (contentLength > 1_000_000) {
+    if (contentLength > env.API_MAX_BODY_BYTES) {
       set.status = 413;
-      return { error: "Payload exceeds 1MB limit" };
+      return { error: `Payload exceeds ${env.API_MAX_BODY_BYTES} byte limit` };
     }
 
     const headers: Record<string, string> = {};

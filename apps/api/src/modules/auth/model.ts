@@ -6,6 +6,11 @@ export type ResolvedAuth = {
   scopes: string[];
 };
 
+export type SessionContext = {
+  organizationId: string;
+  userId: string;
+};
+
 export type VerifyApiKeyResult = {
   valid: boolean;
   key?:

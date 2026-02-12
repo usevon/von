@@ -6,7 +6,7 @@ import { Elysia } from "elysia";
 import { env } from "@/env";
 import { ErrorResponse } from "@/lib/models";
 import { decryptSecret, encryptSecret } from "@/lib/secret-cipher";
-import { validateSession, vonAuth } from "@/modules/auth";
+import { validateSessionWithUser, vonAuth } from "@/modules/auth";
 import type { TunnelResponse } from "@/modules/tunnel/model";
 import { TunnelModel } from "@/modules/tunnel/model";
 import { TunnelService } from "@/modules/tunnel/service";
@@ -153,8 +153,8 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       }
     }
 
-    const organizationId = await validateSession(headerRecord);
-    if (!organizationId) {
+    const session = await validateSessionWithUser(headerRecord);
+    if (!session) {
       return status(401, { error: "Unauthorized" });
     }
   },
@@ -169,11 +169,12 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
     }
 
     // Re-validate to get organizationId (beforeHandle context doesn't persist)
-    const organizationId = await validateSession(headers);
-    if (!organizationId) {
+    const session = await validateSessionWithUser(headers);
+    if (!session) {
       ws.close(4001, "Unauthorized");
       return;
     }
+    const { organizationId, userId } = session;
 
     // Fetch tunnel from DB and verify ownership
     const [tunnelRecord] = await db
@@ -182,7 +183,11 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       .where(eq(tunnel.id, tunnelId))
       .limit(1);
 
-    if (!tunnelRecord || tunnelRecord.organizationId !== organizationId) {
+    if (
+      !tunnelRecord ||
+      tunnelRecord.organizationId !== organizationId ||
+      tunnelRecord.userId !== userId
+    ) {
       ws.close(4001, "Tunnel not found");
       return;
     }
@@ -206,13 +211,18 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
         | ReturnType<typeof setInterval>
         | undefined,
       organizationId,
+      userId,
       secret: decryptSecret(tunnelRecord.secret),
     };
 
     // Periodic session validation + Redis TTL refresh
     connection.validationInterval = setInterval(async () => {
-      const sessionOrgId = await validateSession(headers);
-      if (!sessionOrgId) {
+      const latestSession = await validateSessionWithUser(headers);
+      if (
+        !latestSession ||
+        latestSession.organizationId !== organizationId ||
+        latestSession.userId !== userId
+      ) {
         log.info(`Session expired: ${tunnelId}`);
         if (connection.validationInterval) {
           clearInterval(connection.validationInterval);

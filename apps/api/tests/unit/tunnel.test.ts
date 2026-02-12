@@ -14,6 +14,7 @@ function createMockConnection(
     pending: new Map(),
     headers: {},
     organizationId: "org-1",
+    userId: "user-1",
     secret: "test-secret-32-chars-long-enough",
     ...overrides,
   };
@@ -140,7 +141,11 @@ describe("TunnelService", () => {
 
       // Verify notification was sent
       expect(sent).toHaveLength(1);
-      const msg = JSON.parse(sent[0]);
+      const [firstMessage] = sent;
+      if (!firstMessage) {
+        throw new Error("Missing secret rotation message");
+      }
+      const msg = JSON.parse(firstMessage);
       expect(msg.type).toBe("secret_rotated");
       expect(msg.secret).toBe("new-secret");
     });
@@ -257,7 +262,7 @@ describe("TunnelService", () => {
         "/test"
       );
       expect(set.status).toBe(413);
-      expect(result).toEqual({ error: "Payload exceeds 1MB limit" });
+      expect(result).toEqual({ error: "Payload exceeds 1000000 byte limit" });
     });
 
     test("returns 502 when tunnel is not connected", async () => {

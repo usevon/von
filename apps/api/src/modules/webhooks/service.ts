@@ -9,6 +9,7 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { env } from "@/env";
 import {
   releaseMonthlyQuota,
   reserveMonthlyQuota,
@@ -159,8 +160,10 @@ export abstract class WebhookService {
     params: CreateBatchParams
   ): Promise<WebhookModel.batchResult> {
     for (const evt of params.events) {
-      if (JSON.stringify(evt.payload).length > 1_000_000) {
-        throw new BadRequestError("Payload exceeds 1MB limit");
+      if (JSON.stringify(evt.payload).length > env.API_MAX_BODY_BYTES) {
+        throw new BadRequestError(
+          `Payload exceeds ${env.API_MAX_BODY_BYTES} byte limit`
+        );
       }
     }
 

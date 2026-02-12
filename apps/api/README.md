@@ -41,8 +41,8 @@ NODE_ENV=development
 # Better Auth
 BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long
 BETTER_AUTH_URL=http://localhost:8080
-# Optional dedicated encryption key for webhook/inbound/tunnel secrets at rest
-# SECRET_ENCRYPTION_KEY=your-secret-encryption-key
+# Required in production (falls back to BETTER_AUTH_SECRET only in non-production)
+# SECRET_ENCRYPTION_KEY=your-secret-encryption-key-min-32-characters
 
 # Dashboard
 DASHBOARD_URL=http://localhost:3001
@@ -64,6 +64,11 @@ MAX_TUNNELS_PER_ORG=3
 
 # Webhooks
 WEBHOOK_BATCH_MAX_EVENTS=100
+MAX_ENDPOINT_IDS_PER_REQUEST=100
+
+# Global API request limits
+API_MAX_BODY_BYTES=1000000
+API_MAX_URL_LENGTH=2048
 
 # Email (optional)
 # RESEND_API_KEY=...

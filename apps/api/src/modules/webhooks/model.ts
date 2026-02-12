@@ -8,7 +8,11 @@ export namespace WebhookModel {
     eventType: t.String({ maxLength: 100, pattern: eventTypePattern }),
     payload: t.Unknown(),
     idempotencyKey: t.Optional(t.String()),
-    endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+    endpointIds: t.Optional(
+      t.Array(t.String({ format: "uuid" }), {
+        maxItems: env.MAX_ENDPOINT_IDS_PER_REQUEST,
+      })
+    ),
   });
 
   export type sendBody = typeof sendBody.static;
@@ -19,7 +23,11 @@ export namespace WebhookModel {
         eventType: t.String({ maxLength: 100, pattern: eventTypePattern }),
         payload: t.Unknown(),
         idempotencyKey: t.Optional(t.String()),
-        endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+        endpointIds: t.Optional(
+          t.Array(t.String({ format: "uuid" }), {
+            maxItems: env.MAX_ENDPOINT_IDS_PER_REQUEST,
+          })
+        ),
       }),
       { maxItems: env.WEBHOOK_BATCH_MAX_EVENTS }
     ),
@@ -91,7 +99,11 @@ export namespace WebhookModel {
   });
 
   export const replayBody = t.Object({
-    endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
+    endpointIds: t.Optional(
+      t.Array(t.String({ format: "uuid" }), {
+        maxItems: env.MAX_ENDPOINT_IDS_PER_REQUEST,
+      })
+    ),
   });
 
   export const bulkReplayBody = t.Object({

@@ -2,8 +2,10 @@ import { cors } from "@elysiajs/cors";
 import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
-import { log } from "@/lib/logger";
+import { csrfProtection } from "@/lib/csrf";
 import { idempotency } from "@/lib/idempotency";
+import { log } from "@/lib/logger";
+import { requestGuards } from "@/lib/request-guards";
 import { auth } from "@/modules/auth";
 import { endpointsRead, endpointsWrite } from "@/modules/endpoints";
 import { inboundPublic, inboundRead, inboundWrite } from "@/modules/inbound";
@@ -50,9 +52,17 @@ export const app = new Elysia({
   ...baseElysiaOptions,
 })
   .use(securityHeaders)
-  .use(vonBase({ name: "von-api", isProd: env.NODE_ENV === "production", logger: log }))
+  .use(
+    vonBase({
+      name: "von-api",
+      isProd: env.NODE_ENV === "production",
+      logger: log,
+    })
+  )
+  .use(requestGuards())
   .use(idempotency())
   .use(corsMiddleware)
+  .use(csrfProtection())
   .mount(auth.handler)
   .use(tunnelRegisterWrite)
   .use(tunnelRegisterRead)

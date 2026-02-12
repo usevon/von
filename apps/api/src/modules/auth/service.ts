@@ -4,6 +4,7 @@ import type {
   AuthHeaders,
   RedisTracking,
   ResolvedAuth,
+  SessionContext,
 } from "@/modules/auth/model";
 
 export async function resolveAuth(
@@ -70,6 +71,25 @@ export async function validateSession(
       headers: headers as HeadersInit,
     });
     return session?.session?.activeOrganizationId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function validateSessionWithUser(
+  auth: AuthApi,
+  headers: Record<string, string>
+): Promise<SessionContext | null> {
+  try {
+    const session = await auth.api.getSession({
+      headers: headers as HeadersInit,
+    });
+    const organizationId = session?.session?.activeOrganizationId;
+    const userId = session?.user?.id;
+    if (!(organizationId && userId)) {
+      return null;
+    }
+    return { organizationId, userId };
   } catch {
     return null;
   }

@@ -34,6 +34,7 @@ export type TunnelConnection = {
   headers: Record<string, string>;
   validationInterval?: ReturnType<typeof setInterval>;
   organizationId: string;
+  userId: string;
   secret: string;
 };
 
