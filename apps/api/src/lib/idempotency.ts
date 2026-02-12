@@ -10,6 +10,17 @@ type CachedResponse = {
   body: unknown;
 };
 
+export const buildRequestFingerprint = async (
+  request: Request
+): Promise<string> => {
+  const url = new URL(request.url);
+  const body = await request.clone().text();
+  const bodyHash = hashSha256(body);
+  return hashSha256(
+    `${request.method}:${url.pathname}${url.search}:${bodyHash}`
+  );
+};
+
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
     .derive({ as: "global" }, async ({ request, set }) => {
@@ -30,7 +41,8 @@ export const idempotency = () =>
       }
 
       const authScope = hashSha256(authHeader).slice(0, 16);
-      const cacheKey = `idempotency:${authScope}:${idempotencyKey}`;
+      const fingerprint = await buildRequestFingerprint(request);
+      const cacheKey = `idempotency:${authScope}:${idempotencyKey}:${fingerprint.slice(0, 32)}`;
       const cached = await redis.get(cacheKey);
 
       if (cached) {
@@ -41,24 +53,30 @@ export const idempotency = () =>
 
       return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
     })
-    .onBeforeHandle({ as: "global" }, ({ idempotencyCached, cachedResponse }) => {
-      if (idempotencyCached) {
-        return cachedResponse;
+    .onBeforeHandle(
+      { as: "global" },
+      ({ idempotencyCached, cachedResponse }) => {
+        if (idempotencyCached) {
+          return cachedResponse;
+        }
       }
-    })
-    .onAfterHandle({ as: "global" }, async ({ idempotencyCacheKey, response, set }) => {
-      if (!idempotencyCacheKey) {
-        return;
+    )
+    .onAfterHandle(
+      { as: "global" },
+      async ({ idempotencyCacheKey, response, set }) => {
+        if (!idempotencyCacheKey) {
+          return;
+        }
+
+        const toCache: CachedResponse = {
+          status: (set.status as number) || 200,
+          body: response,
+        };
+
+        await redis.setex(
+          idempotencyCacheKey,
+          IDEMPOTENCY_TTL,
+          JSON.stringify(toCache)
+        );
       }
-
-      const toCache: CachedResponse = {
-        status: (set.status as number) || 200,
-        body: response,
-      };
-
-      await redis.setex(
-        idempotencyCacheKey,
-        IDEMPOTENCY_TTL,
-        JSON.stringify(toCache)
-      );
-    });
+    );
