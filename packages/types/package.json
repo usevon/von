@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "@usevon/typescript-config": "workspace:*",
-    "tsdown": "^0.16.8"
+    "tsdown": "^0.20.3"
   }
 }

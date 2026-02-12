@@ -33,6 +33,10 @@
     "shx": "^0.4.0",
     "turbo": "^2.8.3",
     "typescript": "^5.9.3",
-    "ultracite": "6.4.2"
+    "ultracite": "7.1.5"
+  },
+  "overrides": {
+    "lodash": "^4.17.23",
+    "@isaacs/brace-expansion": "^5.0.1"
   }
 }

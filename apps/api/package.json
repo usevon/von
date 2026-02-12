@@ -39,7 +39,7 @@
     "@types/bun": "latest",
     "@types/validator": "^13.15.10",
     "@usevon/typescript-config": "workspace:*",
-    "drizzle-kit": "^0.31.7",
-    "tsdown": "^0.16.8"
+    "drizzle-kit": "^0.31.9",
+    "tsdown": "^0.20.3"
   }
 }
