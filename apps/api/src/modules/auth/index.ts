@@ -20,7 +20,7 @@ import mailchecker from "mailchecker";
 import isEmail from "validator/es/lib/isEmail.js";
 
 import { env } from "@/env";
-import { userRateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 import { resendClient } from "@/lib/resend";
 
 const redis = getRedisClient();
@@ -297,7 +297,7 @@ async function resolveAuth(headers: Record<string, string | null>): Promise<{
 }
 
 export const requireOrg = new Elysia({ name: "require-org" })
-  .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
+  .use(rateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
   .resolve({ as: "scoped" }, async ({ headers, status }) => {
     const result = await resolveAuth(headers);
     if (!result) {
@@ -310,7 +310,7 @@ export const requireOrg = new Elysia({ name: "require-org" })
 
 export const requireScope = (scope: string) =>
   new Elysia({ name: `scope:${scope}` })
-    .use(userRateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
+    .use(rateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
     .resolve({ as: "scoped" }, async ({ headers, status }) => {
       const result = await resolveAuth(headers);
       if (!result) {

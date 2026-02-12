@@ -1,4 +1,5 @@
 import { getRedisClient } from "@usevon/queue";
+import { TooManyRequestsError } from "@usevon/utils";
 import { Elysia } from "elysia";
 
 const redis = getRedisClient();
@@ -6,7 +7,6 @@ const redis = getRedisClient();
 type RateLimitContext = {
   request: Request;
   set: { status?: number | string; headers: Record<string, string | number> };
-  userId?: string;
 };
 
 type RateLimitOptions = {
@@ -47,20 +47,25 @@ const createRateLimiter = (options: RateLimitOptions) => {
   } = options;
   const windowSeconds = Math.ceil(windowMs / 1000);
 
-  return new Elysia({ name: `rate-limit:${keyPrefix}` })
-    .derive(async (ctx: RateLimitContext) => {
+  return new Elysia({ name: `rate-limit:${keyPrefix}` }).onBeforeHandle(
+    async (ctx: RateLimitContext) => {
       const identifier = getKey(ctx);
-      if (!identifier) {
-        return { rateLimited: false };
-      }
+      if (!identifier) return;
 
       const key = `${keyPrefix}:${identifier}`;
-      const current = (await redis.eval(
-        RATE_LIMIT_SCRIPT,
-        1,
-        key,
-        windowSeconds
-      )) as number;
+
+      let current: number;
+      try {
+        current = (await redis.eval(
+          RATE_LIMIT_SCRIPT,
+          1,
+          key,
+          windowSeconds
+        )) as number;
+      } catch {
+        // Fail open — allow request if Redis is unavailable
+        return;
+      }
 
       const remaining = Math.max(0, max - current);
 
@@ -71,26 +76,12 @@ const createRateLimiter = (options: RateLimitOptions) => {
       );
 
       if (current > max) {
-        ctx.set.status = 429;
         ctx.set.headers["Retry-After"] = String(windowSeconds);
-        return { rateLimited: true };
+        throw new TooManyRequestsError();
       }
-
-      return { rateLimited: false };
-    })
-    .onBeforeHandle(({ rateLimited }) => {
-      if (rateLimited) {
-        return { error: "Too many requests. Please try again later." };
-      }
-    });
+    }
+  );
 };
 
 export const rateLimit = (options: Omit<RateLimitOptions, "getKey">) =>
   createRateLimiter(options);
-
-export const userRateLimit = (options: Omit<RateLimitOptions, "getKey">) =>
-  createRateLimiter({
-    ...options,
-    keyPrefix: options.keyPrefix ?? "rl:user",
-    getKey: (ctx) => ctx.userId ?? null,
-  });
