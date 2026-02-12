@@ -1,19 +1,14 @@
-import { betterAuth, drizzleAdapter, hasScope } from "@usevon/auth";
+import { betterAuth, drizzleAdapter } from "@usevon/auth";
 import { db } from "@usevon/db";
 import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 
-import { Elysia } from "elysia";
-
 import { env } from "@/env";
-import { rateLimit } from "@/lib/rate-limit";
 import { resendClient } from "@/lib/resend";
+import { createVonAuth } from "@/modules/auth/middleware";
 import { authDatabaseHooks, buildAuthPlugins } from "@/modules/auth/plugins";
 import { buildSocialProviders } from "@/modules/auth/providers";
-import {
-  resolveAuth,
-  validateSession as validateAuthSession,
-} from "@/modules/auth/service";
+import { validateSession as validateAuthSession } from "@/modules/auth/service";
 import { createSecondaryStorage } from "@/modules/auth/storage";
 
 const redis = getRedisClient();
@@ -79,28 +74,12 @@ const auth = betterAuth({
   databaseHooks: authDatabaseHooks,
 });
 
-export const vonAuth = (scope: string) =>
-  new Elysia({ name: `auth:${scope}` })
-    .use(
-      rateLimit({
-        windowMs: 60_000,
-        max: 200,
-        keyPrefix: "rl:auth",
-        failOpen: env.NODE_ENV !== "production",
-      })
-    )
-    .resolve({ as: "scoped" }, async ({ headers, status }) => {
-      const result = await resolveAuth(auth, redis, headers);
-      if (!result) {
-        return status(401, {
-          error: "Please sign in or provide a valid API key.",
-        });
-      }
-      if (!hasScope(result.scopes, scope)) {
-        return status(403, { error: "API key lacks required scope" });
-      }
-      return result;
-    });
+export const vonAuth = createVonAuth(
+  { auth, redis },
+  {
+    rateLimitFailOpen: env.NODE_ENV !== "production",
+  }
+);
 
 export async function validateSession(
   headers: Record<string, string>
