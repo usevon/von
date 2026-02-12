@@ -19,7 +19,12 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
-import { reserveMonthlyQuota } from "@/lib/delivery-quota";
+import { releaseMonthlyQuota, reserveMonthlyQuota } from "@/lib/delivery-quota";
+import {
+  decryptOptionalSecret,
+  decryptSecret,
+  encryptSecret,
+} from "@/lib/secret-cipher";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
 const redis = getRedisClient();
@@ -32,6 +37,14 @@ type UpdateEndpointParams = UpdateEndpoint & {
 };
 
 type EndpointRow = typeof endpoint.$inferSelect;
+
+const withDecryptedEndpointSecrets = <T extends { secret: string }>(
+  row: T & { previousSecret?: string | null }
+): T & { previousSecret?: string | null } => ({
+  ...row,
+  secret: decryptSecret(row.secret),
+  previousSecret: decryptOptionalSecret(row.previousSecret),
+});
 
 const toResponse = (row: EndpointRow): EndpointModel.endpoint => ({
   id: row.id,
@@ -51,7 +64,7 @@ const toResponseWithSecret = (
   row: EndpointRow
 ): EndpointModel.endpointWithSecret => ({
   ...toResponse(row),
-  secret: row.secret,
+  secret: decryptSecret(row.secret),
 });
 
 const buildUpdateSet = (
@@ -87,7 +100,7 @@ export abstract class EndpointService {
         organizationId: params.organizationId,
         url: params.url,
         description: params.description ?? null,
-        secret: generateSecret(),
+        secret: encryptSecret(generateSecret()),
         status: params.status ?? "active",
         version: params.version ?? null,
         retryCount: params.retryCount ?? 3,
@@ -208,7 +221,8 @@ export abstract class EndpointService {
     if (!filterIds?.length) {
       const cached = await redis.get(`endpoints:${organizationId}`);
       if (cached) {
-        return JSON.parse(cached) as DeliveryEndpoint[];
+        const parsed = JSON.parse(cached) as DeliveryEndpoint[];
+        return parsed.map((row) => withDecryptedEndpointSecrets(row));
       }
     }
 
@@ -242,7 +256,7 @@ export abstract class EndpointService {
       );
     }
 
-    return result;
+    return result.map((row) => withDecryptedEndpointSecrets(row));
   }
 
   static async testEndpoint(
@@ -285,45 +299,55 @@ export abstract class EndpointService {
     const payloadStr = JSON.stringify(testPayload);
 
     await reserveMonthlyQuota(organizationId, plan, 1);
-
-    const eventId = crypto.randomUUID();
-    const deliveryId = crypto.randomUUID();
-
-    await db.insert(event).values({
-      id: eventId,
-      organizationId,
-      eventType: type,
-      payload: payloadStr,
-      createdAt: now,
-    });
-
-    await db.insert(delivery).values({
-      id: deliveryId,
-      eventId,
-      endpointId,
-      status: "pending",
-      attempts: 0,
-      createdAt: now,
-    });
+    let releaseQuota = true;
 
     try {
-      await getWebhookDeliveryQueue().add("webhook-delivery", {
-        deliveryId,
-        eventId,
-        payload: payloadStr,
-        eventType: type,
-        endpoint: ep[0],
-        organizationId,
-      } satisfies WebhookDeliveryJob);
-    } catch {
-      await db
-        .update(delivery)
-        .set({ status: "failed" })
-        .where(eq(delivery.id, deliveryId));
-      throw new InternalServerError();
-    }
+      const eventId = crypto.randomUUID();
+      const deliveryId = crypto.randomUUID();
 
-    return { eventId, deliveryId };
+      await db.insert(event).values({
+        id: eventId,
+        organizationId,
+        eventType: type,
+        payload: payloadStr,
+        createdAt: now,
+      });
+
+      await db.insert(delivery).values({
+        id: deliveryId,
+        eventId,
+        endpointId,
+        status: "pending",
+        attempts: 0,
+        createdAt: now,
+      });
+
+      const deliveryEndpoint = withDecryptedEndpointSecrets(ep[0]);
+
+      try {
+        await getWebhookDeliveryQueue().add("webhook-delivery", {
+          deliveryId,
+          eventId,
+          payload: payloadStr,
+          eventType: type,
+          endpoint: deliveryEndpoint,
+          organizationId,
+        } satisfies WebhookDeliveryJob);
+      } catch {
+        await db
+          .update(delivery)
+          .set({ status: "failed" })
+          .where(eq(delivery.id, deliveryId));
+        throw new InternalServerError();
+      }
+
+      releaseQuota = false;
+      return { eventId, deliveryId };
+    } finally {
+      if (releaseQuota) {
+        await releaseMonthlyQuota(organizationId, 1);
+      }
+    }
   }
 
   static async rotateSecret(
@@ -346,13 +370,13 @@ export abstract class EndpointService {
     }
 
     const newSecret = generateSecret();
-    const previousSecret = existing[0].secret;
+    const previousSecret = decryptSecret(existing[0].secret);
 
     await db
       .update(endpoint)
       .set({
-        secret: newSecret,
-        previousSecret,
+        secret: encryptSecret(newSecret),
+        previousSecret: encryptSecret(previousSecret),
         updatedAt: new Date(),
       })
       .where(eq(endpoint.id, endpointId));

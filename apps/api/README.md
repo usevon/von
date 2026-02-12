@@ -41,6 +41,8 @@ NODE_ENV=development
 # Better Auth
 BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long
 BETTER_AUTH_URL=http://localhost:8080
+# Optional dedicated encryption key for webhook/inbound/tunnel secrets at rest
+# SECRET_ENCRYPTION_KEY=your-secret-encryption-key
 
 # Dashboard
 DASHBOARD_URL=http://localhost:3001

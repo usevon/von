@@ -32,6 +32,29 @@ redis.call('EXPIRE', key, ttl)
 return {1, new_val}
 `;
 
+const RELEASE_QUOTA_SCRIPT = `
+local key = KEYS[1]
+local released = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+
+if released <= 0 then
+  return tonumber(redis.call('GET', key) or '0')
+end
+
+local current = tonumber(redis.call('GET', key) or '0')
+local next_val = current - released
+if next_val < 0 then
+  next_val = 0
+end
+
+redis.call('SET', key, next_val)
+if ttl > 0 then
+  redis.call('EXPIRE', key, ttl)
+end
+
+return next_val
+`;
+
 export async function reserveMonthlyQuota(
   orgId: string,
   plan: string,
@@ -62,4 +85,25 @@ export async function reserveMonthlyQuota(
   }
 
   return { allowed, currentUsage };
+}
+
+export async function releaseMonthlyQuota(
+  orgId: string,
+  releasedCount: number
+): Promise<{ currentUsage: number }> {
+  if (releasedCount <= 0) {
+    return { currentUsage: 0 };
+  }
+
+  const monthKey = getMonthKey(orgId);
+
+  const currentUsage = (await getRedisClient().eval(
+    RELEASE_QUOTA_SCRIPT,
+    1,
+    monthKey,
+    String(releasedCount),
+    String(DELIVERY_TTL)
+  )) as number;
+
+  return { currentUsage };
 }

@@ -13,7 +13,7 @@ import {
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { reserveMonthlyQuota } from "@/lib/delivery-quota";
+import { releaseMonthlyQuota, reserveMonthlyQuota } from "@/lib/delivery-quota";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
 
@@ -250,35 +250,55 @@ export abstract class WebhookService {
       allDeliveries.length
     );
 
-    const insertedIds = await db.transaction(async (tx) => {
-      const inserted = await tx
-        .insert(event)
-        .values(
-          newEvents.map((e) => ({
-            id: e.id,
-            organizationId: params.organizationId,
-            eventType: e.eventType,
-            payload: JSON.stringify(e.payload),
-            idempotencyKey: e.idempotencyKey,
-            createdAt: now,
-          }))
-        )
-        .onConflictDoNothing({
-          target: [event.organizationId, event.idempotencyKey],
-        })
-        .returning({ id: event.id });
+    let reservedDeliveries = allDeliveries.length;
+    let insertedIds = new Set<string>();
 
-      const insertedIdSet = new Set(inserted.map((e) => e.id));
-      const deliveriesToInsert = allDeliveries.filter((d) =>
-        insertedIdSet.has(d.eventId)
-      );
-      if (deliveriesToInsert.length > 0) {
-        await tx.insert(delivery).values(deliveriesToInsert);
+    try {
+      insertedIds = await db.transaction(async (tx) => {
+        const inserted = await tx
+          .insert(event)
+          .values(
+            newEvents.map((e) => ({
+              id: e.id,
+              organizationId: params.organizationId,
+              eventType: e.eventType,
+              payload: JSON.stringify(e.payload),
+              idempotencyKey: e.idempotencyKey,
+              createdAt: now,
+            }))
+          )
+          .onConflictDoNothing({
+            target: [event.organizationId, event.idempotencyKey],
+          })
+          .returning({ id: event.id });
+
+        const insertedIdSet = new Set(inserted.map((e) => e.id));
+        const deliveriesToInsert = allDeliveries.filter((d) =>
+          insertedIdSet.has(d.eventId)
+        );
+        if (deliveriesToInsert.length > 0) {
+          await tx.insert(delivery).values(deliveriesToInsert);
+        }
+        return insertedIdSet;
+      });
+
+      const insertedDeliveryCount = allDeliveries.filter((d) =>
+        insertedIds.has(d.eventId)
+      ).length;
+      const overReserved = reservedDeliveries - insertedDeliveryCount;
+      if (overReserved > 0) {
+        await releaseMonthlyQuota(params.organizationId, overReserved);
+        reservedDeliveries = insertedDeliveryCount;
       }
-      return insertedIdSet;
-    });
 
-    await enqueueJobs(allJobs, insertedIds);
+      await enqueueJobs(allJobs, insertedIds);
+      reservedDeliveries = 0;
+    } catch (error) {
+      if (reservedDeliveries > 0) {
+        await releaseMonthlyQuota(params.organizationId, reservedDeliveries);
+      }
+      throw error;
+    }
 
     for (const e of newEvents) {
       if (insertedIds.has(e.id)) {
@@ -411,55 +431,63 @@ export abstract class WebhookService {
     }
 
     await reserveMonthlyQuota(organizationId, plan, targets.length);
+    let releaseQuota = true;
 
-    const now = new Date();
-    const payloadStr = eventRecord.payload;
-    const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
-    const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
-
-    for (const ep of targets) {
-      const deliveryId = crypto.randomUUID();
-      deliveryRecords.push({
-        id: deliveryId,
-        eventId: eventRecord.id,
-        endpointId: ep.id,
-        status: "pending",
-        attempts: 0,
-        createdAt: now,
-      });
-      jobs.push({
-        name: "webhook-delivery",
-        data: {
-          deliveryId,
-          eventId: eventRecord.id,
-          payload: payloadStr,
-          eventType: eventRecord.eventType,
-          endpoint: ep,
-          organizationId,
-        },
-      });
-    }
-
-    await db.insert(delivery).values(deliveryRecords);
     try {
-      await getWebhookDeliveryQueue().addBulk(jobs);
-    } catch {
-      await db
-        .update(delivery)
-        .set({ status: "failed" })
-        .where(
-          inArray(
-            delivery.id,
-            deliveryRecords.map((d) => d.id as string)
-          )
-        );
-      throw new InternalServerError();
-    }
+      const now = new Date();
+      const payloadStr = eventRecord.payload;
+      const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
+      const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
 
-    return {
-      replayed: deliveryRecords.length,
-      deliveryIds: deliveryRecords.map((d) => d.id as string),
-    };
+      for (const ep of targets) {
+        const deliveryId = crypto.randomUUID();
+        deliveryRecords.push({
+          id: deliveryId,
+          eventId: eventRecord.id,
+          endpointId: ep.id,
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+        });
+        jobs.push({
+          name: "webhook-delivery",
+          data: {
+            deliveryId,
+            eventId: eventRecord.id,
+            payload: payloadStr,
+            eventType: eventRecord.eventType,
+            endpoint: ep,
+            organizationId,
+          },
+        });
+      }
+
+      await db.insert(delivery).values(deliveryRecords);
+      try {
+        await getWebhookDeliveryQueue().addBulk(jobs);
+      } catch {
+        await db
+          .update(delivery)
+          .set({ status: "failed" })
+          .where(
+            inArray(
+              delivery.id,
+              deliveryRecords.map((d) => d.id as string)
+            )
+          );
+        throw new InternalServerError();
+      }
+
+      releaseQuota = false;
+      return {
+        replayed: deliveryRecords.length,
+        deliveryIds: deliveryRecords.map((d) => d.id as string),
+      };
+    } finally {
+      if (releaseQuota) {
+        await releaseMonthlyQuota(organizationId, targets.length);
+      }
+    }
   }
 
   static async replayBulk(
@@ -534,20 +562,30 @@ export abstract class WebhookService {
 
     if (deliveryRecords.length > 0) {
       await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
-      await db.insert(delivery).values(deliveryRecords);
+      let releaseQuota = true;
+
       try {
-        await getWebhookDeliveryQueue().addBulk(jobs);
-      } catch {
-        await db
-          .update(delivery)
-          .set({ status: "failed" })
-          .where(
-            inArray(
-              delivery.id,
-              deliveryRecords.map((d) => d.id as string)
-            )
-          );
-        throw new InternalServerError();
+        await db.insert(delivery).values(deliveryRecords);
+        try {
+          await getWebhookDeliveryQueue().addBulk(jobs);
+        } catch {
+          await db
+            .update(delivery)
+            .set({ status: "failed" })
+            .where(
+              inArray(
+                delivery.id,
+                deliveryRecords.map((d) => d.id as string)
+              )
+            );
+          throw new InternalServerError();
+        }
+
+        releaseQuota = false;
+      } finally {
+        if (releaseQuota) {
+          await releaseMonthlyQuota(organizationId, deliveryRecords.length);
+        }
       }
     }
 

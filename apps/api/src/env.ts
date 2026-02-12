@@ -12,6 +12,7 @@ export const env = z
     CORS_ORIGINS: z.string().optional(),
     API_URL: z.string().url().optional(),
     API_KEY_SIGNING_SECRET: z.string().optional(),
+    SECRET_ENCRYPTION_KEY: z.string().optional(),
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
     GITHUB_CLIENT_ID: z.string().optional(),

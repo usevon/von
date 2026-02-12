@@ -1,17 +1,16 @@
-import { describe, expect, mock, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TooManyRequestsError } from "@usevon/utils";
 
 const mockRedis = {
-  eval: mock(() => Promise.resolve([1, 100])),
+  eval: mock(() => Promise.resolve([1, 100] as unknown)),
 };
 
 mock.module("@usevon/queue", () => ({
   getRedisClient: () => mockRedis,
 }));
 
-const { getMonthKey, reserveMonthlyQuota, DELIVERY_TTL } = await import(
-  "@/lib/delivery-quota"
-);
+const { getMonthKey, reserveMonthlyQuota, releaseMonthlyQuota, DELIVERY_TTL } =
+  await import("@/lib/delivery-quota");
 
 describe("getMonthKey", () => {
   test("returns correct format", () => {
@@ -89,7 +88,7 @@ describe("reserveMonthlyQuota", () => {
   });
 
   test("throws TooManyRequestsError when Lua script returns [0, usage]", async () => {
-    mockRedis.eval.mockResolvedValue([0, 25000]);
+    mockRedis.eval.mockResolvedValue([0, 25_000]);
 
     await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
       TooManyRequestsError
@@ -97,7 +96,7 @@ describe("reserveMonthlyQuota", () => {
   });
 
   test("throws with default message when quota exceeded", async () => {
-    mockRedis.eval.mockResolvedValue([0, 24999]);
+    mockRedis.eval.mockResolvedValue([0, 24_999]);
 
     await expect(reserveMonthlyQuota("org-1", "hobby", 2)).rejects.toThrow(
       "Too many requests"
@@ -118,5 +117,43 @@ describe("reserveMonthlyQuota", () => {
       String(DELIVERY_TTL),
       "0" // hobby hasOverage = false
     );
+  });
+});
+
+describe("releaseMonthlyQuota", () => {
+  beforeEach(() => {
+    mockRedis.eval.mockReset();
+  });
+
+  test("returns early for zero count without calling redis", async () => {
+    const result = await releaseMonthlyQuota("org-1", 0);
+    expect(result).toEqual({ currentUsage: 0 });
+    expect(mockRedis.eval).not.toHaveBeenCalled();
+  });
+
+  test("calls redis.eval with release script args", async () => {
+    mockRedis.eval.mockResolvedValue(90 as unknown);
+
+    await releaseMonthlyQuota("org-1", 10);
+
+    const now = new Date();
+    const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+    const expectedKey = `org:deliveries:org-1:${expectedMonth}`;
+
+    expect(mockRedis.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      expectedKey,
+      "10",
+      String(DELIVERY_TTL)
+    );
+  });
+
+  test("returns current usage from redis eval", async () => {
+    mockRedis.eval.mockResolvedValue(42 as unknown);
+
+    const result = await releaseMonthlyQuota("org-1", 8);
+
+    expect(result).toEqual({ currentUsage: 42 });
   });
 });

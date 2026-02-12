@@ -5,6 +5,7 @@ import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { ErrorResponse } from "@/lib/models";
+import { decryptSecret, encryptSecret } from "@/lib/secret-cipher";
 import { validateSession, vonAuth } from "@/modules/auth";
 import type { TunnelResponse } from "@/modules/tunnel/model";
 import { TunnelModel } from "@/modules/tunnel/model";
@@ -59,7 +60,7 @@ export const tunnelRegisterWrite = new Elysia()
         .limit(1);
 
       if (existing) {
-        return { tunnelId, secret: existing.secret };
+        return { tunnelId, secret: decryptSecret(existing.secret) };
       }
 
       // New tunnel - check limit
@@ -77,7 +78,7 @@ export const tunnelRegisterWrite = new Elysia()
       const secret = generateTunnelSecret();
       await db.insert(tunnel).values({
         id: tunnelId,
-        secret,
+        secret: encryptSecret(secret),
         organizationId,
         userId,
         port: body.port,
@@ -115,7 +116,7 @@ export const tunnelRegisterWrite = new Elysia()
       const secret = generateTunnelSecret();
       await db
         .update(tunnel)
-        .set({ secret })
+        .set({ secret: encryptSecret(secret) })
         .where(eq(tunnel.id, params.tunnelId));
 
       // Update in-memory connection if active
@@ -205,7 +206,7 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
         | ReturnType<typeof setInterval>
         | undefined,
       organizationId,
-      secret: tunnelRecord.secret,
+      secret: decryptSecret(tunnelRecord.secret),
     };
 
     // Periodic session validation + Redis TTL refresh
