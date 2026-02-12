@@ -441,7 +441,20 @@ export abstract class WebhookService {
     }
 
     await db.insert(delivery).values(deliveryRecords);
-    await getWebhookDeliveryQueue().addBulk(jobs);
+    try {
+      await getWebhookDeliveryQueue().addBulk(jobs);
+    } catch {
+      await db
+        .update(delivery)
+        .set({ status: "failed" })
+        .where(
+          inArray(
+            delivery.id,
+            deliveryRecords.map((d) => d.id as string)
+          )
+        );
+      throw new InternalServerError();
+    }
 
     return {
       replayed: deliveryRecords.length,
@@ -522,7 +535,20 @@ export abstract class WebhookService {
     if (deliveryRecords.length > 0) {
       await reserveMonthlyQuota(organizationId, plan, deliveryRecords.length);
       await db.insert(delivery).values(deliveryRecords);
-      await getWebhookDeliveryQueue().addBulk(jobs);
+      try {
+        await getWebhookDeliveryQueue().addBulk(jobs);
+      } catch {
+        await db
+          .update(delivery)
+          .set({ status: "failed" })
+          .where(
+            inArray(
+              delivery.id,
+              deliveryRecords.map((d) => d.id as string)
+            )
+          );
+        throw new InternalServerError();
+      }
     }
 
     return { replayed: deliveryRecords.length };

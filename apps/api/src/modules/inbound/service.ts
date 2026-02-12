@@ -11,7 +11,7 @@ import {
   BadRequestError,
   generateSecret,
   InternalServerError,
-  isValidWebhookUrl,
+  isSafeWebhookUrl,
 } from "@usevon/utils";
 import { and, eq } from "drizzle-orm";
 import { reserveMonthlyQuota } from "@/lib/delivery-quota";
@@ -62,7 +62,7 @@ export abstract class InboundService {
   static async create(
     params: CreateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint> {
-    if (!isValidWebhookUrl(params.forwardUrl)) {
+    if (!(await isSafeWebhookUrl(params.forwardUrl))) {
       throw new BadRequestError(
         "Invalid forward URL: must be http(s) and not target private networks"
       );
@@ -157,7 +157,7 @@ export abstract class InboundService {
   static async update(
     params: UpdateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint | null> {
-    if (params.forwardUrl && !isValidWebhookUrl(params.forwardUrl)) {
+    if (params.forwardUrl && !(await isSafeWebhookUrl(params.forwardUrl))) {
       throw new BadRequestError(
         "Invalid forward URL: must be http(s) and not target private networks"
       );
@@ -252,12 +252,20 @@ export abstract class InboundService {
     });
 
     const queue = getInboundForwardingQueue();
-    await queue.add("inbound-forwarding", {
-      deliveryId,
-      endpoint: params.endpoint,
-      payload: payloadStr,
-      headers: headersStr,
-    });
+    try {
+      await queue.add("inbound-forwarding", {
+        deliveryId,
+        endpoint: params.endpoint,
+        payload: payloadStr,
+        headers: headersStr,
+      });
+    } catch {
+      await db
+        .update(inboundDelivery)
+        .set({ status: "failed" })
+        .where(eq(inboundDelivery.id, deliveryId));
+      throw new InternalServerError();
+    }
 
     return {
       id: delivery.id,
@@ -266,8 +274,7 @@ export abstract class InboundService {
       status: delivery.status,
       forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
       response:
-        (delivery.response as import("@usevon/types").DeliveryResponse) ??
-        null,
+        (delivery.response as import("@usevon/types").DeliveryResponse) ?? null,
       createdAt: delivery.createdAt.toISOString(),
     };
   }

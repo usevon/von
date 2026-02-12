@@ -3,6 +3,7 @@ import {
   CIRCUIT_CONFIG,
   type CircuitState,
   isCircuitOpen,
+  isSafeWebhookUrl,
   shouldTransitionToHalfOpen,
 } from "@usevon/utils";
 import type { Job } from "bullmq";
@@ -166,6 +167,10 @@ export async function processDelivery<TJob extends BaseJobData>(
   const start = performance.now();
 
   try {
+    if (!(await isSafeWebhookUrl(request.url))) {
+      throw new Error("Blocked unsafe destination URL");
+    }
+
     const response = await fetch(request.url, {
       method: "POST",
       headers: request.headers,

@@ -15,7 +15,7 @@ import {
   BadRequestError,
   generateSecret,
   InternalServerError,
-  isValidWebhookUrl,
+  isSafeWebhookUrl,
   NotFoundError,
 } from "@usevon/utils";
 import { and, eq, inArray } from "drizzle-orm";
@@ -72,7 +72,7 @@ export abstract class EndpointService {
   static async create(
     params: CreateEndpointParams
   ): Promise<EndpointModel.endpointWithSecret> {
-    if (!isValidWebhookUrl(params.url)) {
+    if (!(await isSafeWebhookUrl(params.url))) {
       throw new BadRequestError(
         "Invalid webhook URL: must be http(s) and not target private networks"
       );
@@ -145,7 +145,7 @@ export abstract class EndpointService {
   static async update(
     params: UpdateEndpointParams
   ): Promise<EndpointModel.endpoint | null> {
-    if (params.url && !isValidWebhookUrl(params.url)) {
+    if (params.url && !(await isSafeWebhookUrl(params.url))) {
       throw new BadRequestError(
         "Invalid webhook URL: must be http(s) and not target private networks"
       );
@@ -306,14 +306,22 @@ export abstract class EndpointService {
       createdAt: now,
     });
 
-    await getWebhookDeliveryQueue().add("webhook-delivery", {
-      deliveryId,
-      eventId,
-      payload: payloadStr,
-      eventType: type,
-      endpoint: ep[0],
-      organizationId,
-    } satisfies WebhookDeliveryJob);
+    try {
+      await getWebhookDeliveryQueue().add("webhook-delivery", {
+        deliveryId,
+        eventId,
+        payload: payloadStr,
+        eventType: type,
+        endpoint: ep[0],
+        organizationId,
+      } satisfies WebhookDeliveryJob);
+    } catch {
+      await db
+        .update(delivery)
+        .set({ status: "failed" })
+        .where(eq(delivery.id, deliveryId));
+      throw new InternalServerError();
+    }
 
     return { eventId, deliveryId };
   }
