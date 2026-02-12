@@ -1,13 +1,54 @@
-import { describe, expect, mock, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 const mockEval = mock(() => Promise.resolve([1, 24]));
+const stringStore = new Map<string, string>();
+const setStore = new Map<string, Set<string>>();
 
 const mockRedis = {
   eval: mockEval,
+  set: mock((key: string, value: string) => {
+    stringStore.set(key, value);
+    return Promise.resolve("OK");
+  }),
+  sadd: mock((key: string, value: string) => {
+    const set = setStore.get(key) ?? new Set<string>();
+    const exists = set.has(value);
+    set.add(value);
+    setStore.set(key, set);
+    return Promise.resolve(exists ? 0 : 1);
+  }),
+  del: mock((key: string) => {
+    const hadString = stringStore.delete(key);
+    const hadSet = setStore.delete(key);
+    return Promise.resolve(hadString || hadSet ? 1 : 0);
+  }),
+  srem: mock((key: string, value: string) => {
+    const set = setStore.get(key);
+    if (!(set && set.has(value))) {
+      return Promise.resolve(0);
+    }
+    set.delete(value);
+    if (set.size === 0) {
+      setStore.delete(key);
+    }
+    return Promise.resolve(1);
+  }),
+  expire: mock(() => Promise.resolve(1)),
+  scard: mock((key: string) => Promise.resolve(setStore.get(key)?.size ?? 0)),
+  get: mock((key: string) => Promise.resolve(stringStore.get(key) ?? null)),
+  publish: mock(() => Promise.resolve(1)),
+};
+
+const mockSubscriber = {
+  subscribe: mock(() => Promise.resolve(1)),
+  on: mock(() => mockSubscriber),
+  unsubscribe: mock(() => Promise.resolve(1)),
+  quit: mock(() => Promise.resolve("OK")),
 };
 
 mock.module("@usevon/queue", () => ({
   getRedisClient: () => mockRedis,
+  createConnection: () => mockSubscriber,
 }));
 
 mock.module("@/lib/org-plan", () => ({
@@ -18,6 +59,8 @@ const { checkThroughputLimit } = await import("@/lib/throughput-limit");
 
 describe("checkThroughputLimit", () => {
   beforeEach(() => {
+    stringStore.clear();
+    setStore.clear();
     mockEval.mockReset();
   });
 

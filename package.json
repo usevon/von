@@ -25,7 +25,7 @@
     "db:push": "bun run --cwd apps/api db:push",
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
-    "test": "bun test packages/ apps/worker/ apps/api/tests/unit/",
+    "test": "bun test packages/ apps/worker/ && bun run --cwd apps/api test tests/unit/",
     "test:integration": "cd apps/api && bun test tests/integration/"
   },
   "devDependencies": {
