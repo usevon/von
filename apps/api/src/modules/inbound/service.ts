@@ -138,10 +138,15 @@ export abstract class InboundService {
   static async getByPublicId(
     endpointId: string
   ): Promise<InboundEndpointRow | null> {
-    const cached = await redis.get(`inbound:${endpointId}`);
+    const cacheKey = `inbound:${endpointId}`;
+    const cached = await redis.get(cacheKey);
     if (cached) {
-      const parsed = JSON.parse(cached) as InboundEndpointRow;
-      return withDecryptedSecretFields(parsed);
+      try {
+        const parsed = JSON.parse(cached) as InboundEndpointRow;
+        return withDecryptedSecretFields(parsed);
+      } catch {
+        await redis.del(cacheKey);
+      }
     }
 
     const result = await db
@@ -151,11 +156,7 @@ export abstract class InboundService {
       .limit(1);
 
     if (result[0]) {
-      await redis.setex(
-        `inbound:${endpointId}`,
-        CACHE_TTL,
-        JSON.stringify(result[0])
-      );
+      await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result[0]));
     }
 
     return result[0] ? withDecryptedSecretFields(result[0]) : null;

@@ -211,10 +211,15 @@ export abstract class EndpointService {
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
     if (!filterIds?.length) {
-      const cached = await redis.get(`endpoints:${organizationId}`);
+      const cacheKey = `endpoints:${organizationId}`;
+      const cached = await redis.get(cacheKey);
       if (cached) {
-        const parsed = JSON.parse(cached) as DeliveryEndpoint[];
-        return parsed.map((row) => withDecryptedSecretFields(row));
+        try {
+          const parsed = JSON.parse(cached) as DeliveryEndpoint[];
+          return parsed.map((row) => withDecryptedSecretFields(row));
+        } catch {
+          await redis.del(cacheKey);
+        }
       }
     }
 

@@ -53,7 +53,11 @@ const getVersionTransforms = async (
   const cached = await redis.get(cacheKey);
 
   if (cached) {
-    return JSON.parse(cached) as Transforms;
+    try {
+      return JSON.parse(cached) as Transforms;
+    } catch {
+      await redis.del(cacheKey);
+    }
   }
 
   const [result] = await getVersionStmt.execute({

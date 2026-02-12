@@ -46,9 +46,13 @@ export const idempotency = () =>
       const cached = await redis.get(cacheKey);
 
       if (cached) {
-        const response: CachedResponse = JSON.parse(cached);
-        set.status = response.status;
-        return { idempotencyCached: true, cachedResponse: response.body };
+        try {
+          const response: CachedResponse = JSON.parse(cached);
+          set.status = response.status;
+          return { idempotencyCached: true, cachedResponse: response.body };
+        } catch {
+          await redis.del(cacheKey);
+        }
       }
 
       return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
