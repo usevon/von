@@ -1,63 +1,24 @@
 import {
-  apiKey,
-  bearer,
   betterAuth,
-  deviceAuthorization,
   drizzleAdapter,
-  emailHarmony,
   hasScope,
-  organization,
   parseScopes,
 } from "@usevon/auth";
-import { db, eq } from "@usevon/db";
-import * as schema from "@usevon/db/schema";
+import { db } from "@usevon/db";
 import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 
-import { APIError } from "better-auth/api";
 import { Elysia } from "elysia";
-import mailchecker from "mailchecker";
-import isEmail from "validator/es/lib/isEmail.js";
 
 import { env } from "@/env";
 import { rateLimit } from "@/lib/rate-limit";
 import { resendClient } from "@/lib/resend";
+import { authDatabaseHooks, buildAuthPlugins } from "@/modules/auth/plugins";
+import { buildSocialProviders } from "@/modules/auth/providers";
 import { createSecondaryStorage } from "@/modules/auth/storage";
 
 const redis = getRedisClient();
 const secondaryStorage = createSecondaryStorage(redis);
-
-type SessionInsert = typeof schema.session.$inferInsert;
-
-function buildSocialProviders() {
-  const providers: Record<string, { clientId: string; clientSecret: string }> =
-    {};
-
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-    providers.google = {
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-    };
-  }
-
-  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
-    providers.github = {
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    };
-  }
-
-  if (Object.keys(providers).length === 0) {
-    if (env.NODE_ENV === "development") {
-      console.log(
-        "[Auth] No OAuth providers configured — social login disabled in development"
-      );
-    }
-    return;
-  }
-
-  return providers;
-}
 
 const socialProviders = buildSocialProviders();
 
@@ -115,109 +76,8 @@ const auth = betterAuth({
       generateId: () => crypto.randomUUID(),
     },
   },
-  plugins: [
-    emailHarmony({
-      validator: (email) => {
-        if (!isEmail(email)) {
-          return false;
-        }
-        if (!mailchecker.isValid(email)) {
-          throw new APIError("BAD_REQUEST", {
-            message: "Disposable email addresses are not allowed",
-          });
-        }
-        return true;
-      },
-    }),
-    bearer(),
-    organization({
-      schema: {
-        organization: {
-          additionalFields: {
-            plan: {
-              type: "string",
-              required: false,
-              defaultValue: "hobby",
-              input: false,
-            },
-          },
-        },
-      },
-      organizationHooks: {
-        afterAddMember: async ({ member }) => {
-          await db
-            .update(schema.session)
-            .set({ activeOrganizationId: member.organizationId })
-            .where(eq(schema.session.userId, member.userId));
-        },
-      },
-    }),
-    ...(env.API_KEY_SIGNING_SECRET
-      ? [
-          apiKey({
-            storage: "secondary-storage",
-            fallbackToDatabase: true,
-            signingSecret: env.API_KEY_SIGNING_SECRET,
-            secondaryStorage,
-          }),
-        ]
-      : []),
-    deviceAuthorization({
-      verificationUri: "/device",
-      expiresIn: "30m",
-      interval: "5s",
-    }),
-  ],
-  databaseHooks: {
-    user: {
-      delete: {
-        before: async (user) => {
-          const memberships = await db
-            .select({ organizationId: schema.member.organizationId })
-            .from(schema.member)
-            .where(eq(schema.member.userId, user.id));
-
-          for (const { organizationId } of memberships) {
-            const memberCount = await db
-              .select({ id: schema.member.id })
-              .from(schema.member)
-              .where(eq(schema.member.organizationId, organizationId));
-
-            if (memberCount.length === 1) {
-              await db
-                .delete(schema.organization)
-                .where(eq(schema.organization.id, organizationId));
-            }
-          }
-        },
-      },
-    },
-    session: {
-      create: {
-        before: async (session) => {
-          const s = session as SessionInsert;
-          if (s.activeOrganizationId) {
-            return { data: session };
-          }
-          const [firstMember] = await db
-            .select({ organizationId: schema.member.organizationId })
-            .from(schema.member)
-            .where(eq(schema.member.userId, s.userId))
-            .limit(1);
-
-          if (firstMember) {
-            return {
-              data: {
-                ...session,
-                activeOrganizationId: firstMember.organizationId,
-              },
-            };
-          }
-          return { data: session };
-        },
-      },
-    },
-  },
+  plugins: buildAuthPlugins(secondaryStorage),
+  databaseHooks: authDatabaseHooks,
 });
 
 async function resolveAuth(

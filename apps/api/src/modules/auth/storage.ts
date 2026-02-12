@@ -19,3 +19,5 @@ export const createSecondaryStorage = (redis: RedisLike) => ({
     await redis.del(key);
   },
 });
+
+export type SecondaryStorageAdapter = ReturnType<typeof createSecondaryStorage>;
