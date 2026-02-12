@@ -13,7 +13,7 @@ import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 import { PasswordResetEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
-import { ForbiddenError } from "@usevon/utils";
+
 import { APIError } from "better-auth/api";
 import { Elysia } from "elysia";
 import mailchecker from "mailchecker";
@@ -143,7 +143,7 @@ const auth = betterAuth({
     organization({
       schema: {
         organization: {
-          fields: {
+          additionalFields: {
             plan: {
               type: "string",
               required: false,
@@ -242,7 +242,7 @@ const auth = betterAuth({
   },
 });
 
-async function resolveAuth(headers: Record<string, string | null>): Promise<{
+async function resolveAuth(headers: Record<string, string | undefined>): Promise<{
   organizationId: string;
   userId: string;
   scopes: string[];
@@ -296,34 +296,20 @@ async function resolveAuth(headers: Record<string, string | null>): Promise<{
   return null;
 }
 
-export const requireOrg = new Elysia({ name: "require-org" })
-  .use(rateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
-  .resolve({ as: "scoped" }, async ({ headers, status }) => {
-    const result = await resolveAuth(headers);
-    if (!result) {
-      return status(401, {
-        error: "Please sign in or provide a valid API key.",
-      }) as never;
-    }
-    return result;
-  });
-
-export const requireScope = (scope: string) =>
-  new Elysia({ name: `scope:${scope}` })
+export const vonAuth = (scope: string) =>
+  new Elysia({ name: `auth:${scope}` })
     .use(rateLimit({ windowMs: 60_000, max: 200, keyPrefix: "rl:auth" }))
     .resolve({ as: "scoped" }, async ({ headers, status }) => {
       const result = await resolveAuth(headers);
       if (!result) {
         return status(401, {
           error: "Please sign in or provide a valid API key.",
-        }) as never;
+        });
+      }
+      if (!hasScope(result.scopes, scope)) {
+        return status(403, { error: "API key lacks required scope" });
       }
       return result;
-    })
-    .onBeforeHandle({ as: "scoped" }, ({ scopes }) => {
-      if (!hasScope(scopes, scope)) {
-        throw new ForbiddenError("API key lacks required scope");
-      }
     });
 
 export async function validateSession(

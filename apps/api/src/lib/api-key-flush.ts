@@ -23,7 +23,7 @@ async function flushLastUsed() {
         .set({ lastUsedAt: new Date(Number(ts) * 1000) })
         .where(eq(apikey.id, keyId));
     } catch (err) {
-      log.error(`Failed to flush lastUsedAt for key ${keyId}`, err);
+      log.error({ err }, `Failed to flush lastUsedAt for key ${keyId}`);
     }
   }
 }
