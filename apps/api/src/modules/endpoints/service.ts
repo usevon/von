@@ -8,7 +8,6 @@ import {
 } from "@usevon/queue";
 import type {
   CreateEndpoint,
-  Endpoint,
   EndpointStatus,
   UpdateEndpoint,
 } from "@usevon/types";
@@ -34,11 +33,10 @@ type UpdateEndpointParams = UpdateEndpoint & {
 
 type EndpointRow = typeof endpoint.$inferSelect;
 
-const toResponse = (row: EndpointRow): Endpoint => ({
+const toResponse = (row: EndpointRow): EndpointModel.endpoint => ({
   id: row.id,
   url: row.url,
   description: row.description,
-  secret: row.secret,
   status: row.status as EndpointStatus,
   version: row.version,
   retryCount: row.retryCount,
@@ -47,6 +45,13 @@ const toResponse = (row: EndpointRow): Endpoint => ({
   lastSuccessAt: row.lastSuccessAt?.toISOString() ?? null,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
+});
+
+const toResponseWithSecret = (
+  row: EndpointRow
+): EndpointModel.endpointWithSecret => ({
+  ...toResponse(row),
+  secret: row.secret,
 });
 
 const buildUpdateSet = (
@@ -66,7 +71,7 @@ const buildUpdateSet = (
 export abstract class EndpointService {
   static async create(
     params: CreateEndpointParams
-  ): Promise<EndpointModel.endpoint> {
+  ): Promise<EndpointModel.endpointWithSecret> {
     if (!isValidWebhookUrl(params.url)) {
       throw new BadRequestError(
         "Invalid webhook URL: must be http(s) and not target private networks"
@@ -99,7 +104,7 @@ export abstract class EndpointService {
     if (params.status !== "disabled") {
       await redis.del(`endpoints:${params.organizationId}`);
     }
-    return toResponse(result[0]);
+    return toResponseWithSecret(result[0]);
   }
 
   static async getAll(

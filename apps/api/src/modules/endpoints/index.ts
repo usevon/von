@@ -47,7 +47,9 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
 export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   .use(vonAuth("write:endpoints"))
   .use(orgThroughputLimit)
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse } })
+  .guard({
+    response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse },
+  })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -60,7 +62,7 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
       ),
     {
       body: EndpointModel.createBody,
-      response: { 201: EndpointModel.endpoint },
+      response: { 201: EndpointModel.endpointWithSecret },
     }
   )
   .patch(

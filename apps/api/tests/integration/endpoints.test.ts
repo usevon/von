@@ -39,6 +39,9 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
     expect(data.endpoints).toBeDefined();
     expect(Array.isArray(data.endpoints)).toBe(true);
     expect(data.total).toBeGreaterThanOrEqual(0);
+    if (data.endpoints[0]) {
+      expect("secret" in data.endpoints[0]).toBe(false);
+    }
   });
 
   test("GET /endpoints/:id returns endpoint", async () => {
@@ -56,6 +59,7 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
       throw error;
     }
     expect(data.id).toBe(createdEndpointId);
+    expect("secret" in data).toBe(false);
   });
 
   test("PATCH /endpoints/:id updates endpoint", async () => {
@@ -76,6 +80,7 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
       throw error;
     }
     expect(data.status).toBe("disabled");
+    expect("secret" in data).toBe(false);
   });
 
   test("DELETE /endpoints/:id deletes endpoint", async () => {

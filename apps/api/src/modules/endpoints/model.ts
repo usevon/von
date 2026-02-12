@@ -42,7 +42,6 @@ export namespace EndpointModel {
     id: t.String({ format: "uuid" }),
     url: t.String(),
     description: t.Union([t.String(), t.Null()]),
-    secret: t.String(),
     status: t.String(),
     version: t.Union([t.String(), t.Null()]),
     retryCount: t.Number(),
@@ -54,6 +53,23 @@ export namespace EndpointModel {
   });
 
   export type endpoint = typeof endpoint.static;
+
+  export const endpointWithSecret = t.Object({
+    id: t.String({ format: "uuid" }),
+    url: t.String(),
+    description: t.Union([t.String(), t.Null()]),
+    secret: t.String(),
+    status: t.String(),
+    version: t.Union([t.String(), t.Null()]),
+    retryCount: t.Number(),
+    timeoutMs: t.Number(),
+    events: t.Union([t.Array(t.String()), t.Null()]),
+    lastSuccessAt: t.Union([t.String(), t.Null()]),
+    createdAt: t.String(),
+    updatedAt: t.String(),
+  });
+
+  export type endpointWithSecret = typeof endpointWithSecret.static;
 
   export const endpointList = t.Object({
     endpoints: t.Array(endpoint),
