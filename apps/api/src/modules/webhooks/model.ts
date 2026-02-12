@@ -1,4 +1,5 @@
 import { t } from "elysia";
+import { env } from "@/env";
 
 const eventTypePattern = "^[a-zA-Z0-9._-]+$";
 
@@ -19,7 +20,8 @@ export namespace WebhookModel {
         payload: t.Unknown(),
         idempotencyKey: t.Optional(t.String()),
         endpointIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
-      })
+      }),
+      { maxItems: env.WEBHOOK_BATCH_MAX_EVENTS }
     ),
   });
 
