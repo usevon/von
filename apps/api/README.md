@@ -20,6 +20,13 @@ bun start
 
 ## Environment Variables
 
+Copy the templates before running locally or in tests:
+
+```bash
+cp .env.example .env
+cp .env.test.example .env.test
+```
+
 ```bash
 # Database
 DATABASE_URL=postgres://von:von_dev_password@localhost:5432/von_dev
