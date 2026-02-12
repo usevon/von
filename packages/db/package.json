@@ -14,11 +14,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --emitDeclarationOnly",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "build": "tsc --emitDeclarationOnly"
   },
   "dependencies": {
     "@usevon/utils": "workspace:*",
@@ -28,7 +24,6 @@
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@usevon/typescript-config": "workspace:*",
-    "drizzle-kit": "^0.31.7"
+    "@usevon/typescript-config": "workspace:*"
   }
 }

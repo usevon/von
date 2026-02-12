@@ -72,7 +72,7 @@ jobs:
         run: bun run build
 
       - name: Run database migrations
-        working-directory: packages/db
+        working-directory: apps/api
         run: bun run db:migrate
 
       - name: Run tests
