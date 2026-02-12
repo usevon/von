@@ -113,14 +113,26 @@ export const tunnelRegisterRead = new Elysia()
   }));
 
 export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
+  async beforeHandle({ headers, status }) {
+    const authHeader = headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return status(401, { error: "Unauthorized" });
+    }
+
+    const headerRecord: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value === "string") {
+        headerRecord[key] = value;
+      }
+    }
+
+    const organizationId = await validateSession(headerRecord);
+    if (!organizationId) {
+      return status(401, { error: "Unauthorized" });
+    }
+  },
   async open(ws) {
     const tunnelId = ws.data.params.tunnelId;
-    const authHeader = ws.data.headers?.authorization;
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      ws.close(4001, "Unauthorized");
-      return;
-    }
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
@@ -129,7 +141,7 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       }
     }
 
-    // Validate session before accepting connection
+    // Re-validate to get organizationId (beforeHandle context doesn't persist)
     const organizationId = await validateSession(headers);
     if (!organizationId) {
       ws.close(4001, "Unauthorized");
@@ -260,36 +272,50 @@ const parseTunnelParam = (
 };
 
 export const tunnelProxy = new Elysia()
-  .all("/:tunnelIdWithSecret/*", ({ params, request, set, status }) => {
-    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-    if (
-      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
-    ) {
-      return status(401, { error: "Invalid tunnel" });
-    }
-    const path =
-      new URL(request.url).pathname.replace(
-        `/${params.tunnelIdWithSecret}`,
-        ""
-      ) || "/";
-    return TunnelService.handleProxy(
-      parsed.tunnelId,
-      request,
-      set as Parameters<typeof TunnelService.handleProxy>[2],
-      path
-    );
-  })
-  .all("/:tunnelIdWithSecret", ({ params, request, set, status }) => {
-    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-    if (
-      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
-    ) {
-      return status(401, { error: "Invalid tunnel" });
-    }
-    return TunnelService.handleProxy(
-      parsed.tunnelId,
-      request,
-      set as Parameters<typeof TunnelService.handleProxy>[2],
-      "/"
-    );
-  });
+  .all(
+    "/:tunnelIdWithSecret/*",
+    ({ params, request, set, status }) => {
+      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+      if (
+        !(
+          parsed &&
+          TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+        )
+      ) {
+        return status(401, { error: "Invalid tunnel" });
+      }
+      const path =
+        new URL(request.url).pathname.replace(
+          `/${params.tunnelIdWithSecret}`,
+          ""
+        ) || "/";
+      return TunnelService.handleProxy(
+        parsed.tunnelId,
+        request,
+        set as Parameters<typeof TunnelService.handleProxy>[2],
+        path
+      );
+    },
+    { parse: "none" }
+  )
+  .all(
+    "/:tunnelIdWithSecret",
+    ({ params, request, set, status }) => {
+      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+      if (
+        !(
+          parsed &&
+          TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+        )
+      ) {
+        return status(401, { error: "Invalid tunnel" });
+      }
+      return TunnelService.handleProxy(
+        parsed.tunnelId,
+        request,
+        set as Parameters<typeof TunnelService.handleProxy>[2],
+        "/"
+      );
+    },
+    { parse: "none" }
+  );
