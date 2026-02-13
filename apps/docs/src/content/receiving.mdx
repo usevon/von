@@ -88,7 +88,7 @@ const inbound = await von.inbound["inb_123"].get();
 // Update an inbound endpoint
 await von.inbound["inb_123"].patch({
   forwardUrl: "https://new-url.com/webhooks",
-  enabled: true,
+  status: "active",
 });
 
 // Delete an inbound endpoint

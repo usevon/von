@@ -121,7 +121,7 @@ function EndpointsManager() {
       {endpoints.map((endpoint) => (
         <div key={endpoint.id}>
           <span>{endpoint.url}</span>
-          <span>{endpoint.enabled ? "Active" : "Disabled"}</span>
+          <span>{endpoint.status}</span>
         </div>
       ))}
       <button onClick={refresh}>Refresh</button>
@@ -138,8 +138,8 @@ type Endpoint = {
   url: string;
   description: string | null;
   secret: string;
-  enabled: boolean;
-  retryCount: number;
+  status: "active" | "paused" | "disabled";
+  maxAttempts: number;
   timeoutMs: number;
   createdAt: string;
   updatedAt: string;
@@ -162,7 +162,7 @@ function InboundManager() {
         <div key={inbound.id}>
           <span>{inbound.name}</span>
           <span>{inbound.provider}</span>
-          <span>{inbound.enabled ? "Active" : "Disabled"}</span>
+          <span>{inbound.status}</span>
         </div>
       ))}
     </div>
@@ -179,7 +179,7 @@ type InboundEndpoint = {
   provider: string;
   secret: string;
   forwardUrl: string;
-  enabled: boolean;
+  status: "active" | "paused" | "disabled";
   createdAt: string;
   updatedAt: string;
 };
@@ -200,7 +200,6 @@ function EventsList() {
       {events.map((event) => (
         <div key={event.id}>
           <span>{event.eventType}</span>
-          <span>{event.status}</span>
           <time>{event.createdAt}</time>
         </div>
       ))}
@@ -217,7 +216,6 @@ type WebhookEvent = {
   eventType: string;
   payload: Record<string, unknown>;
   idempotencyKey: string | null;
-  status: "pending" | "processing" | "delivered" | "failed";
   createdAt: string;
 };
 ```
@@ -283,13 +281,13 @@ function EndpointToggle({ endpoint }) {
 
     // API call
     await von.endpoints[endpoint.id].patch({
-      enabled: !endpoint.enabled,
+      status: endpoint.status === "active" ? "disabled" : "active",
     });
   };
 
   return (
     <button onClick={toggle}>
-      {endpoint.enabled ? "Disable" : "Enable"}
+      {endpoint.status === "active" ? "Disable" : "Enable"}
     </button>
   );
 }

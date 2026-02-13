@@ -123,7 +123,7 @@ Manage webhook endpoints. See [Sending Webhooks](/sending) for concepts.
 const { data: endpoint } = await von.endpoints.post({
   url: "https://your-app.com/webhooks",
   description: "Production endpoint",
-  retryCount: 5,
+  maxAttempts: 5,
   timeoutMs: 10000,
   events: ["order.*", "payment.completed"],
 });
@@ -146,8 +146,8 @@ console.log("Secret:", endpoint.secret);
 
 ```typescript
 await von.endpoints["ep_123"].patch({
-  enabled: false,
-  retryCount: 3,
+  status: "disabled",
+  maxAttempts: 3,
 });
 ```
 
