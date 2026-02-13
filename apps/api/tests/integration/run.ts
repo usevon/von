@@ -1,0 +1,201 @@
+import { apiKeyClient, createAuthClient, organizationClient } from "@usevon/auth/client";
+import { db, eq } from "@usevon/db";
+import { organization, user } from "@usevon/db/schema";
+import { secrets } from "bun";
+import { app, client } from "../setup";
+
+type AutoProvisionedResources = {
+  key: string;
+  userId: string;
+  organizationId: string;
+};
+
+const forceAutoProvision = process.env.VON_INTEGRATION_FORCE_AUTOKEY === "1";
+
+const isValidApiKey = async (key: string): Promise<boolean> => {
+  const { error } = await client.endpoints.get({
+    headers: { authorization: `Bearer ${key}` },
+  });
+  return error?.status !== 401;
+};
+
+const extractSessionCookie = (setCookieHeader: string | null): string | null => {
+  if (!setCookieHeader) {
+    return null;
+  }
+
+  for (const name of ["von.session_token", "better-auth.session_token"]) {
+    const match = setCookieHeader.match(new RegExp(`${name}=([^;]+)`));
+    if (match?.[1]) {
+      return `${name}=${match[1]}`;
+    }
+  }
+
+  return null;
+};
+
+const createTemporaryResources = async (): Promise<AutoProvisionedResources | null> => {
+  const cookieJar = new Headers();
+  const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+  const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
+
+  const authClient = createAuthClient({
+    baseURL: authBaseUrl,
+    plugins: [organizationClient(), apiKeyClient()],
+    fetchOptions: {
+      customFetchImpl: async (url, init) => {
+        const headers = new Headers(init?.headers);
+        const sessionCookie = cookieJar.get("cookie");
+
+        if (sessionCookie && !headers.has("cookie")) {
+          headers.set("cookie", sessionCookie);
+        }
+        if (!headers.has("origin")) {
+          headers.set("origin", origin);
+        }
+
+        const response = await app.handle(new Request(url, { ...init, headers }));
+        const nextSessionCookie = extractSessionCookie(
+          response.headers.get("set-cookie")
+        );
+        if (nextSessionCookie) {
+          cookieJar.set("cookie", nextSessionCookie);
+        }
+
+        return response;
+      },
+    },
+  });
+
+  const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+  const email = `integration-${suffix}@example.com`;
+  const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
+  const slug = `integration-${suffix}`.slice(0, 48);
+
+  const signUpResult = await authClient.signUp.email({
+    name: "Integration User",
+    email,
+    password,
+  });
+  if (signUpResult.error || !signUpResult.data?.user?.id) {
+    return null;
+  }
+
+  const signInResult = await authClient.signIn.email({ email, password });
+  if (signInResult.error) {
+    return null;
+  }
+
+  const organizationResult = await authClient.organization.create({
+    name: `Integration ${suffix.slice(-6)}`,
+    slug,
+  });
+  if (organizationResult.error || !organizationResult.data?.id) {
+    return null;
+  }
+
+  const apiKeyResult = await authClient.apiKey.create({
+    name: "Integration Test Key",
+    environment: "dev",
+    organizationId: organizationResult.data.id,
+    scopes: ["*"],
+  });
+  if (apiKeyResult.error || !apiKeyResult.data?.key) {
+    return null;
+  }
+
+  return {
+    key: apiKeyResult.data.key,
+    userId: signUpResult.data.user.id,
+    organizationId: organizationResult.data.id,
+  };
+};
+
+const cleanupTemporaryResources = async (
+  resources: AutoProvisionedResources
+): Promise<void> => {
+  try {
+    await db
+      .delete(organization)
+      .where(eq(organization.id, resources.organizationId));
+  } catch {
+    // Best effort cleanup.
+  }
+
+  try {
+    await db.delete(user).where(eq(user.id, resources.userId));
+  } catch {
+    // Best effort cleanup.
+  }
+};
+
+const resolveApiKey = async (): Promise<{
+  key: string;
+  tempResources: AutoProvisionedResources | null;
+}> => {
+  if (!forceAutoProvision && process.env.VON_API_KEY) {
+    const ok = await isValidApiKey(process.env.VON_API_KEY);
+    if (!ok) {
+      throw new Error("VON_API_KEY is set but invalid");
+    }
+
+    return { key: process.env.VON_API_KEY, tempResources: null };
+  }
+
+  const saved = forceAutoProvision
+    ? null
+    : await secrets.get({ service: "von", name: "VON_API_KEY" });
+  if (saved) {
+    if (await isValidApiKey(saved)) {
+      return { key: saved, tempResources: null };
+    }
+    await secrets.delete({ service: "von", name: "VON_API_KEY" });
+  }
+
+  const tempResources = await createTemporaryResources();
+  if (!tempResources) {
+    throw new Error("Failed to create temporary integration API key");
+  }
+
+  if (!(await isValidApiKey(tempResources.key))) {
+    await cleanupTemporaryResources(tempResources);
+    throw new Error("Temporary integration API key validation failed");
+  }
+
+  return { key: tempResources.key, tempResources };
+};
+
+const run = async () => {
+  const targets = process.argv.slice(2);
+  const testTargets = targets.length > 0 ? targets : ["tests/integration/"];
+
+  const { key, tempResources } = await resolveApiKey();
+  if (tempResources) {
+    console.log("Created temporary integration API key");
+  } else {
+    console.log("Using existing API key for integration tests");
+  }
+
+  const child = Bun.spawn(["bun", "test", ...testTargets], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      VON_API_KEY: key,
+      VON_INTEGRATION_FORCE_AUTOKEY: "0",
+    },
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const exitCode = await child.exited;
+
+  if (tempResources) {
+    await cleanupTemporaryResources(tempResources);
+    console.log("Cleaned up temporary integration resources");
+  }
+
+  process.exit(exitCode);
+};
+
+await run();

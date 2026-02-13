@@ -6,7 +6,11 @@ if (!process.env.BETTER_AUTH_SECRET) {
   process.exit(1);
 }
 
-const { app } = await import("../src/app");
+if (!process.env.API_KEY_SIGNING_SECRET) {
+  process.env.API_KEY_SIGNING_SECRET = "integration-test-signing-secret";
+}
+
+export const { app } = await import("../src/app");
 
 export type App = typeof app;
 

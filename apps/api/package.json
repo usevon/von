@@ -15,6 +15,7 @@
     "build": "tsdown",
     "build:prod": "bun build --compile --bytecode --minify --sourcemap --drop console --drop debugger --target bun-linux-x64 --outfile dist/api src/index.ts",
     "test": "bun test",
+    "test:integration:auto": "bun run tests/integration/run.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

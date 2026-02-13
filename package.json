@@ -26,7 +26,8 @@
     "lint": "bunx ultracite check",
     "lint:fix": "bunx ultracite fix",
     "test": "bun test packages/ apps/worker/ && bun run --cwd apps/api test tests/unit/",
-    "test:integration": "cd apps/api && bun test tests/integration/"
+    "test:integration": "bun run --cwd apps/api test:integration:auto",
+    "test:integration:raw": "cd apps/api && bun test tests/integration/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
