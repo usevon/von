@@ -40,7 +40,6 @@ export namespace WebhookModel {
     eventType: t.String(),
     payload: t.Unknown(),
     idempotencyKey: t.Union([t.String(), t.Null()]),
-    status: t.String(),
     createdAt: t.String(),
   });
 
@@ -81,6 +80,15 @@ export namespace WebhookModel {
   });
 
   export type delivery = typeof delivery.static;
+
+  export const eventQuery = t.Object({
+    eventTypes: t.Optional(t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })),
+    from: t.Optional(t.String()),
+    to: t.Optional(t.String()),
+    sort: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")], { default: "desc" })),
+    limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
+    offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
+  });
 
   export const deliveryList = t.Object({
     deliveries: t.Array(delivery),

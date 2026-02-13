@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { ErrorResponse, IdParam, PaginationQuery } from "@/lib/models";
+import { ErrorResponse, IdParam } from "@/lib/models";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
@@ -53,11 +53,17 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
     ({ organizationId, query }) =>
       WebhookService.getEvents(
         organizationId,
+        {
+          eventTypes: query.eventTypes,
+          from: query.from,
+          to: query.to,
+          sort: query.sort,
+        },
         query.limit ?? 20,
         query.offset ?? 0
       ),
     {
-      query: PaginationQuery,
+      query: WebhookModel.eventQuery,
       response: WebhookModel.eventList,
     }
   )

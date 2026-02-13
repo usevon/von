@@ -8,7 +8,7 @@ import {
   matchesEventType,
   NotFoundError,
 } from "@usevon/utils";
-import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { env } from "@/env";
 import {
   releaseMonthlyQuota,
@@ -36,9 +36,14 @@ const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
 const toEvent = (e: EventRow): WebhookModel.event => ({
   id: e.id,
   eventType: e.eventType,
-  payload: JSON.parse(e.payload),
+  payload: (() => {
+    try {
+      return JSON.parse(e.payload);
+    } catch {
+      return { raw: e.payload };
+    }
+  })(),
   idempotencyKey: e.idempotencyKey,
-  status: "pending",
   createdAt: e.createdAt.toISOString(),
 });
 
@@ -293,7 +298,6 @@ export abstract class WebhookService {
           eventType: e.eventType,
           payload: e.payload,
           idempotencyKey: e.idempotencyKey,
-          status: "pending",
           createdAt: nowIso,
         });
       }
@@ -304,18 +308,58 @@ export abstract class WebhookService {
 
   static async getEvents(
     organizationId: string,
-    limit: number,
-    offset: number
+    filters?: {
+      eventTypes?: string[];
+      from?: string;
+      to?: string;
+      sort?: "asc" | "desc";
+    },
+    limit = 20,
+    offset = 0
   ): Promise<WebhookModel.eventList> {
+    const conditions = [eq(event.organizationId, organizationId)];
+
+    if (filters?.eventTypes?.length) {
+      conditions.push(inArray(event.eventType, filters.eventTypes));
+    }
+
+    if (filters?.from) {
+      const from = new Date(filters.from);
+      if (Number.isNaN(from.getTime())) {
+        throw new BadRequestError("Invalid from date");
+      }
+      conditions.push(gte(event.createdAt, from));
+    }
+
+    if (filters?.to) {
+      const to = new Date(filters.to);
+      if (Number.isNaN(to.getTime())) {
+        throw new BadRequestError("Invalid to date");
+      }
+      conditions.push(lte(event.createdAt, to));
+    }
+
+    if (filters?.from && filters?.to) {
+      const from = new Date(filters.from);
+      const to = new Date(filters.to);
+      if (from > to) {
+        throw new BadRequestError("from must be before or equal to to");
+      }
+    }
+
+    const where = and(...conditions);
+    const eventSort = filters?.sort === "asc" ? asc(event.createdAt) : desc(event.createdAt);
+    const idSort = filters?.sort === "asc" ? asc(event.id) : desc(event.id);
+
     const [events, total] = await Promise.all([
       db
         .select()
         .from(event)
-        .where(eq(event.organizationId, organizationId))
-        .orderBy(event.createdAt)
+        .where(where)
+        .orderBy(eventSort, idSort)
         .limit(limit)
         .offset(offset),
-      db.$count(event, eq(event.organizationId, organizationId)),
+      db.$count(event, where),
     ]);
     return { events: events.map(toEvent), total };
   }
@@ -370,6 +414,7 @@ export abstract class WebhookService {
         .from(delivery)
         .innerJoin(event, eq(delivery.eventId, event.id))
         .where(where)
+        .orderBy(desc(delivery.createdAt), desc(delivery.id))
         .limit(limit)
         .offset(offset),
       db.$count(

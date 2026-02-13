@@ -9,7 +9,6 @@ export type WebhookEvent = {
   eventType: string;
   payload: unknown;
   idempotencyKey: string | null;
-  status: string;
   createdAt: string;
 };
 
