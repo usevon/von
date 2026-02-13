@@ -24,7 +24,7 @@ const mockRedis = {
   }),
   srem: mock((key: string, value: string) => {
     const set = setStore.get(key);
-    if (!(set && set.has(value))) {
+    if (!set?.has(value)) {
       return Promise.resolve(0);
     }
     set.delete(value);

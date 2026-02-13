@@ -10,8 +10,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { siteUrl } from "@/lib/urls";
-import { Search } from "./docs/search";
 import { Navigation } from "./docs/navigation";
+import { Search } from "./docs/search";
 
 export const Sidebar = () => (
   <aside className="fixed top-0 hidden h-svh w-64 border-r bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_2%)] lg:block dark:bg-[color-mix(in_srgb,var(--color-background),white_2%)]">

@@ -96,7 +96,10 @@ export abstract class VersionService {
       .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
       .limit(pagination.limit + 1);
 
-    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
 
     return {
       versions: items.map((v) => toResponse(v)),

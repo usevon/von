@@ -24,8 +24,8 @@ export async function resolveAuth(
       if (result.valid && result.key?.organizationId) {
         const keyId = result.key.id;
         const now = Math.floor(Date.now() / 1000);
-        void redis.set(`api:lastUsed:${keyId}`, String(now));
-        void redis.sadd("api:lastUsed:dirty", keyId);
+        redis.set(`api:lastUsed:${keyId}`, String(now)).catch(() => undefined);
+        redis.sadd("api:lastUsed:dirty", keyId).catch(() => undefined);
 
         return {
           organizationId: result.key.organizationId,

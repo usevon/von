@@ -17,11 +17,6 @@ import { and, desc, eq } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
 import {
-  decryptSecret,
-  encryptSecret,
-  withDecryptedSecretFields,
-} from "@/lib/secret-cipher";
-import {
   buildCursorCondition,
   buildCursorScopeHash,
   decodeCursor,
@@ -29,6 +24,11 @@ import {
   sliceCursorPage,
   type CursorPageInput,
 } from "@/lib/pagination";
+import {
+  decryptSecret,
+  encryptSecret,
+  withDecryptedSecretFields,
+} from "@/lib/secret-cipher";
 import type { InboundModel } from "@/modules/inbound/model";
 
 const redis = getRedisClient();
@@ -140,7 +140,10 @@ export abstract class InboundService {
       .orderBy(desc(inboundEndpoint.createdAt), desc(inboundEndpoint.id))
       .limit(pagination.limit + 1);
 
-    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
 
     return {
       endpoints: items.map((e) => toResponse(e)),
@@ -269,7 +272,7 @@ export abstract class InboundService {
     return result.length > 0;
   }
 
-  static async receive(
+  static receive(
     params: ReceiveWebhookParams
   ): Promise<InboundModel.inboundDelivery> {
     return withReservedMonthlyQuota(

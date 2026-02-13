@@ -1,4 +1,8 @@
-import { apiKeyClient, createAuthClient, organizationClient } from "@usevon/auth/client";
+import {
+  apiKeyClient,
+  createAuthClient,
+  organizationClient,
+} from "@usevon/auth/client";
 import { db, eq } from "@usevon/db";
 import { organization, user } from "@usevon/db/schema";
 import { secrets } from "bun";
@@ -66,7 +70,9 @@ const validateKey = async (key: string): Promise<boolean> => {
   return error?.status !== 401;
 };
 
-const extractSessionCookie = (setCookieHeader: string | null): string | null => {
+const extractSessionCookie = (
+  setCookieHeader: string | null
+): string | null => {
   if (!setCookieHeader) {
     return null;
   }
@@ -100,7 +106,7 @@ const cleanupProvisionedResources = async (
   }
 
   if (process.env.VON_API_KEY === resources.key) {
-    delete process.env.VON_API_KEY;
+    process.env.VON_API_KEY = undefined;
   }
 
   if (options?.log !== false) {
@@ -133,116 +139,123 @@ const registerCleanupHook = () => {
   };
 
   process.once("beforeExit", () => {
-    void triggerCleanup();
+    triggerCleanup().catch(() => undefined);
   });
 
   process.once("SIGINT", () => {
-    void triggerCleanup().finally(() => process.exit(130));
+    triggerCleanup()
+      .catch(() => undefined)
+      .finally(() => process.exit(130));
   });
 
   process.once("SIGTERM", () => {
-    void triggerCleanup().finally(() => process.exit(143));
+    triggerCleanup()
+      .catch(() => undefined)
+      .finally(() => process.exit(143));
   });
 };
 
-const createIntegrationApiKey = async (): Promise<AutoProvisionedResources | null> => {
-  const cookieJar = new Headers();
-  const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
-  const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
+const createIntegrationApiKey =
+  async (): Promise<AutoProvisionedResources | null> => {
+    const cookieJar = new Headers();
+    const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+    const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
 
-  const authClient = createAuthClient({
-    baseURL: authBaseUrl,
-    plugins: [organizationClient(), apiKeyClient()],
-    fetchOptions: {
-      customFetchImpl: async (url, init) => {
-        const headers = new Headers(init?.headers);
-        const sessionCookie = cookieJar.get("cookie");
+    const authClient = createAuthClient({
+      baseURL: authBaseUrl,
+      plugins: [organizationClient(), apiKeyClient()],
+      fetchOptions: {
+        customFetchImpl: async (url, init) => {
+          const headers = new Headers(init?.headers);
+          const sessionCookie = cookieJar.get("cookie");
 
-        if (sessionCookie && !headers.has("cookie")) {
-          headers.set("cookie", sessionCookie);
-        }
-        if (!headers.has("origin")) {
-          headers.set("origin", origin);
-        }
+          if (sessionCookie && !headers.has("cookie")) {
+            headers.set("cookie", sessionCookie);
+          }
+          if (!headers.has("origin")) {
+            headers.set("origin", origin);
+          }
 
-        const response = await app.handle(new Request(url, { ...init, headers }));
-        const nextSessionCookie = extractSessionCookie(
-          response.headers.get("set-cookie")
-        );
-        if (nextSessionCookie) {
-          cookieJar.set("cookie", nextSessionCookie);
-        }
+          const response = await app.handle(
+            new Request(url, { ...init, headers })
+          );
+          const nextSessionCookie = extractSessionCookie(
+            response.headers.get("set-cookie")
+          );
+          if (nextSessionCookie) {
+            cookieJar.set("cookie", nextSessionCookie);
+          }
 
-        return response;
+          return response;
+        },
       },
-    },
-  });
+    });
 
-  const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-  const email = `integration-${suffix}@example.com`;
-  const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
-  const slug = `integration-${suffix}`.slice(0, 48);
+    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const email = `integration-${suffix}@example.com`;
+    const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
+    const slug = `integration-${suffix}`.slice(0, 48);
 
-  const signUpResult = await authClient.signUp.email({
-    name: "Integration User",
-    email,
-    password,
-  });
+    const signUpResult = await authClient.signUp.email({
+      name: "Integration User",
+      email,
+      password,
+    });
 
-  if (signUpResult.error) {
-    console.log(`\nAutomatic sign up failed: ${signUpResult.error.message}`);
-    return null;
-  }
+    if (signUpResult.error) {
+      console.log(`\nAutomatic sign up failed: ${signUpResult.error.message}`);
+      return null;
+    }
 
-  const userId = signUpResult.data?.user?.id;
-  if (!userId) {
-    console.log("\nAutomatic sign up returned no user id");
-    return null;
-  }
+    const userId = signUpResult.data?.user?.id;
+    if (!userId) {
+      console.log("\nAutomatic sign up returned no user id");
+      return null;
+    }
 
-  const signInResult = await authClient.signIn.email({
-    email,
-    password,
-  });
-  if (signInResult.error) {
-    console.log(`\nAutomatic sign in failed: ${signInResult.error.message}`);
-    return null;
-  }
+    const signInResult = await authClient.signIn.email({
+      email,
+      password,
+    });
+    if (signInResult.error) {
+      console.log(`\nAutomatic sign in failed: ${signInResult.error.message}`);
+      return null;
+    }
 
-  const organizationResult = await authClient.organization.create({
-    name: `Integration ${suffix.slice(-6)}`,
-    slug,
-  });
+    const organizationResult = await authClient.organization.create({
+      name: `Integration ${suffix.slice(-6)}`,
+      slug,
+    });
 
-  if (organizationResult.error || !organizationResult.data?.id) {
-    console.log(
-      `\nAutomatic organization create failed: ${organizationResult.error?.message ?? "Unknown error"}`
-    );
-    return null;
-  }
+    if (organizationResult.error || !organizationResult.data?.id) {
+      console.log(
+        `\nAutomatic organization create failed: ${organizationResult.error?.message ?? "Unknown error"}`
+      );
+      return null;
+    }
 
-  const apiKeyResult = await authClient.apiKey.create({
-    name: "Integration Test Key",
-    environment: "dev",
-    organizationId: organizationResult.data.id,
-    scopes: ["*"],
-  });
+    const apiKeyResult = await authClient.apiKey.create({
+      name: "Integration Test Key",
+      environment: "dev",
+      organizationId: organizationResult.data.id,
+      scopes: ["*"],
+    });
 
-  if (apiKeyResult.error || !apiKeyResult.data?.key) {
-    console.log(
-      `\nAutomatic API key create failed: ${apiKeyResult.error?.message ?? "Unknown error"}`
-    );
-    return null;
-  }
+    if (apiKeyResult.error || !apiKeyResult.data?.key) {
+      console.log(
+        `\nAutomatic API key create failed: ${apiKeyResult.error?.message ?? "Unknown error"}`
+      );
+      return null;
+    }
 
-  return {
-    key: apiKeyResult.data.key,
-    userId,
-    organizationId: organizationResult.data.id,
+    return {
+      key: apiKeyResult.data.key,
+      userId,
+      organizationId: organizationResult.data.id,
+    };
   };
-};
 
-const useApiKey = async (
+const applyApiKey = async (
   key: string,
   options?: { persistToKeychain?: boolean }
 ): Promise<boolean> => {
@@ -272,7 +285,7 @@ const promptUntilValid = async () => {
       return;
     }
 
-    const valid = await useApiKey(key, { persistToKeychain: true });
+    const valid = await applyApiKey(key, { persistToKeychain: true });
     if (valid) {
       console.log("Saved to OS keychain\n");
       return;
@@ -289,7 +302,7 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
   const saved = await getStoredApiKey();
 
   if (saved && !forceAutoProvision) {
-    const valid = await useApiKey(saved);
+    const valid = await applyApiKey(saved);
     if (valid) {
       console.log("\nUsing saved API key for integration tests");
     } else {
@@ -301,7 +314,7 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
   if (!process.env.VON_API_KEY) {
     console.log("\nNo API key found for integration tests");
     const created = await createIntegrationApiKey();
-    if (created && (await useApiKey(created.key))) {
+    if (created && (await applyApiKey(created.key))) {
       autoProvisionedResources = created;
       registerCleanupHook();
       console.log("Created API key for integration tests\n");
@@ -310,12 +323,12 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
     }
   }
 
-  if (!process.env.VON_API_KEY && isInteractive) {
-    await promptUntilValid();
-  }
-
-  if (!process.env.VON_API_KEY && !isInteractive) {
-    console.log("\nSkipping integration tests that require VON_API_KEY");
+  if (!process.env.VON_API_KEY) {
+    if (isInteractive) {
+      await promptUntilValid();
+    } else {
+      console.log("\nSkipping integration tests that require VON_API_KEY");
+    }
   }
 }
 

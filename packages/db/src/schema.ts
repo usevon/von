@@ -331,7 +331,10 @@ export const inboundEndpoint = pgTable(
       table.createdAt,
       table.id
     ),
-    index("inbound_endpoint_org_status_idx").on(table.organizationId, table.status),
+    index("inbound_endpoint_org_status_idx").on(
+      table.organizationId,
+      table.status
+    ),
   ]
 );
 

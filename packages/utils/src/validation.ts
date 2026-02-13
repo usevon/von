@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
-const PRIVATE_IPV4_RANGES: Array<[number, number]> = [
+const PRIVATE_IPV4_RANGES: [number, number][] = [
   [0x00_00_00_00, 0x00_ff_ff_ff],
   [0x0a_00_00_00, 0x0a_ff_ff_ff],
   [0x64_40_00_00, 0x64_7f_ff_ff],
@@ -39,16 +39,26 @@ const normalizeAddress = (value: string): string => {
 
 const ipv4ToInt = (ip: string): number => {
   const parts = ip.split(".").map((p) => Number(p));
-  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p))) {
+  if (
+    parts.length !== 4 ||
+    parts.some(
+      (p) => Number.isNaN(p) || !Number.isInteger(p) || p < 0 || p > 255
+    )
+  ) {
     return -1;
   }
-  return (
-    (((parts[0] ?? 0) << 24) |
-      ((parts[1] ?? 0) << 16) |
-      ((parts[2] ?? 0) << 8) |
-      (parts[3] ?? 0)) >>>
-    0
-  );
+
+  const [a, b, c, d] = parts;
+  if (
+    a === undefined ||
+    b === undefined ||
+    c === undefined ||
+    d === undefined
+  ) {
+    return -1;
+  }
+
+  return a * 256 ** 3 + b * 256 ** 2 + c * 256 + d;
 };
 
 const isPrivateIPv4 = (ip: string): boolean => {

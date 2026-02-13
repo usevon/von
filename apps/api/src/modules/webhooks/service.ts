@@ -394,7 +394,8 @@ export abstract class WebhookService {
       throw new InternalServerError();
     }
 
-    const eventSort = sort === "asc" ? asc(event.createdAt) : desc(event.createdAt);
+    const eventSort =
+      sort === "asc" ? asc(event.createdAt) : desc(event.createdAt);
     const idSort = sort === "asc" ? asc(event.id) : desc(event.id);
 
     const rows = await db
@@ -404,7 +405,10 @@ export abstract class WebhookService {
       .orderBy(eventSort, idSort)
       .limit(pagination.limit + 1);
 
-    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
 
     return {
       events: items.map(toEvent),
@@ -431,7 +435,6 @@ export abstract class WebhookService {
     return result ? toEvent(result) : null;
   }
 
-  // biome-ignore lint/nursery/useMaxParams: parameters are all distinct query concerns
   static async getDeliveries(
     organizationId: string,
     eventId: string,
@@ -507,7 +510,10 @@ export abstract class WebhookService {
       .orderBy(desc(delivery.createdAt), desc(delivery.id))
       .limit(pagination.limit + 1);
 
-    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
 
     return {
       deliveries: items.map((r) => toDelivery(r.delivery)),

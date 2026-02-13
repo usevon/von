@@ -1,8 +1,8 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, event } from "@usevon/db/schema";
 import {
-  type DeliveryEndpoint,
   getRedisClient,
+  type DeliveryEndpoint,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
 import type {
@@ -20,11 +20,6 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import {
-  decryptSecret,
-  encryptSecret,
-  withDecryptedSecretFields,
-} from "@/lib/secret-cipher";
-import {
   buildCursorCondition,
   buildCursorScopeHash,
   decodeCursor,
@@ -32,6 +27,11 @@ import {
   sliceCursorPage,
   type CursorPageInput,
 } from "@/lib/pagination";
+import {
+  decryptSecret,
+  encryptSecret,
+  withDecryptedSecretFields,
+} from "@/lib/secret-cipher";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
@@ -43,6 +43,14 @@ type CreateEndpointParams = CreateEndpoint & { organizationId: string };
 type UpdateEndpointParams = UpdateEndpoint & {
   organizationId: string;
   endpointId: string;
+};
+
+type TestEndpointParams = {
+  organizationId: string;
+  endpointId: string;
+  plan: string;
+  payload?: unknown;
+  eventType?: string;
 };
 
 type EndpointRow = typeof endpoint.$inferSelect;
@@ -155,7 +163,10 @@ export abstract class EndpointService {
       .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
       .limit(pagination.limit + 1);
 
-    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
 
     return {
       endpoints: items.map((e) => toResponse(e)),
@@ -299,13 +310,9 @@ export abstract class EndpointService {
   }
 
   static async testEndpoint(
-    organizationId: string,
-    endpointId: string,
-    plan: string,
-    payload?: unknown,
-    eventType?: string
+    params: TestEndpointParams
   ): Promise<EndpointModel.testResponse> {
-    const ep = await db
+    const [endpointRow] = await db
       .select({
         id: endpoint.id,
         url: endpoint.url,
@@ -319,63 +326,68 @@ export abstract class EndpointService {
       .from(endpoint)
       .where(
         and(
-          eq(endpoint.id, endpointId),
-          eq(endpoint.organizationId, organizationId)
+          eq(endpoint.id, params.endpointId),
+          eq(endpoint.organizationId, params.organizationId)
         )
       )
       .limit(1);
 
-    if (!ep[0]) {
+    if (!endpointRow) {
       throw new NotFoundError();
     }
 
     const now = new Date();
-    const type = eventType ?? "von.test";
-    const testPayload = payload ?? {
+    const type = params.eventType ?? "von.test";
+    const testPayload = params.payload ?? {
       test: true,
       timestamp: now.toISOString(),
     };
     const payloadStr = JSON.stringify(testPayload);
 
-    return withReservedMonthlyQuota(organizationId, plan, 1, async () => {
-      const eventId = crypto.randomUUID();
-      const deliveryId = crypto.randomUUID();
+    return withReservedMonthlyQuota(
+      params.organizationId,
+      params.plan,
+      1,
+      async () => {
+        const eventId = crypto.randomUUID();
+        const deliveryId = crypto.randomUUID();
 
-      await db.insert(event).values({
-        id: eventId,
-        organizationId,
-        eventType: type,
-        payload: payloadStr,
-        createdAt: now,
-      });
+        await db.insert(event).values({
+          id: eventId,
+          organizationId: params.organizationId,
+          eventType: type,
+          payload: payloadStr,
+          createdAt: now,
+        });
 
-      await db.insert(delivery).values({
-        id: deliveryId,
-        eventId,
-        endpointId,
-        status: "pending",
-        attempts: 0,
-        createdAt: now,
-      });
+        await db.insert(delivery).values({
+          id: deliveryId,
+          eventId,
+          endpointId: params.endpointId,
+          status: "pending",
+          attempts: 0,
+          createdAt: now,
+        });
 
-      const deliveryEndpoint = withDecryptedSecretFields(ep[0]!);
+        const deliveryEndpoint = withDecryptedSecretFields(endpointRow);
 
-      await enqueueWebhookDispatchJobs([
-        {
-          name: "webhook-delivery",
-          data: {
-            deliveryId,
-            eventId,
-            payload: payloadStr,
-            eventType: type,
-            endpoint: deliveryEndpoint,
-            organizationId,
-          } satisfies WebhookDeliveryJob,
-        },
-      ]);
+        await enqueueWebhookDispatchJobs([
+          {
+            name: "webhook-delivery",
+            data: {
+              deliveryId,
+              eventId,
+              payload: payloadStr,
+              eventType: type,
+              endpoint: deliveryEndpoint,
+              organizationId: params.organizationId,
+            } satisfies WebhookDeliveryJob,
+          },
+        ]);
 
-      return { eventId, deliveryId };
-    });
+        return { eventId, deliveryId };
+      }
+    );
   }
 
   static async rotateSecret(

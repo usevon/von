@@ -101,13 +101,13 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   .post(
     "/:id/test",
     async ({ organizationId, plan, params, body }) =>
-      EndpointService.testEndpoint(
+      EndpointService.testEndpoint({
         organizationId,
-        params.id,
+        endpointId: params.id,
         plan,
-        body.payload,
-        body.eventType
-      ),
+        payload: body.payload,
+        eventType: body.eventType,
+      }),
     {
       params: IdParam,
       body: EndpointModel.testBody,

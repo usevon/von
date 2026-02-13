@@ -4,21 +4,21 @@ import { resolveAuth, validateSession } from "../../src/modules/auth/service";
 
 const createTrackingRedis = (): {
   redis: RedisTracking;
-  setCalls: Array<[string, string]>;
-  saddCalls: Array<[string, string]>;
+  setCalls: [string, string][];
+  saddCalls: [string, string][];
 } => {
-  const setCalls: Array<[string, string]> = [];
-  const saddCalls: Array<[string, string]> = [];
+  const setCalls: [string, string][] = [];
+  const saddCalls: [string, string][] = [];
 
   return {
     redis: {
-      set: async (key, value) => {
+      set: (key, value) => {
         setCalls.push([key, value]);
-        return "OK";
+        return Promise.resolve("OK");
       },
-      sadd: async (key, value) => {
+      sadd: (key, value) => {
         saddCalls.push([key, value]);
-        return 1;
+        return Promise.resolve(1);
       },
     },
     setCalls,
@@ -33,9 +33,9 @@ describe("auth service", () => {
 
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async ({ body }) => {
+        verifyApiKey: ({ body }) => {
           expect(body.key).toBe("von_dev_testkey");
-          return {
+          return Promise.resolve({
             valid: true,
             key: {
               id: "key_123",
@@ -43,11 +43,11 @@ describe("auth service", () => {
               userId: "user_123",
               scopes: ["read:webhooks"],
             },
-          };
+          });
         },
-        getSession: async () => {
+        getSession: () => {
           getSessionCalls += 1;
-          return null;
+          return Promise.resolve(null);
         },
       },
     };
@@ -75,15 +75,13 @@ describe("auth service", () => {
 
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async () => {
-          throw new Error("invalid key");
-        },
-        getSession: async () => {
+        verifyApiKey: () => Promise.reject(new Error("invalid key")),
+        getSession: () => {
           getSessionCalls += 1;
-          return {
+          return Promise.resolve({
             session: { activeOrganizationId: "org_session" },
             user: { id: "user_session" },
-          };
+          });
         },
       },
     };
@@ -105,8 +103,8 @@ describe("auth service", () => {
 
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async () => ({ valid: false }),
-        getSession: async () => null,
+        verifyApiKey: () => Promise.resolve({ valid: false }),
+        getSession: () => Promise.resolve(null),
       },
     };
 
@@ -123,14 +121,15 @@ describe("auth service", () => {
 
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async () => {
+        verifyApiKey: () => {
           verifyCalls += 1;
-          return { valid: false };
+          return Promise.resolve({ valid: false });
         },
-        getSession: async () => ({
-          session: { activeOrganizationId: "org_cookie" },
-          user: { id: "user_cookie" },
-        }),
+        getSession: () =>
+          Promise.resolve({
+            session: { activeOrganizationId: "org_cookie" },
+            user: { id: "user_cookie" },
+          }),
       },
     };
 
@@ -149,10 +148,11 @@ describe("auth service", () => {
   test("validateSession returns active organization id", async () => {
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async () => ({ valid: false }),
-        getSession: async () => ({
-          session: { activeOrganizationId: "org_789" },
-        }),
+        verifyApiKey: () => Promise.resolve({ valid: false }),
+        getSession: () =>
+          Promise.resolve({
+            session: { activeOrganizationId: "org_789" },
+          }),
       },
     };
 
@@ -166,10 +166,8 @@ describe("auth service", () => {
   test("validateSession returns null when getSession throws", async () => {
     const auth: AuthApi = {
       api: {
-        verifyApiKey: async () => ({ valid: false }),
-        getSession: async () => {
-          throw new Error("session unavailable");
-        },
+        verifyApiKey: () => Promise.resolve({ valid: false }),
+        getSession: () => Promise.reject(new Error("session unavailable")),
       },
     };
 

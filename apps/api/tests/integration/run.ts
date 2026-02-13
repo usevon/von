@@ -1,4 +1,8 @@
-import { apiKeyClient, createAuthClient, organizationClient } from "@usevon/auth/client";
+import {
+  apiKeyClient,
+  createAuthClient,
+  organizationClient,
+} from "@usevon/auth/client";
 import { db, eq } from "@usevon/db";
 import { organization, user } from "@usevon/db/schema";
 import { secrets } from "bun";
@@ -48,7 +52,9 @@ const isValidApiKey = async (key: string): Promise<boolean> => {
   return error?.status !== 401;
 };
 
-const extractSessionCookie = (setCookieHeader: string | null): string | null => {
+const extractSessionCookie = (
+  setCookieHeader: string | null
+): string | null => {
   if (!setCookieHeader) {
     return null;
   }
@@ -63,82 +69,85 @@ const extractSessionCookie = (setCookieHeader: string | null): string | null => 
   return null;
 };
 
-const createTemporaryResources = async (): Promise<AutoProvisionedResources | null> => {
-  const cookieJar = new Headers();
-  const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
-  const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
+const createTemporaryResources =
+  async (): Promise<AutoProvisionedResources | null> => {
+    const cookieJar = new Headers();
+    const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+    const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
 
-  const authClient = createAuthClient({
-    baseURL: authBaseUrl,
-    plugins: [organizationClient(), apiKeyClient()],
-    fetchOptions: {
-      customFetchImpl: async (url, init) => {
-        const headers = new Headers(init?.headers);
-        const sessionCookie = cookieJar.get("cookie");
+    const authClient = createAuthClient({
+      baseURL: authBaseUrl,
+      plugins: [organizationClient(), apiKeyClient()],
+      fetchOptions: {
+        customFetchImpl: async (url, init) => {
+          const headers = new Headers(init?.headers);
+          const sessionCookie = cookieJar.get("cookie");
 
-        if (sessionCookie && !headers.has("cookie")) {
-          headers.set("cookie", sessionCookie);
-        }
-        if (!headers.has("origin")) {
-          headers.set("origin", origin);
-        }
+          if (sessionCookie && !headers.has("cookie")) {
+            headers.set("cookie", sessionCookie);
+          }
+          if (!headers.has("origin")) {
+            headers.set("origin", origin);
+          }
 
-        const response = await app.handle(new Request(url, { ...init, headers }));
-        const nextSessionCookie = extractSessionCookie(
-          response.headers.get("set-cookie")
-        );
-        if (nextSessionCookie) {
-          cookieJar.set("cookie", nextSessionCookie);
-        }
+          const response = await app.handle(
+            new Request(url, { ...init, headers })
+          );
+          const nextSessionCookie = extractSessionCookie(
+            response.headers.get("set-cookie")
+          );
+          if (nextSessionCookie) {
+            cookieJar.set("cookie", nextSessionCookie);
+          }
 
-        return response;
+          return response;
+        },
       },
-    },
-  });
+    });
 
-  const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-  const email = `integration-${suffix}@example.com`;
-  const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
-  const slug = `integration-${suffix}`.slice(0, 48);
+    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const email = `integration-${suffix}@example.com`;
+    const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
+    const slug = `integration-${suffix}`.slice(0, 48);
 
-  const signUpResult = await authClient.signUp.email({
-    name: "Integration User",
-    email,
-    password,
-  });
-  if (signUpResult.error || !signUpResult.data?.user?.id) {
-    return null;
-  }
+    const signUpResult = await authClient.signUp.email({
+      name: "Integration User",
+      email,
+      password,
+    });
+    if (signUpResult.error || !signUpResult.data?.user?.id) {
+      return null;
+    }
 
-  const signInResult = await authClient.signIn.email({ email, password });
-  if (signInResult.error) {
-    return null;
-  }
+    const signInResult = await authClient.signIn.email({ email, password });
+    if (signInResult.error) {
+      return null;
+    }
 
-  const organizationResult = await authClient.organization.create({
-    name: `Integration ${suffix.slice(-6)}`,
-    slug,
-  });
-  if (organizationResult.error || !organizationResult.data?.id) {
-    return null;
-  }
+    const organizationResult = await authClient.organization.create({
+      name: `Integration ${suffix.slice(-6)}`,
+      slug,
+    });
+    if (organizationResult.error || !organizationResult.data?.id) {
+      return null;
+    }
 
-  const apiKeyResult = await authClient.apiKey.create({
-    name: "Integration Test Key",
-    environment: "dev",
-    organizationId: organizationResult.data.id,
-    scopes: ["*"],
-  });
-  if (apiKeyResult.error || !apiKeyResult.data?.key) {
-    return null;
-  }
+    const apiKeyResult = await authClient.apiKey.create({
+      name: "Integration Test Key",
+      environment: "dev",
+      organizationId: organizationResult.data.id,
+      scopes: ["*"],
+    });
+    if (apiKeyResult.error || !apiKeyResult.data?.key) {
+      return null;
+    }
 
-  return {
-    key: apiKeyResult.data.key,
-    userId: signUpResult.data.user.id,
-    organizationId: organizationResult.data.id,
+    return {
+      key: apiKeyResult.data.key,
+      userId: signUpResult.data.user.id,
+      organizationId: organizationResult.data.id,
+    };
   };
-};
 
 const cleanupTemporaryResources = async (
   resources: AutoProvisionedResources

@@ -49,7 +49,7 @@ const withTimeout = async <T>(
       reject(new Error("Rate limiter timed out"));
     }, timeoutMs);
 
-    void promise
+    promise
       .then((value) => {
         clearTimeout(timeout);
         resolve(value);
@@ -74,7 +74,9 @@ const createRateLimiter = (options: RateLimitOptions) => {
     { as: "scoped" },
     async (ctx: RateLimitContext) => {
       const identifier = getKey(ctx);
-      if (!identifier) return;
+      if (!identifier) {
+        return;
+      }
 
       const key = `${keyPrefix}:${identifier}`;
 

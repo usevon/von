@@ -1,7 +1,7 @@
 import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
-import type { Logger } from "pino";
 import { Elysia } from "elysia";
+import type { Logger } from "pino";
 import {
   BadRequestError,
   ForbiddenError,

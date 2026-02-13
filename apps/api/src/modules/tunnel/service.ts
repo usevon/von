@@ -38,7 +38,7 @@ const withTimeout = async <T>(
       reject(new Error("Redis operation timed out"));
     }, timeoutMs);
 
-    void promise
+    promise
       .then((value) => {
         clearTimeout(timeout);
         resolve(value);
@@ -176,7 +176,10 @@ export abstract class TunnelService {
   }
 
   static async refreshTunnel(tunnelId: string): Promise<void> {
-    await bestEffortRedis(redis.expire(`tunnel:conn:${tunnelId}`, CONN_KEY_TTL), 0);
+    await bestEffortRedis(
+      redis.expire(`tunnel:conn:${tunnelId}`, CONN_KEY_TTL),
+      0
+    );
   }
 
   static getOrgTunnelCount(orgId: string): Promise<number> {
@@ -278,12 +281,11 @@ export abstract class TunnelService {
           })
         ),
         0
-      )
-        .catch((err) => {
-          clearTimeout(timeout);
-          relayPending.delete(requestId);
-          reject(err);
-        });
+      ).catch((err) => {
+        clearTimeout(timeout);
+        relayPending.delete(requestId);
+        reject(err);
+      });
     });
   }
 
