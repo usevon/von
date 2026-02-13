@@ -11,6 +11,35 @@ type AutoProvisionedResources = {
 };
 
 const forceAutoProvision = process.env.VON_INTEGRATION_FORCE_AUTOKEY === "1";
+const useStoredApiKey = process.env.VON_INTEGRATION_USE_STORED_KEY === "1";
+
+const isSecretsUnavailableError = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: string }).code === "ERR_SECRETS_PLATFORM_ERROR";
+
+const getStoredApiKey = async (): Promise<string | null> => {
+  try {
+    return await secrets.get({ service: "von", name: "VON_API_KEY" });
+  } catch (error) {
+    if (isSecretsUnavailableError(error)) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+const deleteStoredApiKey = async (): Promise<void> => {
+  try {
+    await secrets.delete({ service: "von", name: "VON_API_KEY" });
+  } catch (error) {
+    if (isSecretsUnavailableError(error)) {
+      return;
+    }
+    throw error;
+  }
+};
 
 const isValidApiKey = async (key: string): Promise<boolean> => {
   const { error } = await client.endpoints.get({
@@ -133,7 +162,7 @@ const resolveApiKey = async (): Promise<{
   key: string;
   tempResources: AutoProvisionedResources | null;
 }> => {
-  if (!forceAutoProvision && process.env.VON_API_KEY) {
+  if (!forceAutoProvision && useStoredApiKey && process.env.VON_API_KEY) {
     const ok = await isValidApiKey(process.env.VON_API_KEY);
     if (!ok) {
       throw new Error("VON_API_KEY is set but invalid");
@@ -142,14 +171,13 @@ const resolveApiKey = async (): Promise<{
     return { key: process.env.VON_API_KEY, tempResources: null };
   }
 
-  const saved = forceAutoProvision
-    ? null
-    : await secrets.get({ service: "von", name: "VON_API_KEY" });
+  const saved =
+    forceAutoProvision || !useStoredApiKey ? null : await getStoredApiKey();
   if (saved) {
     if (await isValidApiKey(saved)) {
       return { key: saved, tempResources: null };
     }
-    await secrets.delete({ service: "von", name: "VON_API_KEY" });
+    await deleteStoredApiKey();
   }
 
   const tempResources = await createTemporaryResources();

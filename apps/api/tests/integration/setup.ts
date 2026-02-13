@@ -20,6 +20,45 @@ let autoProvisionedResources: AutoProvisionedResources | null = null;
 let cleanupHookRegistered = false;
 let cleanupInFlight: Promise<void> | null = null;
 
+const isSecretsUnavailableError = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: string }).code === "ERR_SECRETS_PLATFORM_ERROR";
+
+const getStoredApiKey = async (): Promise<string | null> => {
+  try {
+    return await secrets.get({ service: "von", name: "VON_API_KEY" });
+  } catch (error) {
+    if (isSecretsUnavailableError(error)) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+const deleteStoredApiKey = async (): Promise<void> => {
+  try {
+    await secrets.delete({ service: "von", name: "VON_API_KEY" });
+  } catch (error) {
+    if (isSecretsUnavailableError(error)) {
+      return;
+    }
+    throw error;
+  }
+};
+
+const setStoredApiKey = async (key: string): Promise<void> => {
+  try {
+    await secrets.set({ service: "von", name: "VON_API_KEY", value: key });
+  } catch (error) {
+    if (isSecretsUnavailableError(error)) {
+      return;
+    }
+    throw error;
+  }
+};
+
 const validateKey = async (key: string): Promise<boolean> => {
   const { error } = await client.endpoints.get({
     headers: { authorization: `Bearer ${key}` },
@@ -215,7 +254,7 @@ const useApiKey = async (
   process.env.VON_API_KEY = key;
   if (options?.persistToKeychain) {
     try {
-      await secrets.set({ service: "von", name: "VON_API_KEY", value: key });
+      await setStoredApiKey(key);
     } catch {
       // Ignore keychain failures in CI/non-interactive envs.
     }
@@ -247,7 +286,7 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
     console.log("\nForcing auto-provisioned integration API key");
   }
 
-  const saved = await secrets.get({ service: "von", name: "VON_API_KEY" });
+  const saved = await getStoredApiKey();
 
   if (saved && !forceAutoProvision) {
     const valid = await useApiKey(saved);
@@ -255,7 +294,7 @@ if (isIntegrationTest && !process.env.VON_API_KEY) {
       console.log("\nUsing saved API key for integration tests");
     } else {
       console.log("\nSaved API key is invalid");
-      await secrets.delete({ service: "von", name: "VON_API_KEY" });
+      await deleteStoredApiKey();
     }
   }
 
