@@ -78,5 +78,8 @@ jobs:
         working-directory: apps/api
         run: bun run db:migrate
 
-      - name: Run tests
-        run: bun run test
+      - name: Run unit tests
+        run: bun run test:unit
+
+      - name: Run integration tests
+        run: bun run test:integration
