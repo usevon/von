@@ -13,7 +13,7 @@ import {
   InternalServerError,
   isSafeWebhookUrl,
 } from "@usevon/utils";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
 import {
@@ -58,7 +58,7 @@ type ReceiveWebhookParams = {
     secret: string;
     previousSecret?: string | null;
     timeoutMs: number;
-    retryCount: number;
+    maxAttempts: number;
   };
   payload: unknown;
   headers: Record<string, string>;
@@ -107,6 +107,7 @@ export abstract class InboundService {
         .select()
         .from(inboundEndpoint)
         .where(eq(inboundEndpoint.organizationId, organizationId))
+        .orderBy(desc(inboundEndpoint.createdAt), desc(inboundEndpoint.id))
         .limit(limit)
         .offset(offset),
       db.$count(

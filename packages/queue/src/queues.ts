@@ -3,7 +3,7 @@ import { createConnection } from "@/connection";
 import type { InboundForwardingJob, WebhookDeliveryJob } from "@/types";
 
 const DEFAULT_JOB_OPTIONS = {
-  attempts: 5,
+  attempts: 1,
   backoff: {
     type: "exponential" as const,
     delay: 1000,

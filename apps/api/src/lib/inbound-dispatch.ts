@@ -11,7 +11,9 @@ export const enqueueInboundForwardingJob = async (
   job: InboundForwardingJob
 ): Promise<void> => {
   try {
-    await getInboundForwardingQueue().add("inbound-forwarding", job);
+    await getInboundForwardingQueue().add("inbound-forwarding", job, {
+      attempts: job.endpoint.maxAttempts,
+    });
   } catch {
     await db
       .update(inboundDelivery)

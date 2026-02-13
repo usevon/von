@@ -7,7 +7,7 @@ export type Endpoint = {
   secret: string;
   status: EndpointStatus;
   version: string | null;
-  retryCount: number;
+  maxAttempts: number;
   timeoutMs: number;
   events: string[] | null;
   lastSuccessAt: string | null;
@@ -20,7 +20,7 @@ export type CreateEndpoint = {
   description?: string;
   status?: EndpointStatus;
   version?: string;
-  retryCount?: number;
+  maxAttempts?: number;
   timeoutMs?: number;
   events?: string[];
 };
@@ -30,7 +30,7 @@ export type UpdateEndpoint = {
   description?: string;
   status?: EndpointStatus;
   version?: string | null;
-  retryCount?: number;
+  maxAttempts?: number;
   timeoutMs?: number;
   events?: string[] | null;
 };

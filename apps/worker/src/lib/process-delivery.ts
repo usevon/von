@@ -37,7 +37,7 @@ type BaseJobData = {
     secret: string;
     previousSecret?: string | null;
     timeoutMs: number;
-    retryCount: number;
+    maxAttempts: number;
   };
 };
 
@@ -115,9 +115,13 @@ export async function processDelivery<TJob extends BaseJobData>(
   if (endpointState.status === "paused") {
     log.info(
       { endpointId: ep.id },
-      `${config.label} endpoint paused, retrying later`
+      `${config.label} endpoint paused, marking as paused`
     );
-    throw new Error("Endpoint paused");
+    await db
+      .update(config.deliveryTable)
+      .set(config.buildStatusSet("paused"))
+      .where(eq(config.deliveryTable.id, deliveryId));
+    return;
   }
 
   const circuitState = {
@@ -209,7 +213,7 @@ export async function processDelivery<TJob extends BaseJobData>(
   } catch (error) {
     const durationMs = Math.round(performance.now() - start);
     const attempts = deliveryRecord.attempts + 1;
-    const maxAttempts = ep.retryCount;
+    const maxAttempts = ep.maxAttempts;
     const isFinalAttempt = attempts >= maxAttempts;
 
     const [, [endpointResult]] = await Promise.all([

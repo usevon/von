@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
-  date,
   index,
   integer,
   jsonb,
@@ -209,8 +208,8 @@ export const endpoint = pgTable(
     secret: text("secret").notNull(),
     previousSecret: text("previous_secret"),
     status: text("status").default("active").notNull(),
-    version: date("version"),
-    retryCount: integer("retry_count").default(3).notNull(),
+    version: text("version"),
+    maxAttempts: integer("max_attempts").default(4).notNull(),
     timeoutMs: integer("timeout_ms").default(30_000).notNull(),
     events: text("events").array(),
     circuitState: text("circuit_state").default("closed").notNull(),
@@ -224,7 +223,10 @@ export const endpoint = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("endpoint_organization_id_idx").on(table.organizationId)]
+  (table) => [
+    index("endpoint_organization_id_idx").on(table.organizationId),
+    index("endpoint_org_status_idx").on(table.organizationId, table.status),
+  ]
 );
 
 export const event = pgTable(
@@ -241,6 +243,13 @@ export const event = pgTable(
   },
   (table) => [
     index("event_org_created_idx").on(table.organizationId, table.createdAt),
+    index("event_org_type_created_idx").on(
+      table.organizationId,
+      table.eventType,
+      table.createdAt,
+      table.id
+    ),
+    index("event_created_at_idx").on(table.createdAt),
     unique("event_org_idempotency_unique").on(
       table.organizationId,
       table.idempotencyKey
@@ -267,6 +276,18 @@ export const delivery = pgTable(
   (table) => [
     index("delivery_event_id_idx").on(table.eventId),
     index("delivery_endpoint_status_idx").on(table.endpointId, table.status),
+    index("delivery_event_created_id_idx").on(
+      table.eventId,
+      table.createdAt,
+      table.id
+    ),
+    index("delivery_status_created_idx").on(table.status, table.createdAt),
+    index("delivery_endpoint_status_created_idx").on(
+      table.endpointId,
+      table.status,
+      table.createdAt
+    ),
+    index("delivery_created_at_idx").on(table.createdAt),
   ]
 );
 
@@ -283,7 +304,7 @@ export const inboundEndpoint = pgTable(
     previousSecret: text("previous_secret"),
     forwardUrl: text("forward_url").notNull(),
     status: text("status").default("active").notNull(),
-    retryCount: integer("retry_count").default(3).notNull(),
+    maxAttempts: integer("max_attempts").default(4).notNull(),
     timeoutMs: integer("timeout_ms").default(30_000).notNull(),
     circuitState: text("circuit_state").default("closed").notNull(),
     failureCount: integer("failure_count").default(0).notNull(),
@@ -298,6 +319,7 @@ export const inboundEndpoint = pgTable(
   },
   (table) => [
     index("inbound_endpoint_organization_id_idx").on(table.organizationId),
+    index("inbound_endpoint_org_status_idx").on(table.organizationId, table.status),
   ]
 );
 
@@ -323,6 +345,7 @@ export const inboundDelivery = pgTable(
       table.inboundEndpointId,
       table.status
     ),
+    index("inbound_delivery_created_at_idx").on(table.createdAt),
   ]
 );
 
@@ -354,7 +377,7 @@ export const webhookVersion = pgTable(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    version: date("version").notNull(),
+    version: text("version").notNull(),
     transforms: jsonb("transforms").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

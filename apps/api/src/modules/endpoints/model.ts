@@ -13,7 +13,7 @@ export namespace EndpointModel {
       )
     ),
     version: t.Optional(t.String({ maxLength: 50 })),
-    retryCount: t.Optional(t.Number({ default: 3, minimum: 0, maximum: 10 })),
+    maxAttempts: t.Optional(t.Number({ default: 4, minimum: 1, maximum: 10 })),
     timeoutMs: t.Optional(
       t.Number({ default: 30_000, minimum: 1000, maximum: 60_000 })
     ),
@@ -29,7 +29,7 @@ export namespace EndpointModel {
       t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")])
     ),
     version: t.Optional(t.Union([t.String({ maxLength: 50 }), t.Null()])),
-    retryCount: t.Optional(t.Number({ minimum: 0, maximum: 10 })),
+    maxAttempts: t.Optional(t.Number({ minimum: 1, maximum: 10 })),
     timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60_000 })),
     events: t.Optional(
       t.Union([t.Array(t.String({ maxLength: 100 })), t.Null()])
@@ -44,7 +44,7 @@ export namespace EndpointModel {
     description: t.Union([t.String(), t.Null()]),
     status: t.String(),
     version: t.Union([t.String(), t.Null()]),
-    retryCount: t.Number(),
+    maxAttempts: t.Number(),
     timeoutMs: t.Number(),
     events: t.Union([t.Array(t.String()), t.Null()]),
     lastSuccessAt: t.Union([t.String(), t.Null()]),
@@ -61,7 +61,7 @@ export namespace EndpointModel {
     secret: t.String(),
     status: t.String(),
     version: t.Union([t.String(), t.Null()]),
-    retryCount: t.Number(),
+    maxAttempts: t.Number(),
     timeoutMs: t.Number(),
     events: t.Union([t.Array(t.String()), t.Null()]),
     lastSuccessAt: t.Union([t.String(), t.Null()]),

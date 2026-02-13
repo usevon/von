@@ -4,7 +4,7 @@ export type DeliveryEndpoint = {
   secret: string;
   previousSecret?: string | null;
   timeoutMs: number;
-  retryCount: number;
+  maxAttempts: number;
   version: string | null;
   events: string[] | null;
 };
@@ -26,7 +26,7 @@ export type InboundForwardingJob = {
     secret: string;
     previousSecret?: string | null;
     timeoutMs: number;
-    retryCount: number;
+    maxAttempts: number;
   };
   payload: string;
   headers: string;

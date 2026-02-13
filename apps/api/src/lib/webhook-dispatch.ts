@@ -30,7 +30,14 @@ export const enqueueWebhookDispatchJobs = async (
   }
 
   try {
-    await getWebhookDeliveryQueue().addBulk(jobs);
+    await getWebhookDeliveryQueue().addBulk(
+      jobs.map((job) => ({
+        ...job,
+        opts: {
+          attempts: job.data.endpoint.maxAttempts,
+        },
+      }))
+    );
   } catch {
     await markWebhookDeliveriesFailed(jobs.map((job) => job.data.deliveryId));
     throw new InternalServerError();

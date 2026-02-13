@@ -3,7 +3,7 @@ import { webhookVersion } from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
 import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { InternalServerError, type Transforms } from "@usevon/utils";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { VersionModel } from "@/modules/versions/model";
 
 type VersionRow = typeof webhookVersion.$inferSelect;
@@ -63,6 +63,7 @@ export abstract class VersionService {
         .select()
         .from(webhookVersion)
         .where(eq(webhookVersion.organizationId, organizationId))
+        .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
         .limit(limit)
         .offset(offset),
       db.$count(

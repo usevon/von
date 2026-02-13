@@ -17,7 +17,7 @@ import {
   isSafeWebhookUrl,
   NotFoundError,
 } from "@usevon/utils";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import {
   decryptSecret,
@@ -44,7 +44,7 @@ const toResponse = (row: EndpointRow): EndpointModel.endpoint => ({
   description: row.description,
   status: row.status as EndpointStatus,
   version: row.version,
-  retryCount: row.retryCount,
+  maxAttempts: row.maxAttempts,
   timeoutMs: row.timeoutMs,
   events: row.events,
   lastSuccessAt: row.lastSuccessAt?.toISOString() ?? null,
@@ -67,7 +67,7 @@ const buildUpdateSet = (
   description: params.description ?? existing.description,
   status: params.status ?? existing.status,
   version: params.version !== undefined ? params.version : existing.version,
-  retryCount: params.retryCount ?? existing.retryCount,
+  maxAttempts: params.maxAttempts ?? existing.maxAttempts,
   timeoutMs: params.timeoutMs ?? existing.timeoutMs,
   events: params.events !== undefined ? params.events : existing.events,
   updatedAt: new Date(),
@@ -95,7 +95,7 @@ export abstract class EndpointService {
         secret: encryptSecret(generateSecret()),
         status: params.status ?? "active",
         version: params.version ?? null,
-        retryCount: params.retryCount ?? 3,
+        maxAttempts: params.maxAttempts ?? 4,
         timeoutMs: params.timeoutMs ?? 30_000,
         events: params.events ?? null,
         createdAt: now,
@@ -122,6 +122,7 @@ export abstract class EndpointService {
         .select()
         .from(endpoint)
         .where(eq(endpoint.organizationId, organizationId))
+        .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
         .limit(limit)
         .offset(offset),
       db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
@@ -238,7 +239,7 @@ export abstract class EndpointService {
         secret: endpoint.secret,
         previousSecret: endpoint.previousSecret,
         timeoutMs: endpoint.timeoutMs,
-        retryCount: endpoint.retryCount,
+        maxAttempts: endpoint.maxAttempts,
         version: endpoint.version,
         events: endpoint.events,
       })
@@ -270,7 +271,7 @@ export abstract class EndpointService {
         secret: endpoint.secret,
         previousSecret: endpoint.previousSecret,
         timeoutMs: endpoint.timeoutMs,
-        retryCount: endpoint.retryCount,
+        maxAttempts: endpoint.maxAttempts,
         version: endpoint.version,
         events: endpoint.events,
       })

@@ -160,7 +160,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
           secret: endpoint.secret,
           previousSecret: endpoint.previousSecret,
           timeoutMs: endpoint.timeoutMs,
-          retryCount: endpoint.retryCount,
+          maxAttempts: endpoint.maxAttempts,
         },
         payload: body,
         headers: headerRecord,

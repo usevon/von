@@ -43,6 +43,13 @@
       "when": 1707523200000,
       "tag": "0005_api-key-scopes-and-usage",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770950817000,
+      "tag": "0006_webhook_scale_cutover",
+      "breakpoints": true
     }
   ]
 }
