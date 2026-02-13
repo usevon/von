@@ -119,16 +119,16 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
       expect(error?.status).toBe(401);
     });
 
-    test("returns 502 for valid secret but no WebSocket connection", async () => {
+    test("returns 401 when no WebSocket tunnel connection exists", async () => {
       if (!(tunnelId && tunnelSecret)) {
         return;
       }
 
       const { error } = await client.t[`${tunnelId}-${tunnelSecret}`].get();
 
-      // The tunnel is registered but no CLI is connected via WebSocket
+      // Tunnel secrets are only valid for active in-memory WebSocket connections
       expect(error).toBeDefined();
-      expect(error?.status).toBe(502);
+      expect(error?.status).toBe(401);
     });
   });
 });

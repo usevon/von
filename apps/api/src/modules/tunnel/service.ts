@@ -14,6 +14,7 @@ const log = createLogger({ name: "tunnel:relay" });
 const INSTANCE_ID = crypto.randomUUID();
 const RELAY_CHANNEL = `tunnel:relay:${INSTANCE_ID}`;
 const CONN_KEY_TTL = 60;
+const REDIS_OP_TIMEOUT_MS = 150;
 
 const tunnels = new Map<string, TunnelConnection>();
 const relayPending = new Map<
@@ -27,6 +28,41 @@ const relayPending = new Map<
 
 const redis = getRedisClient();
 const subscriber = createConnection();
+
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T> =>
+  await new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("Redis operation timed out"));
+    }, timeoutMs);
+
+    void promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
+
+const bestEffortRedis = async <T>(
+  operation: Promise<T>,
+  fallback: T
+): Promise<T> => {
+  try {
+    return await withTimeout(operation, REDIS_OP_TIMEOUT_MS);
+  } catch {
+    return fallback;
+  }
+};
+
+subscriber.on("error", () => {
+  // Keep tunnel relay fail-open in dev/test when Redis is unavailable.
+});
 
 subscriber.subscribe(RELAY_CHANNEL);
 subscriber.on("message", async (_channel: string, raw: string) => {
@@ -114,8 +150,14 @@ export abstract class TunnelService {
   ): Promise<void> {
     tunnels.set(tunnelId, connection);
     await Promise.all([
-      redis.set(`tunnel:conn:${tunnelId}`, INSTANCE_ID, "EX", CONN_KEY_TTL),
-      redis.sadd(`tunnel:org:${connection.organizationId}`, tunnelId),
+      bestEffortRedis(
+        redis.set(`tunnel:conn:${tunnelId}`, INSTANCE_ID, "EX", CONN_KEY_TTL),
+        "OK"
+      ),
+      bestEffortRedis(
+        redis.sadd(`tunnel:org:${connection.organizationId}`, tunnelId),
+        0
+      ),
     ]);
   }
 
@@ -124,18 +166,22 @@ export abstract class TunnelService {
     tunnels.delete(tunnelId);
     if (connection) {
       await Promise.all([
-        redis.del(`tunnel:conn:${tunnelId}`),
-        redis.srem(`tunnel:org:${connection.organizationId}`, tunnelId),
+        bestEffortRedis(redis.del(`tunnel:conn:${tunnelId}`), 0),
+        bestEffortRedis(
+          redis.srem(`tunnel:org:${connection.organizationId}`, tunnelId),
+          0
+        ),
       ]);
     }
   }
 
   static async refreshTunnel(tunnelId: string): Promise<void> {
-    await redis.expire(`tunnel:conn:${tunnelId}`, CONN_KEY_TTL);
+    await bestEffortRedis(redis.expire(`tunnel:conn:${tunnelId}`, CONN_KEY_TTL), 0);
   }
 
   static getOrgTunnelCount(orgId: string): Promise<number> {
-    return redis.scard(`tunnel:org:${orgId}`);
+    const localCount = TunnelService.getActiveTunnels(orgId).length;
+    return bestEffortRedis(redis.scard(`tunnel:org:${orgId}`), localCount);
   }
 
   static getActiveTunnels(organizationId: string): string[] {
@@ -196,14 +242,17 @@ export abstract class TunnelService {
     }
 
     // Check Redis for which instance owns this tunnel
-    const targetInstanceId = await redis.get(`tunnel:conn:${tunnelId}`);
+    const targetInstanceId = await bestEffortRedis(
+      redis.get(`tunnel:conn:${tunnelId}`),
+      null
+    );
     if (!targetInstanceId) {
       throw new Error("Tunnel not connected");
     }
 
     // Stale key — tunnel was on this instance but is gone
     if (targetInstanceId === INSTANCE_ID) {
-      await redis.del(`tunnel:conn:${tunnelId}`);
+      await bestEffortRedis(redis.del(`tunnel:conn:${tunnelId}`), 0);
       throw new Error("Tunnel not connected");
     }
 
@@ -217,8 +266,8 @@ export abstract class TunnelService {
 
       relayPending.set(requestId, { resolve, reject, timeout });
 
-      redis
-        .publish(
+      bestEffortRedis(
+        redis.publish(
           `tunnel:relay:${targetInstanceId}`,
           JSON.stringify({
             type: "request",
@@ -227,7 +276,9 @@ export abstract class TunnelService {
             request,
             replyTo: INSTANCE_ID,
           })
-        )
+        ),
+        0
+      )
         .catch((err) => {
           clearTimeout(timeout);
           relayPending.delete(requestId);
@@ -292,8 +343,11 @@ export abstract class TunnelService {
     const promises: Promise<unknown>[] = [];
     for (const [tunnelId, connection] of tunnels) {
       promises.push(
-        redis.del(`tunnel:conn:${tunnelId}`),
-        redis.srem(`tunnel:org:${connection.organizationId}`, tunnelId)
+        bestEffortRedis(redis.del(`tunnel:conn:${tunnelId}`), 0),
+        bestEffortRedis(
+          redis.srem(`tunnel:org:${connection.organizationId}`, tunnelId),
+          0
+        )
       );
     }
     await Promise.all(promises);
@@ -306,7 +360,7 @@ export abstract class TunnelService {
     }
     relayPending.clear();
 
-    await subscriber.unsubscribe(RELAY_CHANNEL);
-    await subscriber.quit();
+    await bestEffortRedis(subscriber.unsubscribe(RELAY_CHANNEL), 0);
+    await bestEffortRedis(subscriber.quit(), "OK");
   }
 }
