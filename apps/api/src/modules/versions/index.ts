@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
+import { toCursorPageInput } from "@/lib/pagination";
 import { vonAuth } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
 import { VersionService } from "@/modules/versions/service";
@@ -14,11 +15,7 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
   .get(
     "/",
     ({ organizationId, query }) =>
-      VersionService.getAll(
-        organizationId,
-        query.limit ?? 20,
-        query.offset ?? 0
-      ),
+      VersionService.getAll(organizationId, toCursorPageInput(query)),
     {
       query: PaginationQuery,
       response: VersionModel.versionList,

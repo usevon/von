@@ -15,12 +15,39 @@ import {
   reserveMonthlyQuota,
   withReservedMonthlyQuota,
 } from "@/lib/delivery-quota";
+import {
+  buildCursorCondition,
+  buildCursorScopeHash,
+  decodeCursor,
+  encodeCursor,
+  sliceCursorPage,
+  type CursorPageInput,
+  type CursorSort,
+} from "@/lib/pagination";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import { EndpointService } from "@/modules/endpoints/service";
 import type { WebhookModel } from "@/modules/webhooks/model";
 
 type EventRow = typeof event.$inferSelect;
 type DeliveryRow = typeof delivery.$inferSelect;
+
+const DELIVERY_CURSOR_SORT = "desc" as const;
+
+const parseOptionalDate = (
+  value: string | undefined,
+  fieldName: "from" | "to"
+): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestError(`Invalid ${fieldName} date`);
+  }
+
+  return date;
+};
 
 const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
   id: row.id,
@@ -314,54 +341,83 @@ export abstract class WebhookService {
       to?: string;
       sort?: "asc" | "desc";
     },
-    limit = 20,
-    offset = 0
+    pagination: CursorPageInput = { limit: 20, cursor: null }
   ): Promise<WebhookModel.eventList> {
+    const sort: CursorSort = filters?.sort === "asc" ? "asc" : "desc";
+    const from = parseOptionalDate(filters?.from, "from");
+    const to = parseOptionalDate(filters?.to, "to");
+
+    if (from && to && from > to) {
+      throw new BadRequestError("from must be before or equal to to");
+    }
+
+    const normalizedEventTypes = filters?.eventTypes?.length
+      ? [...filters.eventTypes].sort()
+      : null;
+
+    const scopeHash = buildCursorScopeHash({
+      resource: "webhook-events",
+      organizationId,
+      eventTypes: normalizedEventTypes,
+      from: from?.toISOString() ?? null,
+      to: to?.toISOString() ?? null,
+      sort,
+    });
+
+    const cursorPosition = decodeCursor(pagination.cursor, {
+      sort,
+      scopeHash,
+    });
+
     const conditions = [eq(event.organizationId, organizationId)];
 
     if (filters?.eventTypes?.length) {
       conditions.push(inArray(event.eventType, filters.eventTypes));
     }
 
-    if (filters?.from) {
-      const from = new Date(filters.from);
-      if (Number.isNaN(from.getTime())) {
-        throw new BadRequestError("Invalid from date");
-      }
+    if (from) {
       conditions.push(gte(event.createdAt, from));
     }
 
-    if (filters?.to) {
-      const to = new Date(filters.to);
-      if (Number.isNaN(to.getTime())) {
-        throw new BadRequestError("Invalid to date");
-      }
+    if (to) {
       conditions.push(lte(event.createdAt, to));
     }
 
-    if (filters?.from && filters?.to) {
-      const from = new Date(filters.from);
-      const to = new Date(filters.to);
-      if (from > to) {
-        throw new BadRequestError("from must be before or equal to to");
-      }
+    if (cursorPosition) {
+      conditions.push(
+        buildCursorCondition(event.createdAt, event.id, cursorPosition, sort)
+      );
     }
 
     const where = and(...conditions);
-    const eventSort = filters?.sort === "asc" ? asc(event.createdAt) : desc(event.createdAt);
-    const idSort = filters?.sort === "asc" ? asc(event.id) : desc(event.id);
+    if (!where) {
+      throw new InternalServerError();
+    }
 
-    const [events, total] = await Promise.all([
-      db
-        .select()
-        .from(event)
-        .where(where)
-        .orderBy(eventSort, idSort)
-        .limit(limit)
-        .offset(offset),
-      db.$count(event, where),
-    ]);
-    return { events: events.map(toEvent), total };
+    const eventSort = sort === "asc" ? asc(event.createdAt) : desc(event.createdAt);
+    const idSort = sort === "asc" ? asc(event.id) : desc(event.id);
+
+    const rows = await db
+      .select()
+      .from(event)
+      .where(where)
+      .orderBy(eventSort, idSort)
+      .limit(pagination.limit + 1);
+
+    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+
+    return {
+      events: items.map(toEvent),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor({
+              createdAt: lastItem.createdAt,
+              id: lastItem.id,
+              sort,
+              scopeHash,
+            })
+          : null,
+    };
   }
 
   static async getEvent(
@@ -385,9 +441,31 @@ export abstract class WebhookService {
       from?: string;
       to?: string;
     },
-    limit = 20,
-    offset = 0
-  ): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
+    pagination: CursorPageInput = { limit: 20, cursor: null }
+  ): Promise<WebhookModel.deliveryList> {
+    const from = parseOptionalDate(filters?.from, "from");
+    const to = parseOptionalDate(filters?.to, "to");
+
+    if (from && to && from > to) {
+      throw new BadRequestError("from must be before or equal to to");
+    }
+
+    const scopeHash = buildCursorScopeHash({
+      resource: "webhook-deliveries",
+      organizationId,
+      eventId,
+      status: filters?.status ?? null,
+      endpointId: filters?.endpointId ?? null,
+      from: from?.toISOString() ?? null,
+      to: to?.toISOString() ?? null,
+      sort: DELIVERY_CURSOR_SORT,
+    });
+
+    const cursorPosition = decodeCursor(pagination.cursor, {
+      sort: DELIVERY_CURSOR_SORT,
+      scopeHash,
+    });
+
     const conditions = [
       eq(delivery.eventId, eventId),
       eq(event.organizationId, organizationId),
@@ -399,37 +477,49 @@ export abstract class WebhookService {
     if (filters?.endpointId) {
       conditions.push(eq(delivery.endpointId, filters.endpointId));
     }
-    if (filters?.from) {
-      conditions.push(gte(delivery.createdAt, new Date(filters.from)));
+    if (from) {
+      conditions.push(gte(delivery.createdAt, from));
     }
-    if (filters?.to) {
-      conditions.push(lte(delivery.createdAt, new Date(filters.to)));
+    if (to) {
+      conditions.push(lte(delivery.createdAt, to));
+    }
+    if (cursorPosition) {
+      conditions.push(
+        buildCursorCondition(
+          delivery.createdAt,
+          delivery.id,
+          cursorPosition,
+          DELIVERY_CURSOR_SORT
+        )
+      );
     }
 
     const where = and(...conditions);
+    if (!where) {
+      throw new InternalServerError();
+    }
 
-    const [rows, total] = await Promise.all([
-      db
-        .select({ delivery })
-        .from(delivery)
-        .innerJoin(event, eq(delivery.eventId, event.id))
-        .where(where)
-        .orderBy(desc(delivery.createdAt), desc(delivery.id))
-        .limit(limit)
-        .offset(offset),
-      db.$count(
-        db
-          .select({ id: delivery.id })
-          .from(delivery)
-          .innerJoin(event, eq(delivery.eventId, event.id))
-          .where(where)
-          .as("filtered")
-      ),
-    ]);
+    const rows = await db
+      .select({ delivery })
+      .from(delivery)
+      .innerJoin(event, eq(delivery.eventId, event.id))
+      .where(where)
+      .orderBy(desc(delivery.createdAt), desc(delivery.id))
+      .limit(pagination.limit + 1);
+
+    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
 
     return {
-      deliveries: rows.map((r) => toDelivery(r.delivery)),
-      total,
+      deliveries: items.map((r) => toDelivery(r.delivery)),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor({
+              createdAt: lastItem.delivery.createdAt,
+              id: lastItem.delivery.id,
+              sort: DELIVERY_CURSOR_SORT,
+              scopeHash,
+            })
+          : null,
     };
   }
 

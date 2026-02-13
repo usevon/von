@@ -36,7 +36,9 @@ export const createResource =
 
     return {
       [dataKey]: data ? (data[dataKey] as TItem[]) : [],
-      total: (data as TResponse & { total?: number })?.total ?? 0,
+      nextCursor:
+        (data as TResponse & { nextCursor?: string | null })?.nextCursor ??
+        null,
       isLoading,
       isRefreshing: isValidating && !isLoading,
       error,
@@ -45,7 +47,7 @@ export const createResource =
     } as {
       [P in K]: TItem[];
     } & {
-      total: number;
+      nextCursor: string | null;
       isLoading: boolean;
       isRefreshing: boolean;
       error: Error | undefined;

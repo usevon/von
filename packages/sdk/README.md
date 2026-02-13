@@ -52,7 +52,10 @@ const { data: batch } = await von.webhooks.batch.post({
 })
 
 // List webhook events
-const { data: events } = await von.webhooks.get({ query: { limit: 10, offset: 0 } })
+const { data: eventsPage1 } = await von.webhooks.get({ query: { limit: 10 } })
+const { data: eventsPage2 } = await von.webhooks.get({
+  query: { limit: 10, cursor: eventsPage1.nextCursor ?? undefined },
+})
 
 // Get a specific event
 const { data: event } = await von.webhooks['evt_xxx'].get()

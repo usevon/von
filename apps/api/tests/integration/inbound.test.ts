@@ -37,6 +37,9 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
     }
     expect(data.endpoints).toBeDefined();
     expect(Array.isArray(data.endpoints)).toBe(true);
+    expect(
+      data.nextCursor === null || typeof data.nextCursor === "string"
+    ).toBe(true);
   });
 
   test("DELETE /inbound/:id cleans up", async () => {

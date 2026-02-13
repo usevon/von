@@ -33,5 +33,17 @@ describe.skipIf(!apiKey)("Webhooks", () => {
     }
     expect(data.events).toBeDefined();
     expect(Array.isArray(data.events)).toBe(true);
+    expect(
+      data.nextCursor === null || typeof data.nextCursor === "string"
+    ).toBe(true);
+  });
+
+  test("GET /webhooks/events returns 400 for invalid cursor", async () => {
+    const { error } = await client.webhooks.events.get({
+      query: { cursor: "invalid-cursor" },
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(error?.status).toBe(400);
   });
 });

@@ -73,7 +73,7 @@ export namespace EndpointModel {
 
   export const endpointList = t.Object({
     endpoints: t.Array(endpoint),
-    total: t.Number(),
+    nextCursor: t.Union([t.String(), t.Null()]),
   });
 
   export type endpointList = typeof endpointList.static;

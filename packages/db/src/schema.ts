@@ -224,7 +224,11 @@ export const endpoint = pgTable(
       .notNull(),
   },
   (table) => [
-    index("endpoint_organization_id_idx").on(table.organizationId),
+    index("endpoint_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
     index("endpoint_org_status_idx").on(table.organizationId, table.status),
   ]
 );
@@ -242,7 +246,11 @@ export const event = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("event_org_created_idx").on(table.organizationId, table.createdAt),
+    index("event_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
     index("event_org_type_created_idx").on(
       table.organizationId,
       table.eventType,
@@ -318,7 +326,11 @@ export const inboundEndpoint = pgTable(
       .notNull(),
   },
   (table) => [
-    index("inbound_endpoint_organization_id_idx").on(table.organizationId),
+    index("inbound_endpoint_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
     index("inbound_endpoint_org_status_idx").on(table.organizationId, table.status),
   ]
 );
@@ -386,7 +398,11 @@ export const webhookVersion = pgTable(
       .notNull(),
   },
   (table) => [
-    index("webhook_version_organization_id_idx").on(table.organizationId),
+    index("webhook_version_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
     unique("webhook_version_org_version_unique").on(
       table.organizationId,
       table.version

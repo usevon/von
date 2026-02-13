@@ -1,9 +1,11 @@
 import { t } from "elysia";
 
-export const PaginationQuery = t.Object({
-  limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
-  offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
+export const CursorPaginationQuery = t.Object({
+  limit: t.Optional(t.Numeric({ default: 20, minimum: 1, maximum: 100 })),
+  cursor: t.Optional(t.String({ maxLength: 256 })),
 });
+
+export const PaginationQuery = CursorPaginationQuery;
 
 export const IdParam = t.Object({
   id: t.String({ format: "uuid" }),
@@ -18,7 +20,8 @@ export const SuccessResponse = t.Object({
   success: t.Boolean(),
 });
 
-export type PaginationQueryType = typeof PaginationQuery.static;
+export type CursorPaginationQueryType = typeof CursorPaginationQuery.static;
+export type PaginationQueryType = CursorPaginationQueryType;
 export type IdParamType = typeof IdParam.static;
 export type ErrorResponseType = typeof ErrorResponse.static;
 export type SuccessResponseType = typeof SuccessResponse.static;

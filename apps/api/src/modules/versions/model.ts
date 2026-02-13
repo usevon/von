@@ -34,7 +34,7 @@ export namespace VersionModel {
 
   export const versionList = t.Object({
     versions: t.Array(webhookVersion),
-    total: t.Number(),
+    nextCursor: t.Union([t.String(), t.Null()]),
   });
 
   export type versionList = typeof versionList.static;

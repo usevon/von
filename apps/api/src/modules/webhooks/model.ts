@@ -47,7 +47,7 @@ export namespace WebhookModel {
 
   export const eventList = t.Object({
     events: t.Array(event),
-    total: t.Number(),
+    nextCursor: t.Union([t.String(), t.Null()]),
   });
 
   export type eventList = typeof eventList.static;
@@ -86,13 +86,13 @@ export namespace WebhookModel {
     from: t.Optional(t.String()),
     to: t.Optional(t.String()),
     sort: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")], { default: "desc" })),
-    limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
-    offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
+    limit: t.Optional(t.Numeric({ default: 20, minimum: 1, maximum: 100 })),
+    cursor: t.Optional(t.String({ maxLength: 256 })),
   });
 
   export const deliveryList = t.Object({
     deliveries: t.Array(delivery),
-    total: t.Number(),
+    nextCursor: t.Union([t.String(), t.Null()]),
   });
 
   export type deliveryList = typeof deliveryList.static;
@@ -102,8 +102,8 @@ export namespace WebhookModel {
     endpointId: t.Optional(t.String({ format: "uuid" })),
     from: t.Optional(t.String()),
     to: t.Optional(t.String()),
-    limit: t.Optional(t.Numeric({ default: 20, maximum: 100 })),
-    offset: t.Optional(t.Numeric({ default: 0, minimum: 0 })),
+    limit: t.Optional(t.Numeric({ default: 20, minimum: 1, maximum: 100 })),
+    cursor: t.Optional(t.String({ maxLength: 256 })),
   });
 
   export const replayBody = t.Object({

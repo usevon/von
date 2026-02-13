@@ -101,9 +101,15 @@ const { data, error } = await von.webhooks.batch.post({
 ### List Events
 
 ```typescript
-const { data: events } = await von.webhooks.get({
-  limit: 50,
-  offset: 0,
+const { data: page1 } = await von.webhooks.get({
+  query: { limit: 50 },
+});
+
+const { data: page2 } = await von.webhooks.get({
+  query: {
+    limit: 50,
+    cursor: page1.nextCursor ?? undefined,
+  },
 });
 ```
 

@@ -6,6 +6,7 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
+import { toCursorPageInput } from "@/lib/pagination";
 import { getOrgPlan } from "@/lib/org-plan";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkThroughputLimit } from "@/lib/throughput-limit";
@@ -19,11 +20,7 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
   .get(
     "/",
     ({ organizationId, query }) =>
-      InboundService.getAll(
-        organizationId,
-        query.limit ?? 20,
-        query.offset ?? 0
-      ),
+      InboundService.getAll(organizationId, toCursorPageInput(query)),
     {
       query: PaginationQuery,
       response: InboundModel.inboundEndpointList,

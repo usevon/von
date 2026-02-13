@@ -4,6 +4,14 @@ import { getRedisClient } from "@usevon/queue";
 import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { InternalServerError, type Transforms } from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
+import {
+  buildCursorCondition,
+  buildCursorScopeHash,
+  decodeCursor,
+  encodeCursor,
+  sliceCursorPage,
+  type CursorPageInput,
+} from "@/lib/pagination";
 import type { VersionModel } from "@/modules/versions/model";
 
 type VersionRow = typeof webhookVersion.$inferSelect;
@@ -28,6 +36,7 @@ type UpdateVersionParams = Pick<VersionFields, "transforms"> & {
 };
 
 const redis = getRedisClient();
+const VERSION_CURSOR_SORT = "desc" as const;
 
 export abstract class VersionService {
   static async create(
@@ -55,23 +64,52 @@ export abstract class VersionService {
 
   static async getAll(
     organizationId: string,
-    limit: number,
-    offset: number
+    pagination: CursorPageInput
   ): Promise<VersionModel.versionList> {
-    const [versions, total] = await Promise.all([
-      db
-        .select()
-        .from(webhookVersion)
-        .where(eq(webhookVersion.organizationId, organizationId))
-        .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
-        .limit(limit)
-        .offset(offset),
-      db.$count(
-        webhookVersion,
-        eq(webhookVersion.organizationId, organizationId)
-      ),
-    ]);
-    return { versions: versions.map((v) => toResponse(v)), total };
+    const scopeHash = buildCursorScopeHash({
+      resource: "webhook-versions",
+      organizationId,
+    });
+
+    const cursor = decodeCursor(pagination.cursor, {
+      sort: VERSION_CURSOR_SORT,
+      scopeHash,
+    });
+
+    const baseCondition = eq(webhookVersion.organizationId, organizationId);
+    const where = cursor
+      ? and(
+          baseCondition,
+          buildCursorCondition(
+            webhookVersion.createdAt,
+            webhookVersion.id,
+            cursor,
+            VERSION_CURSOR_SORT
+          )
+        )
+      : baseCondition;
+
+    const rows = await db
+      .select()
+      .from(webhookVersion)
+      .where(where)
+      .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
+      .limit(pagination.limit + 1);
+
+    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+
+    return {
+      versions: items.map((v) => toResponse(v)),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor({
+              createdAt: lastItem.createdAt,
+              id: lastItem.id,
+              sort: VERSION_CURSOR_SORT,
+              scopeHash,
+            })
+          : null,
+    };
   }
 
   static async getByVersion(

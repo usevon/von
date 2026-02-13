@@ -49,7 +49,9 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
     }
     expect(data.versions).toBeDefined();
     expect(Array.isArray(data.versions)).toBe(true);
-    expect(data.total).toBeGreaterThanOrEqual(0);
+    expect(
+      data.nextCursor === null || typeof data.nextCursor === "string"
+    ).toBe(true);
   });
 
   test("GET /versions/:version returns version", async () => {

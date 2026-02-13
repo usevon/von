@@ -38,7 +38,9 @@ describe.skipIf(!getApiKey())("Endpoints CRUD", () => {
     }
     expect(data.endpoints).toBeDefined();
     expect(Array.isArray(data.endpoints)).toBe(true);
-    expect(data.total).toBeGreaterThanOrEqual(0);
+    expect(
+      data.nextCursor === null || typeof data.nextCursor === "string"
+    ).toBe(true);
     if (data.endpoints[0]) {
       expect("secret" in data.endpoints[0]).toBe(false);
     }

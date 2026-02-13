@@ -2,7 +2,7 @@ import { createResource } from "@/hooks/use-resource";
 
 type InboundEndpoint = import("@usevon/types").InboundEndpoint;
 
-type InboundResponse = { endpoints: InboundEndpoint[]; total: number };
+type InboundResponse = { endpoints: InboundEndpoint[]; nextCursor: string | null };
 
 export const useInbound = createResource<
   InboundResponse,

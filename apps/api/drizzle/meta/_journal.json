@@ -50,6 +50,13 @@
       "when": 1770950817000,
       "tag": "0006_webhook_scale_cutover",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770955200000,
+      "tag": "0007_cursor_pagination_indexes",
+      "breakpoints": true
     }
   ]
 }

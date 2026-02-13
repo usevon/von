@@ -24,11 +24,20 @@ import {
   encryptSecret,
   withDecryptedSecretFields,
 } from "@/lib/secret-cipher";
+import {
+  buildCursorCondition,
+  buildCursorScopeHash,
+  decodeCursor,
+  encodeCursor,
+  sliceCursorPage,
+  type CursorPageInput,
+} from "@/lib/pagination";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
 const redis = getRedisClient();
 const CACHE_TTL = 300;
+const ENDPOINT_CURSOR_SORT = "desc" as const;
 
 type CreateEndpointParams = CreateEndpoint & { organizationId: string };
 type UpdateEndpointParams = UpdateEndpoint & {
@@ -114,20 +123,52 @@ export abstract class EndpointService {
 
   static async getAll(
     organizationId: string,
-    limit: number,
-    offset: number
+    pagination: CursorPageInput
   ): Promise<EndpointModel.endpointList> {
-    const [endpoints, total] = await Promise.all([
-      db
-        .select()
-        .from(endpoint)
-        .where(eq(endpoint.organizationId, organizationId))
-        .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
-        .limit(limit)
-        .offset(offset),
-      db.$count(endpoint, eq(endpoint.organizationId, organizationId)),
-    ]);
-    return { endpoints: endpoints.map((e) => toResponse(e)), total };
+    const scopeHash = buildCursorScopeHash({
+      resource: "endpoints",
+      organizationId,
+    });
+
+    const cursor = decodeCursor(pagination.cursor, {
+      sort: ENDPOINT_CURSOR_SORT,
+      scopeHash,
+    });
+
+    const baseCondition = eq(endpoint.organizationId, organizationId);
+    const where = cursor
+      ? and(
+          baseCondition,
+          buildCursorCondition(
+            endpoint.createdAt,
+            endpoint.id,
+            cursor,
+            ENDPOINT_CURSOR_SORT
+          )
+        )
+      : baseCondition;
+
+    const rows = await db
+      .select()
+      .from(endpoint)
+      .where(where)
+      .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
+      .limit(pagination.limit + 1);
+
+    const { items, hasMore, lastItem } = sliceCursorPage(rows, pagination.limit);
+
+    return {
+      endpoints: items.map((e) => toResponse(e)),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor({
+              createdAt: lastItem.createdAt,
+              id: lastItem.id,
+              sort: ENDPOINT_CURSOR_SORT,
+              scopeHash,
+            })
+          : null,
+    };
   }
 
   static async getById(

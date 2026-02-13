@@ -44,7 +44,7 @@ export namespace InboundModel {
 
   export const inboundEndpointList = t.Object({
     endpoints: t.Array(inboundEndpoint),
-    total: t.Number(),
+    nextCursor: t.Union([t.String(), t.Null()]),
   });
 
   export type inboundEndpointList = typeof inboundEndpointList.static;

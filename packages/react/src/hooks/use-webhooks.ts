@@ -2,7 +2,7 @@ import { createResource } from "@/hooks/use-resource";
 
 type WebhookEvent = import("@usevon/types").WebhookEvent;
 
-type WebhooksResponse = { events: WebhookEvent[]; total: number };
+type WebhooksResponse = { events: WebhookEvent[]; nextCursor: string | null };
 
 export const useWebhooks = createResource<
   WebhooksResponse,

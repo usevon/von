@@ -5,6 +5,7 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
+import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
@@ -16,11 +17,7 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
   .get(
     "/",
     ({ organizationId, query }) =>
-      EndpointService.getAll(
-        organizationId,
-        query.limit ?? 20,
-        query.offset ?? 0
-      ),
+      EndpointService.getAll(organizationId, toCursorPageInput(query)),
     {
       query: PaginationQuery,
       response: EndpointModel.endpointList,

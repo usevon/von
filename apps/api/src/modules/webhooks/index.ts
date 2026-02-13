@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam } from "@/lib/models";
+import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
@@ -59,8 +60,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
           to: query.to,
           sort: query.sort,
         },
-        query.limit ?? 20,
-        query.offset ?? 0
+        toCursorPageInput(query)
       ),
     {
       query: WebhookModel.eventQuery,
@@ -96,8 +96,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
           from: query.from,
           to: query.to,
         },
-        query.limit ?? 20,
-        query.offset ?? 0
+        toCursorPageInput(query)
       ),
     {
       params: IdParam,
