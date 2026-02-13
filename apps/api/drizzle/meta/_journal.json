@@ -64,6 +64,13 @@
       "when": 1771010400000,
       "tag": "0008_add_user_normalized_email",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771012800000,
+      "tag": "0009_add_organization_plan",
+      "breakpoints": true
     }
   ]
 }
