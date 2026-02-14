@@ -41,20 +41,20 @@ const AssetCard = (props: AssetCardProps) => (
       <div className="flex gap-2">
         <Button
           render={
-            <a href={props.svgUrl} rel="noopener noreferrer" target="_blank" />
+            <a href={props.svgUrl} rel="noopener noreferrer" target="_blank">
+              SVG
+            </a>
           }
           variant={props.darkBg ? "ghost-light" : "ghost-dark"}
-        >
-          SVG
-        </Button>
+        />
         <Button
           render={
-            <a href={props.pngUrl} rel="noopener noreferrer" target="_blank" />
+            <a href={props.pngUrl} rel="noopener noreferrer" target="_blank">
+              PNG
+            </a>
           }
           variant={props.darkBg ? "ghost-light" : "ghost-dark"}
-        >
-          PNG
-        </Button>
+        />
       </div>
     </div>
   </div>
