@@ -1,11 +1,11 @@
 import { Elysia } from "elysia";
+import { orNotFound } from "@/lib/http";
 import {
   ErrorResponse,
   IdParam,
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
-import { orNotFound } from "@/lib/http";
 import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";

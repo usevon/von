@@ -11,7 +11,7 @@ import { generateSecret, InternalServerError } from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
-import { runCursorListQuery, type CursorPageInput } from "@/lib/pagination";
+import { type CursorPageInput, runCursorListQuery } from "@/lib/pagination";
 import {
   decryptSecret,
   encryptSecret,
