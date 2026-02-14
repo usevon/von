@@ -1,12 +1,12 @@
-import { Button } from "@usevon/ui";
+import { BRAND_ASSET_URLS, Button } from "@usevon/ui";
 import Image from "next/image";
 import Link from "next/link";
 
 type AssetCardProps = {
   name: string;
   description: string;
-  svgPath: string;
-  pngPath: string;
+  svgUrl: string;
+  pngUrl: string;
   darkBg?: boolean;
 };
 
@@ -21,7 +21,7 @@ const AssetCard = (props: AssetCardProps) => (
         alt={props.name}
         className="max-h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-110"
         height={80}
-        src={props.svgPath}
+        src={props.svgUrl}
         width={200}
       />
     </div>
@@ -40,13 +40,17 @@ const AssetCard = (props: AssetCardProps) => (
       </div>
       <div className="flex gap-2">
         <Button
-          render={<Link href={props.svgPath} target="_blank" />}
+          render={
+            <a href={props.svgUrl} rel="noopener noreferrer" target="_blank" />
+          }
           variant={props.darkBg ? "ghost-light" : "ghost-dark"}
         >
           SVG
         </Button>
         <Button
-          render={<Link href={props.pngPath} target="_blank" />}
+          render={
+            <a href={props.pngUrl} rel="noopener noreferrer" target="_blank" />
+          }
           variant={props.darkBg ? "ghost-light" : "ghost-dark"}
         >
           PNG
@@ -84,28 +88,28 @@ export default function BrandPage() {
             <AssetCard
               description="Light background"
               name="Wordmark"
-              pngPath="/brand/von-wordmark-black.png"
-              svgPath="/brand/von-wordmark-black.svg"
+              pngUrl={BRAND_ASSET_URLS.wordmarkBlackPng}
+              svgUrl={BRAND_ASSET_URLS.wordmarkBlackSvg}
             />
             <AssetCard
               darkBg
               description="Dark background"
               name="Wordmark"
-              pngPath="/brand/von-wordmark-white.png"
-              svgPath="/brand/von-wordmark-white.svg"
+              pngUrl={BRAND_ASSET_URLS.wordmarkWhitePng}
+              svgUrl={BRAND_ASSET_URLS.wordmarkWhiteSvg}
             />
             <AssetCard
               description="Light background"
               name="Icon"
-              pngPath="/brand/von-icon-black.png"
-              svgPath="/brand/von-icon-black.svg"
+              pngUrl={BRAND_ASSET_URLS.iconBlackPng}
+              svgUrl={BRAND_ASSET_URLS.iconBlackSvg}
             />
             <AssetCard
               darkBg
               description="Dark background"
               name="Icon"
-              pngPath="/brand/von-icon-white.png"
-              svgPath="/brand/von-icon-white.svg"
+              pngUrl={BRAND_ASSET_URLS.iconWhitePng}
+              svgUrl={BRAND_ASSET_URLS.iconWhiteSvg}
             />
           </div>
         </div>

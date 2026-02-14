@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
   output: "standalone",
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   transpilePackages: ["@usevon/ui"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "3h7lcrx4kj.ufs.sh",
+        pathname: "/f/**",
+      },
+    ],
+  },
   reactCompiler: true,
   devIndicators: false,
   turbopack: {

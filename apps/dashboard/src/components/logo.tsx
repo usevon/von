@@ -2,6 +2,7 @@
 
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import {
+  BRAND_ASSET_URLS,
   ContextMenu,
   ContextMenuItem,
   ContextMenuPopup,
@@ -20,7 +21,7 @@ export const Logo = () => (
             className="h-7 w-auto dark:hidden"
             height={28}
             priority
-            src="/brand/von-wordmark-black.svg"
+            src={BRAND_ASSET_URLS.wordmarkBlackSvg}
             width={80}
           />
           <Image
@@ -28,7 +29,7 @@ export const Logo = () => (
             className="hidden h-7 w-auto dark:block"
             height={28}
             priority
-            src="/brand/von-wordmark-white.svg"
+            src={BRAND_ASSET_URLS.wordmarkWhiteSvg}
             width={80}
           />
         </Link>

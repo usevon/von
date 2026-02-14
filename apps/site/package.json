@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build && shx cp -r public .next/standalone/apps/site/public && shx cp -r .next/static .next/standalone/apps/site/.next/static",
+    "build": "next build && shx mkdir -p public && shx cp -r public .next/standalone/apps/site/public && shx cp -r .next/static .next/standalone/apps/site/.next/static",
     "start": "next start --port 3000"
   },
   "dependencies": {

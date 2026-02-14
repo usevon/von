@@ -1,7 +1,6 @@
 "use client";
 
-import { Tabs } from "@base-ui/react/tabs";
-import { Card, CodeBlock } from "@usevon/ui";
+import { Card, CodeBlock, TabsPrimitive as Tabs } from "@usevon/ui";
 import Link from "next/link";
 import { docsUrl } from "@/lib/urls";
 import { Wallpaper } from "./wallpaper";

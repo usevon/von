@@ -1,6 +1,5 @@
 "use client";
 
-import { Tabs } from "@base-ui/react/tabs";
 import {
   BookOpenIcon,
   CodeIcon,
@@ -8,7 +7,7 @@ import {
   KeyIcon,
   RocketLaunchIcon,
 } from "@phosphor-icons/react";
-import { cn } from "@usevon/ui";
+import { cn, TabsPrimitive as Tabs } from "@usevon/ui";
 import { usePathname, useRouter } from "next/navigation";
 
 import { navigation, topLinks } from "@/lib/navigation";

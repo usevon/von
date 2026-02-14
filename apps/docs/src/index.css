@@ -1,8 +1,4 @@
-@import "tailwindcss";
-@import "tw-animate-css";
 @import "@usevon/ui/styles";
-
-@source "../../../packages/ui/src";
 
 @theme inline {
   --font-sans: var(--font-familjen), sans-serif;

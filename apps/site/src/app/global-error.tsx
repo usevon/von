@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, ErrorIllustration } from "@usevon/ui";
+import { BRAND_ASSET_URLS, Button, ErrorIllustration } from "@usevon/ui";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -19,14 +19,14 @@ export default function GlobalError(props: GlobalErrorProps) {
               alt="Von"
               className="h-6 w-auto dark:hidden"
               height={24}
-              src="/brand/von-wordmark-black.svg"
+              src={BRAND_ASSET_URLS.wordmarkBlackSvg}
               width={80}
             />
             <Image
               alt="Von"
               className="hidden h-6 w-auto dark:block"
               height={24}
-              src="/brand/von-wordmark-white.svg"
+              src={BRAND_ASSET_URLS.wordmarkWhiteSvg}
               width={80}
             />
           </Link>

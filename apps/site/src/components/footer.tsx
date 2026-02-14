@@ -1,6 +1,12 @@
 "use client";
 
-import { Button, DiscordIcon, GitHubIcon, TextHoverEffect } from "@usevon/ui";
+import {
+  BRAND_ASSET_URLS,
+  Button,
+  DiscordIcon,
+  GitHubIcon,
+  TextHoverEffect,
+} from "@usevon/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { docsUrl } from "@/lib/urls";
@@ -42,14 +48,14 @@ export const Footer = () => (
               alt="Von"
               className="size-6 dark:hidden"
               height={24}
-              src="/brand/von-icon-black.svg"
+              src={BRAND_ASSET_URLS.iconBlackSvg}
               width={24}
             />
             <Image
               alt="Von"
               className="hidden size-6 dark:block"
               height={24}
-              src="/brand/von-icon-white.svg"
+              src={BRAND_ASSET_URLS.iconWhiteSvg}
               width={24}
             />
           </Button>
