@@ -9,7 +9,6 @@ export default defineConfig({
     "src/ids.ts",
     "src/transforms.ts",
     "src/logger.ts",
-    "src/elysia.ts",
   ],
   format: "esm",
   dts: true,

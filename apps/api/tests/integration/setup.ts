@@ -27,7 +27,7 @@ const parseTimeoutMs = (
 
 const AUTH_STEP_TIMEOUT_MS = parseTimeoutMs(
   process.env.VON_INTEGRATION_AUTH_STEP_TIMEOUT_MS,
-  15_000
+  30_000
 );
 const API_KEY_VALIDATION_TIMEOUT_MS = parseTimeoutMs(
   process.env.VON_INTEGRATION_KEY_VALIDATION_TIMEOUT_MS,
@@ -35,7 +35,7 @@ const API_KEY_VALIDATION_TIMEOUT_MS = parseTimeoutMs(
 );
 const AUTO_PROVISION_TIMEOUT_MS = parseTimeoutMs(
   process.env.VON_INTEGRATION_AUTOPROVISION_TIMEOUT_MS,
-  60_000
+  120_000
 );
 
 const withTimeout = async <T>(

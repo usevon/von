@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
+import { orNotFound } from "@/lib/http";
 import { toCursorPageInput } from "@/lib/pagination";
 import { vonAuth } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
@@ -23,16 +24,12 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
   )
   .get(
     "/:version",
-    async ({ organizationId, params, status }) => {
-      const version = await VersionService.getByVersion(
-        organizationId,
-        params.version
-      );
-      if (!version) {
-        return status(404, { error: "Version not found" });
-      }
-      return version;
-    },
+    async ({ organizationId, params, status }) =>
+      orNotFound(
+        await VersionService.getByVersion(organizationId, params.version),
+        status,
+        "Version not found"
+      ),
     {
       params: VersionParam,
       response: {
@@ -62,17 +59,16 @@ export const versionsWrite = new Elysia({ prefix: "/versions" })
   )
   .patch(
     "/:version",
-    async ({ organizationId, params, body, status }) => {
-      const version = await VersionService.update({
-        organizationId,
-        version: params.version,
-        ...body,
-      });
-      if (!version) {
-        return status(404, { error: "Version not found" });
-      }
-      return version;
-    },
+    async ({ organizationId, params, body, status }) =>
+      orNotFound(
+        await VersionService.update({
+          organizationId,
+          version: params.version,
+          ...body,
+        }),
+        status,
+        "Version not found"
+      ),
     {
       params: VersionParam,
       body: VersionModel.updateBody,

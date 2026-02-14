@@ -11,22 +11,14 @@ import type {
   UpdateEndpoint,
 } from "@usevon/types";
 import {
-  BadRequestError,
   generateSecret,
   InternalServerError,
-  isSafeWebhookUrl,
   NotFoundError,
 } from "@usevon/utils";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
-import {
-  buildCursorCondition,
-  buildCursorScopeHash,
-  decodeCursor,
-  encodeCursor,
-  sliceCursorPage,
-  type CursorPageInput,
-} from "@/lib/pagination";
+import { runCursorListQuery, type CursorPageInput } from "@/lib/pagination";
+import { assertSafeWebhookUrl } from "@/lib/url-safety";
 import {
   decryptSecret,
   encryptSecret,
@@ -94,11 +86,10 @@ export abstract class EndpointService {
   static async create(
     params: CreateEndpointParams
   ): Promise<EndpointModel.endpointWithSecret> {
-    if (!(await isSafeWebhookUrl(params.url))) {
-      throw new BadRequestError(
-        "Invalid webhook URL: must be http(s) and not target private networks"
-      );
-    }
+    await assertSafeWebhookUrl(
+      params.url,
+      "Invalid webhook URL: must be http(s) and not target private networks"
+    );
 
     const now = new Date();
 
@@ -133,52 +124,32 @@ export abstract class EndpointService {
     organizationId: string,
     pagination: CursorPageInput
   ): Promise<EndpointModel.endpointList> {
-    const scopeHash = buildCursorScopeHash({
-      resource: "endpoints",
-      organizationId,
-    });
-
-    const cursor = decodeCursor(pagination.cursor, {
+    const { items, nextCursor } = await runCursorListQuery({
+      pagination,
       sort: ENDPOINT_CURSOR_SORT,
-      scopeHash,
+      scope: {
+        resource: "endpoints",
+        organizationId,
+      },
+      createdAtColumn: endpoint.createdAt,
+      idColumn: endpoint.id,
+      baseCondition: eq(endpoint.organizationId, organizationId),
+      fetchRows: (where, limit) =>
+        db
+          .select()
+          .from(endpoint)
+          .where(where)
+          .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
+          .limit(limit),
+      toCursorPosition: (row) => ({
+        createdAt: row.createdAt,
+        id: row.id,
+      }),
     });
-
-    const baseCondition = eq(endpoint.organizationId, organizationId);
-    const where = cursor
-      ? and(
-          baseCondition,
-          buildCursorCondition(
-            endpoint.createdAt,
-            endpoint.id,
-            cursor,
-            ENDPOINT_CURSOR_SORT
-          )
-        )
-      : baseCondition;
-
-    const rows = await db
-      .select()
-      .from(endpoint)
-      .where(where)
-      .orderBy(desc(endpoint.createdAt), desc(endpoint.id))
-      .limit(pagination.limit + 1);
-
-    const { items, hasMore, lastItem } = sliceCursorPage(
-      rows,
-      pagination.limit
-    );
 
     return {
       endpoints: items.map((e) => toResponse(e)),
-      nextCursor:
-        hasMore && lastItem
-          ? encodeCursor({
-              createdAt: lastItem.createdAt,
-              id: lastItem.id,
-              sort: ENDPOINT_CURSOR_SORT,
-              scopeHash,
-            })
-          : null,
+      nextCursor,
     };
   }
 
@@ -203,8 +174,9 @@ export abstract class EndpointService {
   static async update(
     params: UpdateEndpointParams
   ): Promise<EndpointModel.endpoint | null> {
-    if (params.url && !(await isSafeWebhookUrl(params.url))) {
-      throw new BadRequestError(
+    if (params.url) {
+      await assertSafeWebhookUrl(
+        params.url,
         "Invalid webhook URL: must be http(s) and not target private networks"
       );
     }

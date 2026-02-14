@@ -1,7 +1,5 @@
 import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
-import { Elysia } from "elysia";
-import type { Logger } from "pino";
 import {
   BadRequestError,
   ForbiddenError,
@@ -9,35 +7,23 @@ import {
   NotFoundError,
   TooManyRequestsError,
   UnauthorizedError,
-} from "@/errors";
+} from "@usevon/utils";
+import { Elysia } from "elysia";
+import type { Logger } from "pino";
 
-/**
- * Base Elysia configuration options for all Von apps.
- * Enables AOT compilation and optimizations.
- */
 export const baseElysiaOptions = {
   aot: true,
   normalize: true,
   nativeStaticResponse: true,
 } as const;
 
-type VonBaseOptions = {
+type ApiBaseOptions = {
   name: string;
   isProd: boolean;
   logger?: Logger;
 };
 
-/**
- * Shared Elysia plugin providing error handling and health endpoints.
- *
- * @example
- * ```ts
- * const app = new Elysia({ name: "my-app" })
- *   .use(vonBase({ name: "my-app", isProd: true }))
- *   .get("/hello", () => "world");
- * ```
- */
-export const vonBase = (opts: VonBaseOptions) =>
+export const apiBase = (opts: ApiBaseOptions) =>
   new Elysia({ name: `${opts.name}-base` })
     .error({
       UnauthorizedError,
@@ -48,7 +34,6 @@ export const vonBase = (opts: VonBaseOptions) =>
       InternalServerError,
     })
     .onError({ as: "global" }, ({ code, error, set }) => {
-      // Handle Elysia built-in codes
       if (code === "VALIDATION") {
         set.status = 400;
         return {
@@ -60,7 +45,6 @@ export const vonBase = (opts: VonBaseOptions) =>
         return { error: "Not found" };
       }
 
-      // Handle registered error classes with toResponse()
       if ("toResponse" in error && "status" in error) {
         const status = error.status as number;
         if (status >= 500 && opts.logger) {
@@ -72,7 +56,6 @@ export const vonBase = (opts: VonBaseOptions) =>
           : (error as { toResponse: () => { error: string } }).toResponse();
       }
 
-      // Fallback for unregistered errors
       const status = "status" in error ? (error.status as number) : 500;
       const message = "message" in error ? error.message : String(error);
 

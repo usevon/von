@@ -5,6 +5,7 @@ import {
   PaginationQuery,
   SuccessResponse,
 } from "@/lib/models";
+import { orNotFound } from "@/lib/http";
 import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
@@ -25,13 +26,12 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
   )
   .get(
     "/:id",
-    async ({ organizationId, params, status }) => {
-      const endpoint = await EndpointService.getById(organizationId, params.id);
-      if (!endpoint) {
-        return status(404, { error: "Endpoint not found" });
-      }
-      return endpoint;
-    },
+    async ({ organizationId, params, status }) =>
+      orNotFound(
+        await EndpointService.getById(organizationId, params.id),
+        status,
+        "Endpoint not found"
+      ),
     {
       params: IdParam,
       response: {
@@ -64,17 +64,16 @@ export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   )
   .patch(
     "/:id",
-    async ({ organizationId, params, body, status }) => {
-      const endpoint = await EndpointService.update({
-        organizationId,
-        endpointId: params.id,
-        ...body,
-      });
-      if (!endpoint) {
-        return status(404, { error: "Endpoint not found" });
-      }
-      return endpoint;
-    },
+    async ({ organizationId, params, body, status }) =>
+      orNotFound(
+        await EndpointService.update({
+          organizationId,
+          endpointId: params.id,
+          ...body,
+        }),
+        status,
+        "Endpoint not found"
+      ),
     {
       params: IdParam,
       body: EndpointModel.updateBody,

@@ -40,6 +40,17 @@ type CursorInput = CursorPosition & {
   scopeHash: string;
 };
 
+type CursorListQueryArgs<Row> = {
+  pagination: CursorPageInput;
+  sort: CursorSort;
+  scope: unknown;
+  createdAtColumn: SQLWrapper;
+  idColumn: SQLWrapper;
+  baseCondition: SQL<unknown>;
+  fetchRows: (where: SQL<unknown>, limit: number) => Promise<Row[]>;
+  toCursorPosition: (row: Row) => CursorPosition;
+};
+
 export const toCursorPageInput = (
   input: CursorPaginationQueryType
 ): CursorPageInput => ({
@@ -179,5 +190,45 @@ export const sliceCursorPage = <T>(rows: T[], limit: number) => {
     items,
     hasMore,
     lastItem: items.at(-1) ?? null,
+  };
+};
+
+export const runCursorListQuery = async <Row>(
+  args: CursorListQueryArgs<Row>
+): Promise<{ items: Row[]; nextCursor: string | null }> => {
+  const scopeHash = buildCursorScopeHash(args.scope);
+  const cursor = decodeCursor(args.pagination.cursor, {
+    sort: args.sort,
+    scopeHash,
+  });
+
+  const where = cursor
+    ? (and(
+        args.baseCondition,
+        buildCursorCondition(
+          args.createdAtColumn,
+          args.idColumn,
+          cursor,
+          args.sort
+        )
+      ) ?? args.baseCondition)
+    : args.baseCondition;
+
+  const rows = await args.fetchRows(where, args.pagination.limit + 1);
+  const { items, hasMore, lastItem } = sliceCursorPage(
+    rows,
+    args.pagination.limit
+  );
+
+  return {
+    items,
+    nextCursor:
+      hasMore && lastItem
+        ? encodeCursor({
+            ...args.toCursorPosition(lastItem),
+            sort: args.sort,
+            scopeHash,
+          })
+        : null,
   };
 };

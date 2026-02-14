@@ -7,28 +7,17 @@ import type {
   InboundEndpoint,
   UpdateInboundEndpoint,
 } from "@usevon/types";
-import {
-  BadRequestError,
-  generateSecret,
-  InternalServerError,
-  isSafeWebhookUrl,
-} from "@usevon/utils";
+import { generateSecret, InternalServerError } from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
-import {
-  buildCursorCondition,
-  buildCursorScopeHash,
-  decodeCursor,
-  encodeCursor,
-  sliceCursorPage,
-  type CursorPageInput,
-} from "@/lib/pagination";
+import { runCursorListQuery, type CursorPageInput } from "@/lib/pagination";
 import {
   decryptSecret,
   encryptSecret,
   withDecryptedSecretFields,
 } from "@/lib/secret-cipher";
+import { assertSafeWebhookUrl } from "@/lib/url-safety";
 import type { InboundModel } from "@/modules/inbound/model";
 
 const redis = getRedisClient();
@@ -77,11 +66,10 @@ export abstract class InboundService {
   static async create(
     params: CreateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint> {
-    if (!(await isSafeWebhookUrl(params.forwardUrl))) {
-      throw new BadRequestError(
-        "Invalid forward URL: must be http(s) and not target private networks"
-      );
-    }
+    await assertSafeWebhookUrl(
+      params.forwardUrl,
+      "Invalid forward URL: must be http(s) and not target private networks"
+    );
 
     const now = new Date();
 
@@ -110,52 +98,32 @@ export abstract class InboundService {
     organizationId: string,
     pagination: CursorPageInput
   ): Promise<InboundModel.inboundEndpointList> {
-    const scopeHash = buildCursorScopeHash({
-      resource: "inbound-endpoints",
-      organizationId,
-    });
-
-    const cursor = decodeCursor(pagination.cursor, {
+    const { items, nextCursor } = await runCursorListQuery({
+      pagination,
       sort: INBOUND_CURSOR_SORT,
-      scopeHash,
+      scope: {
+        resource: "inbound-endpoints",
+        organizationId,
+      },
+      createdAtColumn: inboundEndpoint.createdAt,
+      idColumn: inboundEndpoint.id,
+      baseCondition: eq(inboundEndpoint.organizationId, organizationId),
+      fetchRows: (where, limit) =>
+        db
+          .select()
+          .from(inboundEndpoint)
+          .where(where)
+          .orderBy(desc(inboundEndpoint.createdAt), desc(inboundEndpoint.id))
+          .limit(limit),
+      toCursorPosition: (row) => ({
+        createdAt: row.createdAt,
+        id: row.id,
+      }),
     });
-
-    const baseCondition = eq(inboundEndpoint.organizationId, organizationId);
-    const where = cursor
-      ? and(
-          baseCondition,
-          buildCursorCondition(
-            inboundEndpoint.createdAt,
-            inboundEndpoint.id,
-            cursor,
-            INBOUND_CURSOR_SORT
-          )
-        )
-      : baseCondition;
-
-    const rows = await db
-      .select()
-      .from(inboundEndpoint)
-      .where(where)
-      .orderBy(desc(inboundEndpoint.createdAt), desc(inboundEndpoint.id))
-      .limit(pagination.limit + 1);
-
-    const { items, hasMore, lastItem } = sliceCursorPage(
-      rows,
-      pagination.limit
-    );
 
     return {
       endpoints: items.map((e) => toResponse(e)),
-      nextCursor:
-        hasMore && lastItem
-          ? encodeCursor({
-              createdAt: lastItem.createdAt,
-              id: lastItem.id,
-              sort: INBOUND_CURSOR_SORT,
-              scopeHash,
-            })
-          : null,
+      nextCursor,
     };
   }
 
@@ -207,8 +175,9 @@ export abstract class InboundService {
   static async update(
     params: UpdateInboundEndpointParams
   ): Promise<InboundModel.inboundEndpoint | null> {
-    if (params.forwardUrl && !(await isSafeWebhookUrl(params.forwardUrl))) {
-      throw new BadRequestError(
+    if (params.forwardUrl) {
+      await assertSafeWebhookUrl(
+        params.forwardUrl,
         "Invalid forward URL: must be http(s) and not target private networks"
       );
     }

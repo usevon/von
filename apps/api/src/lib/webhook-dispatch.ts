@@ -4,8 +4,8 @@ import {
   getWebhookDeliveryQueue,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
-import { InternalServerError } from "@usevon/utils";
 import { inArray } from "drizzle-orm";
+import { dispatchWithFailureHandler } from "@/lib/queue-dispatch";
 
 export type WebhookDispatchJob = { name: string; data: WebhookDeliveryJob };
 
@@ -29,17 +29,16 @@ export const enqueueWebhookDispatchJobs = async (
     return;
   }
 
-  try {
-    await getWebhookDeliveryQueue().addBulk(
-      jobs.map((job) => ({
-        ...job,
-        opts: {
-          attempts: job.data.endpoint.maxAttempts,
-        },
-      }))
-    );
-  } catch {
-    await markWebhookDeliveriesFailed(jobs.map((job) => job.data.deliveryId));
-    throw new InternalServerError();
-  }
+  await dispatchWithFailureHandler(
+    () =>
+      getWebhookDeliveryQueue().addBulk(
+        jobs.map((job) => ({
+          ...job,
+          opts: {
+            attempts: job.data.endpoint.maxAttempts,
+          },
+        }))
+      ),
+    () => markWebhookDeliveriesFailed(jobs.map((job) => job.data.deliveryId))
+  );
 };

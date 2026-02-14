@@ -1,8 +1,8 @@
 import { cors } from "@elysiajs/cors";
-import { baseElysiaOptions, vonBase } from "@usevon/utils/elysia";
 import { Elysia } from "elysia";
 import { env } from "@/env";
 import { csrfProtection } from "@/lib/csrf";
+import { apiBase, baseElysiaOptions } from "@/lib/elysia-base";
 import { idempotency } from "@/lib/idempotency";
 import { log } from "@/lib/logger";
 import { requestGuards } from "@/lib/request-guards";
@@ -53,7 +53,7 @@ export const app = new Elysia({
 })
   .use(securityHeaders)
   .use(
-    vonBase({
+    apiBase({
       name: "von-api",
       isProd: env.NODE_ENV === "production",
       logger: log,

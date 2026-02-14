@@ -33,10 +33,6 @@
     "./logger": {
       "types": "./dist/logger.d.mts",
       "default": "./dist/logger.mjs"
-    },
-    "./elysia": {
-      "types": "./dist/elysia.d.mts",
-      "default": "./dist/elysia.mjs"
     }
   },
   "scripts": {
@@ -46,22 +42,6 @@
   "dependencies": {
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0"
-  },
-  "peerDependencies": {
-    "elysia": "^1.4.18",
-    "@usevon/db": "workspace:*",
-    "@usevon/queue": "workspace:*"
-  },
-  "peerDependenciesMeta": {
-    "elysia": {
-      "optional": true
-    },
-    "@usevon/db": {
-      "optional": true
-    },
-    "@usevon/queue": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@usevon/typescript-config": "workspace:*",

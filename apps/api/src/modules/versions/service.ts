@@ -4,14 +4,7 @@ import { getRedisClient } from "@usevon/queue";
 import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { InternalServerError, type Transforms } from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
-import {
-  buildCursorCondition,
-  buildCursorScopeHash,
-  decodeCursor,
-  encodeCursor,
-  sliceCursorPage,
-  type CursorPageInput,
-} from "@/lib/pagination";
+import { runCursorListQuery, type CursorPageInput } from "@/lib/pagination";
 import type { VersionModel } from "@/modules/versions/model";
 
 type VersionRow = typeof webhookVersion.$inferSelect;
@@ -66,52 +59,32 @@ export abstract class VersionService {
     organizationId: string,
     pagination: CursorPageInput
   ): Promise<VersionModel.versionList> {
-    const scopeHash = buildCursorScopeHash({
-      resource: "webhook-versions",
-      organizationId,
-    });
-
-    const cursor = decodeCursor(pagination.cursor, {
+    const { items, nextCursor } = await runCursorListQuery({
+      pagination,
       sort: VERSION_CURSOR_SORT,
-      scopeHash,
+      scope: {
+        resource: "webhook-versions",
+        organizationId,
+      },
+      createdAtColumn: webhookVersion.createdAt,
+      idColumn: webhookVersion.id,
+      baseCondition: eq(webhookVersion.organizationId, organizationId),
+      fetchRows: (where, limit) =>
+        db
+          .select()
+          .from(webhookVersion)
+          .where(where)
+          .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
+          .limit(limit),
+      toCursorPosition: (row) => ({
+        createdAt: row.createdAt,
+        id: row.id,
+      }),
     });
-
-    const baseCondition = eq(webhookVersion.organizationId, organizationId);
-    const where = cursor
-      ? and(
-          baseCondition,
-          buildCursorCondition(
-            webhookVersion.createdAt,
-            webhookVersion.id,
-            cursor,
-            VERSION_CURSOR_SORT
-          )
-        )
-      : baseCondition;
-
-    const rows = await db
-      .select()
-      .from(webhookVersion)
-      .where(where)
-      .orderBy(desc(webhookVersion.createdAt), desc(webhookVersion.id))
-      .limit(pagination.limit + 1);
-
-    const { items, hasMore, lastItem } = sliceCursorPage(
-      rows,
-      pagination.limit
-    );
 
     return {
       versions: items.map((v) => toResponse(v)),
-      nextCursor:
-        hasMore && lastItem
-          ? encodeCursor({
-              createdAt: lastItem.createdAt,
-              id: lastItem.id,
-              sort: VERSION_CURSOR_SORT,
-              scopeHash,
-            })
-          : null,
+      nextCursor,
     };
   }
 
