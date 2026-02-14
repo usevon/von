@@ -2,12 +2,60 @@ import { describe, expect, test } from "bun:test";
 import { client } from "../setup";
 import { getApiKey } from "./setup";
 
+const INVALID_CURSOR_MESSAGE = "Invalid cursor";
+
+const tamperCursorSignature = (cursor: string): string => {
+  const parts = cursor.split(".");
+  const signature = parts[5];
+  if (!signature) {
+    return `${cursor}a`;
+  }
+
+  const replacement = signature.startsWith("a") ? "b" : "a";
+  parts[5] = `${replacement}${signature.slice(1)}`;
+  return parts.join(".");
+};
+
+const createCursorVersionString = () =>
+  `cursor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 describe.skipIf(!getApiKey())("Versions CRUD", () => {
   const apiKey = getApiKey() ?? "";
   const offset = Date.now() % 36_500;
   const testDate = new Date(2020, 0, 1 + offset);
   const testVersion = testDate.toISOString().split("T")[0];
   let createdVersion = false;
+  const versionsToCleanup = new Set<string>();
+
+  const trackVersion = (version: string) => {
+    versionsToCleanup.add(version);
+  };
+
+  const untrackVersion = (version: string) => {
+    versionsToCleanup.delete(version);
+  };
+
+  const createVersionForCursorTest = async (version: string) => {
+    const { error } = await client.versions.post(
+      {
+        version,
+        transforms: {
+          "cursor.test": {
+            defaults: { active: true },
+          },
+        },
+      },
+      {
+        headers: { authorization: `Bearer ${apiKey}` },
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    trackVersion(version);
+  };
 
   test("POST /versions creates version", async () => {
     const { data, error } = await client.versions.post(
@@ -37,6 +85,7 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
       features: "items",
     });
     createdVersion = true;
+    trackVersion(testVersion);
   });
 
   test("GET /versions returns list", async () => {
@@ -52,6 +101,33 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
     expect(
       data.nextCursor === null || typeof data.nextCursor === "string"
     ).toBe(true);
+  });
+
+  test("GET /versions returns 400 for tampered cursor", async () => {
+    await createVersionForCursorTest(createCursorVersionString());
+    await createVersionForCursorTest(createCursorVersionString());
+
+    const firstPage = await client.versions.get({
+      query: { limit: 1 },
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+
+    if (firstPage.error) {
+      throw firstPage.error;
+    }
+
+    const cursor = firstPage.data.nextCursor;
+    if (!cursor) {
+      throw new Error("Expected nextCursor for tamper test");
+    }
+
+    const { error } = await client.versions.get({
+      query: { limit: 1, cursor: tamperCursorSignature(cursor) },
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(error?.status).toBe(400);
+    expect(error?.value).toMatchObject({ error: INVALID_CURSOR_MESSAGE });
   });
 
   test("GET /versions/:version returns version", async () => {
@@ -118,6 +194,23 @@ describe.skipIf(!getApiKey())("Versions CRUD", () => {
     }
     expect(data.success).toBe(true);
     createdVersion = false;
+    untrackVersion(testVersion);
+  });
+
+  test("cleanup: delete remaining versions", async () => {
+    for (const version of [...versionsToCleanup]) {
+      const { error } = await client.versions({ version }).delete(null, {
+        headers: { authorization: `Bearer ${apiKey}` },
+      });
+
+      if (error && error.status !== 404) {
+        throw error;
+      }
+
+      untrackVersion(version);
+    }
+
+    expect(versionsToCleanup.size).toBe(0);
   });
 });
 

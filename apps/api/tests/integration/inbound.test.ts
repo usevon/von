@@ -3,16 +3,41 @@ import { client } from "../setup";
 import { getApiKey } from "./setup";
 
 const apiKey = getApiKey();
+const INVALID_CURSOR_MESSAGE = "Invalid cursor";
+
+const tamperCursorSignature = (cursor: string): string => {
+  const parts = cursor.split(".");
+  const signature = parts[5];
+  if (!signature) {
+    return `${cursor}a`;
+  }
+
+  const replacement = signature.startsWith("a") ? "b" : "a";
+  parts[5] = `${replacement}${signature.slice(1)}`;
+  return parts.join(".");
+};
 
 describe.skipIf(!apiKey)("Inbound endpoints", () => {
-  let inboundEndpointId: string | null = null;
+  let primaryInboundEndpointId: string | null = null;
+  const inboundEndpointIdsToCleanup: string[] = [];
 
-  test("POST /inbound creates inbound endpoint", async () => {
+  const trackInboundEndpoint = (id: string) => {
+    inboundEndpointIdsToCleanup.push(id);
+  };
+
+  const untrackInboundEndpoint = (id: string) => {
+    const idx = inboundEndpointIdsToCleanup.indexOf(id);
+    if (idx >= 0) {
+      inboundEndpointIdsToCleanup.splice(idx, 1);
+    }
+  };
+
+  const createInboundEndpoint = async (suffix: string) => {
     const { data, error } = await client.inbound.post(
       {
-        name: "Integration test inbound",
+        name: `Integration inbound ${suffix}`,
         provider: "stripe",
-        forwardUrl: "https://example.com/inbound-webhook",
+        forwardUrl: `https://example.com/inbound-webhook/${suffix}`,
       },
       {
         headers: { authorization: `Bearer ${apiKey}` },
@@ -22,9 +47,17 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
     if (error) {
       throw error;
     }
+
+    trackInboundEndpoint(data.id);
+    return data;
+  };
+
+  test("POST /inbound creates inbound endpoint", async () => {
+    const data = await createInboundEndpoint("primary");
+
     expect(data.id).toBeDefined();
-    expect(data.forwardUrl).toBe("https://example.com/inbound-webhook");
-    inboundEndpointId = data.id;
+    expect(data.forwardUrl).toBe("https://example.com/inbound-webhook/primary");
+    primaryInboundEndpointId = data.id;
   });
 
   test("GET /inbound returns list", async () => {
@@ -42,13 +75,40 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
     ).toBe(true);
   });
 
+  test("GET /inbound returns 400 for tampered cursor", async () => {
+    await createInboundEndpoint(`cursor-a-${Date.now()}`);
+    await createInboundEndpoint(`cursor-b-${Date.now()}`);
+
+    const firstPage = await client.inbound.get({
+      query: { limit: 1 },
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+
+    if (firstPage.error) {
+      throw firstPage.error;
+    }
+
+    const cursor = firstPage.data.nextCursor;
+    if (!cursor) {
+      throw new Error("Expected nextCursor for tamper test");
+    }
+
+    const { error } = await client.inbound.get({
+      query: { limit: 1, cursor: tamperCursorSignature(cursor) },
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+
+    expect(error?.status).toBe(400);
+    expect(error?.value).toMatchObject({ error: INVALID_CURSOR_MESSAGE });
+  });
+
   test("DELETE /inbound/:id cleans up", async () => {
-    if (!inboundEndpointId) {
+    if (!primaryInboundEndpointId) {
       return;
     }
 
     const { data, error } = await client
-      .inbound({ id: inboundEndpointId })
+      .inbound({ id: primaryInboundEndpointId })
       .delete(null, {
         headers: { authorization: `Bearer ${apiKey}` },
       });
@@ -57,5 +117,25 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
       throw error;
     }
     expect(data.success).toBe(true);
+    untrackInboundEndpoint(primaryInboundEndpointId);
+    primaryInboundEndpointId = null;
+  });
+
+  test("cleanup: delete remaining inbound endpoints", async () => {
+    for (const inboundEndpointId of [...inboundEndpointIdsToCleanup]) {
+      const { error } = await client
+        .inbound({ id: inboundEndpointId })
+        .delete(null, {
+          headers: { authorization: `Bearer ${apiKey}` },
+        });
+
+      if (error && error.status !== 404) {
+        throw error;
+      }
+
+      untrackInboundEndpoint(inboundEndpointId);
+    }
+
+    expect(inboundEndpointIdsToCleanup.length).toBe(0);
   });
 });
