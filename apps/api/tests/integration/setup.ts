@@ -14,6 +14,51 @@ const isIntegrationTest = process.argv.some((arg) =>
 const isInteractive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const forceAutoProvision = process.env.VON_INTEGRATION_FORCE_AUTOKEY === "1";
 
+const parseTimeoutMs = (
+  value: string | undefined,
+  fallback: number
+): number => {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const AUTH_STEP_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_AUTH_STEP_TIMEOUT_MS,
+  15_000
+);
+const API_KEY_VALIDATION_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_KEY_VALIDATION_TIMEOUT_MS,
+  5_000
+);
+const AUTO_PROVISION_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_AUTOPROVISION_TIMEOUT_MS,
+  60_000
+);
+
+const withTimeout = async <T>(
+  label: string,
+  timeoutMs: number,
+  operation: () => Promise<T>
+): Promise<T> =>
+  await new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    operation()
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
+
 type AutoProvisionedResources = {
   key: string;
   userId: string;
@@ -64,9 +109,14 @@ const setStoredApiKey = async (key: string): Promise<void> => {
 };
 
 const validateKey = async (key: string): Promise<boolean> => {
-  const { error } = await client.endpoints.get({
-    headers: { authorization: `Bearer ${key}` },
-  });
+  const { error } = await withTimeout(
+    "API key validation",
+    API_KEY_VALIDATION_TIMEOUT_MS,
+    () =>
+      client.endpoints.get({
+        headers: { authorization: `Bearer ${key}` },
+      })
+  );
   return error?.status !== 401;
 };
 
@@ -157,102 +207,134 @@ const registerCleanupHook = () => {
 
 const createIntegrationApiKey =
   async (): Promise<AutoProvisionedResources | null> => {
-    const cookieJar = new Headers();
-    const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
-    const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
+    const runAuthStep = <T>(label: string, operation: () => Promise<T>) =>
+      withTimeout(label, AUTH_STEP_TIMEOUT_MS, operation);
 
-    const authClient = createAuthClient({
-      baseURL: authBaseUrl,
-      plugins: [organizationClient(), apiKeyClient()],
-      fetchOptions: {
-        customFetchImpl: async (url, init) => {
-          const headers = new Headers(init?.headers);
-          const sessionCookie = cookieJar.get("cookie");
+    try {
+      return await withTimeout(
+        "Automatic integration API key provisioning",
+        AUTO_PROVISION_TIMEOUT_MS,
+        async () => {
+          const cookieJar = new Headers();
+          const authBaseUrl =
+            process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+          const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
 
-          if (sessionCookie && !headers.has("cookie")) {
-            headers.set("cookie", sessionCookie);
-          }
-          if (!headers.has("origin")) {
-            headers.set("origin", origin);
-          }
+          const authClient = createAuthClient({
+            baseURL: authBaseUrl,
+            plugins: [organizationClient(), apiKeyClient()],
+            fetchOptions: {
+              customFetchImpl: async (url, init) => {
+                const headers = new Headers(init?.headers);
+                const sessionCookie = cookieJar.get("cookie");
 
-          const response = await app.handle(
-            new Request(url, { ...init, headers })
+                if (sessionCookie && !headers.has("cookie")) {
+                  headers.set("cookie", sessionCookie);
+                }
+                if (!headers.has("origin")) {
+                  headers.set("origin", origin);
+                }
+
+                const response = await app.handle(
+                  new Request(url, { ...init, headers })
+                );
+                const nextSessionCookie = extractSessionCookie(
+                  response.headers.get("set-cookie")
+                );
+                if (nextSessionCookie) {
+                  cookieJar.set("cookie", nextSessionCookie);
+                }
+
+                return response;
+              },
+            },
+          });
+
+          const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+          const email = `integration-${suffix}@example.com`;
+          const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
+          const slug = `integration-${suffix}`.slice(0, 48);
+
+          const signUpResult = await runAuthStep("Automatic sign up", () =>
+            authClient.signUp.email({
+              name: "Integration User",
+              email,
+              password,
+            })
           );
-          const nextSessionCookie = extractSessionCookie(
-            response.headers.get("set-cookie")
-          );
-          if (nextSessionCookie) {
-            cookieJar.set("cookie", nextSessionCookie);
+
+          if (signUpResult.error) {
+            console.log(
+              `\nAutomatic sign up failed: ${signUpResult.error.message}`
+            );
+            return null;
           }
 
-          return response;
-        },
-      },
-    });
+          const userId = signUpResult.data?.user?.id;
+          if (!userId) {
+            console.log("\nAutomatic sign up returned no user id");
+            return null;
+          }
 
-    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    const email = `integration-${suffix}@example.com`;
-    const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
-    const slug = `integration-${suffix}`.slice(0, 48);
+          const signInResult = await runAuthStep("Automatic sign in", () =>
+            authClient.signIn.email({
+              email,
+              password,
+            })
+          );
+          if (signInResult.error) {
+            console.log(
+              `\nAutomatic sign in failed: ${signInResult.error.message}`
+            );
+            return null;
+          }
 
-    const signUpResult = await authClient.signUp.email({
-      name: "Integration User",
-      email,
-      password,
-    });
+          const organizationResult = await runAuthStep(
+            "Automatic organization create",
+            () =>
+              authClient.organization.create({
+                name: `Integration ${suffix.slice(-6)}`,
+                slug,
+              })
+          );
 
-    if (signUpResult.error) {
-      console.log(`\nAutomatic sign up failed: ${signUpResult.error.message}`);
-      return null;
-    }
+          if (organizationResult.error || !organizationResult.data?.id) {
+            console.log(
+              `\nAutomatic organization create failed: ${organizationResult.error?.message ?? "Unknown error"}`
+            );
+            return null;
+          }
 
-    const userId = signUpResult.data?.user?.id;
-    if (!userId) {
-      console.log("\nAutomatic sign up returned no user id");
-      return null;
-    }
+          const apiKeyResult = await runAuthStep(
+            "Automatic API key create",
+            () =>
+              authClient.apiKey.create({
+                name: "Integration Test Key",
+                environment: "dev",
+                organizationId: organizationResult.data.id,
+                scopes: ["*"],
+              })
+          );
 
-    const signInResult = await authClient.signIn.email({
-      email,
-      password,
-    });
-    if (signInResult.error) {
-      console.log(`\nAutomatic sign in failed: ${signInResult.error.message}`);
-      return null;
-    }
+          if (apiKeyResult.error || !apiKeyResult.data?.key) {
+            console.log(
+              `\nAutomatic API key create failed: ${apiKeyResult.error?.message ?? "Unknown error"}`
+            );
+            return null;
+          }
 
-    const organizationResult = await authClient.organization.create({
-      name: `Integration ${suffix.slice(-6)}`,
-      slug,
-    });
-
-    if (organizationResult.error || !organizationResult.data?.id) {
-      console.log(
-        `\nAutomatic organization create failed: ${organizationResult.error?.message ?? "Unknown error"}`
+          return {
+            key: apiKeyResult.data.key,
+            userId,
+            organizationId: organizationResult.data.id,
+          };
+        }
       );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`\nAutomatic provisioning failed: ${message}`);
       return null;
     }
-
-    const apiKeyResult = await authClient.apiKey.create({
-      name: "Integration Test Key",
-      environment: "dev",
-      organizationId: organizationResult.data.id,
-      scopes: ["*"],
-    });
-
-    if (apiKeyResult.error || !apiKeyResult.data?.key) {
-      console.log(
-        `\nAutomatic API key create failed: ${apiKeyResult.error?.message ?? "Unknown error"}`
-      );
-      return null;
-    }
-
-    return {
-      key: apiKeyResult.data.key,
-      userId,
-      organizationId: organizationResult.data.id,
-    };
   };
 
 const applyApiKey = async (

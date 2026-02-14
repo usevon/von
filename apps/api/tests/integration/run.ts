@@ -17,6 +17,51 @@ type AutoProvisionedResources = {
 const forceAutoProvision = process.env.VON_INTEGRATION_FORCE_AUTOKEY === "1";
 const useStoredApiKey = process.env.VON_INTEGRATION_USE_STORED_KEY === "1";
 
+const parseTimeoutMs = (
+  value: string | undefined,
+  fallback: number
+): number => {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const AUTH_STEP_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_AUTH_STEP_TIMEOUT_MS,
+  15_000
+);
+const API_KEY_VALIDATION_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_KEY_VALIDATION_TIMEOUT_MS,
+  5_000
+);
+const AUTO_PROVISION_TIMEOUT_MS = parseTimeoutMs(
+  process.env.VON_INTEGRATION_AUTOPROVISION_TIMEOUT_MS,
+  60_000
+);
+
+const withTimeout = async <T>(
+  label: string,
+  timeoutMs: number,
+  operation: () => Promise<T>
+): Promise<T> =>
+  await new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    operation()
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
+
 const isSecretsUnavailableError = (error: unknown): boolean =>
   typeof error === "object" &&
   error !== null &&
@@ -46,9 +91,14 @@ const deleteStoredApiKey = async (): Promise<void> => {
 };
 
 const isValidApiKey = async (key: string): Promise<boolean> => {
-  const { error } = await client.endpoints.get({
-    headers: { authorization: `Bearer ${key}` },
-  });
+  const { error } = await withTimeout(
+    "API key validation",
+    API_KEY_VALIDATION_TIMEOUT_MS,
+    () =>
+      client.endpoints.get({
+        headers: { authorization: `Bearer ${key}` },
+      })
+  );
   return error?.status !== 401;
 };
 
@@ -71,82 +121,102 @@ const extractSessionCookie = (
 
 const createTemporaryResources =
   async (): Promise<AutoProvisionedResources | null> => {
-    const cookieJar = new Headers();
-    const authBaseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
-    const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
+    const runAuthStep = <T>(label: string, operation: () => Promise<T>) =>
+      withTimeout(label, AUTH_STEP_TIMEOUT_MS, operation);
 
-    const authClient = createAuthClient({
-      baseURL: authBaseUrl,
-      plugins: [organizationClient(), apiKeyClient()],
-      fetchOptions: {
-        customFetchImpl: async (url, init) => {
-          const headers = new Headers(init?.headers);
-          const sessionCookie = cookieJar.get("cookie");
+    return await withTimeout(
+      "Temporary integration resource provisioning",
+      AUTO_PROVISION_TIMEOUT_MS,
+      async () => {
+        const cookieJar = new Headers();
+        const authBaseUrl =
+          process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+        const origin = process.env.DASHBOARD_URL ?? "http://localhost:3001";
 
-          if (sessionCookie && !headers.has("cookie")) {
-            headers.set("cookie", sessionCookie);
-          }
-          if (!headers.has("origin")) {
-            headers.set("origin", origin);
-          }
+        const authClient = createAuthClient({
+          baseURL: authBaseUrl,
+          plugins: [organizationClient(), apiKeyClient()],
+          fetchOptions: {
+            customFetchImpl: async (url, init) => {
+              const headers = new Headers(init?.headers);
+              const sessionCookie = cookieJar.get("cookie");
 
-          const response = await app.handle(
-            new Request(url, { ...init, headers })
-          );
-          const nextSessionCookie = extractSessionCookie(
-            response.headers.get("set-cookie")
-          );
-          if (nextSessionCookie) {
-            cookieJar.set("cookie", nextSessionCookie);
-          }
+              if (sessionCookie && !headers.has("cookie")) {
+                headers.set("cookie", sessionCookie);
+              }
+              if (!headers.has("origin")) {
+                headers.set("origin", origin);
+              }
 
-          return response;
-        },
-      },
-    });
+              const response = await app.handle(
+                new Request(url, { ...init, headers })
+              );
+              const nextSessionCookie = extractSessionCookie(
+                response.headers.get("set-cookie")
+              );
+              if (nextSessionCookie) {
+                cookieJar.set("cookie", nextSessionCookie);
+              }
 
-    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    const email = `integration-${suffix}@example.com`;
-    const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
-    const slug = `integration-${suffix}`.slice(0, 48);
+              return response;
+            },
+          },
+        });
 
-    const signUpResult = await authClient.signUp.email({
-      name: "Integration User",
-      email,
-      password,
-    });
-    if (signUpResult.error || !signUpResult.data?.user?.id) {
-      return null;
-    }
+        const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+        const email = `integration-${suffix}@example.com`;
+        const password = `IntTest!${Math.random().toString(36).slice(2, 10)}Aa1`;
+        const slug = `integration-${suffix}`.slice(0, 48);
 
-    const signInResult = await authClient.signIn.email({ email, password });
-    if (signInResult.error) {
-      return null;
-    }
+        const signUpResult = await runAuthStep("Temporary user sign up", () =>
+          authClient.signUp.email({
+            name: "Integration User",
+            email,
+            password,
+          })
+        );
+        if (signUpResult.error || !signUpResult.data?.user?.id) {
+          return null;
+        }
 
-    const organizationResult = await authClient.organization.create({
-      name: `Integration ${suffix.slice(-6)}`,
-      slug,
-    });
-    if (organizationResult.error || !organizationResult.data?.id) {
-      return null;
-    }
+        const signInResult = await runAuthStep("Temporary user sign in", () =>
+          authClient.signIn.email({ email, password })
+        );
+        if (signInResult.error) {
+          return null;
+        }
 
-    const apiKeyResult = await authClient.apiKey.create({
-      name: "Integration Test Key",
-      environment: "dev",
-      organizationId: organizationResult.data.id,
-      scopes: ["*"],
-    });
-    if (apiKeyResult.error || !apiKeyResult.data?.key) {
-      return null;
-    }
+        const organizationResult = await runAuthStep(
+          "Temporary organization create",
+          () =>
+            authClient.organization.create({
+              name: `Integration ${suffix.slice(-6)}`,
+              slug,
+            })
+        );
+        if (organizationResult.error || !organizationResult.data?.id) {
+          return null;
+        }
 
-    return {
-      key: apiKeyResult.data.key,
-      userId: signUpResult.data.user.id,
-      organizationId: organizationResult.data.id,
-    };
+        const apiKeyResult = await runAuthStep("Temporary API key create", () =>
+          authClient.apiKey.create({
+            name: "Integration Test Key",
+            environment: "dev",
+            organizationId: organizationResult.data.id,
+            scopes: ["*"],
+          })
+        );
+        if (apiKeyResult.error || !apiKeyResult.data?.key) {
+          return null;
+        }
+
+        return {
+          key: apiKeyResult.data.key,
+          userId: signUpResult.data.user.id,
+          organizationId: organizationResult.data.id,
+        };
+      }
+    );
   };
 
 const cleanupTemporaryResources = async (
