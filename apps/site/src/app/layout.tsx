@@ -4,6 +4,9 @@ import { Familjen_Grotesk } from "next/font/google";
 
 import "../index.css";
 import { Providers } from "@/components/providers";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 const familjen = Familjen_Grotesk({
   variable: "--font-familjen",
@@ -32,7 +35,18 @@ export default function RootLayout(props: RootLayoutProps) {
           trackScrollDepth
           trackWebVitals
         />
-        <Providers>{props.children}</Providers>
+        <Providers>
+          <div className="bg-background text-foreground">
+            <div className="mx-auto w-full max-w-[76rem]">
+              <div className="border-border border-x">
+                <ScrollToTop />
+                <Header />
+                {props.children}
+                <Footer />
+              </div>
+            </div>
+          </div>
+        </Providers>
       </body>
     </html>
   );

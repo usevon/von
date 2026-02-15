@@ -1,1 +1,1 @@
-export { cn, highlightCode } from "@usevon/ui/lib/utils";
+export { cn, highlightCode, BRAND_ASSET_URLS } from "@usevon/ui/lib/utils";

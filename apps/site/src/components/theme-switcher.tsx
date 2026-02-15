@@ -21,24 +21,24 @@ export const ThemeSwitcher = () => {
   }, []);
 
   if (!mounted) {
-    return <div className="min-h-8 w-20 rounded-lg bg-secondary/50" />;
+    return <div className="h-9 w-[6.5rem] border border-border bg-muted/50" />;
   }
 
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded-lg bg-secondary/50 px-1">
+    <div className="flex w-fit h-9 items-center gap-0.5 border border-border bg-muted/50 p-0.5">
       {themes.map(({ key, icon: Icon, label }) => {
         const isActive = theme === key;
         return (
           <button
             aria-label={label}
-            className="relative flex size-6 cursor-pointer items-center justify-center rounded-md"
+            className="relative flex size-8 cursor-pointer items-center justify-center outline-none focus-visible:bg-accent"
             key={key}
             onClick={() => setTheme(key)}
             type="button"
           >
             {isActive ? (
               <motion.div
-                className="absolute inset-0 rounded-md bg-background shadow-sm"
+                className="absolute inset-0 border border-border bg-background"
                 layoutId="activeTheme"
                 transition={{ type: "spring", duration: 0.5 }}
               />

@@ -1,0 +1,96 @@
+import { Button, TextHoverEffect } from "@usevon/ui";
+import Image from "next/image";
+import Link from "next/link";
+import { BRAND_ASSET_URLS } from "@/lib/utils";
+import { ThemeSwitcher } from "./theme-switcher";
+
+const footerLinks = {
+  resources: [
+    { label: "Contact", href: "/contact" },
+    { label: "Blog", href: "/blog" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Brand", href: "/brand" },
+  ],
+  documentation: [
+    { label: "Home", href: "https://docs.usevon.com" },
+    {
+      label: "Getting Started",
+      href: "https://docs.usevon.com/getting-started",
+    },
+    { label: "Guides", href: "https://docs.usevon.com/guides" },
+    { label: "API Reference", href: "https://docs.usevon.com/api" },
+  ],
+  legal: [
+    { label: "Privacy Policy", href: "/privacy-policy" },
+    { label: "Terms of Service", href: "/terms-of-service" },
+    { label: "Security", href: "/security" },
+    { label: "Subprocessors", href: "/subprocessors" },
+  ],
+};
+
+const columns = Object.entries(footerLinks).map(([title, links]) => ({
+  title: title.charAt(0).toUpperCase() + title.slice(1),
+  links,
+}));
+
+export function Footer() {
+  return (
+    <footer className="border-border border-t">
+      <div className="grid grid-cols-1 gap-16 p-8 sm:p-12 md:grid-cols-[auto_1fr]">
+            <div className="flex flex-col gap-4">
+              <Link className="mt-0.5 flex h-7 w-20 items-center" href="/">
+                <Image
+                  alt="Von"
+                  className="h-7 w-auto dark:hidden"
+                  height={28}
+                  priority
+                  src={BRAND_ASSET_URLS.iconBlackSvg}
+                  width={28}
+                />
+                <Image
+                  alt="Von"
+                  className="hidden h-7 w-auto dark:block"
+                  height={28}
+                  priority
+                  src={BRAND_ASSET_URLS.iconWhiteSvg}
+                  width={28}
+                />
+              </Link>
+              <ThemeSwitcher />
+              <div className="mt-auto">
+                <p className="text-muted-foreground text-xs">
+                  &copy; USEVON LLC 2025
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  All rights reserved
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
+              {columns.map((column) => (
+                <div className="flex flex-col gap-1" key={column.title}>
+                  <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">{column.title}</p>
+                  <ul className="flex flex-col">
+                    {column.links.map((link) => (
+                      <li key={link.label}>
+                        <Button
+                          className="-ml-4 text-foreground"
+                          render={<Link href={link.href} />}
+                          size="xl"
+                          variant="ghost"
+                        >
+                          {link.label}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+      <TextHoverEffect className="w-full" text="VON" viewBox="0 0 160 40" />
+    </footer>
+  );
+}
