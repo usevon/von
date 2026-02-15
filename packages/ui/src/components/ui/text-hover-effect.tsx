@@ -12,9 +12,10 @@ import { cn } from "@/lib/utils";
 type TextHoverEffectProps = {
   text: string;
   className?: string;
+  viewBox?: string;
 };
 
-export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
+export const TextHoverEffect = ({ text, className, viewBox = "0 0 200 40" }: TextHoverEffectProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [_hovered, setHovered] = useState(false);
 
@@ -55,7 +56,7 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
       onMouseMove={handleMouseMove}
       ref={svgRef}
       role="presentation"
-      viewBox="0 0 200 40"
+      viewBox={viewBox}
       width="100%"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -113,7 +114,7 @@ export const TextHoverEffect = ({ text, className }: TextHoverEffectProps) => {
       </defs>
 
       <text
-        className="fill-transparent stroke-foreground/20 font-bold font-sans"
+        className="fill-transparent stroke-border font-bold font-sans"
         dominantBaseline="middle"
         fontSize="48"
         strokeWidth="0.4"
