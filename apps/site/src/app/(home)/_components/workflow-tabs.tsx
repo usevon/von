@@ -1,7 +1,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { cn } from "@/lib/utils";
-import { Code } from "./code";
-import { Wallpaper } from "./wallpaper";
+import { Code } from "@/components/code";
+import { Wallpaper } from "@/components/wallpaper";
 
 const workflowSteps = [
   { value: "connect", label: "Connect" },
@@ -15,12 +15,12 @@ const panelClass = "grid h-full w-full place-items-center px-6";
 
 export function WorkflowTabs() {
   return (
-    <Tabs.Root className="flex flex-col" defaultValue="connect">
-      <Tabs.List className="relative z-0 flex h-14 border border-border sm:grid sm:grid-cols-5">
+    <Tabs.Root className="flex flex-col border-y border-border" defaultValue="connect">
+      <Tabs.List className="relative z-0 flex h-14 border-b border-border sm:grid sm:grid-cols-5">
         {workflowSteps.map((step, index) => (
           <Tabs.Tab
             className={cn(
-              "min-w-0 flex-1 cursor-pointer text-center font-medium text-muted-foreground text-base transition-colors hover:text-foreground data-active:text-foreground sm:text-sm",
+              "min-w-0 flex-1 cursor-pointer text-center font-medium text-muted-foreground text-base outline-none transition-colors hover:text-foreground focus-visible:bg-accent data-active:text-foreground sm:text-sm",
               index < workflowSteps.length - 1 && "border-r border-r-border",
             )}
             key={step.value}
@@ -32,7 +32,7 @@ export function WorkflowTabs() {
         <Tabs.Indicator className="absolute top-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) bg-accent transition-[width,translate] duration-200 ease-in-out" />
       </Tabs.List>
 
-      <Wallpaper className="h-140 border-border border-x sm:h-160">
+      <Wallpaper className="h-140 sm:h-160">
         <Tabs.Panel className={panelClass} value="connect">
           <Code>
             {`import { Von } from "@usevon/sdk";

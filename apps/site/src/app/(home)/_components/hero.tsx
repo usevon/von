@@ -3,8 +3,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { docsUrl, urls } from "@/lib/urls";
 
-const frameClass = "mx-auto w-full max-w-[76rem]";
-
 const gridCells = [
   [0, 0, 0, 35],
   [0, 0, 35, 0],
@@ -47,36 +45,32 @@ function HeroGrid() {
 
 export function Hero() {
   return (
-    <section>
-      <div className={frameClass}>
-        <div className="relative overflow-hidden border-border border-x">
-          <HeroGrid />
-          <div className="relative z-10 flex flex-col gap-8 px-7 py-12 sm:px-11 sm:py-16">
-            <h1 className="font-semibold text-5xl tracking-tight sm:text-7xl">
-              <span className="block">Webhooks infrastructure</span>
-              <span className="block">that just works.</span>
-            </h1>
-            <p className="max-w-[56ch] text-[1.0625rem]/[2rem] text-muted-foreground">
-              Reliable webhook delivery with automatic retries, circuit
-              breakers, and real-time monitoring so you can focus on building
-              your product.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button
-                render={<Link href={urls.signup} />}
-                size="xl"
-              >
-                Get Started
-              </Button>
-              <Button
-                render={<Link href={docsUrl()} />}
-                size="xl"
-                variant="outline"
-              >
-                Docs
-              </Button>
-            </div>
-          </div>
+    <section className="relative overflow-hidden">
+      <HeroGrid />
+      <div className="relative z-10 flex flex-col gap-8 px-8 py-12 sm:px-12 sm:py-16">
+        <h1 className="font-semibold text-5xl tracking-tight sm:text-7xl">
+          <span className="block">Webhooks infrastructure</span>
+          <span className="block">that just works.</span>
+        </h1>
+        <p className="max-w-[56ch] text-[1.0625rem]/[2rem] text-muted-foreground">
+          Reliable webhook delivery with automatic retries, circuit
+          breakers, and real-time monitoring so you can focus on building
+          your product.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <Button
+            render={<Link href={urls.signup} />}
+            size="xl"
+          >
+            Get Started
+          </Button>
+          <Button
+            render={<Link href={docsUrl()} />}
+            size="xl"
+            variant="outline"
+          >
+            Docs
+          </Button>
         </div>
       </div>
     </section>
