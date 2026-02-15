@@ -1,13 +1,22 @@
 import { defineConfig } from "tsdown";
 
-export default defineConfig({
-  entry: ["src/index.ts"],
-  format: "esm",
-  dts: true,
-  sourcemap: true,
-  clean: true,
-  outDir: "dist",
-  banner: {
-    js: '"use client";',
+export default defineConfig([
+  {
+    entry: ["src/index.ts"],
+    format: "esm",
+    dts: true,
+    sourcemap: true,
+    clean: true,
+    outDir: "dist",
+    banner: {
+      js: '"use client";',
+    },
   },
-});
+  {
+    entry: ["src/lib/utils.ts"],
+    format: "esm",
+    dts: true,
+    sourcemap: true,
+    outDir: "dist",
+  },
+]);

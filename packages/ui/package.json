@@ -11,6 +11,10 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
+    "./lib/utils": {
+      "types": "./dist/utils.d.mts",
+      "import": "./dist/utils.mjs"
+    },
     "./styles": "./src/styles/globals.css"
   },
   "files": [
