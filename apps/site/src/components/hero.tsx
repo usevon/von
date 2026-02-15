@@ -1,52 +1,84 @@
 import { Button } from "@usevon/ui";
-import Image from "next/image";
 import Link from "next/link";
-import { Wallpaper } from "@/components/wallpaper";
+import { cn } from "@/lib/utils";
 import { docsUrl, urls } from "@/lib/urls";
 
-export const Hero = () => {
-  return (
-    <section className="py-16">
-      <div className="mx-auto flex max-w-7xl flex-col gap-16 px-6 lg:px-10">
-        {/* Text content */}
-        <div className="flex flex-col items-start gap-6">
-          <h1 className="max-w-5xl text-balance font-semibold text-5xl/12 tracking-[-0.04em] sm:text-[4rem]/16">
-            Webhooks infrastructure that just works.
-          </h1>
-          <p className="flex max-w-3xl flex-col gap-4 text-lg/8 text-muted-foreground">
-            Reliable webhook delivery with automatic retries, circuit breakers,
-            and real-time monitoring so you can focus on building your product.
-          </p>
-          <div className="flex items-center gap-4">
-            <Button render={<Link href={urls.signup} />} size="lg">
-              Get started
-            </Button>
-            <Button
-              render={<Link href={docsUrl()} />}
-              size="lg"
-              variant="outline"
-            >
-              Documentation
-            </Button>
-          </div>
-        </div>
+const frameClass = "mx-auto w-full max-w-[76rem]";
 
-        {/* Demo screenshot */}
-        <Wallpaper className="rounded-lg">
-          <div className="relative p-[min(10%,4rem)] pb-0">
-            <div className="relative overflow-hidden rounded-t-lg bg-background/75 ring-1 ring-black/10 dark:bg-black/75">
-              <Image
-                alt="Von Dashboard"
-                className="w-full"
-                height={1800}
-                priority
-                src="/screenshot.png"
-                width={2880}
-              />
+const gridCells = [
+  [0, 0, 0, 35],
+  [0, 0, 35, 0],
+  [0, 35, 0, 0],
+] as const;
+
+function HeroGrid() {
+  return (
+    <div
+      className="mask-intersect mask-[linear-gradient(150deg,transparent_0%,transparent_25%,black_70%),linear-gradient(330deg,transparent_0%,transparent_25%,black_70%)] absolute right-0 bottom-0 left-[40%] grid sm:left-[50%] lg:left-[calc(60%-1px)]"
+      style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+    >
+      {gridCells.flatMap((row, ri) =>
+        row.map((fill, ci) => {
+          const isLastRow = ri === gridCells.length - 1;
+          const isLastCol = ci === 3;
+          return (
+            <div
+              className={cn(
+                "aspect-square border-border",
+                ci === 0 && "border-l",
+                !isLastCol && "border-r",
+                !isLastRow && "border-b",
+              )}
+              key={`${ri}-${ci}`}
+              style={
+                fill
+                  ? {
+                    backgroundColor: `hsl(var(--wallpaper-h4) var(--wallpaper-s4) var(--wallpaper-l4) / ${fill / 100})`,
+                    }
+                  : undefined
+              }
+            />
+          );
+        }),
+      )}
+    </div>
+  );
+}
+
+export function Hero() {
+  return (
+    <section>
+      <div className={frameClass}>
+        <div className="relative overflow-hidden border-border border-x">
+          <HeroGrid />
+          <div className="relative z-10 flex flex-col gap-8 px-7 py-12 sm:px-11 sm:py-16">
+            <h1 className="font-semibold text-5xl tracking-tight sm:text-7xl">
+              <span className="block">Webhooks infrastructure</span>
+              <span className="block">that just works.</span>
+            </h1>
+            <p className="max-w-[56ch] text-[1.0625rem]/[2rem] text-muted-foreground">
+              Reliable webhook delivery with automatic retries, circuit
+              breakers, and real-time monitoring so you can focus on building
+              your product.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Button
+                render={<Link href={urls.signup} />}
+                size="xl"
+              >
+                Get Started
+              </Button>
+              <Button
+                render={<Link href={docsUrl()} />}
+                size="xl"
+                variant="outline"
+              >
+                Docs
+              </Button>
             </div>
           </div>
-        </Wallpaper>
+        </div>
       </div>
     </section>
   );
-};
+}

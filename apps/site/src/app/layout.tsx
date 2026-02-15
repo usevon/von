@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
 
 import "../index.css";
-import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
 import { Providers } from "@/components/providers";
 
 const familjen = Familjen_Grotesk({
@@ -34,13 +32,7 @@ export default function RootLayout(props: RootLayoutProps) {
           trackScrollDepth
           trackWebVitals
         />
-        <Providers>
-          <div className="flex min-h-svh flex-col">
-            <Header />
-            <main className="flex flex-1 flex-col">{props.children}</main>
-            <Footer />
-          </div>
-        </Providers>
+        <Providers>{props.children}</Providers>
       </body>
     </html>
   );

@@ -171,7 +171,7 @@ export const Wallpaper = (props: WallpaperProps) => {
         ref={canvasRef}
         tabIndex={-1}
       />
-      <div className="relative z-10">{props.children}</div>
+      <div className="relative z-10 grid h-full w-full">{props.children}</div>
     </div>
   );
 };
