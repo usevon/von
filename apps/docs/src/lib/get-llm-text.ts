@@ -4,7 +4,7 @@ import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
-import { navigation, topLinks } from "./navigation";
+import { navigation } from "./navigation";
 import { remarkStripJsx } from "./remark-strip-jsx";
 
 type PageInfo = {
@@ -13,31 +13,22 @@ type PageInfo = {
   filePath: string;
 };
 
-// Special case mappings for slugs that don't match file paths
-const filePathOverrides: Record<string, string> = {
-  "": "index.mdx",
-};
+const contentDir = join(process.cwd(), "src", "content");
 
-// Build content pages from navigation
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkMdx)
+  .use(remarkStripJsx)
+  .use(remarkStringify);
+
 function buildContentPages(): PageInfo[] {
   const pages: PageInfo[] = [];
 
-  // Add top links
-  for (const link of topLinks) {
-    const slug = link.href === "/" ? "" : link.href.slice(1);
-    const filePath = filePathOverrides[slug] ?? `${slug}.mdx`;
-    pages.push({ slug, title: link.title, filePath });
-  }
-
-  // Add navigation items (skip llms.txt)
   for (const section of navigation) {
     for (const item of section.items) {
-      if (item.href === "/llms.txt") {
-        continue;
-      }
+      if (item.external) continue;
       const slug = item.href.slice(1);
-      const filePath = filePathOverrides[slug] ?? `${slug}.mdx`;
-      pages.push({ slug, title: item.title, filePath });
+      pages.push({ slug, title: item.title, filePath: `${slug}.mdx` });
     }
   }
 
@@ -46,55 +37,22 @@ function buildContentPages(): PageInfo[] {
 
 export const contentPages = buildContentPages();
 
-/**
- * Process MDX content to make it LLM-friendly using remark.
- * Strips all JSX components and import/export statements,
- * keeping only the markdown content.
- */
-async function processForLLM(content: string): Promise<string> {
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkMdx)
-    .use(remarkStripJsx)
-    .use(remarkStringify)
-    .process(content);
+const pagesBySlug = new Map(contentPages.map((p) => [p.slug, p]));
 
-  return String(result).trim();
+export function getPageBySlug(slug: string): PageInfo | undefined {
+  return pagesBySlug.get(slug);
 }
 
-/**
- * Get the content directory path
- */
-function getContentDir(): string {
-  return join(process.cwd(), "src", "content");
-}
-
-/**
- * Read and process a single page for LLM consumption
- */
 export async function getLLMText(page: PageInfo): Promise<string> {
-  const contentDir = getContentDir();
   const filePath = join(contentDir, page.filePath);
 
   try {
-    const rawContent = await readFile(filePath, "utf-8");
-    const processed = await processForLLM(rawContent);
+    const raw = await readFile(filePath, "utf-8");
+    const processed = String(await processor.process(raw)).trim();
+    const url = `/${page.slug}`;
 
-    const url = page.slug === "" ? "/" : `/${page.slug}`;
-
-    return `# ${page.title}
-URL: ${url}
-URL (Markdown): ${url === "/" ? "/index.md" : `${url}.md`}
-
-${processed}`;
+    return `# ${page.title}\nURL: ${url}\n\n${processed}`;
   } catch {
     return `# ${page.title}\n\nContent not available.`;
   }
-}
-
-/**
- * Get page info by slug
- */
-export function getPageBySlug(slug: string): PageInfo | undefined {
-  return contentPages.find((p) => p.slug === slug);
 }

@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
   },
   reactCompiler: true,
   devIndicators: false,
+  experimental: {
+    turbopackFileSystemCacheForDev: true,
+  },
   turbopack: {
     resolveExtensions: [".mdx", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
   },
