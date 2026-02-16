@@ -17,7 +17,7 @@ import { Search } from "./docs/search";
 
 export const Header = () => (
   <header className="sticky top-0 z-50 border-border/80 border-b bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_3%)] backdrop-blur-xl dark:bg-[color-mix(in_srgb,var(--color-background),white_4%)]">
-    <div className="flex h-16 items-center justify-between px-8 sm:px-12">
+    <div className="relative flex h-16 items-center justify-between px-8 sm:px-12">
       <div className="flex items-center gap-4">
         <ContextMenu>
           <ContextMenuTrigger
@@ -81,7 +81,7 @@ export const Header = () => (
       </div>
 
       <div className="flex items-center gap-2">
-        <Search />
+        <Search triggerClassName="lg:absolute lg:left-1/2 lg:z-10 lg:w-[24rem] lg:-translate-x-1/2 xl:w-[28rem]" />
         <Button
           className="max-lg:hidden"
           render={<Link href={siteUrl()} />}

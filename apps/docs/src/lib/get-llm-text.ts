@@ -43,16 +43,23 @@ export function getPageBySlug(slug: string): PageInfo | undefined {
   return pagesBySlug.get(slug);
 }
 
-export async function getLLMText(page: PageInfo): Promise<string> {
+export async function getLLMContent(page: PageInfo): Promise<string> {
   const filePath = join(contentDir, page.filePath);
 
   try {
     const raw = await readFile(filePath, "utf-8");
-    const processed = String(await processor.process(raw)).trim();
-    const url = `/${page.slug}`;
-
-    return `# ${page.title}\nURL: ${url}\n\n${processed}`;
+    return String(await processor.process(raw)).trim();
   } catch {
+    return "";
+  }
+}
+
+export async function getLLMText(page: PageInfo): Promise<string> {
+  const processed = await getLLMContent(page);
+  if (!processed) {
     return `# ${page.title}\n\nContent not available.`;
   }
+
+  const url = `/${page.slug}`;
+  return `# ${page.title}\nURL: ${url}\n\n${processed}`;
 }
