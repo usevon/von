@@ -54,7 +54,7 @@
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   @theme {
-    --color-background: oklch(0.141 0.005 285.823);
+    --color-background: oklch(0.1913 0 0);
     --color-foreground: oklch(0.985 0.002 247.839);
 
     --color-muted: oklch(0.21 0.006 285.885);
@@ -171,12 +171,19 @@
   --sh-string: #0550ae;
   --sh-keyword: #cf222e;
   --sh-comment: #6e7781;
+
+  /* Wallpaper gradient palette */
+  --wallpaper-1: hsl(220 60% 18%);
+  --wallpaper-2: hsl(210 55% 28%);
+  --wallpaper-3: hsl(200 45% 45%);
+  --wallpaper-4: hsl(205 50% 55%);
+  --wallpaper-5: hsl(210 55% 60%);
 }
 
 .dark {
   --accent: --alpha(var(--color-white) / 8%);
   --accent-foreground: var(--color-zinc-100);
-  --background: var(--color-zinc-950);
+  --background: oklch(0.1913 0 0);
   --border: --alpha(var(--color-white) / 12%);
   --card: color-mix(in srgb, var(--color-zinc-900) 80%, var(--color-zinc-950));
   --card-foreground: var(--color-zinc-100);
@@ -210,6 +217,13 @@
   --sh-string: #9ecbff;
   --sh-keyword: #f97583;
   --sh-comment: #6a737d;
+
+  /* Wallpaper gradient palette */
+  --wallpaper-1: hsl(220 60% 32%);
+  --wallpaper-2: hsl(210 55% 38%);
+  --wallpaper-3: hsl(200 45% 45%);
+  --wallpaper-4: hsl(205 50% 50%);
+  --wallpaper-5: hsl(210 55% 55%);
 }
 
 @layer base {

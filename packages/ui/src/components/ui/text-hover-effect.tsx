@@ -1,142 +1,253 @@
 "use client";
 
 import {
+  animate,
   motion,
-  useMotionTemplate,
   useMotionValue,
-  useSpring,
+  useTransform,
+  useVelocity,
 } from "motion/react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 type TextHoverEffectProps = {
   text: string;
   className?: string;
-  viewBox?: string;
+  /**
+   * Width of the shine beam as a fraction of the container width (0-1).
+   * @default 0.5
+   */
+  beamWidth?: number;
+  /**
+   * Edge softness of the beam (0 = hard edge, 1 = fully feathered).
+   * @default 0.7
+   */
+  beamSoftness?: number;
+  /**
+   * Duration of one full sweep in seconds.
+   * @default 5.5
+   */
+  sweepDuration?: number;
+  /**
+   * Pause in seconds at each end before reversing.
+   * @default 1.2
+   */
+  sweepPause?: number;
 };
 
-export const TextHoverEffect = ({ text, className, viewBox = "0 0 200 40" }: TextHoverEffectProps) => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [_hovered, setHovered] = useState(false);
+export const TextHoverEffect = ({
+  text,
+  className,
+  beamWidth = 0.5,
+  beamSoftness = 0.7,
+  sweepDuration = 5.5,
+  sweepPause = 1.2,
+}: TextHoverEffectProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hoveredRef = useRef(false);
+  const autoControlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const enterControlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const exitControlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const settledRef = useRef(false);
+  // Track last mouse direction: 1 = moving right, -1 = moving left
+  const lastDirectionRef = useRef<1 | -1>(1);
+  const lastMouseXRef = useRef(0);
 
-  const cx = useMotionValue("50%");
-  const cy = useMotionValue("50%");
-  const r = useSpring(0, { stiffness: 300, damping: 50 });
+  // beamX: fraction representing beam center position
+  const beamX = useMotionValue(0);
+  // Track velocity for momentum-aware transitions
+  const beamVelocity = useVelocity(beamX);
 
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    const svg = svgRef.current;
-    if (!svg) {
-      return;
+  const halfBeam = beamWidth / 2;
+  const feather = beamSoftness * halfBeam;
+
+  // Sweep past edges so beam fully exits on both sides
+  const sweepStart = -halfBeam - feather;
+  const sweepEnd = 1 + halfBeam + feather;
+  const totalRange = sweepEnd - sweepStart;
+
+  // Soft-edged beam mask via CSS gradient on the grid-stacked span.
+  const maskImage = useTransform(beamX, (x) => {
+    const center = x * 100;
+    const left = center - halfBeam * 100;
+    const innerLeft = left + feather * 100;
+    const innerRight = center + (halfBeam - feather) * 100;
+    const right = center + halfBeam * 100;
+
+    return `linear-gradient(to right, transparent ${left}%, black ${innerLeft}%, black ${innerRight}%, transparent ${right}%)`;
+  });
+
+  // Convert mouse clientX to 0..1 fraction of container width
+  const mouseToFraction = useCallback((clientX: number): number => {
+    const el = containerRef.current;
+    if (!el) return 0.5;
+    const rect = el.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }, []);
+
+  // Helper: start the infinite mirror sweep from a given edge
+  const startLoop = useCallback(
+    (fromEdge: number) => {
+      const toEdge = fromEdge === sweepStart ? sweepEnd : sweepStart;
+      autoControlsRef.current = animate(beamX, [fromEdge, toEdge], {
+        duration: sweepDuration,
+        ease: "easeInOut",
+        repeat: Infinity,
+        repeatType: "mirror",
+        repeatDelay: sweepPause,
+      });
+    },
+    [beamX, sweepStart, sweepEnd, sweepDuration, sweepPause],
+  );
+
+  // Auto-sweep on mount
+  useEffect(() => {
+    if (!hoveredRef.current) {
+      startLoop(sweepStart);
     }
-    const rect = svg.getBoundingClientRect();
-    cx.set(`${((e.clientX - rect.left) / rect.width) * 100}%`);
-    cy.set(`${((e.clientY - rect.top) / rect.height) * 100}%`);
-  }
+    return () => {
+      autoControlsRef.current?.stop();
+    };
+  }, [sweepStart, startLoop]);
 
-  function handleMouseEnter(e: React.MouseEvent<SVGSVGElement>) {
-    handleMouseMove(e);
-    r.set(20);
-    setHovered(true);
-  }
+  const handleMouseEnter = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      hoveredRef.current = true;
+      settledRef.current = false;
 
-  function handleMouseLeave() {
-    r.set(0);
-    setHovered(false);
-  }
+      // Stop any running animations
+      autoControlsRef.current?.stop();
+      autoControlsRef.current = null;
+      exitControlsRef.current?.stop();
+      exitControlsRef.current = null;
 
-  const rPercent = useMotionTemplate`${r}%`;
+      lastMouseXRef.current = e.clientX;
+
+      const target = mouseToFraction(e.clientX);
+
+      // Use current beamX velocity so the spring picks up the sweep's momentum
+      const currentVelocity = beamVelocity.get();
+
+      enterControlsRef.current = animate(beamX, target, {
+        type: "spring",
+        stiffness: 200,
+        damping: 25,
+        velocity: currentVelocity,
+        onComplete: () => {
+          settledRef.current = true;
+          enterControlsRef.current = null;
+        },
+      });
+    },
+    [beamX, beamVelocity, mouseToFraction],
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Track direction
+      if (e.clientX > lastMouseXRef.current) lastDirectionRef.current = 1;
+      else if (e.clientX < lastMouseXRef.current)
+        lastDirectionRef.current = -1;
+      lastMouseXRef.current = e.clientX;
+
+      const target = mouseToFraction(e.clientX);
+
+      if (!settledRef.current && enterControlsRef.current) {
+        enterControlsRef.current.stop();
+        enterControlsRef.current = animate(beamX, target, {
+          type: "spring",
+          stiffness: 200,
+          damping: 25,
+          onComplete: () => {
+            settledRef.current = true;
+            enterControlsRef.current = null;
+          },
+        });
+      } else {
+        beamX.set(target);
+      }
+    },
+    [beamX, mouseToFraction],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    hoveredRef.current = false;
+    enterControlsRef.current?.stop();
+    enterControlsRef.current = null;
+    settledRef.current = false;
+
+    const current = beamX.get();
+    const movingRight = lastDirectionRef.current === 1;
+
+    // Phase 1: carry the beam to the nearest edge in the mouse's last direction.
+    // Duration is proportional to remaining distance so speed matches the normal sweep.
+    const nearEdge = movingRight ? sweepEnd : sweepStart;
+    const remainingDistance = Math.abs(nearEdge - current);
+    const proportionalDuration = (remainingDistance / totalRange) * sweepDuration;
+
+    // Clamp to a reasonable minimum so very short distances don't pop
+    const exitDuration = Math.max(0.15, proportionalDuration);
+
+    exitControlsRef.current = animate(beamX, nearEdge, {
+      duration: exitDuration,
+      ease: "easeOut",
+      onComplete: () => {
+        exitControlsRef.current = null;
+        // Phase 2: start the infinite mirror loop from this edge
+        if (!hoveredRef.current) {
+          startLoop(nearEdge);
+        }
+      },
+    });
+  }, [beamX, sweepStart, sweepEnd, totalRange, sweepDuration, startLoop]);
+
+  const textClass =
+    "select-none text-center font-bold uppercase whitespace-nowrap leading-none";
 
   return (
-    <svg
-      aria-hidden="true"
-      className={cn("select-none", className)}
-      height="100%"
+    <div
+      ref={containerRef}
+      className={cn("relative", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      ref={svgRef}
+      aria-hidden="true"
       role="presentation"
-      viewBox={viewBox}
-      width="100%"
-      xmlns="http://www.w3.org/2000/svg"
     >
-      <defs>
-        <linearGradient
-          gradientUnits="userSpaceOnUse"
-          id="textGradient"
-          x1="0%"
-          x2="0%"
-          y1="0%"
-          y2="100%"
+      {/*
+        Grid stacking: both spans occupy the same grid cell (row 1, col 1).
+        Both are in normal flow with identical layout — guaranteed alignment.
+      */}
+      <div className="grid -translate-y-[5%] [&>*]:[grid-area:1/1]">
+        {/* Base layer: outline text */}
+        <span
+          className={cn(textClass, "text-transparent")}
+          style={{
+            fontSize: "1em",
+            WebkitTextStroke: "0.012em color-mix(in srgb, var(--color-foreground) 15%, transparent)",
+          }}
         >
-          <stop
-            className="[stop-color:hsl(220,60%,18%)] dark:[stop-color:hsl(215,20%,12%)]"
-            offset="0%"
-          />
-          <stop
-            className="[stop-color:hsl(210,55%,28%)] dark:[stop-color:hsl(215,18%,18%)]"
-            offset="50%"
-          />
-          <stop
-            className="[stop-color:hsl(200,45%,45%)] dark:[stop-color:hsl(210,15%,28%)]"
-            offset="70%"
-          />
-          <stop
-            className="[stop-color:hsl(205,50%,55%)] dark:[stop-color:hsl(210,12%,38%)]"
-            offset="85%"
-          />
-          <stop
-            className="[stop-color:hsl(210,55%,60%)] dark:[stop-color:hsl(210,10%,50%)]"
-            offset="100%"
-          />
-        </linearGradient>
+          {text}
+        </span>
 
-        <motion.radialGradient
-          cx={cx}
-          cy={cy}
-          gradientUnits="userSpaceOnUse"
-          id="revealMask"
-          r={rPercent}
+        {/* Beam layer: gradient text with soft-edged mask */}
+        <motion.span
+          className={cn(textClass)}
+          style={{
+            fontSize: "1em",
+            background:
+              "linear-gradient(to bottom, var(--wallpaper-1), var(--wallpaper-2), var(--wallpaper-3), var(--wallpaper-4), var(--wallpaper-5))",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            WebkitTextStroke: "0.015em transparent",
+            WebkitMaskImage: maskImage,
+            maskImage: maskImage,
+          }}
         >
-          <stop offset="0%" stopColor="white" />
-          <stop offset="100%" stopColor="black" />
-        </motion.radialGradient>
-
-        <mask id="textMask">
-          <rect
-            fill="url(#revealMask)"
-            height="100%"
-            width="100%"
-            x="0"
-            y="0"
-          />
-        </mask>
-      </defs>
-
-      <text
-        className="fill-transparent stroke-border font-bold font-sans"
-        dominantBaseline="middle"
-        fontSize="48"
-        strokeWidth="0.4"
-        textAnchor="middle"
-        x="50%"
-        y="50%"
-      >
-        {text}
-      </text>
-
-      <text
-        className="font-bold font-sans"
-        dominantBaseline="middle"
-        fill="url(#textGradient)"
-        fontSize="48"
-        mask="url(#textMask)"
-        textAnchor="middle"
-        x="50%"
-        y="50%"
-      >
-        {text}
-      </text>
-    </svg>
+          {text}
+        </motion.span>
+      </div>
+    </div>
   );
 };
