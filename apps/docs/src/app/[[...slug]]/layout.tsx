@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { TableOfContents } from "@/components/docs/toc";
 
-const transition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
+const transition = {
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+};
 
 export default function DocsSlugLayout({
   children,

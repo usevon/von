@@ -54,7 +54,10 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    title: "Resources",
-    items: [{ title: "llms.txt", href: "/llms.txt", external: true }],
+    title: "LLMs",
+    items: [
+      { title: "llms.txt", href: "/llms.txt", external: true },
+      { title: "llms-full.txt", href: "/llms-full.txt", external: true },
+    ],
   },
 ];

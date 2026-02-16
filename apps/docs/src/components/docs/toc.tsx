@@ -99,7 +99,12 @@ const useActiveHeading = (headingIds: string[]) => {
   return { activeId, setManual };
 };
 
-const springTransition = { type: "spring", stiffness: 400, damping: 30, mass: 0.8 };
+const springTransition = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+  mass: 0.8,
+};
 
 export const TableOfContents = () => {
   const pathname = usePathname();
