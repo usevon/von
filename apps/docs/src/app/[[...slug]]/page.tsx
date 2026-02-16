@@ -2,17 +2,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { Pagination } from "@/components/docs/pagination";
-import { TableOfContents } from "@/components/docs/toc";
 import { HomePage } from "@/components/home-page";
 import AuthenticationContent from "@/content/authentication.mdx";
-// Content imports
+import ComparisonContent from "@/content/comparison.mdx";
+import EndpointsContent from "@/content/endpoints.mdx";
+import EventsDeliveriesContent from "@/content/events-deliveries.mdx";
 import GettingStartedContent from "@/content/getting-started.mdx";
-import IntroductionContent from "@/content/introduction.mdx";
-import ReceivingContent from "@/content/receiving.mdx";
+import HostingContent from "@/content/hosting.mdx";
+import InboundContent from "@/content/inbound.mdx";
+import RetriesRecoveryContent from "@/content/retries-recovery.mdx";
 import CliContent from "@/content/sdk/cli.mdx";
 import ReactSdkContent from "@/content/sdk/react.mdx";
 import TypeScriptSdkContent from "@/content/sdk/typescript.mdx";
-import SendingContent from "@/content/sending.mdx";
 import VerificationContent from "@/content/verification.mdx";
 import VersioningContent from "@/content/versioning.mdx";
 
@@ -32,56 +33,75 @@ const contentMap: Record<string, ContentEntry> = {
     title: "Home",
     description: "Learn how to use Von webhook infrastructure.",
   },
+  // Start Here
   "getting-started": {
     Component: GettingStartedContent,
-    title: "Getting Started",
-    description: "Get started with Von in 5 minutes.",
+    title: "Quick Start",
+    description: "Install the SDK, configure your endpoint, and send your first webhook.",
   },
-  authentication: {
-    Component: AuthenticationContent,
-    title: "Authentication",
-    description: "Learn how to authenticate with the Von API.",
+  comparison: {
+    Component: ComparisonContent,
+    title: "Von vs Others",
+    description: "Compare Von with Svix and Hookdeck.",
   },
-  introduction: {
-    Component: IntroductionContent,
-    title: "Introduction",
-    description: "Learn what Von is and why you need webhook infrastructure.",
+  hosting: {
+    Component: HostingContent,
+    title: "Cloud or Self-Hosted",
+    description: "Choose Von Cloud for fast setup, or self-host for full control.",
   },
-  sending: {
-    Component: SendingContent,
-    title: "Sending Webhooks",
-    description: "Learn how to send webhooks to your customers with Von.",
+  // Sending Webhooks
+  endpoints: {
+    Component: EndpointsContent,
+    title: "Endpoints",
+    description: "Create and configure webhook endpoints with URL targeting and event filtering.",
   },
-  receiving: {
-    Component: ReceivingContent,
-    title: "Receiving Webhooks",
-    description: "Learn how to receive webhooks from third-party services.",
+  "events-deliveries": {
+    Component: EventsDeliveriesContent,
+    title: "Events & Deliveries",
+    description: "Send events, track delivery status, and replay failed deliveries.",
   },
-  verification: {
-    Component: VerificationContent,
-    title: "Verification",
-    description: "Learn how to verify webhook signatures for security.",
+  "retries-recovery": {
+    Component: RetriesRecoveryContent,
+    title: "Retries & Recovery",
+    description: "Automatic retries with exponential backoff, circuit breakers, and bulk replay.",
   },
   versioning: {
     Component: VersioningContent,
-    title: "Versioning",
-    description:
-      "Learn how to evolve webhook payloads without breaking integrations.",
+    title: "Payload Versioning",
+    description: "Evolve schemas safely and transform payloads per endpoint version.",
   },
+  // Receiving Webhooks
+  inbound: {
+    Component: InboundContent,
+    title: "Inbound Forwarding",
+    description: "Receive third-party webhooks through stable inbound URLs.",
+  },
+  verification: {
+    Component: VerificationContent,
+    title: "Verifying Signatures",
+    description: "Verify HMAC signatures on incoming webhooks to confirm authenticity.",
+  },
+  // Security
+  authentication: {
+    Component: AuthenticationContent,
+    title: "API Keys & Environments",
+    description: "Environment-scoped API keys with granular permission scopes.",
+  },
+  // SDKs & Local Dev
   "sdk/typescript": {
     Component: TypeScriptSdkContent,
     title: "TypeScript SDK",
-    description: "Complete reference for the @usevon/sdk package.",
+    description: "Typed APIs for webhooks, endpoints, inbound routes, and version management.",
   },
   "sdk/react": {
     Component: ReactSdkContent,
     title: "React SDK",
-    description: "React hooks and provider for webhook management.",
+    description: "Provider-based hooks for managing endpoints and events from React.",
   },
   "sdk/cli": {
     Component: CliContent,
-    title: "CLI",
-    description: "Command-line tool for local webhook development.",
+    title: "CLI & Tunnels",
+    description: "Forward webhooks to localhost with secure tunnels.",
   },
 };
 
@@ -126,24 +146,15 @@ export default async function DocsPage(props: DocsPageProps) {
   const Content = content.Component;
 
   if (isHome) {
-    return (
-      <div className="max-w-5xl">
-        <Content />
-      </div>
-    );
+    return <Content />;
   }
 
   return (
-    <div className="flex gap-12">
-      <div className="min-w-0 max-w-4xl flex-1">
-        <article className="prose prose-h4:border-none pb-16 prose-headings:no-underline">
-          <Content />
-        </article>
-        <Pagination />
-      </div>
-      <aside className="sticky top-6 hidden h-fit w-48 shrink-0 xl:block">
-        <TableOfContents />
-      </aside>
-    </div>
+    <>
+      <article className="prose prose-h4:border-none pb-16 prose-headings:no-underline">
+        <Content />
+      </article>
+      <Pagination />
+    </>
   );
 }
