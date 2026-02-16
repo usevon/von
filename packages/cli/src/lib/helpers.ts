@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { log } from "@clack/prompts";
 
 export const validatePort = (portStr: string): number | null => {
@@ -11,3 +12,14 @@ export const validatePort = (portStr: string): number | null => {
 
 export const formatError = (err: unknown): string =>
   err instanceof Error ? err.message : "Unknown error";
+
+export function generateTunnelId(
+  orgId: string,
+  userId: string,
+  port: number,
+): string {
+  return createHash("sha256")
+    .update(`${orgId}:${userId}:${port}`)
+    .digest("hex")
+    .slice(0, 12);
+}

@@ -10,4 +10,5 @@ export default defineConfig({
   clean: true,
   outDir: "dist",
   noExternal: ["@usevon/utils", "@usevon/api"],
+  inlineOnly: false,
 });

@@ -1,10 +1,9 @@
 import { log, note, spinner } from "@clack/prompts";
-import { generateTunnelId } from "@usevon/utils";
 import { Command } from "commander";
 import pc from "picocolors";
 import { getSession, rotateTunnel } from "@/lib/api";
 import { requireAuth } from "@/lib/config";
-import { formatError, validatePort } from "@/lib/helpers";
+import { formatError, generateTunnelId, validatePort } from "@/lib/helpers";
 
 export const rotate = new Command("rotate")
   .description("Rotate tunnel secret to invalidate the current URL")
