@@ -1,0 +1,110 @@
+export const frontmatter = {
+  title: "Retries & Recovery",
+  description: "Automatic retries with exponential backoff, circuit breakers, and bulk replay."
+};
+
+# Retries & Recovery
+
+Von handles delivery failures automatically with retries, circuit breakers, and replay.
+
+<PageActions />
+
+## Automatic retries
+
+When a delivery fails (non-2xx response or timeout), Von retries it with exponential backoff. The default schedule starts at 1 second and doubles with each attempt:
+
+| Attempt | Delay |
+| --- | --- |
+| 1 | Immediate |
+| 2 | ~1 second |
+| 3 | ~2 seconds |
+| 4 | ~4 seconds |
+
+Each endpoint can configure its own `maxAttempts` (1 to 10, default 4) and `timeoutMs` (1 to 60 seconds, default 30 seconds).
+
+```typescript
+const { data: endpoint } = await von.endpoints.post({
+  url: "https://your-app.com/webhooks",
+  maxAttempts: 8,
+  timeoutMs: 15000,
+});
+```
+
+A delivery is marked `failed` only after all retry attempts are exhausted. Failed jobs are retained for 7 days for inspection.
+
+## Circuit breakers
+
+Von protects unstable endpoints with a three-state circuit breaker. When an endpoint fails repeatedly, Von stops sending to it temporarily to avoid wasting resources and let it recover.
+
+### How it works
+
+The circuit breaker has three states:
+
+**Closed** is the normal operating state. All deliveries flow through. Von tracks consecutive failures.
+
+**Open** activates after 5 consecutive failures. All deliveries are immediately skipped with a `circuit_open` status. No requests are sent to the endpoint.
+
+**Half-open** activates after 5 minutes in the open state. Von sends a single probe delivery to test if the endpoint has recovered. If it succeeds, the circuit resets to closed. If it fails, the circuit re-opens for another 5 minutes.
+
+| Parameter | Value |
+| --- | --- |
+| Failure threshold | 5 consecutive failures |
+| Reset timeout | 5 minutes |
+
+### What triggers the circuit
+
+Only consecutive failures count. A single successful delivery resets the failure counter to zero. Failures from retries within the same delivery count toward the threshold.
+
+### Recovery
+
+When the circuit is half-open and the probe delivery succeeds, the endpoint returns to normal immediately. All queued deliveries resume. You can also replay any deliveries that were skipped while the circuit was open.
+
+## Replaying failed deliveries
+
+When something goes wrong at scale, bulk replay lets you re-deliver everything that failed.
+
+### Single event
+
+Re-deliver one event to all (or specific) endpoints:
+
+```typescript
+await von.webhooks.events["evt_xxx"].replay.post({
+  endpointIds: ["ep_abc"],
+});
+```
+
+### Bulk replay
+
+Re-deliver all failed deliveries since a given date:
+
+```typescript
+await von.webhooks.events.replay.post({
+  since: "2025-01-15T00:00:00Z",
+  status: "failed",
+});
+```
+
+You can filter by `status` and `endpointId` to narrow the scope.
+
+## Endpoint statuses
+
+Endpoint status affects how deliveries are handled:
+
+| Status | Behavior |
+| --- | --- |
+| `active` | Deliveries are sent normally |
+| `paused` | Deliveries are created with `paused` status, not attempted |
+| `disabled` | Deliveries are created with `skipped` status, not attempted |
+
+Pausing an endpoint is useful during maintenance. Paused deliveries can be replayed once the endpoint is active again.
+
+## Worker configuration
+
+When self-hosting, you can tune the delivery worker:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `WORKER_CONCURRENCY` | 50 | Concurrent delivery jobs (max 500) |
+| `EVENT_RETENTION_DAYS` | 90 | Days before events are cleaned up |
+| `DELIVERY_RETENTION_DAYS` | 90 | Days before deliveries are cleaned up |
+

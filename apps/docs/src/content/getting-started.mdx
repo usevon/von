@@ -1,9 +1,9 @@
 export const frontmatter = {
-  title: "Getting Started",
-  description: "Get started with Von in 5 minutes."
+  title: "Quick Start",
+  description: "Install the SDK, configure your endpoint, and send your first webhook."
 };
 
-# Getting Started
+# Quick Start
 
 Send your first webhook with Von in under 5 minutes.
 
@@ -43,7 +43,7 @@ pnpm add @usevon/sdk
   </TimelineItem>
 
   <TimelineItem title="Configure environment">
-    Create a `.env` file and add the API key. The key authenticates all requests to the Von API and determines which [environment](/introduction#environments) (development, staging, or production) webhooks are sent from.
+    Create a `.env` file and add the API key. The key authenticates all requests to the Von API and determines which environment (development, staging, or production) webhooks are sent from.
 
 ```bash
 VON_API_KEY=von_live_xxxxxxxxxxxxx
@@ -90,8 +90,3 @@ const webhook = await von.webhooks.send({
   </TimelineItem>
 </Timeline>
 
-## Next Steps
-
-- [Introduction](/introduction): Learn about endpoints, events, and environments
-- [Sending Webhooks](/sending): Retries, delivery, and event types
-- [Verification](/verification): Secure webhook endpoints with signatures

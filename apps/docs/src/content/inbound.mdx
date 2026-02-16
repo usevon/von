@@ -1,0 +1,100 @@
+export const frontmatter = {
+  title: "Inbound Forwarding",
+  description: "Receive third-party webhooks through stable inbound URLs."
+};
+
+# Inbound Forwarding
+
+Receive webhooks from third-party services through stable Von URLs, then forward them to your app with queueing and retries.
+
+<PageActions />
+
+## How it works
+
+Instead of pointing Stripe, GitHub, or other providers directly at your app, you point them at a Von inbound endpoint. Von receives the webhook, stores it, and forwards it to your application with the same retry and circuit breaker guarantees as outbound webhooks.
+
+This gives you a stable URL that never changes, even if your app's infrastructure moves. You also get automatic retries, delivery tracking, and the ability to replay missed webhooks.
+
+## Creating an inbound endpoint
+
+```typescript
+const { data: inbound } = await von.inbound.post({
+  name: "Stripe Webhooks",
+  provider: "stripe",
+  forwardUrl: "https://your-app.com/webhooks/stripe",
+});
+```
+
+The response includes the endpoint's `id` and `secret`. Third-party providers send webhooks to:
+
+```text
+https://api.usevon.com/in/{id}
+```
+
+<Properties>
+  <Property name="forwardUrl" type="string" required>
+    The URL where Von forwards incoming webhooks to your application.
+  </Property>
+  <Property name="name" type="string">
+    A label for the inbound endpoint.
+  </Property>
+  <Property name="provider" type="string">
+    The third-party service name (e.g. `stripe`, `github`, `shopify`). Used for labeling only.
+  </Property>
+  <Property name="status" type="string">
+    One of `active`, `paused`, or `disabled`. Defaults to `active`.
+  </Property>
+</Properties>
+
+## What Von forwards
+
+When a webhook arrives at your inbound URL, Von:
+
+1. Stores the raw payload and headers as an inbound delivery
+2. Signs the forwarded request with an HMAC signature using the inbound endpoint's secret
+3. Strips sensitive headers from the original request (`authorization`, `host`, `cookie`)
+4. Forwards the payload to your `forwardUrl` with Von delivery headers
+
+The forwarded request includes an `X-Von-Inbound-Delivery-Id` header so you can correlate it with the original.
+
+## Rate limiting
+
+The public inbound endpoint (`/in/:id`) is rate-limited to 100 requests per minute per IP address. This protects against accidental floods from misconfigured providers.
+
+## Retries and circuit breakers
+
+Inbound forwarding uses the same reliability features as outbound delivery:
+
+- Automatic retries with exponential backoff (default 4 attempts)
+- Circuit breaker that opens after 5 consecutive failures
+- Configurable `maxAttempts` and `timeoutMs` per endpoint
+
+## Managing inbound endpoints
+
+### Listing
+
+```typescript
+const { data } = await von.inbound.get({
+  query: { limit: 20 },
+});
+```
+
+### Updating
+
+```typescript
+await von.inbound["in_xxx"].patch({
+  forwardUrl: "https://new-app.com/webhooks/stripe",
+  status: "paused",
+});
+```
+
+### Deleting
+
+```typescript
+await von.inbound["in_xxx"].delete();
+```
+
+## Data retention
+
+Inbound deliveries are automatically cleaned up after 90 days by default. This is configurable via `INBOUND_DELIVERY_RETENTION_DAYS` when self-hosting.
+

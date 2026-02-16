@@ -1,72 +1,132 @@
 export const frontmatter = {
-  title: "Authentication",
-  description: "Learn how to authenticate with the Von API."
+  title: "API Keys & Environments",
+  description: "Environment-scoped API keys with granular permission scopes."
 };
 
-# Authentication
+# API Keys & Environments
 
-Von uses API keys to authenticate requests. You can create and manage API keys from your dashboard.
+Manage access to the Von API with environment-scoped keys and granular permission scopes.
 
 <PageActions />
 
-## API Keys
+## Key format
 
-Each API key is scoped to a specific organization and environment. We recommend using separate keys for development and production.
+API keys are prefixed by environment:
+
+| Environment | Prefix |
+| --- | --- |
+| Development | `von_dev_` |
+| Staging | `von_stg_` |
+| Production | `von_prod_` |
+
+Keys are 64 random characters plus an HMAC signature suffix, making them safe to identify by prefix in logs without exposing the full key.
+
+## Creating a key
+
+Create API keys from the [dashboard](https://app.usevon.com/settings/api-keys) or through the API. The full key is only shown once at creation time.
+
+Each key is scoped to a user and optionally to an organization. Keys inherit the organization context for all API calls.
 
 <Properties>
-  <Property name="apiKey" type="string" required>
-    Your Von API key. Starts with `von_` followed by the environment prefix.
+  <Property name="name" type="string" required>
+    A label for the key (max 64 characters).
+  </Property>
+  <Property name="environment" type="string" required>
+    One of `dev`, `staging`, or `prod`.
+  </Property>
+  <Property name="scopes" type="string[]">
+    Permission scopes. Defaults to `["*"]` (full access).
+  </Property>
+  <Property name="expiresIn" type="number">
+    Time until expiration in seconds. Maximum 365 days. Omit for no expiration.
+  </Property>
+  <Property name="organizationId" type="string">
+    The organization this key belongs to. Defaults to your active organization.
   </Property>
 </Properties>
 
-## Environments
+## Scopes
 
-Von supports two environments:
+Scopes control what a key can access. You can assign broad or narrow permissions:
 
-| Environment | Key Prefix | Description |
-|-------------|------------|-------------|
-| Development | `von_dev_` | For testing and development |
-| Production | `von_prod_` | For live production traffic |
+| Scope | Access |
+| --- | --- |
+| `*` | Full access to everything |
+| `read:*` | Read access to all resources |
+| `write:*` | Write access to all resources |
+| `read:webhooks` | List and view events and deliveries |
+| `write:webhooks` | Send events, replay deliveries |
+| `read:endpoints` | List and view endpoints |
+| `write:endpoints` | Create, update, delete endpoints |
+| `read:inbound` | List and view inbound endpoints |
+| `write:inbound` | Create, update, delete inbound endpoints |
+| `read:versions` | List and view versions |
+| `write:versions` | Create, update, delete versions |
+| `read:tunnels` | List active tunnels |
+| `write:tunnels` | Register and rotate tunnels |
 
-## Making Authenticated Requests
+Scopes are hierarchical: `*` grants everything, `read:*` grants all read scopes, `write:*` grants all write scopes.
 
-<Row>
-  <Col>
-    ### Using the SDK
+## Using a key
 
-    The SDK handles authentication automatically when you initialize it with your API key.
+Pass the key as a Bearer token in the `Authorization` header:
 
-    ### Using the API Directly
+```bash
+curl -H "Authorization: Bearer von_prod_xxx" \
+  https://api.usevon.com/endpoints
+```
 
-    Include your API key in the `Authorization` header with the `Bearer` prefix.
-  </Col>
-  <Col sticky>
+Or configure the SDK:
+
 ```typescript
-// SDK (recommended)
 const von = new Von({
   apiKey: "von_prod_xxx",
 });
-
-// Direct API call
-fetch("https://api.usevon.com/v1/webhooks", {
-  headers: {
-    Authorization: "Bearer von_prod_xxx",
-  },
-});
 ```
-  </Col>
-</Row>
 
-## Security Best Practices
+The SDK also reads from the `VON_API_KEY` environment variable automatically.
 
-- **Store keys securely** - Keep API keys in environment variables, never in code
-- **Rotate keys regularly** - Create new keys periodically and revoke old ones
-- **Use environment-specific keys** - Never use production keys in development
-- **Limit key permissions** - Create keys with only the permissions needed
-- **Monitor key usage** - Review API logs for unusual activity
+## Key lifecycle
 
-## Next Steps
+### Listing keys
 
-- [Sending Webhooks](/sending) - Learn how to send webhooks
-- [Verification](/verification) - Verify incoming webhook signatures
-- [TypeScript SDK](/sdk/typescript) - Full SDK reference
+Keys are listed without the hashed secret. The `start` field shows the first 12 characters for identification.
+
+### Disabling a key
+
+Disable a key without deleting it. Disabled keys are rejected immediately on verification.
+
+### Expiration
+
+Expired keys are automatically deleted when they are next used. You can set expiration at creation time with `expiresIn` (in seconds, max 365 days).
+
+### Rotation
+
+Create a new key, update your services to use it, then delete the old one. There is no atomic rotation endpoint, so plan for a brief overlap where both keys are active.
+
+## Security details
+
+### Storage
+
+Keys are hashed with SHA-256 before storage. The raw key is never persisted. Only the first 12 characters (`start` field) are stored in plaintext for identification.
+
+### Integrity verification
+
+In production, keys include an HMAC signature suffix. Von verifies this signature before checking the database, which rejects forged or corrupted keys without a database lookup.
+
+### Rate limiting
+
+All authenticated API requests are rate-limited to 200 requests per minute per IP address. Write operations are additionally subject to per-organization throughput limits based on your plan.
+
+### Usage tracking
+
+`lastUsedAt` is updated when a key is used. Updates are batched in Redis and flushed to the database every 5 minutes to avoid write pressure on every request.
+
+## Limits
+
+| Limit | Value |
+| --- | --- |
+| Keys per user | 20 |
+| Max expiration | 365 days |
+| Key name length | 64 characters |
+

@@ -1,0 +1,151 @@
+export const frontmatter = {
+  title: "Cloud or Self-Hosted",
+  description: "Choose Von Cloud for fast setup, or self-host for full control."
+};
+
+# Cloud or Self-Hosted
+
+Von runs as a managed cloud service or fully self-hosted on your own infrastructure.
+
+<PageActions />
+
+## Von Cloud
+
+Get started at [usevon.com](https://usevon.com) with no setup required. Von Cloud handles infrastructure, scaling, and updates so you can focus on building.
+
+| | Hobby | Pro |
+| --- | --- | --- |
+| Monthly deliveries | 25,000 | 100,000 |
+| Throughput | 25 req/s | 100 req/s (150 burst) |
+| Overage | No | Yes |
+
+## Self-hosting
+
+Self-hosting gives you full control over your data, no usage limits, and the ability to run Von on your own terms.
+
+### Requirements
+
+- **Bun 1.3+** for building
+- **PostgreSQL 18** for data storage
+- **Redis 7** for caching, queues, and rate limiting
+- A Linux VPS or dedicated server for the API and worker (WebSocket connections are not compatible with serverless)
+
+### Quick start
+
+```bash
+git clone https://github.com/usevon/von.git
+cd von
+bun install
+bun setup
+bun dev
+```
+
+The setup script starts PostgreSQL and Redis via Docker, copies environment files, and pushes the database schema.
+
+### Manual setup
+
+If you prefer to configure things yourself:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+
+cp apps/api/.env.example apps/api/.env
+cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/docs/.env.example apps/docs/.env
+cp apps/site/.env.example apps/site/.env
+
+bun run --cwd apps/api db:push
+bun dev
+```
+
+Edit `apps/api/.env` to set `BETTER_AUTH_SECRET` at minimum. In production, also set `SECRET_ENCRYPTION_KEY` for encrypting signing secrets at rest.
+
+### Environment variables
+
+<Properties>
+  <Property name="DATABASE_URL" type="string" required>
+    PostgreSQL connection string.
+  </Property>
+  <Property name="REDIS_URL" type="string" required>
+    Redis connection string.
+  </Property>
+  <Property name="BETTER_AUTH_SECRET" type="string" required>
+    Secret for session signing and auth. Use a random 32+ character string.
+  </Property>
+  <Property name="SECRET_ENCRYPTION_KEY" type="string">
+    Key for AES-256-GCM encryption of webhook signing secrets at rest. Required in production. Falls back to `BETTER_AUTH_SECRET` in development.
+  </Property>
+  <Property name="API_KEY_SIGNING_SECRET" type="string">
+    HMAC signing secret for API key integrity verification. Recommended in production.
+  </Property>
+  <Property name="WORKER_CONCURRENCY" type="number">
+    Concurrent delivery jobs. Defaults to 50, max 500.
+  </Property>
+  <Property name="EVENT_RETENTION_DAYS" type="number">
+    Days before events are cleaned up. Defaults to 90.
+  </Property>
+  <Property name="DELIVERY_RETENTION_DAYS" type="number">
+    Days before deliveries are cleaned up. Defaults to 90.
+  </Property>
+  <Property name="INBOUND_DELIVERY_RETENTION_DAYS" type="number">
+    Days before inbound deliveries are cleaned up. Defaults to 90.
+  </Property>
+  <Property name="RETENTION_CLEANUP_ENABLED" type="boolean">
+    Enable or disable automatic data retention cleanup. Defaults to true.
+  </Property>
+</Properties>
+
+### Production deployment
+
+#### Frontend
+
+Deploy the dashboard and site to Vercel by importing your repo and setting the root directory to `apps/dashboard` or `apps/site`. Add your environment variables in the Vercel project settings.
+
+#### Backend
+
+The API and worker compile to standalone binaries. Build them locally and deploy to your server:
+
+```bash
+bun run --cwd apps/api build:prod
+bun run --cwd apps/worker build:prod
+```
+
+Copy the binaries to your server:
+
+```bash
+scp apps/api/dist/api user@server:/app/
+scp apps/worker/dist/worker user@server:/app/
+```
+
+Start with PM2 for process management and automatic restarts:
+
+```bash
+pm2 start /app/api --name api
+pm2 start /app/worker --name worker
+pm2 save && pm2 startup
+```
+
+For zero-downtime reloads after updates:
+
+```bash
+pm2 reload all
+```
+
+### Architecture
+
+Von consists of five services:
+
+| Service | Runtime | Description |
+| --- | --- | --- |
+| API | Elysia (Bun) | HTTP API and WebSocket server for tunnels |
+| Worker | BullMQ (Bun) | Processes delivery jobs from the queue |
+| Dashboard | Next.js | Management UI |
+| Docs | Next.js | Documentation site |
+| Site | Next.js | Marketing site |
+
+The API and worker are stateful services that need a persistent server. The Next.js apps are stateless and can run on Vercel or any Node.js host.
+
+### License
+
+Von uses dual licensing. The SDKs, CLI, React hooks, types, and UI components are MIT licensed. The API, worker, dashboard, auth, database, and utility packages are AGPL-3.0.

@@ -1,197 +1,128 @@
 export const frontmatter = {
-  title: "Versioning",
-  description: "Learn how to evolve webhook payloads without breaking integrations."
+  title: "Payload Versioning",
+  description: "Evolve schemas safely and transform payloads per endpoint version."
 };
 
-# Versioning
+# Payload Versioning
 
-As your API evolves, your webhook payloads need to change too. Von's versioning system lets you make changes without breaking existing integrations.
+Evolve your webhook payloads without breaking existing integrations.
 
 <PageActions />
 
-## The Problem
+## How it works
 
-Without versioning, changing a webhook payload breaks all existing consumers:
+Webhook versions define transforms that modify payloads before delivery. Each endpoint can be pinned to a specific version, so consumers on older schemas keep receiving the format they expect while you ship new fields and structures.
+
+## Creating a version
+
+Versions are identified by a string (typically a date like `2025-01-15`). Each version contains transform mappings keyed by event type.
 
 ```typescript
-// v1: Original payload
-{ "line_items": [...] }
-
-// v2: Renamed field
-{ "items": [...] }  // ❌ Breaks existing integrations
-```
-
-## The Solution
-
-With Von versioning, each endpoint subscribes to a specific version. Von transforms payloads automatically:
-
-```
-Your App → Von → Transform → Endpoint
-(v2 payload)     (to v1)     (receives v1)
-```
-
-- New endpoints get the latest schema
-- Old endpoints continue receiving their subscribed version
-- No coordination required with your customers
-
-## Creating Versions
-
-Versions are identified by date strings (e.g., `2025-01-15`). Each version can define transforms for specific event types.
-
-<Row>
-  <Col>
-    ### Version Configuration
-
-    Each version specifies:
-    - **Version ID** - Date-based identifier
-    - **Event Type** - Which events to transform
-    - **Transforms** - How to modify the payload
-
-    ### Transform Types
-
-    - `rename` - Rename fields
-    - `remove` - Remove fields
-    - `defaults` - Add default values
-  </Col>
-  <Col sticky>
-```typescript
-import { Von } from "@usevon/sdk";
-
-const von = new Von({
-  apiKey: process.env.VON_API_KEY,
-});
-
-// Create a version with transforms
 await von.versions.post({
   version: "2025-01-15",
-  eventType: "order.created",
   transforms: {
-    rename: { line_items: "items" },
-    remove: ["legacy_id", "internal_notes"],
-    defaults: { api_version: "2025-01-15" },
+    "order.created": {
+      rename: { "line_items": "items" },
+      remove: ["internal_notes"],
+      defaults: { "api_version": "2025-01-15" },
+    },
+    "order.updated": {
+      remove: ["internal_notes"],
+    },
   },
 });
 ```
-  </Col>
-</Row>
 
-## Transform Examples
+## Transform operations
 
-### Renaming Fields
+Transforms are applied in order before the payload is signed and delivered:
 
-When you rename a field in your payload:
+1. **Remove** deletes specified top-level fields from the payload.
+2. **Rename** moves values from one key to another. Only applies if the source field exists.
+3. **Defaults** adds fields with default values, but only if the field is not already present.
 
-```typescript
-transforms: {
-  rename: {
-    line_items: "items",        // line_items → items
-    customer_id: "customerId",  // snake_case → camelCase
-  }
-}
-```
+<Properties>
+  <Property name="remove" type="string[]">
+    Top-level field names to delete from the payload.
+  </Property>
+  <Property name="rename" type="Record<string, string>">
+    Map of old field names to new field names. Values are moved, not copied.
+  </Property>
+  <Property name="defaults" type="Record<string, unknown>">
+    Fields to add with default values when not already present in the payload.
+  </Property>
+</Properties>
 
-**Input (v2):**
+## Example
+
+Given this payload:
+
 ```json
-{ "items": [...], "customerId": "cus_123" }
+{
+  "orderId": "order_123",
+  "line_items": [{ "sku": "A1", "qty": 2 }],
+  "internal_notes": "rush order",
+  "total": 99.99
+}
 ```
 
-**Output (v1):**
+With these transforms:
+
 ```json
-{ "line_items": [...], "customer_id": "cus_123" }
-```
-
-### Removing Fields
-
-When you add fields that old versions shouldn't receive:
-
-```typescript
-transforms: {
-  remove: ["internal_metadata", "debug_info"]
+{
+  "rename": { "line_items": "items" },
+  "remove": ["internal_notes"],
+  "defaults": { "currency": "usd" }
 }
 ```
 
-### Adding Defaults
+The delivered payload becomes:
 
-When old versions expect fields that new payloads don't include:
-
-```typescript
-transforms: {
-  defaults: {
-    api_version: "2024-01-01",
-    currency: "USD"
-  }
+```json
+{
+  "orderId": "order_123",
+  "items": [{ "sku": "A1", "qty": 2 }],
+  "total": 99.99,
+  "currency": "usd"
 }
 ```
 
-## Assigning Versions to Endpoints
+## Pinning an endpoint to a version
 
-Each endpoint can specify which version it wants:
+Set the `version` field when creating or updating an endpoint:
 
 ```typescript
-// Create endpoint with specific version
 await von.endpoints.post({
-  url: "https://customer.com/webhooks",
-  version: "2024-01-01",  // Will receive v1 payloads
-});
-
-// Update endpoint to new version
-await von.endpoints["ep_123"].patch({
-  version: "2025-01-15",  // Now receives v2 payloads
+  url: "https://partner-app.com/webhooks",
+  version: "2025-01-15",
 });
 ```
 
-## Version Lifecycle
+When Von delivers to this endpoint, it looks up the version's transforms for the event type and applies them before signing. Endpoints without a version receive the original payload.
 
-1. **Create new version** when your payload schema changes
-2. **New endpoints** default to the latest version
-3. **Existing endpoints** continue receiving their subscribed version
-4. **Customers migrate** by updating their endpoint's version
-5. **Deprecate old versions** after all customers have migrated
-
-## Managing Versions
+## Updating a version
 
 ```typescript
-// List all versions
-const { data: versions } = await von.versions.get();
-
-// Get a specific version
-const version = await von.versions["2025-01-15"].get();
-
-// Update transforms
 await von.versions["2025-01-15"].patch({
   transforms: {
-    rename: { new_field: "old_field" },
+    "order.created": {
+      rename: { "line_items": "items" },
+      remove: ["internal_notes", "debug_info"],
+      defaults: { "api_version": "2025-01-15" },
+    },
   },
 });
-
-// Delete a version (only if no endpoints use it)
-await von.versions["2024-01-01"].delete();
 ```
 
-## Best Practices
+## Listing versions
 
-<Row>
-  <Col>
-    ### Naming Conventions
+```typescript
+const { data } = await von.versions.get({
+  query: { limit: 20 },
+});
+```
 
-    Use date-based version IDs:
-    - `2025-01-15`
-    - `2025-06-01`
+## Caching
 
-    This makes it clear when versions were introduced and helps with ordering.
-  </Col>
-  <Col>
-    ### Migration Strategy
+Version transforms are cached in Redis with a 60-second TTL. After updating a version, it may take up to 60 seconds for changes to apply to new deliveries.
 
-    1. Announce new version to customers
-    2. Give migration window (30-90 days)
-    3. Provide migration guides
-    4. Monitor version usage in dashboard
-    5. Deprecate old versions
-  </Col>
-</Row>
-
-## Next Steps
-
-- [Sending Webhooks](/sending) - Send versioned webhooks
-- [TypeScript SDK](/sdk/typescript) - Full SDK reference

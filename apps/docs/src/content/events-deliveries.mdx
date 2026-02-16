@@ -1,0 +1,167 @@
+export const frontmatter = {
+  title: "Events & Deliveries",
+  description: "Send events, track delivery status, and replay failed deliveries."
+};
+
+# Events & Deliveries
+
+Send webhook events to your endpoints and track every delivery attempt.
+
+<PageActions />
+
+## Sending an event
+
+When you send an event, Von creates a delivery for every active endpoint that matches the event type.
+
+```typescript
+const { data: event } = await von.webhooks.post({
+  eventType: "order.created",
+  payload: {
+    orderId: "order_123",
+    amount: 99.99,
+    currency: "usd",
+  },
+});
+```
+
+## Targeting specific endpoints
+
+By default, Von delivers to all matching endpoints. Pass `endpointIds` to target specific ones:
+
+```typescript
+const { data: event } = await von.webhooks.post({
+  eventType: "order.created",
+  payload: { orderId: "order_123" },
+  endpointIds: ["ep_abc", "ep_def"],
+});
+```
+
+## Batch sending
+
+Send up to 100 events in a single request:
+
+```typescript
+const { data } = await von.webhooks.batch.post({
+  events: [
+    { eventType: "order.created", payload: { orderId: "1" } },
+    { eventType: "order.created", payload: { orderId: "2" } },
+    { eventType: "invoice.paid", payload: { invoiceId: "3" } },
+  ],
+});
+```
+
+The response includes `created` (the number of new events) and the full `events` array.
+
+## Idempotency
+
+### Event-level idempotency
+
+Use `idempotencyKey` to prevent duplicate events. If an event with the same key already exists in your organization, Von returns the existing event without creating new deliveries.
+
+```typescript
+const { data: event } = await von.webhooks.post({
+  eventType: "order.created",
+  payload: { orderId: "order_123" },
+  idempotencyKey: "order-123-created",
+});
+```
+
+### Request-level idempotency
+
+For any mutating request, include the `X-Idempotency-Key` header. Von caches the complete response in Redis for 5 minutes, so retrying the same request returns the original response.
+
+## Delivery statuses
+
+Each delivery tracks its state through the lifecycle:
+
+| Status | Description |
+| --- | --- |
+| `pending` | Awaiting delivery or currently retrying |
+| `delivered` | Endpoint responded with HTTP 2xx |
+| `failed` | All retry attempts exhausted |
+| `skipped` | Endpoint was disabled when delivery was attempted |
+| `paused` | Endpoint was paused |
+| `circuit_open` | Circuit breaker was open, delivery skipped |
+
+## Querying events
+
+List events with filtering and cursor-based pagination:
+
+```typescript
+const { data } = await von.webhooks.events.get({
+  query: {
+    eventTypes: ["order.*"],
+    from: "2025-01-01T00:00:00Z",
+    to: "2025-02-01T00:00:00Z",
+    sort: "desc",
+    limit: 50,
+  },
+});
+```
+
+Page through results using the cursor:
+
+```typescript
+const { data: nextPage } = await von.webhooks.events.get({
+  query: { cursor: data.nextCursor },
+});
+```
+
+## Viewing deliveries
+
+Get all deliveries for a specific event:
+
+```typescript
+const { data } = await von.webhooks.events["evt_xxx"].deliveries.get({
+  query: {
+    status: "failed",
+    endpointId: "ep_xxx",
+    limit: 50,
+  },
+});
+```
+
+Each delivery includes the number of attempts, the last attempt timestamp, and the response details (HTTP status code, duration, error message).
+
+## Replaying events
+
+### Single event replay
+
+Re-deliver an event to all its endpoints, or target specific ones:
+
+```typescript
+await von.webhooks.events["evt_xxx"].replay.post({
+  endpointIds: ["ep_abc"],
+});
+```
+
+### Bulk replay
+
+Re-deliver all failed deliveries since a given date:
+
+```typescript
+await von.webhooks.events.replay.post({
+  since: "2025-01-01T00:00:00Z",
+  status: "failed",
+  endpointId: "ep_xxx",
+});
+```
+
+Both `status` and `endpointId` are optional filters. Omit them to replay everything.
+
+## Delivery headers
+
+Every webhook delivery includes these headers:
+
+| Header | Description |
+| --- | --- |
+| `X-Von-Signature` | HMAC-SHA256 signature for verification |
+| `X-Von-Timestamp` | Unix timestamp when the signature was generated |
+| `X-Von-Event-Type` | The event type string |
+| `X-Von-Event-Id` | The event's unique ID |
+| `X-Von-Delivery-Id` | The delivery's unique ID |
+
+## Data retention
+
+Events and deliveries are automatically cleaned up after 90 days by default. This is configurable via `EVENT_RETENTION_DAYS` and `DELIVERY_RETENTION_DAYS` when self-hosting.
+

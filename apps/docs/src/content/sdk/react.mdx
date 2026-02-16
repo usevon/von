@@ -1,308 +1,193 @@
 export const frontmatter = {
   title: "React SDK",
-  description: "React hooks and provider for webhook management."
+  description: "Provider-based hooks for managing endpoints and events from React."
 };
 
 # React SDK
 
-The `@usevon/react` package provides React hooks and a context provider for managing webhooks in your React applications.
+SWR-powered hooks for fetching and managing Von resources in React applications.
 
 <PageActions />
 
 ## Installation
 
 <CodeGroup>
-  <CodeGroupTab title="npm" value="npm">
-```bash
-npm install @usevon/react
-```
-  </CodeGroupTab>
-  <CodeGroupTab title="pnpm" value="pnpm">
-```bash
-pnpm add @usevon/react
-```
-  </CodeGroupTab>
-  <CodeGroupTab title="bun" value="bun">
+  <CodeGroupTab title="bun">
 ```bash
 bun add @usevon/react
 ```
   </CodeGroupTab>
+  <CodeGroupTab title="npm">
+```bash
+npm install @usevon/react
+```
+  </CodeGroupTab>
+  <CodeGroupTab title="pnpm">
+```bash
+pnpm add @usevon/react
+```
+  </CodeGroupTab>
 </CodeGroup>
 
-## Quick Start
+## Provider setup
+
+Wrap your app with `VonProvider` to configure authentication and the API URL.
+
+### API key auth
+
+For applications using the SDK directly:
 
 ```tsx
 import { VonProvider } from "@usevon/react";
-import { useEndpoints } from "@usevon/react/hooks";
 
 function App() {
   return (
-    <VonProvider apiKey={process.env.NEXT_PUBLIC_VON_API_KEY}>
-      <EndpointsList />
+    <VonProvider apiUrl="https://api.usevon.com" apiKey="von_prod_xxx">
+      <Dashboard />
     </VonProvider>
   );
 }
+```
 
-function EndpointsList() {
-  const { endpoints, isLoading, error } = useEndpoints();
+### Session cookie auth
+
+For the Von dashboard or apps that share a session:
+
+```tsx
+<VonProvider apiUrl="/api" useSession>
+  <Dashboard />
+</VonProvider>
+```
+
+<Properties>
+  <Property name="apiUrl" type="string">
+    Base URL for API requests. Defaults to `"/api"`.
+  </Property>
+  <Property name="apiKey" type="string">
+    API key for Bearer token auth.
+  </Property>
+  <Property name="useSession" type="boolean">
+    Use cookie-based session auth instead of a Bearer token.
+  </Property>
+</Properties>
+
+## Hooks
+
+All hooks are imported from the `@usevon/react/hooks` subpath. They return SWR-based state with automatic caching and revalidation.
+
+### useEndpoints
+
+Fetches the list of outbound webhook endpoints.
+
+```tsx
+import { useEndpoints } from "@usevon/react/hooks";
+
+function EndpointList() {
+  const { endpoints, isLoading, refresh, mutate } = useEndpoints();
 
   if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <ul>
-      {endpoints.map((endpoint) => (
-        <li key={endpoint.id}>{endpoint.url}</li>
+      {endpoints.map((ep) => (
+        <li key={ep.id}>{ep.url}</li>
       ))}
     </ul>
   );
 }
 ```
 
-## VonProvider
+### useInbound
 
-Wrap your app with `VonProvider` to enable the hooks.
-
-<Properties>
-  <Property name="apiKey" type="string">
-    Von API key for SDK authentication. Use for client-side API calls.
-  </Property>
-  <Property name="apiUrl" type="string">
-    Base API URL. Defaults to `/api` for proxied requests.
-  </Property>
-  <Property name="useSession" type="boolean">
-    Use cookie-based session auth instead of API key. For dashboard apps.
-  </Property>
-</Properties>
-
-### With API Key
-
-```tsx
-<VonProvider apiKey="von_dev_xxx">
-  {children}
-</VonProvider>
-```
-
-### With Session Auth
-
-```tsx
-<VonProvider useSession>
-  {children}
-</VonProvider>
-```
-
-### With Custom API URL
-
-```tsx
-<VonProvider apiUrl="https://api.usevon.com" apiKey="von_prod_xxx">
-  {children}
-</VonProvider>
-```
-
-## useEndpoints
-
-Fetch and manage webhook endpoints. See [Sending Webhooks](/sending) for endpoint concepts.
-
-```tsx
-import { useEndpoints } from "@usevon/react/hooks";
-
-function EndpointsManager() {
-  const {
-    endpoints,     // Endpoint[]
-    isLoading,     // boolean - initial load
-    isRefreshing,  // boolean - background refresh
-    error,         // Error | null
-    refresh,       // () => void - manual refresh
-    mutate,        // SWR mutate for optimistic updates
-  } = useEndpoints();
-
-  return (
-    <div>
-      {endpoints.map((endpoint) => (
-        <div key={endpoint.id}>
-          <span>{endpoint.url}</span>
-          <span>{endpoint.status}</span>
-        </div>
-      ))}
-      <button onClick={refresh}>Refresh</button>
-    </div>
-  );
-}
-```
-
-### Endpoint Type
-
-```typescript
-type Endpoint = {
-  id: string;
-  url: string;
-  description: string | null;
-  secret: string;
-  status: "active" | "paused" | "disabled";
-  maxAttempts: number;
-  timeoutMs: number;
-  createdAt: string;
-  updatedAt: string;
-};
-```
-
-## useInbound
-
-Fetch and manage inbound webhook endpoints. See [Receiving Webhooks](/receiving) for inbound concepts.
+Fetches the list of inbound endpoints.
 
 ```tsx
 import { useInbound } from "@usevon/react/hooks";
 
-function InboundManager() {
-  const { endpoints, isLoading, error, refresh } = useInbound();
+function InboundList() {
+  const { endpoints, isLoading } = useInbound();
+
+  if (isLoading) return <div>Loading...</div>;
 
   return (
-    <div>
-      {endpoints.map((inbound) => (
-        <div key={inbound.id}>
-          <span>{inbound.name}</span>
-          <span>{inbound.provider}</span>
-          <span>{inbound.status}</span>
-        </div>
+    <ul>
+      {endpoints.map((ep) => (
+        <li key={ep.id}>{ep.name}: {ep.forwardUrl}</li>
       ))}
-    </div>
+    </ul>
   );
 }
 ```
 
-### InboundEndpoint Type
+### useWebhooks
 
-```typescript
-type InboundEndpoint = {
-  id: string;
-  name: string;
-  provider: string;
-  secret: string;
-  forwardUrl: string;
-  status: "active" | "paused" | "disabled";
-  createdAt: string;
-  updatedAt: string;
-};
-```
-
-## useWebhooks
-
-Fetch webhook events. See [Sending Webhooks](/sending) for event concepts.
+Fetches the list of webhook events.
 
 ```tsx
 import { useWebhooks } from "@usevon/react/hooks";
 
-function EventsList() {
-  const { events, isLoading, error, refresh } = useWebhooks();
+function EventLog() {
+  const { events, isLoading } = useWebhooks();
+
+  if (isLoading) return <div>Loading...</div>;
 
   return (
-    <div>
-      {events.map((event) => (
-        <div key={event.id}>
-          <span>{event.eventType}</span>
-          <time>{event.createdAt}</time>
-        </div>
+    <ul>
+      {events.map((evt) => (
+        <li key={evt.id}>{evt.eventType}</li>
       ))}
-    </div>
+    </ul>
   );
 }
 ```
 
-### WebhookEvent Type
+## Return values
 
-```typescript
-type WebhookEvent = {
-  id: string;
-  eventType: string;
-  payload: Record<string, unknown>;
-  idempotencyKey: string | null;
-  createdAt: string;
-};
-```
+All three hooks return the same shape:
 
-## Loading States
+| Property | Type | Description |
+| --- | --- | --- |
+| data array | `T[]` | The fetched items (`endpoints`, `events`, etc.) |
+| `nextCursor` | `string \| null` | Cursor for the next page |
+| `isLoading` | `boolean` | True during initial fetch |
+| `isRefreshing` | `boolean` | True during revalidation after initial load |
+| `error` | `Error \| undefined` | Fetch error if any |
+| `refresh` | `() => void` | Trigger SWR revalidation |
+| `mutate` | `KeyedMutator` | SWR mutate for optimistic updates |
 
-All hooks provide loading states for better UX:
+## Optimistic updates
+
+Use `mutate` for instant UI feedback:
 
 ```tsx
-function MyComponent() {
-  const { endpoints, isLoading, isRefreshing } = useEndpoints();
+const { endpoints, mutate } = useEndpoints();
 
-  if (isLoading) {
-    // Initial load - show skeleton
-    return <Skeleton />;
-  }
-
-  return (
-    <div>
-      {isRefreshing && <RefreshIndicator />}
-      {endpoints.map((e) => <EndpointCard key={e.id} endpoint={e} />)}
-    </div>
+async function pause(id: string) {
+  mutate(
+    { endpoints: endpoints.map((e) =>
+      e.id === id ? { ...e, status: "paused" } : e
+    ), nextCursor: null },
+    { revalidate: false }
   );
+
+  await fetch(`/api/endpoints/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "paused" }),
+  });
+
+  mutate();
 }
 ```
 
-## Error Handling
+## Custom hooks with createResource
+
+Build your own hooks using the `createResource` factory:
 
 ```tsx
-function MyComponent() {
-  const { endpoints, error, refresh } = useEndpoints();
+import { createResource } from "@usevon/react/hooks";
 
-  if (error) {
-    return (
-      <div>
-        <p>Failed to load: {error.message}</p>
-        <button onClick={refresh}>Retry</button>
-      </div>
-    );
-  }
-
-  return <EndpointsList endpoints={endpoints} />;
-}
+const useVersions = createResource("versions", "versions");
 ```
 
-## Optimistic Updates
+This creates a hook with the same return shape as the built-in hooks.
 
-Use `mutate` for optimistic updates with SWR:
-
-```tsx
-function EndpointToggle({ endpoint }) {
-  const { mutate } = useEndpoints();
-
-  const toggle = async () => {
-    // Optimistic update
-    mutate(
-      (endpoints) =>
-        endpoints.map((e) =>
-          e.id === endpoint.id ? { ...e, enabled: !e.enabled } : e
-        ),
-      { revalidate: false }
-    );
-
-    // API call
-    await von.endpoints[endpoint.id].patch({
-      status: endpoint.status === "active" ? "disabled" : "active",
-    });
-  };
-
-  return (
-    <button onClick={toggle}>
-      {endpoint.status === "active" ? "Disable" : "Enable"}
-    </button>
-  );
-}
-```
-
-## useVonContext
-
-Access the Von context directly:
-
-```tsx
-import { useVonContext } from "@usevon/react";
-
-function MyComponent() {
-  const { apiKey, apiUrl, useSession } = useVonContext();
-
-  return <div>Connected to: {apiUrl}</div>;
-}
-```
