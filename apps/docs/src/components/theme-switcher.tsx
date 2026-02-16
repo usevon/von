@@ -1,13 +1,13 @@
 "use client";
 
-import { MonitorIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
-import { cn } from "@usevon/ui";
+import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 const themes = [
-  { key: "system", icon: MonitorIcon, label: "System theme" },
+  { key: "system", icon: DesktopIcon, label: "System theme" },
   { key: "light", icon: SunIcon, label: "Light theme" },
   { key: "dark", icon: MoonIcon, label: "Dark theme" },
 ] as const;
@@ -21,33 +21,34 @@ export const ThemeSwitcher = () => {
   }, []);
 
   if (!mounted) {
-    return <div className="min-h-8 w-20 rounded-lg bg-secondary/50" />;
+    return <div className="h-9 w-[6.5rem] border border-border bg-muted/50" />;
   }
 
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded-lg bg-secondary/50 px-1">
+    <div className="flex w-fit h-9 items-center gap-0.5 border border-border bg-muted/50 p-0.5">
       {themes.map(({ key, icon: Icon, label }) => {
         const isActive = theme === key;
         return (
           <button
             aria-label={label}
-            className="relative flex size-6 cursor-pointer items-center justify-center rounded-md"
+            className="relative flex size-8 cursor-pointer items-center justify-center outline-none focus-visible:bg-accent"
             key={key}
             onClick={() => setTheme(key)}
             type="button"
           >
             {isActive ? (
               <motion.div
-                className="absolute inset-0 rounded-md bg-background shadow-sm"
+                className="absolute inset-0 border border-border bg-background"
                 layoutId="activeTheme"
                 transition={{ type: "spring", duration: 0.5 }}
               />
             ) : null}
             <Icon
               className={cn(
-                "relative z-10 size-4",
+                "relative z-10",
                 isActive ? "text-foreground" : "text-muted-foreground"
               )}
+              size={16}
             />
           </button>
         );

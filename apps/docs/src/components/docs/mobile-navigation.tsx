@@ -1,35 +1,70 @@
 "use client";
 
-import { ListIcon } from "@phosphor-icons/react";
+import { ListIcon, XIcon } from "@phosphor-icons/react";
 import {
   Button,
   Sheet,
-  SheetHeader,
+  SheetClose,
   SheetPanel,
   SheetPopup,
   SheetTitle,
   SheetTrigger,
 } from "@usevon/ui";
-
+import Link from "next/link";
+import { useState } from "react";
+import { appUrl, siteUrl } from "@/lib/urls";
 import { Navigation } from "./navigation";
 
-export const MobileNavigation = () => (
-  <Sheet>
-    <SheetTrigger
-      render={<Button className="lg:hidden" size="icon" variant="ghost" />}
-    >
-      <ListIcon className="size-4" />
-    </SheetTrigger>
-    <SheetPopup
-      className="w-80 bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_2%)] dark:bg-[color-mix(in_srgb,var(--color-background),white_2%)]"
-      side="left"
-    >
-      <SheetHeader>
-        <SheetTitle>Documentation</SheetTitle>
-      </SheetHeader>
-      <SheetPanel>
-        <Navigation />
-      </SheetPanel>
-    </SheetPopup>
-  </Sheet>
-);
+export const MobileNavigation = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger
+        render={<Button className="lg:hidden" size="icon-lg" variant="outline" />}
+      >
+        <ListIcon className="size-4" />
+      </SheetTrigger>
+      <SheetPopup showCloseButton={false} side="right">
+        <div className="flex h-16 items-center justify-between px-8 sm:px-12">
+          <SheetTitle>Navigation</SheetTitle>
+          <SheetClose render={<Button size="icon" variant="ghost" />}>
+            <XIcon />
+          </SheetClose>
+        </div>
+        <SheetPanel className="px-8 sm:px-12">
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    render={<Link href={siteUrl()} />}
+                    className="flex-1"
+                    size="lg"
+                    variant="outline"
+                  />
+                }
+              >
+                Website
+              </SheetClose>
+              <SheetClose
+                nativeButton={false}
+                render={
+                  <Button
+                    render={<Link href={appUrl()} />}
+                    className="flex-1"
+                    size="lg"
+                  />
+                }
+              >
+                Dashboard
+              </SheetClose>
+            </div>
+            <Navigation onNavigate={() => setOpen(false)} />
+          </div>
+        </SheetPanel>
+      </SheetPopup>
+    </Sheet>
+  );
+};

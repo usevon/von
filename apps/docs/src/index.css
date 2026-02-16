@@ -1,27 +1,10 @@
 @import "@usevon/ui/styles";
 
+html {
+  scroll-behavior: smooth;
+  overflow-y: scroll;
+}
+
 @theme inline {
   --font-sans: var(--font-familjen), sans-serif;
-}
-
-/* Code block wrapper */
-pre:has(code .sh__line) {
-  position: relative;
-  overflow-x: auto;
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-}
-
-/* Reset pre styling inside CodeGroup */
-[data-code-group] pre:has(code .sh__line) {
-  all: unset;
-  display: block;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
 }

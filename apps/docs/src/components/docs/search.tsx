@@ -87,7 +87,8 @@ export const Search = () => {
       <CommandDialogTrigger
         render={
           <Button
-            className="w-full justify-start gap-2 text-muted-foreground"
+            className="w-48 justify-start gap-2 text-muted-foreground"
+            size="lg"
             variant="outline"
           >
             <MagnifyingGlassIcon className="size-4" />

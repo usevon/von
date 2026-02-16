@@ -2,13 +2,13 @@
 
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import {
-  BRAND_ASSET_URLS,
   Button,
   ContextMenu,
   ContextMenuItem,
   ContextMenuPopup,
   ContextMenuTrigger,
 } from "@usevon/ui";
+import { BRAND_ASSET_URLS } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { appUrl, siteUrl } from "@/lib/urls";
@@ -16,29 +16,28 @@ import { MobileNavigation } from "./docs/mobile-navigation";
 import { Search } from "./docs/search";
 
 export const Header = () => (
-  <header className="sticky top-0 z-50 border-b bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_2%)] dark:bg-[color-mix(in_srgb,var(--color-background),white_2%)]">
-    <div className="flex h-14 items-center gap-4 px-4 sm:px-6 lg:px-8">
+  <header className="sticky top-0 z-50 border-border/80 border-b bg-[color-mix(in_srgb,var(--color-background),var(--color-foreground)_3%)] backdrop-blur-xl dark:bg-[color-mix(in_srgb,var(--color-background),white_4%)]">
+    <div className="flex h-16 items-center justify-between px-8 sm:px-12">
       <div className="flex items-center gap-4">
-        <MobileNavigation />
         <ContextMenu>
           <ContextMenuTrigger
             render={
               <Link
-                className="flex h-6 w-20 items-center no-underline"
+                className="flex h-7 w-20 items-center no-underline"
                 href="/"
               >
                 <Image
                   alt="Von"
-                  className="h-6 w-auto dark:hidden"
-                  height={24}
+                  className="h-7 w-auto dark:hidden"
+                  height={28}
                   priority
                   src={BRAND_ASSET_URLS.wordmarkBlackSvg}
                   width={80}
                 />
                 <Image
                   alt="Von"
-                  className="hidden h-6 w-auto dark:block"
-                  height={24}
+                  className="hidden h-7 w-auto dark:block"
+                  height={28}
                   priority
                   src={BRAND_ASSET_URLS.wordmarkWhiteSvg}
                   width={80}
@@ -80,12 +79,26 @@ export const Header = () => (
           </ContextMenuPopup>
         </ContextMenu>
       </div>
-      <div className="flex-1" />
+
       <div className="flex items-center gap-2">
         <Search />
-        <Button render={<Link href={appUrl()} />} size="sm" variant="default">
+        <Button
+          className="max-lg:hidden"
+          render={<Link href={siteUrl()} />}
+          size="lg"
+          variant="outline"
+        >
+          Website
+        </Button>
+        <Button
+          className="max-lg:hidden"
+          render={<Link href={appUrl()} />}
+          size="lg"
+          variant="default"
+        >
           Dashboard
         </Button>
+        <MobileNavigation />
       </div>
     </div>
   </header>

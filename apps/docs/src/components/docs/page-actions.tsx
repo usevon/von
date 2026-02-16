@@ -3,7 +3,6 @@
 import {
   ArrowSquareOutIcon,
   CaretDownIcon,
-  FileTextIcon,
 } from "@phosphor-icons/react";
 import { Button, Menu, MenuItem, MenuPopup, MenuTrigger } from "@usevon/ui";
 import { usePathname } from "next/navigation";
@@ -51,8 +50,8 @@ export const PageActions = () => {
         onClick={handleOpenMarkdown}
         variant="outline"
       >
-        <FileTextIcon className="size-4" />
         View as Markdown
+        <ArrowSquareOutIcon className="size-4" />
       </Button>
 
       <Menu>

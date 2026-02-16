@@ -6,11 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { navigation, topLinks } from "@/lib/navigation";
 
-// Flatten all navigation items into a single ordered list
+// Flatten all navigation items into a single ordered list, excluding external links
 const allPages = [
   ...topLinks,
   ...navigation.flatMap((section) => section.items),
-];
+].filter((page) => !page.external);
 
 export const Pagination = () => {
   const pathname = usePathname();

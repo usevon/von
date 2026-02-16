@@ -1,33 +1,24 @@
 "use client";
 
-import {
-  BRAND_ASSET_URLS,
-  Button,
-  DiscordIcon,
-  GitHubIcon,
-  TextHoverEffect,
-} from "@usevon/ui";
+import { Button, TextHoverEffect } from "@usevon/ui";
+import { BRAND_ASSET_URLS } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { siteUrl } from "@/lib/urls";
 import { ThemeSwitcher } from "./theme-switcher";
 
 const footerLinks = {
-  explore: [
-    { label: "Startups", href: siteUrl("/startups") },
-    { label: "Developers", href: siteUrl("/developers") },
-    { label: "Open Source", href: siteUrl("/open-source") },
-  ],
   resources: [
     { label: "Contact", href: siteUrl("/contact") },
     { label: "Blog", href: siteUrl("/blog") },
     { label: "Pricing", href: siteUrl("/pricing") },
+    { label: "Brand", href: siteUrl("/brand") },
   ],
   documentation: [
     { label: "Home", href: "/" },
-    { label: "Getting Started", href: "/getting-started" },
-    { label: "Guides", href: "/guides" },
-    { label: "API Reference", href: "/api" },
+    { label: "Quick Start", href: "/getting-started" },
+    { label: "Endpoints", href: "/endpoints" },
+    { label: "TypeScript SDK", href: "/sdk/typescript" },
   ],
   legal: [
     { label: "Privacy Policy", href: siteUrl("/privacy-policy") },
@@ -37,142 +28,72 @@ const footerLinks = {
   ],
 };
 
+const columns = Object.entries(footerLinks).map(([title, links]) => ({
+  title: title.charAt(0).toUpperCase() + title.slice(1),
+  links,
+}));
+
 export const Footer = () => (
-  <footer className="bg-foreground/[0.02] dark:bg-white/[0.02]">
-    <div className="px-4 pt-16 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
-        <div className="col-span-2 sm:col-span-1">
-          <Link href={siteUrl()}>
-            <Image
-              alt="Von"
-              className="size-6 dark:hidden"
-              height={24}
-              src={BRAND_ASSET_URLS.iconBlackSvg}
-              width={24}
-            />
-            <Image
-              alt="Von"
-              className="hidden size-6 dark:block"
-              height={24}
-              src={BRAND_ASSET_URLS.iconWhiteSvg}
-              width={24}
-            />
-          </Link>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-            Explore
-          </h3>
-          <ul className="mt-4 flex flex-col items-start">
-            {footerLinks.explore.map((link) => (
-              <li key={link.href}>
-                <Button
-                  className="-ml-3 text-foreground"
-                  render={<Link href={link.href} />}
-                  variant="ghost"
-                >
-                  {link.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-            Resources
-          </h3>
-          <ul className="mt-4 flex flex-col items-start">
-            {footerLinks.resources.map((link) => (
-              <li key={link.href}>
-                <Button
-                  className="-ml-3 text-foreground"
-                  render={<Link href={link.href} />}
-                  variant="ghost"
-                >
-                  {link.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-            Documentation
-          </h3>
-          <ul className="mt-4 flex flex-col items-start">
-            {footerLinks.documentation.map((link) => (
-              <li key={link.href}>
-                <Button
-                  className="-ml-3 text-foreground"
-                  render={<Link href={link.href} />}
-                  variant="ghost"
-                >
-                  {link.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
-            Legal
-          </h3>
-          <ul className="mt-4 flex flex-col items-start">
-            {footerLinks.legal.map((link) => (
-              <li key={link.href}>
-                <Button
-                  className="-ml-3 text-foreground"
-                  render={<Link href={link.href} />}
-                  variant="ghost"
-                >
-                  {link.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
+  <footer className="border-border border-t">
+    <div className="grid grid-cols-1 gap-16 p-8 sm:p-12 md:grid-cols-[auto_1fr]">
+      <div className="flex flex-col gap-4">
+        <Link className="mt-0.5 flex h-7 w-20 items-center" href={siteUrl()}>
+          <Image
+            alt="Von"
+            className="h-7 w-auto dark:hidden"
+            height={28}
+            priority
+            src={BRAND_ASSET_URLS.iconBlackSvg}
+            width={28}
+          />
+          <Image
+            alt="Von"
+            className="hidden h-7 w-auto dark:block"
+            height={28}
+            priority
+            src={BRAND_ASSET_URLS.iconWhiteSvg}
+            width={28}
+          />
+        </Link>
+        <ThemeSwitcher />
+        <div className="mt-auto">
+          <p className="text-muted-foreground text-xs">
+            &copy; USEVON LLC 2025
+          </p>
+          <p className="text-muted-foreground text-xs">All rights reserved</p>
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-border border-t py-4">
-        <Button
-          className="w-fit gap-2 text-muted-foreground hover:text-foreground"
-          render={<Link href="https://status.usevon.com" target="_blank" />}
-          variant="ghost"
-        >
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-green-500" />
-          </span>
-          All systems normal
-        </Button>
-        <div className="flex items-center gap-2">
-          <Button
-            className="text-muted-foreground hover:text-foreground"
-            render={
-              <Link href="https://github.com/usevon/von" target="_blank" />
-            }
-            size="icon-sm"
-            variant="ghost"
-          >
-            <GitHubIcon className="size-4" />
-          </Button>
-          <Button
-            className="text-muted-foreground hover:text-foreground"
-            render={<Link href="https://discord.gg/usevon" target="_blank" />}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <DiscordIcon className="size-4" />
-          </Button>
-          <ThemeSwitcher />
-        </div>
+      <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
+        {columns.map((column) => (
+          <div className="flex flex-col gap-1" key={column.title}>
+            <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+              {column.title}
+            </p>
+            <ul className="flex flex-col">
+              {column.links.map((link) => (
+                <li key={link.label}>
+                  <Button
+                    className="-ml-4 text-foreground"
+                    render={<Link href={link.href} />}
+                    size="xl"
+                    variant="ghost"
+                  >
+                    {link.label}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
+    </div>
 
-      <TextHoverEffect className="h-32 w-full sm:h-40 lg:h-48" text="VON" />
+    <div className="flex h-52 items-center justify-center overflow-hidden sm:h-64 lg:h-72">
+      <TextHoverEffect
+        className="text-[clamp(8rem,28vw,22rem)]"
+        text="VON"
+      />
     </div>
   </footer>
 );

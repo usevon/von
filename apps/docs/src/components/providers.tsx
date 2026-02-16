@@ -1,5 +1,6 @@
 "use client";
 
+import { AnchoredToastProvider, ToastProvider } from "@usevon/ui";
 import { ThemeProvider } from "next-themes";
 
 type ProvidersProps = {
@@ -13,6 +14,8 @@ export const Providers = (props: ProvidersProps) => (
     disableTransitionOnChange
     enableSystem
   >
-    {props.children}
+    <ToastProvider>
+      <AnchoredToastProvider>{props.children}</AnchoredToastProvider>
+    </ToastProvider>
   </ThemeProvider>
 );

@@ -14,7 +14,7 @@ export default function ErrorPage(props: ErrorProps) {
   }, [props.error]);
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center px-6 py-16">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <ErrorIllustration left="5" right="0" />
       <div className="mt-8 flex flex-col items-center gap-4 text-center">
         <h1 className="font-semibold text-2xl text-foreground sm:text-3xl">

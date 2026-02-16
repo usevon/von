@@ -4,9 +4,9 @@ import { Familjen_Grotesk } from "next/font/google";
 
 import "@/index.css";
 import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
 import { Providers } from "@/components/providers";
 import { ScrollReset } from "@/components/scroll-reset";
-import { Sidebar } from "@/components/sidebar";
 
 const familjen = Familjen_Grotesk({
   variable: "--font-familjen",
@@ -36,15 +36,15 @@ export default function RootLayout(props: RootLayoutProps) {
           trackWebVitals
         />
         <Providers>
-          <div className="flex min-h-svh flex-col">
-            <Sidebar />
-            <main className="h-svh overflow-y-auto lg:ml-64">
-              <ScrollReset />
-              <div className="flex min-h-svh flex-col px-4 pt-6 pb-10 sm:px-6 lg:px-6">
-                {props.children}
+          <div className="bg-background text-foreground">
+            <div className="mx-auto w-full max-w-304">
+              <div className="border-border border-x">
+                <ScrollReset />
+                <Header />
+                <main className="min-w-0">{props.children}</main>
+                <Footer />
               </div>
-              <Footer />
-            </main>
+            </div>
           </div>
         </Providers>
       </body>

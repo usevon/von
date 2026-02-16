@@ -1,76 +1,82 @@
 "use client";
 
 import {
-  BookOpenIcon,
   CodeIcon,
   HouseIcon,
   KeyIcon,
   RocketLaunchIcon,
 } from "@phosphor-icons/react";
-import { cn, TabsPrimitive as Tabs } from "@usevon/ui";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+import { TabsPrimitive as Tabs } from "@usevon/ui";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { navigation, topLinks } from "@/lib/navigation";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   house: HouseIcon,
   "rocket-launch": RocketLaunchIcon,
-  "book-open": BookOpenIcon,
   code: CodeIcon,
   key: KeyIcon,
 };
 
 const isPathActive = (pathname: string, href: string) => {
-  if (href === "/") {
-    return pathname === "/";
-  }
+  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
 const findActiveHref = (pathname: string) => {
   for (const link of topLinks) {
-    if (isPathActive(pathname, link.href)) {
-      return link.href;
-    }
+    if (isPathActive(pathname, link.href)) return link.href;
   }
   for (const section of navigation) {
     for (const item of section.items) {
-      if (isPathActive(pathname, item.href)) {
-        return item.href;
-      }
+      if (isPathActive(pathname, item.href)) return item.href;
     }
   }
   return null;
 };
 
-export const Navigation = () => {
+const tabClass = cn(
+  "relative z-10 flex h-9 w-full cursor-pointer items-center justify-start gap-2 rounded-none px-3 font-medium text-sm outline-none sm:h-8",
+  "text-muted-foreground hover:bg-accent hover:text-foreground",
+  "data-[active]:text-foreground"
+);
+
+export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => {
   const pathname = usePathname();
   const router = useRouter();
-
   const activeHref = findActiveHref(pathname);
+  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+
+  // Clear optimistic value once the real pathname catches up
+  useEffect(() => {
+    setOptimisticHref(null);
+  }, [pathname]);
+
+  const displayValue = optimisticHref ?? activeHref;
 
   return (
     <Tabs.Root
       className="flex flex-col"
-      onValueChange={(value) => router.push(value as string)}
+      onValueChange={(value) => {
+        const next = value as string;
+        setOptimisticHref(next);
+        router.push(next);
+        onNavigate?.();
+      }}
       orientation="vertical"
-      value={activeHref}
+      value={displayValue}
     >
-      <Tabs.List className="relative flex flex-col gap-y-4">
+      <Tabs.List className="relative flex flex-col gap-y-3">
         {/* Top links */}
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5">
           {topLinks.map((link) => {
             const Icon = link.icon ? iconMap[link.icon] : null;
             return (
-              <Tabs.Tab
-                className={cn(
-                  "flex h-8 w-full cursor-pointer items-center justify-start gap-2 rounded-md px-3 font-medium text-sm outline-none",
-                  "text-muted-foreground hover:text-foreground",
-                  "data-[active]:text-foreground"
-                )}
-                key={link.href}
-                value={link.href}
-              >
+              <Tabs.Tab className={tabClass} key={link.href} value={link.href}>
                 {Icon ? <Icon className="size-4" /> : null}
                 {link.title}
               </Tabs.Tab>
@@ -80,30 +86,40 @@ export const Navigation = () => {
 
         {/* Sections */}
         {navigation.map((section) => (
-          <div className="flex flex-col gap-2" key={section.title}>
-            <h4 className="px-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+          <div className="flex flex-col gap-1" key={section.title}>
+            <p className="px-3 font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
               {section.title}
-            </h4>
-            <div className="flex flex-col">
-              {section.items.map((item) => (
-                <Tabs.Tab
-                  className={cn(
-                    "flex h-8 w-full cursor-pointer items-center justify-start rounded-md px-3 font-medium text-sm outline-none",
-                    "text-muted-foreground hover:text-foreground data-[active]:text-foreground"
-                  )}
-                  key={item.href}
-                  value={item.href}
-                >
-                  {item.title}
-                </Tabs.Tab>
-              ))}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {section.items.map((item) =>
+                item.external ? (
+                  <Link
+                    className={cn(
+                      "relative z-10 flex h-9 w-full items-center justify-start gap-2 rounded-none px-3 font-medium text-sm sm:h-8",
+                      "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => onNavigate?.()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.title}
+                    <ArrowSquareOutIcon className="size-3.5 text-muted-foreground/60" />
+                  </Link>
+                ) : (
+                  <Tabs.Tab className={tabClass} key={item.href} value={item.href}>
+                    {item.title}
+                  </Tabs.Tab>
+                )
+              )}
             </div>
           </div>
         ))}
 
-        {/* Single sliding background indicator */}
+        {/* Sliding indicator — smooth surface */}
         <Tabs.Indicator
-          className="absolute top-0 left-0 -z-1 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-md bg-secondary transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+          className="absolute top-0 left-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-none bg-accent transition-[width,translate] duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
           renderBeforeHydration
         />
       </Tabs.List>
