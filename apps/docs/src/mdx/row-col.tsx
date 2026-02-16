@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@usevon/ui";
+import { cn } from "@/lib/utils";
 
 type RowProps = {
   children: React.ReactNode;

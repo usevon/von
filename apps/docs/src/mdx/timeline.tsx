@@ -17,7 +17,7 @@ export const Timeline = (props: TimelineProps) => {
           {/* Vertical line connecting circles */}
           {index !== children.length - 1 && (
             <Separator
-              className="absolute top-6 left-[11px] h-[calc(100%+2rem)]"
+              className="absolute top-6 left-2.75 h-[calc(100%+2rem)]"
               orientation="vertical"
             />
           )}

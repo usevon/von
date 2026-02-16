@@ -2,49 +2,33 @@
 
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
 import { Button, Tabs, TabsList, TabsPanel, TabsTab } from "@usevon/ui";
-import { Children, isValidElement, type ReactNode, useState } from "react";
-
-const getTextContent = (node: ReactNode): string => {
-  if (typeof node === "string") {
-    return node;
-  }
-  if (typeof node === "number") {
-    return String(node);
-  }
-  if (!node) {
-    return "";
-  }
-  if (Array.isArray(node)) {
-    return node.map(getTextContent).join("");
-  }
-  if (isValidElement(node)) {
-    return getTextContent((node.props as { children?: ReactNode }).children);
-  }
-  return "";
-};
+import { Children, isValidElement, type ReactNode, useRef, useState } from "react";
+import { CodeBlockInGroupContext } from "@/components/code-block";
 
 export const CodeGroup = (props: { children: ReactNode }) => {
   const [selected, setSelected] = useState("0");
   const [copied, setCopied] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const children = Children.toArray(props.children).filter(isValidElement);
   const tabs = children.map(
     (c, i) => (c.props as { title?: string }).title || `Tab ${i + 1}`
   );
-  const code = getTextContent(children[Number(selected)]);
 
   const copy = () => {
-    navigator.clipboard.writeText(code);
+    const panel = contentRef.current?.querySelector("[data-state=open]");
+    const text = panel?.textContent ?? "";
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div
-      className="my-6 overflow-hidden rounded-xl border border-border bg-muted"
+      className="my-6 overflow-hidden border border-[#dde1e6] bg-[#eff1f4] dark:border-white/14 dark:bg-white/8"
       data-code-group=""
     >
       <Tabs className="gap-0" onValueChange={setSelected} value={selected}>
-        <div className="flex items-center justify-between border-b px-2">
+        <div className="flex h-10 items-center justify-between border-b border-[#dde1e6] pl-2 pr-1 dark:border-white/14">
           <TabsList variant="underline">
             {tabs.map((t, i) => (
               <TabsTab key={i} value={String(i)}>
@@ -53,24 +37,41 @@ export const CodeGroup = (props: { children: ReactNode }) => {
             ))}
           </TabsList>
           <Button
-            className="opacity-70 hover:opacity-100"
+            className="relative opacity-70 hover:opacity-100 `[:active,[data-pressed]]:scale-[0.97]!"
             onClick={copy}
-            size="icon"
+            size="icon-sm"
             variant="ghost"
           >
-            {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
+            <CopyIcon
+              className="absolute transition-[opacity,filter] duration-200"
+              style={{
+                opacity: copied ? 0 : 1,
+                filter: copied ? "blur(2px)" : "blur(0px)",
+              }}
+            />
+            <CheckIcon
+              className="absolute text-primary transition-[opacity,filter] duration-200"
+              style={{
+                opacity: copied ? 1 : 0,
+                filter: copied ? "blur(0px)" : "blur(2px)",
+              }}
+            />
           </Button>
         </div>
-        {children.map((child, i) => (
-          <TabsPanel key={i} value={String(i)}>
-            <div className="px-4 py-3">{child}</div>
-          </TabsPanel>
-        ))}
+        <div ref={contentRef}>
+          {children.map((child, i) => (
+            <TabsPanel key={i} value={String(i)}>
+              <CodeBlockInGroupContext.Provider value>
+                {child}
+              </CodeBlockInGroupContext.Provider>
+            </TabsPanel>
+          ))}
+        </div>
       </Tabs>
     </div>
   );
 };
 
 export const CodeGroupTab = (props: { title: string; children: ReactNode }) => (
-  <>{props.children}</>
+  <>{Children.toArray(props.children).filter(isValidElement)}</>
 );

@@ -1,7 +1,7 @@
 import type { MDXComponents } from "mdx/types";
 import { isValidElement, type ReactNode } from "react";
 
-import { CopyButton } from "@/components/copy-button";
+import { CodeBlock } from "@/components/code-block";
 import { PageActions } from "@/components/docs/page-actions";
 import { CodeGroup, CodeGroupTab } from "@/mdx/code-group";
 import {
@@ -57,15 +57,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Timeline,
     TimelineItem,
     PageActions,
-    pre: (props: React.ComponentPropsWithoutRef<"pre">) => {
-      const code = getTextContent(props.children);
-      return (
-        <div className="group relative">
-          {code ? <CopyButton value={code} /> : null}
-          <pre {...props} />
-        </div>
-      );
-    },
+    pre: CodeBlock,
     code: (props: React.ComponentPropsWithoutRef<"code">) => {
       const isInline = typeof props.children === "string" && !props.className;
       return isInline ? <InlineCode {...props} /> : <code {...props} />;
