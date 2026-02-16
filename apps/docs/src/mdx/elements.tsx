@@ -84,6 +84,6 @@ export const Strong = (props: React.ComponentPropsWithoutRef<"strong">) => (
 export const InlineCode = (props: React.ComponentPropsWithoutRef<"code">) => (
   <code
     {...props}
-    className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm"
+    className="rounded-none bg-muted px-1.5 py-0.5 font-mono text-sm"
   />
 );

@@ -1,3 +1,5 @@
+import { Badge } from "@usevon/ui";
+
 type PropertiesProps = {
   children: React.ReactNode;
 };
@@ -18,14 +20,16 @@ type PropertyProps = {
 export const Property = (props: PropertyProps) => (
   <div className="flex flex-col gap-2 p-4">
     <div className="flex items-center gap-2">
-      <code className="bg-muted px-1.5 py-0.5 font-mono text-sm">
+      <Badge className="rounded-none font-mono" size="lg" variant="secondary">
         {props.name}
-      </code>
-      <span className="text-muted-foreground text-xs">{props.type}</span>
+      </Badge>
+      <Badge className="rounded-none" size="lg" variant="outline">
+        {props.type}
+      </Badge>
       {props.required ? (
-        <span className="bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive text-xs">
+        <Badge className="rounded-none" size="lg" variant="error">
           required
-        </span>
+        </Badge>
       ) : null}
     </div>
     <div className="text-muted-foreground text-sm">{props.children}</div>
