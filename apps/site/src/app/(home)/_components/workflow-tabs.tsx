@@ -1,4 +1,6 @@
-import { Tabs } from "@base-ui/react/tabs";
+"use client";
+
+import { TabsPrimitive as Tabs } from "@usevon/ui";
 import { cn } from "@/lib/utils";
 import { Code } from "@/components/code";
 import { Wallpaper } from "@/components/wallpaper";
