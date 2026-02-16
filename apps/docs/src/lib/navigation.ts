@@ -1,7 +1,6 @@
 export type NavLink = {
   title: string;
   href: string;
-  icon?: string;
   external?: boolean;
 };
 
@@ -11,7 +10,7 @@ export type NavSection = {
 };
 
 export const topLinks: NavLink[] = [
-  { title: "Home", href: "/", icon: "house" },
+  { title: "Home", href: "/" },
 ];
 
 export const navigation: NavSection[] = [

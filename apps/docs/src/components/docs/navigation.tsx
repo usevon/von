@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  CodeIcon,
-  HouseIcon,
-  KeyIcon,
-  RocketLaunchIcon,
-} from "@phosphor-icons/react";
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { TabsPrimitive as Tabs } from "@usevon/ui";
 import { cn } from "@/lib/utils";
@@ -14,13 +8,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { navigation, topLinks } from "@/lib/navigation";
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  house: HouseIcon,
-  "rocket-launch": RocketLaunchIcon,
-  code: CodeIcon,
-  key: KeyIcon,
-};
 
 const isPathActive = (pathname: string, href: string) => {
   if (href === "/") return pathname === "/";
@@ -51,7 +38,6 @@ export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => 
   const activeHref = findActiveHref(pathname);
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
 
-  // Clear optimistic value once the real pathname catches up
   useEffect(() => {
     setOptimisticHref(null);
   }, [pathname]);
@@ -71,20 +57,14 @@ export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => 
       value={displayValue}
     >
       <Tabs.List className="relative flex flex-col gap-y-3">
-        {/* Top links */}
         <div className="flex flex-col gap-0.5">
-          {topLinks.map((link) => {
-            const Icon = link.icon ? iconMap[link.icon] : null;
-            return (
-              <Tabs.Tab className={tabClass} key={link.href} value={link.href}>
-                {Icon ? <Icon className="size-4" /> : null}
-                {link.title}
-              </Tabs.Tab>
-            );
-          })}
+          {topLinks.map((link) => (
+            <Tabs.Tab className={tabClass} key={link.href} value={link.href}>
+              {link.title}
+            </Tabs.Tab>
+          ))}
         </div>
 
-        {/* Sections */}
         {navigation.map((section) => (
           <div className="flex flex-col gap-1" key={section.title}>
             <p className="px-3 font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
@@ -117,7 +97,6 @@ export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => 
           </div>
         ))}
 
-        {/* Sliding indicator — smooth surface */}
         <Tabs.Indicator
           className="absolute top-0 left-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-none bg-accent transition-[width,translate] duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
           renderBeforeHydration
