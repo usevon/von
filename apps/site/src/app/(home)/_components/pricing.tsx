@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { plans, PlanCard } from "@/components/plan-card";
+import { PlanCard } from "@/components/plan-card";
+import { plans } from "@/lib/plans";
 
 export function Pricing() {
   return (

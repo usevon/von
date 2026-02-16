@@ -29,7 +29,10 @@ export function WorkflowTabs() {
             {step.label}
           </Tabs.Tab>
         ))}
-        <Tabs.Indicator className="absolute top-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) bg-accent transition-[width,translate] duration-200 ease-in-out" />
+        <Tabs.Indicator
+          renderBeforeHydration
+          className="absolute top-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) bg-accent transition-[width,translate] duration-200 ease-in-out"
+        />
       </Tabs.List>
 
       <Wallpaper className="h-140 sm:h-160">

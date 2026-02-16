@@ -90,7 +90,12 @@ export function Footer() {
             </div>
           </div>
 
-      <TextHoverEffect className="w-full" text="VON" viewBox="0 0 160 40" />
+      <div className="flex h-52 items-center justify-center overflow-hidden sm:h-64 lg:h-72">
+        <TextHoverEffect
+          className="text-[clamp(8rem,28vw,22rem)]"
+          text="VON"
+        />
+      </div>
     </footer>
   );
 }

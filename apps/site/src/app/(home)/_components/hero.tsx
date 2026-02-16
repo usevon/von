@@ -31,7 +31,7 @@ function HeroGrid() {
               style={
                 fill
                   ? {
-                    backgroundColor: `hsl(var(--wallpaper-h4) var(--wallpaper-s4) var(--wallpaper-l4) / ${fill / 100})`,
+                    backgroundColor: `color-mix(in srgb, var(--wallpaper-4) ${fill}%, transparent)`,
                     }
                   : undefined
               }

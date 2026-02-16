@@ -8,50 +8,63 @@ type WallpaperProps = {
   className?: string;
 };
 
-type GradientColors = {
-  h1: number;
-  s1: string;
-  l1: string;
-  h2: number;
-  s2: string;
-  l2: string;
-  h3: number;
-  s3: string;
-  l3: string;
-  s4: string;
-  l4: string;
-  s5: string;
-  l5: string;
+type GradientStop = {
+  offset: number;
+  h: number;
+  s: number;
+  l: number;
+  /** Multiplier for the animated hue shift (0 = no shift) */
+  hueShiftScale: number;
 };
 
-const getColors = (): GradientColors => {
-  const style = getComputedStyle(document.documentElement);
-  const get = (name: string) => style.getPropertyValue(name).trim();
+const LIGHT_STOPS: GradientStop[] = [
+  { offset: 0, h: 220, s: 60, l: 18, hueShiftScale: 1 },
+  { offset: 0.5, h: 210, s: 55, l: 28, hueShiftScale: 0.8 },
+  { offset: 0.7, h: 200, s: 45, l: 45, hueShiftScale: 0.5 },
+  { offset: 0.85, h: 205, s: 50, l: 55, hueShiftScale: 0 },
+  { offset: 1, h: 210, s: 55, l: 60, hueShiftScale: 0 },
+];
 
-  return {
-    h1: Number.parseFloat(get("--wallpaper-h1")) || 220,
-    s1: get("--wallpaper-s1") || "60%",
-    l1: get("--wallpaper-l1") || "18%",
-    h2: Number.parseFloat(get("--wallpaper-h2")) || 210,
-    s2: get("--wallpaper-s2") || "55%",
-    l2: get("--wallpaper-l2") || "28%",
-    h3: Number.parseFloat(get("--wallpaper-h3")) || 200,
-    s3: get("--wallpaper-s3") || "45%",
-    l3: get("--wallpaper-l3") || "45%",
-    s4: get("--wallpaper-s4") || "50%",
-    l4: get("--wallpaper-l4") || "55%",
-    s5: get("--wallpaper-s5") || "55%",
-    l5: get("--wallpaper-l5") || "60%",
-  };
-};
+const DARK_STOPS: GradientStop[] = [
+  { offset: 0, h: 220, s: 60, l: 32, hueShiftScale: 1 },
+  { offset: 0.5, h: 210, s: 55, l: 38, hueShiftScale: 0.8 },
+  { offset: 0.7, h: 200, s: 45, l: 45, hueShiftScale: 0.5 },
+  { offset: 0.85, h: 205, s: 50, l: 50, hueShiftScale: 0 },
+  { offset: 1, h: 210, s: 55, l: 55, hueShiftScale: 0 },
+];
+
+function isDarkMode() {
+  return document.documentElement.classList.contains("dark");
+}
 
 export const Wallpaper = (props: WallpaperProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const colorsRef = useRef<GradientColors>(null);
+  const stopsRef = useRef<GradientStop[]>(
+    typeof document !== "undefined" && isDarkMode() ? DARK_STOPS : LIGHT_STOPS,
+  );
+
   const hueShift = useMotionValue(0);
 
-  const refreshColors = useCallback(() => {
-    colorsRef.current = getColors();
+  // Animated lightness values for smooth theme transitions
+  const animatedLightness = useRef(
+    stopsRef.current.map((s) => ({ value: s.l })),
+  );
+
+  const refreshStops = useCallback(() => {
+    const target = isDarkMode() ? DARK_STOPS : LIGHT_STOPS;
+    stopsRef.current = target;
+
+    // Animate each stop's lightness to its new value
+    for (let i = 0; i < target.length; i++) {
+      const ref = animatedLightness.current[i];
+      animate(ref.value, target[i].l, {
+        duration: 0.5,
+        ease: "easeInOut",
+        onUpdate: (v) => {
+          ref.value = v;
+        },
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -66,16 +79,13 @@ export const Wallpaper = (props: WallpaperProps) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
+    if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return;
-    }
+    if (!ctx) return;
 
-    refreshColors();
+    // Sync initial state
+    refreshStops();
 
     const updateCanvasSize = () => {
       const rect = canvas.parentElement?.getBoundingClientRect();
@@ -92,7 +102,7 @@ export const Wallpaper = (props: WallpaperProps) => {
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.attributeName === "class") {
-          refreshColors();
+          refreshStops();
         }
       }
     });
@@ -101,29 +111,18 @@ export const Wallpaper = (props: WallpaperProps) => {
     let animationFrame: number;
 
     const render = () => {
-      const colors = colorsRef.current;
-      if (!colors) {
-        animationFrame = requestAnimationFrame(render);
-        return;
-      }
-
+      const stops = stopsRef.current;
       const shift = hueShift.get();
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
 
-      gradient.addColorStop(
-        0,
-        `hsl(${colors.h1 + shift}, ${colors.s1}, ${colors.l1})`
-      );
-      gradient.addColorStop(
-        0.5,
-        `hsl(${colors.h2 + shift * 0.8}, ${colors.s2}, ${colors.l2})`
-      );
-      gradient.addColorStop(
-        0.7,
-        `hsl(${colors.h3 + shift * 0.5}, ${colors.s3}, ${colors.l3})`
-      );
-      gradient.addColorStop(0.85, `hsl(205, ${colors.s4}, ${colors.l4})`);
-      gradient.addColorStop(1, `hsl(210, ${colors.s5}, ${colors.l5})`);
+      for (let i = 0; i < stops.length; i++) {
+        const stop = stops[i];
+        const l = animatedLightness.current[i].value;
+        gradient.addColorStop(
+          stop.offset,
+          `hsl(${stop.h + shift * stop.hueShiftScale}, ${stop.s}%, ${l}%)`,
+        );
+      }
 
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -151,18 +150,18 @@ export const Wallpaper = (props: WallpaperProps) => {
       observer.disconnect();
       cancelAnimationFrame(animationFrame);
     };
-  }, [hueShift, refreshColors]);
+  }, [hueShift, refreshStops]);
 
   return (
     <div
       className={`relative overflow-hidden ${props.className ?? ""}`}
       style={{
         background: `linear-gradient(to bottom,
-          hsl(var(--wallpaper-h1), var(--wallpaper-s1), var(--wallpaper-l1)) 0%,
-          hsl(var(--wallpaper-h2), var(--wallpaper-s2), var(--wallpaper-l2)) 50%,
-          hsl(var(--wallpaper-h3), var(--wallpaper-s3), var(--wallpaper-l3)) 70%,
-          hsl(205, var(--wallpaper-s4), var(--wallpaper-l4)) 85%,
-          hsl(210, var(--wallpaper-s5), var(--wallpaper-l5)) 100%)`,
+          var(--wallpaper-1) 0%,
+          var(--wallpaper-2) 50%,
+          var(--wallpaper-3) 70%,
+          var(--wallpaper-4) 85%,
+          var(--wallpaper-5) 100%)`,
       }}
     >
       <canvas

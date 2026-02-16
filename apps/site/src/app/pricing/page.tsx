@@ -13,7 +13,8 @@ import {
 } from "@usevon/ui";
 import Link from "next/link";
 import { Cta } from "@/components/cta";
-import { plans, PlanCard } from "@/components/plan-card";
+import { PlanCard } from "@/components/plan-card";
+import { plans } from "@/lib/plans";
 import { urls } from "@/lib/urls";
 
 const comparisonFeatures = [
