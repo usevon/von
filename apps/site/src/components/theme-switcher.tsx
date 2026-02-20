@@ -25,7 +25,7 @@ export const ThemeSwitcher = () => {
   }
 
   return (
-    <div className="flex w-fit h-9 items-center gap-0.5 border border-border bg-muted/50 p-0.5">
+    <div className="flex h-9 w-fit items-center gap-0.5 border border-border bg-muted/50 p-0.5">
       {themes.map(({ key, icon: Icon, label }) => {
         const isActive = theme === key;
         return (

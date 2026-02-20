@@ -79,10 +79,10 @@ export const Wallpaper = (props: WallpaperProps) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) { return; }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) { return; }
 
     // Sync initial state
     refreshStops();

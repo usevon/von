@@ -62,8 +62,8 @@ export function FeatureGrid() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 border-border border-t sm:grid-cols-2 lg:grid-cols-3 [&>*]:border-border [&>*]:border-b [&>*]:sm:border-r [&>*:nth-child(2n)]:sm:border-r-0 [&>*:nth-child(2n)]:lg:border-r [&>*:nth-child(3n)]:lg:border-r-0">
-        {features.map((feature, index) => (
+      <div className="grid grid-cols-1 border-border border-t sm:grid-cols-2 lg:grid-cols-3 [&>*:nth-child(2n)]:sm:border-r-0 [&>*:nth-child(2n)]:lg:border-r [&>*:nth-child(3n)]:lg:border-r-0 [&>*]:border-border [&>*]:border-b [&>*]:sm:border-r">
+        {features.map((feature, _index) => (
           <div
             className="flex flex-col gap-3 p-8 sm:p-10"
             key={feature.title}

@@ -15,7 +15,7 @@ export function Cta({ heading, actions, border }: CtaProps) {
     <section
       className={cn(
         "flex flex-col items-start justify-between gap-8 px-8 py-24 sm:px-12 md:flex-row md:items-center",
-        border && "border-t border-border",
+        border && "border-border border-t",
       )}
     >
       <h2 className="font-semibold text-4xl tracking-tight sm:text-5xl md:text-6xl">

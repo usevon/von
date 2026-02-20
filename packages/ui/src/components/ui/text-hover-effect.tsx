@@ -80,7 +80,7 @@ export const TextHoverEffect = ({
   // Convert mouse clientX to 0..1 fraction of container width
   const mouseToFraction = useCallback((clientX: number): number => {
     const el = containerRef.current;
-    if (!el) return 0.5;
+    if (!el) { return 0.5; }
     const rect = el.getBoundingClientRect();
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }, []);
@@ -92,7 +92,7 @@ export const TextHoverEffect = ({
       autoControlsRef.current = animate(beamX, [fromEdge, toEdge], {
         duration: sweepDuration,
         ease: "easeInOut",
-        repeat: Infinity,
+        repeat: Number.POSITIVE_INFINITY,
         repeatType: "mirror",
         repeatDelay: sweepPause,
       });
@@ -145,9 +145,10 @@ export const TextHoverEffect = ({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       // Track direction
-      if (e.clientX > lastMouseXRef.current) lastDirectionRef.current = 1;
-      else if (e.clientX < lastMouseXRef.current)
+      if (e.clientX > lastMouseXRef.current) { lastDirectionRef.current = 1; }
+      else if (e.clientX < lastMouseXRef.current) {
         lastDirectionRef.current = -1;
+      }
       lastMouseXRef.current = e.clientX;
 
       const target = mouseToFraction(e.clientX);
@@ -242,7 +243,7 @@ export const TextHoverEffect = ({
             color: "transparent",
             WebkitTextStroke: "0.015em transparent",
             WebkitMaskImage: maskImage,
-            maskImage: maskImage,
+            maskImage,
           }}
         >
           {text}

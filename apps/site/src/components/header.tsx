@@ -10,7 +10,7 @@ export function Header() {
       <div className="relative flex h-16 items-center justify-between px-8 sm:px-12">
         <LogoLink />
 
-        <nav className="pointer-events-none absolute inset-0 hidden items-center justify-center gap-1 lg:flex *:pointer-events-auto">
+        <nav className="pointer-events-none absolute inset-0 hidden items-center justify-center gap-1 *:pointer-events-auto lg:flex">
           <Button render={<Link href={docsUrl()} />} size="lg" variant="ghost">
             Docs
           </Button>

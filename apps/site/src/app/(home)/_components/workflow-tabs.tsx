@@ -17,12 +17,12 @@ const panelClass = "grid h-full w-full place-items-center px-6";
 
 export function WorkflowTabs() {
   return (
-    <Tabs.Root className="flex flex-col border-y border-border" defaultValue="connect">
-      <Tabs.List className="relative z-0 flex h-14 border-b border-border sm:grid sm:grid-cols-5">
+    <Tabs.Root className="flex flex-col border-border border-y" defaultValue="connect">
+      <Tabs.List className="relative z-0 flex h-14 border-border border-b sm:grid sm:grid-cols-5">
         {workflowSteps.map((step, index) => (
           <Tabs.Tab
             className={cn(
-              "min-w-0 flex-1 cursor-pointer text-center font-medium text-muted-foreground text-base outline-none transition-colors hover:text-foreground focus-visible:bg-accent data-active:text-foreground sm:text-sm",
+              "min-w-0 flex-1 cursor-pointer text-center font-medium text-base text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:bg-accent data-active:text-foreground sm:text-sm",
               index < workflowSteps.length - 1 && "border-r border-r-border",
             )}
             key={step.value}

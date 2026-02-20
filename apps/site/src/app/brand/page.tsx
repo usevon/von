@@ -27,7 +27,7 @@ function AssetCard(props: AssetCardProps) {
           width={200}
         />
       </div>
-      <div className="flex items-center justify-between border-t border-border px-4 py-3">
+      <div className="flex items-center justify-between border-border border-t px-4 py-3">
         <div>
           <p className="font-medium text-sm">{props.name}</p>
           <p className="text-muted-foreground text-xs">{props.description}</p>
@@ -82,7 +82,7 @@ export default function BrandPage() {
       </div>
 
       {/* Logo assets */}
-      <div className="border-t border-border px-8 py-12 sm:px-12">
+      <div className="border-border border-t px-8 py-12 sm:px-12">
         <h2 className="font-semibold text-lg">Logo</h2>
         <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
           <AssetCard
@@ -115,7 +115,7 @@ export default function BrandPage() {
       </div>
 
       {/* Contact */}
-      <div className="border-t border-border px-8 py-16 pb-24 sm:px-12">
+      <div className="border-border border-t px-8 py-16 pb-24 sm:px-12">
         <p className="text-muted-foreground text-sm">
           Need something not listed here?{" "}
           <Link

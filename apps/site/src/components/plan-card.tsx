@@ -8,8 +8,8 @@ import {
 import {
   Button,
   Popover,
-  PopoverTrigger,
   PopoverPopup,
+  PopoverTrigger,
   Separator,
 } from "@usevon/ui";
 import Link from "next/link";
@@ -43,13 +43,13 @@ function FeatureTooltip({
   return (
     <Popover>
       <PopoverTrigger
-        openOnHover
-        delay={200}
         className="inline-flex cursor-help items-center gap-1.5 outline-none"
+        delay={200}
+        openOnHover
       >
         {children}
       </PopoverTrigger>
-      <PopoverPopup tooltipStyle sideOffset={8} className="max-w-56">
+      <PopoverPopup className="max-w-56" sideOffset={8} tooltipStyle>
         {tooltip}
       </PopoverPopup>
     </Popover>
@@ -75,7 +75,7 @@ function FeatureItem({ feature }: { feature: Feature }) {
   ) : null;
 
   const questionMark = (
-    <span className="inline-flex items-center justify-center size-4 border border-border text-muted-foreground/60 transition-colors hover:text-muted-foreground">
+    <span className="inline-flex size-4 items-center justify-center border border-border text-muted-foreground/60 transition-colors hover:text-muted-foreground">
       <QuestionMarkIcon size={8} weight="bold" />
     </span>
   );
@@ -100,13 +100,19 @@ function FeatureItem({ feature }: { feature: Feature }) {
       {icon}
       <span className={textClass}>
         {feature.label}
-        {hintEl && <> {hintEl}</>}
+        {hintEl ? <> {hintEl}</> : null}
       </span>
     </li>
   );
 }
 
-export function PlanCard({ plan }: { plan: Plan }) {
+export function PlanCard({
+  plan,
+  children,
+}: {
+  plan: Plan;
+  children?: ReactNode;
+}) {
   return (
     <div className="flex flex-col justify-between gap-6 border border-border p-8 sm:p-10">
       <div>
@@ -126,6 +132,7 @@ export function PlanCard({ plan }: { plan: Plan }) {
             <FeatureItem feature={feature} key={index} />
           ))}
         </ul>
+        {children}
       </div>
       <Button
         render={<Link href={plan.href} />}

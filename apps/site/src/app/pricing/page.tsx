@@ -164,7 +164,7 @@ function ComparisonTooltip({
         <PopoverTrigger
           openOnHover
           delay={200}
-          className="inline-flex cursor-help items-center justify-center size-4 border border-border text-muted-foreground/60 outline-none transition-colors hover:text-muted-foreground"
+          className="inline-flex size-4 cursor-help items-center justify-center border border-border text-muted-foreground/60 outline-none transition-colors hover:text-muted-foreground"
         >
           <QuestionMarkIcon size={8} weight="bold" />
         </PopoverTrigger>
@@ -209,13 +209,13 @@ export default function PricingPage() {
       </div>
 
       {/* Comparison table */}
-      <div className="mt-24 border-b border-border max-sm:hidden">
+      <div className="mt-24 border-border border-b max-sm:hidden">
         {/* Sticky plan names */}
-        <div className="sticky top-16 z-10 -mb-px grid h-[53px] grid-cols-3 border-y border-border bg-background/80 backdrop-blur-lg">
+        <div className="sticky top-16 z-10 -mb-px grid h-[53px] grid-cols-3 border-border border-y bg-background/80 backdrop-blur-lg">
           <div />
           {plans.map((plan) => (
             <div
-              className="flex items-center justify-between border-l border-border px-6"
+              className="flex items-center justify-between border-border border-l px-6"
               key={plan.name}
             >
               <span className="font-semibold text-sm">{plan.name}</span>
@@ -233,12 +233,12 @@ export default function PricingPage() {
         {/* Sticky category headers stack below plan row */}
         {comparisonFeatures.map((group) => (
           <div key={group.category}>
-            <div className="sticky top-[calc(4rem+52px)] z-[9] -mb-px border-t border-border bg-accent/30 px-8 py-3 backdrop-blur-lg">
+            <div className="sticky top-[calc(4rem+52px)] z-[9] -mb-px border-border border-t bg-accent/30 px-8 py-3 backdrop-blur-lg">
               <span className="font-medium text-sm">{group.category}</span>
             </div>
             {group.features.map((feature) => (
               <div
-                className="grid grid-cols-3 border-t border-border/50 text-sm"
+                className="grid grid-cols-3 border-border/50 border-t text-sm"
                 key={feature.name}
               >
                 <div className="flex items-center px-8 py-3.5 text-muted-foreground">
@@ -247,10 +247,10 @@ export default function PricingPage() {
                     name={feature.name}
                   />
                 </div>
-                <div className="flex items-center justify-center border-l border-border/50 py-3.5 text-center text-muted-foreground">
+                <div className="flex items-center justify-center border-border/50 border-l py-3.5 text-center text-muted-foreground">
                   {renderValue(feature.hobby)}
                 </div>
-                <div className="flex items-center justify-center border-l border-border/50 py-3.5 text-center text-muted-foreground">
+                <div className="flex items-center justify-center border-border/50 border-l py-3.5 text-center text-muted-foreground">
                   {renderValue(feature.pro)}
                 </div>
               </div>
