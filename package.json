@@ -19,8 +19,8 @@
     "db:migrate": "bun run --cwd apps/api db:migrate",
     "db:generate": "bun run --cwd apps/api db:generate",
     "db:push": "bun run --cwd apps/api db:push",
-    "lint": "bunx ultracite check",
-    "lint:fix": "bunx ultracite fix",
+    "lint": "bunx biome lint .",
+    "lint:fix": "bunx biome lint --write --unsafe .",
     "test:unit": "bun test packages/ apps/worker/ && bun run --cwd apps/api test tests/unit/",
     "test": "bun run test:unit",
     "test:integration": "bun run --cwd apps/api test:integration:auto",
@@ -35,6 +35,7 @@
   },
   "overrides": {
     "lodash": "^4.17.23",
-    "@isaacs/brace-expansion": "^5.0.1"
+    "@isaacs/brace-expansion": "^5.0.1",
+    "minimatch": "^10.2.2"
   }
 }
