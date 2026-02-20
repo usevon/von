@@ -12,6 +12,7 @@ export function TypeScriptIcon(props: IconProps) {
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
+      <title>TypeScript</title>
       <rect fill="#3178c6" height="512" rx="50" width="512" />
       <path
         clipRule="evenodd"

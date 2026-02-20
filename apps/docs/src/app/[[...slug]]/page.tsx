@@ -49,13 +49,13 @@ const allSlugs = new Set([
 ]);
 
 function getTitle(slug: string): string {
-  if (slug === "") return "Von Docs";
+  if (slug === "") { return "Von Docs"; }
   for (const link of topLinks) {
-    if (link.href === `/${slug}`) return link.title;
+    if (link.href === `/${slug}`) { return link.title; }
   }
   for (const section of navigation) {
     for (const item of section.items) {
-      if (item.href === `/${slug}`) return item.title;
+      if (item.href === `/${slug}`) { return item.title; }
     }
   }
   return "Von Docs";
@@ -67,7 +67,7 @@ export async function generateMetadata(
   const params = await props.params;
   const slug = (params.slug ?? []).join("/");
 
-  if (!allSlugs.has(slug)) return { title: "Not Found" };
+  if (!allSlugs.has(slug)) { return { title: "Not Found" }; }
 
   const title = getTitle(slug);
   return {
@@ -85,12 +85,12 @@ export default async function DocsPage(props: DocsPageProps) {
   const params = await props.params;
   const slug = (params.slug ?? []).join("/");
 
-  if (!allSlugs.has(slug)) notFound();
+  if (!allSlugs.has(slug)) { notFound(); }
 
-  if (slug === "") return <HomePage />;
+  if (slug === "") { return <HomePage />; }
 
   const Content = pages[slug];
-  if (!Content) notFound();
+  if (!Content) { notFound(); }
 
   return (
     <>

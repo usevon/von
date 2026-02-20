@@ -1,6 +1,5 @@
 "use client";
 
-import { TabsPrimitive as Tabs } from "@usevon/ui";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { usePathname } from "next/navigation";
@@ -13,7 +12,7 @@ type TocItem = {
 };
 
 const useHeadings = () => {
-  const pathname = usePathname();
+  const _pathname = usePathname();
   const [headings, setHeadings] = useState<TocItem[]>([]);
 
   useEffect(() => {
@@ -45,7 +44,7 @@ const useHeadings = () => {
     read();
     const frame = requestAnimationFrame(read);
     return () => cancelAnimationFrame(frame);
-  }, [pathname]);
+  }, []);
 
   return headings;
 };
@@ -62,11 +61,11 @@ const useActiveHeading = (headingIds: string[]) => {
     }
 
     const update = () => {
-      if (manualId.current) return;
+      if (manualId.current) { return; }
 
       // At the bottom of the page, activate the last heading
       if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 100) {
-        setActiveId(headingIds[headingIds.length - 1]);
+        setActiveId(headingIds.at(-1));
         return;
       }
 
@@ -90,7 +89,7 @@ const useActiveHeading = (headingIds: string[]) => {
     manualId.current = id;
     setActiveId(id);
 
-    if (manualTimer.current) clearTimeout(manualTimer.current);
+    if (manualTimer.current) { clearTimeout(manualTimer.current); }
     manualTimer.current = setTimeout(() => {
       manualId.current = null;
     }, 1000);
@@ -123,11 +122,11 @@ export const TableOfContents = () => {
 
   // Measure active tab position
   useEffect(() => {
-    if (!currentId) return;
+    if (!currentId) { return; }
 
     const tab = tabRefs.current.get(currentId);
     const list = listRef.current;
-    if (!tab || !list) return;
+    if (!(tab && list)) { return; }
 
     const listRect = list.getBoundingClientRect();
     const tabRect = tab.getBoundingClientRect();
@@ -136,7 +135,7 @@ export const TableOfContents = () => {
       top: tabRect.top - listRect.top,
       height: tabRect.height,
     });
-  }, [currentId, headings]);
+  }, [currentId]);
 
   // Disable animation on page change, re-enable after
   useEffect(() => {
@@ -181,8 +180,8 @@ export const TableOfContents = () => {
           <button
             key={item.id}
             ref={(el) => {
-              if (el) tabRefs.current.set(item.id, el);
-              else tabRefs.current.delete(item.id);
+              if (el) { tabRefs.current.set(item.id, el); }
+              else { tabRefs.current.delete(item.id); }
             }}
             className={cn(
               "cursor-pointer border-none bg-transparent py-1 pl-3 text-left text-muted-foreground text-sm no-underline transition-colors",
@@ -195,7 +194,7 @@ export const TableOfContents = () => {
           >
             <span className="relative">
               {item.title}
-              <span aria-hidden className="pointer-events-none invisible block h-0 font-medium select-none">
+              <span aria-hidden className="pointer-events-none invisible block h-0 select-none font-medium">
                 {item.title}
               </span>
             </span>

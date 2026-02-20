@@ -188,7 +188,7 @@ function SideSquares(props: { side: "left" | "right" }) {
 
           return (
             <div
-              className={`aspect-square border-border ${!isLastCol ? "border-r" : ""} ${!isLastRow ? "border-b" : ""}`}
+              className={`aspect-square border-border ${isLastCol ? "" : "border-r"} ${isLastRow ? "" : "border-b"}`}
               key={`${props.side}-${ri}-${ci}`}
               style={
                 fill
@@ -218,7 +218,7 @@ export const HomePage = () => (
         <h1 className="max-w-3xl font-semibold text-4xl tracking-tight sm:text-5xl">
           Welcome to the Von documentation
         </h1>
-        <p className="max-w-2xl text-muted-foreground text-lg">
+        <p className="max-w-2xl text-lg text-muted-foreground">
           Von is a webhook infrastructure platform for reliable delivery,
           retries, signature verification, and developer-first tooling.
         </p>

@@ -26,7 +26,7 @@ function buildContentPages(): PageInfo[] {
 
   for (const section of navigation) {
     for (const item of section.items) {
-      if (item.external) continue;
+      if (item.external) { continue; }
       const slug = item.href.slice(1);
       pages.push({ slug, title: item.title, filePath: `${slug}.mdx` });
     }

@@ -18,7 +18,13 @@ import {
   Kbd,
 } from "@usevon/ui";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   type SearchDocument,
@@ -33,10 +39,12 @@ type SearchProps = {
 };
 
 const MAX_DEFAULT_RESULTS = 8;
+const SPLIT_WHITESPACE_REGEX = /\s+/;
 
 const byRecency = (documents: SearchDocument[]) =>
   [...documents].sort(
-    (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0) || a.title.localeCompare(b.title),
+    (a, b) =>
+      (b.updatedAt ?? 0) - (a.updatedAt ?? 0) || a.title.localeCompare(b.title)
   );
 
 const toResults = (documents: SearchDocument[]): SearchResult[] =>
@@ -48,20 +56,19 @@ const toResults = (documents: SearchDocument[]): SearchResult[] =>
     snippet: content ? content.slice(0, 140) : undefined,
   }));
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const highlightText = (text: string, query: string): ReactNode => {
   const terms = Array.from(
     new Set(
-      query
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(Boolean),
-    ),
+      query.trim().toLowerCase().split(SPLIT_WHITESPACE_REGEX).filter(Boolean)
+    )
   ).sort((a, b) => b.length - a.length);
 
-  if (terms.length === 0) return text;
+  if (terms.length === 0) {
+    return text;
+  }
 
   const regex = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "ig");
   const parts = text.split(regex);
@@ -73,7 +80,7 @@ const highlightText = (text: string, query: string): ReactNode => {
       </span>
     ) : (
       <span key={`${part}-${index}`}>{part}</span>
-    ),
+    )
   );
 };
 
@@ -88,17 +95,26 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
 
     const loadIndex = async () => {
       try {
-        const response = await fetch("/search-index.json", { cache: "force-cache" });
-        if (!response.ok) return;
+        const response = await fetch("/search-index.json", {
+          cache: "force-cache",
+        });
+        if (!response.ok) {
+          return;
+        }
 
         const data = (await response.json()) as SearchDocument[];
-        if (!mounted || !Array.isArray(data)) return;
+        if (!(mounted && Array.isArray(data))) {
+          return;
+        }
 
-        const filtered = data.filter((doc) => doc.href !== "/" && !doc.href.startsWith("/llms"));
+        const filtered = data.filter(
+          (doc) => doc.href !== "/" && !doc.href.startsWith("/llms")
+        );
         if (filtered.length > 0) {
           setDocuments(filtered);
         }
       } catch {
+        // Keep fallback in-memory index when network fetch fails.
       }
     };
 
@@ -153,7 +169,7 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
       setQuery("");
       router.push(result.href);
     },
-    [router],
+    [router]
   );
 
   return (
@@ -163,13 +179,15 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
           <Button
             className={cn(
               "w-52 justify-start gap-2 text-muted-foreground sm:w-64 lg:w-80 xl:w-[28rem]",
-              triggerClassName,
+              triggerClassName
             )}
             size="lg"
             variant="outline"
           >
             <MagnifyingGlassIcon className="size-4" />
-            <span className="flex-1 truncate text-left text-sm">Search docs...</span>
+            <span className="flex-1 truncate text-left text-sm">
+              Search docs...
+            </span>
             <Kbd>⌘K</Kbd>
           </Button>
         }
@@ -192,7 +210,9 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
 
               {results.length > 0 ? (
                 <CommandGroup>
-                  <CommandGroupLabel>{hasQuery ? "Results" : "Recent updates"}</CommandGroupLabel>
+                  <CommandGroupLabel>
+                    {hasQuery ? "Results" : "Recent updates"}
+                  </CommandGroupLabel>
                   {results.map((result) => (
                     <CommandItem
                       className="items-start rounded-none"
@@ -202,14 +222,20 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium">
-                          {hasQuery ? highlightText(result.title, query) : result.title}
+                          {hasQuery
+                            ? highlightText(result.title, query)
+                            : result.title}
                         </p>
                         <p className="truncate text-muted-foreground text-xs">
-                          {hasQuery ? highlightText(result.section, query) : result.section}
+                          {hasQuery
+                            ? highlightText(result.section, query)
+                            : result.section}
                         </p>
                         {result.snippet ? (
                           <p className="line-clamp-2 text-muted-foreground text-xs leading-5">
-                            {hasQuery ? highlightText(result.snippet, query) : result.snippet}
+                            {hasQuery
+                              ? highlightText(result.snippet, query)
+                              : result.snippet}
                           </p>
                         ) : null}
                       </div>

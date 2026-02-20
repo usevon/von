@@ -26,7 +26,7 @@ export default function DocsSlugLayout({
     <div className="flex">
       <Sidebar />
       <div className="min-w-0 flex-1">
-        <div className="flex gap-12 px-8 pb-10 pt-6 sm:px-12">
+        <div className="flex gap-12 px-8 pt-6 pb-10 sm:px-12">
           <div className="min-w-0 max-w-4xl flex-1">
             <AnimatePresence mode="wait">
               <motion.div

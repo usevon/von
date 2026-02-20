@@ -13,7 +13,9 @@ const contentDir = join(process.cwd(), "src", "content");
 const sectionBySlug = new Map<string, string>();
 for (const section of navigation) {
   for (const item of section.items) {
-    if (item.external) continue;
+    if (item.external) {
+      continue;
+    }
     sectionBySlug.set(item.href.slice(1), section.title);
   }
 }
@@ -22,7 +24,7 @@ const normalizeForSearch = (value: string) =>
   value
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, " $1 ")
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, " $1 ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, " $1 ")
     .replace(/[>*_#|]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -39,6 +41,7 @@ export async function GET() {
         const file = await stat(join(contentDir, page.filePath));
         updatedAt = file.mtimeMs;
       } catch {
+        // Keep default timestamp when file metadata is unavailable.
       }
 
       return {

@@ -4,11 +4,11 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export const ScrollReset = () => {
-  const pathname = usePathname();
+  const _pathname = usePathname();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, []);
 
   return null;
 };

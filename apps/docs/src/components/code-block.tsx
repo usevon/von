@@ -3,8 +3,8 @@
 import { CheckIcon, CopyIcon, TerminalWindowIcon } from "@phosphor-icons/react";
 import { Button } from "@usevon/ui";
 import {
-  createContext,
   cloneElement,
+  createContext,
   isValidElement,
   type ReactElement,
   type ReactNode,
@@ -48,26 +48,27 @@ const languageMeta: Record<string, LanguageMeta> = {
   diff: { label: "Diff", icon: null },
 };
 
-const getTextContent = (node: ReactNode): string => {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (!node) return "";
-  if (Array.isArray(node)) return node.map(getTextContent).join("");
-  if (isValidElement(node))
-    return getTextContent((node.props as { children?: ReactNode }).children);
-  return "";
-};
+const LANGUAGE_CLASS_REGEX = /(?:language-|sh-lang--)([a-zA-Z0-9_-]+)/;
+const LEADING_NEWLINES_REGEX = /^(?:\n)+/;
+const TRAILING_NEWLINES_REGEX = /(?:\n)+$/;
+const LEADING_SPACES_REGEX = /^ +/;
 
 const getLanguage = (node: ReactNode): string | null => {
-  if (!node) return null;
+  if (!node) {
+    return null;
+  }
   if (Array.isArray(node)) {
     for (const child of node) {
       const found = getLanguage(child);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
     return null;
   }
-  if (!isValidElement(node)) return null;
+  if (!isValidElement(node)) {
+    return null;
+  }
 
   const props = node.props as {
     className?: string;
@@ -77,8 +78,10 @@ const getLanguage = (node: ReactNode): string | null => {
 
   const className = props.className;
   if (className) {
-    const match = className.match(/(?:language-|sh-lang--)([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
+    const match = className.match(LANGUAGE_CLASS_REGEX);
+    if (match) {
+      return match[1];
+    }
   }
 
   const shLanguage = props["data-sh-language"];
@@ -91,12 +94,14 @@ const getLanguage = (node: ReactNode): string | null => {
 
 const normalizeCodeString = (value: string) => {
   const unified = value.replace(/\r\n/g, "\n");
-  const trimmed = unified.replace(/^(?:\n)+/, "").replace(/(?:\n)+$/, "");
+  const trimmed = unified
+    .replace(LEADING_NEWLINES_REGEX, "")
+    .replace(TRAILING_NEWLINES_REGEX, "");
   const lines = trimmed.split("\n");
 
   const indents = lines
     .filter((line) => line.trim().length > 0)
-    .map((line) => (line.match(/^ +/) || [""])[0].length);
+    .map((line) => (line.match(LEADING_SPACES_REGEX) || [""])[0].length);
 
   const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
 
@@ -119,20 +124,26 @@ const normalizeCodeElementChildren = (node: ReactNode): ReactNode => {
 
     while (normalized.length > 0) {
       const first = normalized[0];
-      if (typeof first !== "string" || first.trim() !== "") break;
+      if (typeof first !== "string" || first.trim() !== "") {
+        break;
+      }
       normalized.shift();
     }
 
     while (normalized.length > 0) {
-      const last = normalized[normalized.length - 1];
-      if (typeof last !== "string" || last.trim() !== "") break;
+      const last = normalized.at(-1);
+      if (typeof last !== "string" || last.trim() !== "") {
+        break;
+      }
       normalized.pop();
     }
 
     return normalized;
   }
 
-  if (!isValidElement(node)) return node;
+  if (!isValidElement(node)) {
+    return node;
+  }
 
   const element = node as ReactElement<{ children?: ReactNode }>;
   const children = element.props.children;
@@ -146,13 +157,17 @@ const normalizeCodeElementChildren = (node: ReactNode): ReactNode => {
 
     while (normalized.length > 0) {
       const first = normalized[0];
-      if (typeof first !== "string" || first.trim() !== "") break;
+      if (typeof first !== "string" || first.trim() !== "") {
+        break;
+      }
       normalized.shift();
     }
 
     while (normalized.length > 0) {
-      const last = normalized[normalized.length - 1];
-      if (typeof last !== "string" || last.trim() !== "") break;
+      const last = normalized.at(-1);
+      if (typeof last !== "string" || last.trim() !== "") {
+        break;
+      }
       normalized.pop();
     }
 
@@ -160,12 +175,9 @@ const normalizeCodeElementChildren = (node: ReactNode): ReactNode => {
       normalized[0] = normalizeCodeString(normalized[0]);
     }
 
-    if (
-      normalized.length > 1 &&
-      typeof normalized[normalized.length - 1] === "string"
-    ) {
+    if (normalized.length > 1 && typeof normalized.at(-1) === "string") {
       normalized[normalized.length - 1] = normalizeCodeString(
-        normalized[normalized.length - 1]
+        normalized.at(-1)
       );
     }
 
@@ -198,7 +210,7 @@ export const CodeBlock = (props: CodeBlockProps) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-   if (inCodeGroup) {
+  if (inCodeGroup) {
     return (
       <div className="overflow-x-auto px-4 py-3 font-mono text-sm">
         <pre
@@ -221,8 +233,14 @@ export const CodeBlock = (props: CodeBlockProps) => {
   }
 
   return (
-    <div className="my-6 overflow-hidden border border-[#dde1e6] bg-[#eff1f4] dark:border-white/14 dark:bg-white/8" data-slot="code-block">
-      <div className="flex h-10 items-center justify-between border-b border-[#dde1e6] pl-4 pr-1 dark:border-white/14" data-slot="code-block-header">
+    <div
+      className="my-6 overflow-hidden border border-[#dde1e6] bg-[#eff1f4] dark:border-white/14 dark:bg-white/8"
+      data-slot="code-block"
+    >
+      <div
+        className="flex h-10 items-center justify-between border-[#dde1e6] border-b pr-1 pl-4 dark:border-white/14"
+        data-slot="code-block-header"
+      >
         <div className="flex items-center gap-1.5 font-medium font-mono text-muted-foreground text-xs">
           {meta.icon === "terminal" ? (
             <TerminalWindowIcon className="size-4.5" weight="regular" />
@@ -233,7 +251,7 @@ export const CodeBlock = (props: CodeBlockProps) => {
           <span>{label}</span>
         </div>
         <Button
-          className="relative opacity-70 hover:opacity-100 [:active,[data-pressed]]:!scale-[0.97]"
+          className="[:active,[data-pressed]]:!scale-[0.97] relative opacity-70 hover:opacity-100"
           onClick={copy}
           size="icon-sm"
           variant="ghost"

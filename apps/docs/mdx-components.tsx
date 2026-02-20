@@ -26,7 +26,7 @@ import { Properties, Property } from "@/mdx/properties";
 import { Col, Row } from "@/mdx/row-col";
 import { Timeline, TimelineItem } from "@/mdx/timeline";
 
-const getTextContent = (node: ReactNode): string => {
+const _getTextContent = (node: ReactNode): string => {
   if (typeof node === "string") {
     return node;
   }
@@ -37,10 +37,10 @@ const getTextContent = (node: ReactNode): string => {
     return "";
   }
   if (Array.isArray(node)) {
-    return node.map(getTextContent).join("");
+    return node.map(_getTextContent).join("");
   }
   if (isValidElement(node)) {
-    return getTextContent((node.props as { children?: ReactNode }).children);
+    return _getTextContent((node.props as { children?: ReactNode }).children);
   }
   return "";
 };

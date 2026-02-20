@@ -28,7 +28,7 @@ export const CodeGroup = (props: { children: ReactNode }) => {
       data-code-group=""
     >
       <Tabs className="gap-0" onValueChange={setSelected} value={selected}>
-        <div className="flex h-10 items-center justify-between border-b border-[#dde1e6] pl-2 pr-1 dark:border-white/14">
+        <div className="flex h-10 items-center justify-between border-[#dde1e6] border-b pr-1 pl-2 dark:border-white/14">
           <TabsList variant="underline">
             {tabs.map((t, i) => (
               <TabsTab key={i} value={String(i)}>
@@ -37,7 +37,7 @@ export const CodeGroup = (props: { children: ReactNode }) => {
             ))}
           </TabsList>
           <Button
-            className="relative opacity-70 hover:opacity-100 `[:active,[data-pressed]]:scale-[0.97]!"
+            className="relative `[:active,[data-pressed]]:scale-[0.97]! opacity-70 hover:opacity-100"
             onClick={copy}
             size="icon-sm"
             variant="ghost"
