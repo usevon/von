@@ -1,4 +1,4 @@
-export type PlanName = "hobby" | "pro";
+export type PlanName = "hobby" | "metered";
 
 export type PlanLimits = {
   monthlyDeliveries: number;
@@ -14,10 +14,10 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     burstPerSecond: 25,
     hasOverage: false,
   },
-  pro: {
+  metered: {
     monthlyDeliveries: 100_000,
     ratePerSecond: 100,
-    burstPerSecond: 150,
+    burstPerSecond: 140,
     hasOverage: true,
   },
 };

@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { hashSha256, randomHex } from "@/crypto";
 
 export function generateSecret(prefix = "whsec"): string {
-  return `${prefix}_${crypto.randomUUID()}`;
+  return `${prefix}_${randomUUID()}`;
 }
 
 export function generateTunnelId(

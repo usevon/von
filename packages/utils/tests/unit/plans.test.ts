@@ -12,12 +12,12 @@ describe("getPlanLimits", () => {
     });
   });
 
-  test("pro plan returns correct limits", () => {
-    const limits = getPlanLimits("pro");
+  test("metered plan returns correct limits", () => {
+    const limits = getPlanLimits("metered");
     expect(limits).toEqual({
       monthlyDeliveries: 100_000,
       ratePerSecond: 100,
-      burstPerSecond: 150,
+      burstPerSecond: 140,
       hasOverage: true,
     });
   });

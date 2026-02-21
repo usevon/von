@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-
-
 type FAQ = {
   question: string;
   answer: ReactNode;
@@ -21,7 +19,7 @@ const faqs: FAQ[] = [
   {
     question: "How does throughput scaling work?",
     answer:
-      "Each plan has a sustained delivery rate. Pro plans can burst to 1.5x during traffic spikes without dropping webhooks.",
+      "Metered plans burst to 1.4x your base throughput to absorb traffic spikes without dropping webhooks.",
   },
   {
     question: "Can I self-host Von?",

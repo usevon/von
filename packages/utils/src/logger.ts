@@ -1,6 +1,5 @@
 import type { Logger } from "pino";
 import pino from "pino";
-import pinoPretty from "pino-pretty";
 
 export type LogLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace";
 
@@ -27,16 +26,15 @@ const REDACT_PATHS = [
 
 export const createLogger = (options: LoggerOptions = {}): Logger => {
   const usePretty = options.pretty ?? process.env.NODE_ENV === "development";
-  const stream = usePretty ? pinoPretty({ colorize: true }) : undefined;
 
-  return pino(
-    {
-      level: options.level ?? "info",
-      name: options.name,
-      redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
-    },
-    stream
-  );
+  return pino({
+    level: options.level ?? "info",
+    name: options.name,
+    redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
+    transport: usePretty
+      ? { target: "pino-pretty", options: { colorize: true } }
+      : undefined,
+  });
 };
 
 export const logger = createLogger({ name: "von" });
