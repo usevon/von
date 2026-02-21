@@ -1,6 +1,19 @@
 import { getRedisClient } from "@usevon/queue";
-import { getPlanLimits } from "@usevon/utils";
 import { Elysia } from "elysia";
+
+type PlanLimits = {
+  ratePerSecond: number;
+  burstPerSecond: number;
+};
+
+// TODO: metered plan limits will come from the org's subscription record
+function getPlanLimits(plan: string): PlanLimits {
+  if (plan === "hobby") {
+    return { ratePerSecond: 25, burstPerSecond: 35 };
+  }
+  return { ratePerSecond: 100, burstPerSecond: 140 };
+}
+
 import { getOrgPlan } from "@/lib/org-plan";
 
 const TOKEN_BUCKET_SCRIPT = `

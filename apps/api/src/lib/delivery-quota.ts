@@ -1,5 +1,18 @@
 import { getRedisClient } from "@usevon/queue";
-import { getPlanLimits, TooManyRequestsError } from "@usevon/utils";
+import { TooManyRequestsError } from "@usevon/utils";
+
+type PlanLimits = {
+  monthlyDeliveries: number;
+  hasOverage: boolean;
+};
+
+// TODO: metered plan limits will come from the org's subscription record
+function getPlanLimits(plan: string): PlanLimits {
+  if (plan === "hobby") {
+    return { monthlyDeliveries: 25_000, hasOverage: false };
+  }
+  return { monthlyDeliveries: 25_000, hasOverage: true };
+}
 
 export const DELIVERY_TTL = 45 * 86_400; // 45 days
 
