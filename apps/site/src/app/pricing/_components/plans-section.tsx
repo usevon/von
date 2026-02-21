@@ -3,16 +3,13 @@
 import { CheckIcon, MinusIcon, QuestionMarkIcon } from "@phosphor-icons/react";
 import { Popover, PopoverPopup, PopoverTrigger } from "@usevon/ui";
 
-import { type Plan, PlanCard } from "@/components/plan-card";
+import { PlanCards } from "@/components/plan-cards";
 import {
   fmt,
   fmtCurrency,
   INCLUDED_TEAM_MEMBERS,
   RATE_TIERS,
 } from "@/lib/calculator";
-import { urls } from "@/lib/urls";
-
-import { CalculatorDialog } from "./calculator-panel";
 import { useCalculatorState } from "./use-calculator-state";
 
 type ComparisonValue = boolean | string;
@@ -105,60 +102,12 @@ function ComparisonTable({ groups }: { groups: ComparisonGroup[] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Plans section
-// ---------------------------------------------------------------------------
-
-const hobbyPlan: Plan = {
-  name: "Hobby",
-  price: "$0",
-  period: "/month",
-  description: "Everything you need to start shipping webhooks.",
-  features: [
-    { label: "25,000 webhooks/month" },
-    { label: "25/sec throughput" },
-    { label: "3 day retention" },
-    { label: "1 team member, up to 3 tunnels" },
-    { label: "Custom domains", excluded: true },
-    { label: "Discord support" },
-  ],
-  cta: "Get started",
-  href: urls.signup,
-  highlighted: false,
-};
-
 export function PlansSection() {
   const calc = useCalculatorState();
 
   const activeMembers = calc.teamMembersEnabled
     ? calc.teamMembers
     : INCLUDED_TEAM_MEMBERS;
-  const plural = (n: number, word: string) =>
-    `${n} ${word}${n !== 1 ? "s" : ""}`;
-
-  const paygPlan: Plan = {
-    name: "Metered",
-    price: "$5",
-    period: "/month + usage",
-    description: "Only pay for what you process.",
-    features: [
-      { label: "Unlimited webhooks" },
-      {
-        label: `${calc.throughputEnabled ? calc.throughputPerSecond : 25}/sec throughput`,
-      },
-      {
-        label: `${calc.retentionEnabled ? calc.retentionDays : 7} days retention`,
-      },
-      {
-        label: `${plural(activeMembers, "team member")}, up to ${activeMembers * 3} tunnels`,
-      },
-      { label: "Custom domains" },
-      { label: "Discord support" },
-    ],
-    cta: "Get started",
-    href: urls.signup,
-    highlighted: true,
-  };
 
   const comparisonGroups: ComparisonGroup[] = [
     {
@@ -249,17 +198,9 @@ export function PlansSection() {
 
   return (
     <>
-      <div className="mt-4 flex w-full flex-col gap-4 px-8 sm:px-12 md:flex-row md:items-center md:justify-center md:gap-0">
-        <PlanCard
-          className="w-full bg-accent/40 shadow-none md:w-96 md:border-r-0"
-          plan={hobbyPlan}
-        />
-
-        <PlanCard className="w-full shadow-md md:w-96" plan={paygPlan}>
-          <CalculatorDialog state={calc} />
-        </PlanCard>
+      <div className="mt-4">
+        <PlanCards />
       </div>
-
       <ComparisonTable groups={comparisonGroups} />
     </>
   );
