@@ -36,7 +36,7 @@ export function AddOnRow({
             {costSuffix}
           </p>
         </div>
-        {children && (
+        {!!children && (
           <CollapsibleContent className="origin-top overflow-x-visible transition-[height,opacity,transform] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:scale-[0.98] data-starting-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:opacity-0">
             <div className="pt-4">{children}</div>
           </CollapsibleContent>

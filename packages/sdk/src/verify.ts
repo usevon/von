@@ -8,7 +8,9 @@ function hmacSign(data: string, secret: string): string {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {
+    return false;
+  }
   return nodeTimingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 

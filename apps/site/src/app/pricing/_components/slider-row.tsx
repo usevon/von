@@ -20,7 +20,7 @@ export function roundToStep(v: number, step: number, min: number, max: number) {
 export function snapToStops(v: number, stops: readonly number[]) {
   return stops.reduce(
     (c, s) => (Math.abs(s - v) < Math.abs(c - v) ? s : c),
-    stops[0]!
+    stops[0] ?? v
   );
 }
 
@@ -195,11 +195,11 @@ export function SliderRow({
         value={[value]}
       />
       <TickScale
-        labelFor={(t, i) => options.labelForTick(t)}
+        labelFor={(t, _i) => options.labelForTick(t)}
         skipInterval={options.tickSkipInterval}
         ticks={options.ticks}
       />
-      {valueText && (
+      {!!valueText && (
         <p
           className={cn(
             "mt-4 text-sm",
@@ -209,7 +209,7 @@ export function SliderRow({
           {valueText}
         </p>
       )}
-      {hint && <p className="mt-1 text-muted-foreground text-xs">{hint}</p>}
+      {!!hint && <p className="mt-1 text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

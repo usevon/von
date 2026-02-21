@@ -50,4 +50,5 @@ function Input({
   );
 }
 
-export { Input, type InputProps, InputPrimitive };
+export { Input as InputPrimitive } from "@base-ui/react/input";
+export { Input, type InputProps };

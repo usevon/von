@@ -69,7 +69,7 @@ export function PlanCards({ comparePath }: { comparePath?: string }) {
       <PlanCard className="w-full shadow-md md:w-96" plan={meteredPlan}>
         <CalculatorDialog state={calc} />
       </PlanCard>
-      {comparePath && (
+      {!!comparePath && (
         <div className="mt-4 w-full text-center md:hidden">
           <Link
             className="text-muted-foreground text-sm underline underline-offset-4"

@@ -43,7 +43,9 @@ export function formatCompact(v: number) {
     const m = v / 1_000_000;
     return `${Number.isInteger(m) ? m : m.toFixed(1)}m`;
   }
-  if (v >= 1000) return `${Math.round(v / 1000)}k`;
+  if (v >= 1000) {
+    return `${Math.round(v / 1000)}k`;
+  }
   return `${v}`;
 }
 
@@ -66,23 +68,31 @@ export function getGraduatedCost(webhooks: number) {
     cost += (used / WEBHOOK_BLOCK) * tier.rate;
     remaining -= used;
     prev = tier.upTo;
-    if (remaining <= 0) break;
+    if (remaining <= 0) {
+      break;
+    }
   }
   return roundMoney(cost);
 }
 
 export function getEffectiveRate(webhooks: number) {
-  if (webhooks <= 0) return RATE_TIERS[0].rate;
+  if (webhooks <= 0) {
+    return RATE_TIERS[0].rate;
+  }
   return roundMoney(getGraduatedCost(webhooks) / (webhooks / WEBHOOK_BLOCK));
 }
 
 export function getThroughputAddon(perSec: number) {
-  if (perSec <= THROUGHPUT_MIN) return 0;
+  if (perSec <= THROUGHPUT_MIN) {
+    return 0;
+  }
   return roundMoney(((perSec - THROUGHPUT_MIN) / THROUGHPUT_BLOCK) * 10);
 }
 
 export function getRetentionAddon(days: number, webhooks: number) {
-  if (days <= RETENTION_MIN || webhooks <= 0) return 0;
+  if (days <= RETENTION_MIN || webhooks <= 0) {
+    return 0;
+  }
   const intervals = Math.ceil((days - RETENTION_MIN) / RETENTION_INTERVAL);
   return roundMoney(
     Math.ceil(webhooks / WEBHOOK_BLOCK) * intervals * RETENTION_RATE

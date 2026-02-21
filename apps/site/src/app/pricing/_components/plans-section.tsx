@@ -25,12 +25,14 @@ type ComparisonGroup = {
 };
 
 function renderValue(v: ComparisonValue) {
-  if (v === true)
+  if (v === true) {
     return (
       <CheckIcon className="mx-auto size-4 text-foreground" weight="bold" />
     );
-  if (v === false)
+  }
+  if (v === false) {
     return <MinusIcon className="mx-auto size-4 text-muted-foreground/30" />;
+  }
   return v;
 }
 
