@@ -7,6 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import {
   Button,
+  Card,
   Popover,
   PopoverPopup,
   PopoverTrigger,
@@ -14,6 +15,8 @@ import {
 } from "@usevon/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
 
 export type Feature = {
   label: string;
@@ -109,30 +112,31 @@ function FeatureItem({ feature }: { feature: Feature }) {
 export function PlanCard({
   plan,
   children,
+  className,
 }: {
   plan: Plan;
   children?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col justify-between gap-6 border border-border p-8 sm:p-10">
+    <Card className={cn("gap-4 p-8 sm:p-10", className)}>
       <div>
-        <div className="mb-6">
+        <div className="mb-4">
           <h3 className="font-medium text-xl">{plan.name}</h3>
-          <p className="mt-2 min-h-10 text-muted-foreground text-sm">
+          <p className="mt-2 text-muted-foreground text-sm">
             {plan.description}
           </p>
-          <p className="mt-2 flex items-baseline gap-1">
+          <p className="mt-2 flex items-baseline">
             <span className="font-semibold text-3xl">{plan.price}</span>
             <span className="text-muted-foreground">{plan.period}</span>
           </p>
         </div>
-        <Separator className="mb-6" />
+        <Separator className="mb-4" />
         <ul className="space-y-2 text-sm/6">
           {plan.features.map((feature, index) => (
             <FeatureItem feature={feature} key={index} />
           ))}
         </ul>
-        {children}
       </div>
       <Button
         render={<Link href={plan.href} />}
@@ -141,6 +145,7 @@ export function PlanCard({
       >
         {plan.cta}
       </Button>
-    </div>
+      {children}
+    </Card>
   );
 }
