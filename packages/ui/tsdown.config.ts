@@ -8,6 +8,7 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     outDir: "dist",
+    checks: { pluginTimings: false },
     banner: {
       js: '"use client";',
     },
@@ -18,5 +19,6 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     outDir: "dist",
+    checks: { pluginTimings: false },
   },
 ]);

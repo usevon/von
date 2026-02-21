@@ -1,8 +1,5 @@
 import { treaty } from "@elysiajs/eden";
-
-export type { App } from "@usevon/api";
-
-type App = import("@usevon/api").App;
+import type { App } from "@usevon/api";
 
 export { verifyWebhook, WebhookVerificationError } from "@/verify";
 
