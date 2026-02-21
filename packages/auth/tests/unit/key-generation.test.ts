@@ -1,31 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { generateRandomString } from "../../src/plugins/api-key/generate";
 
-// We can't directly import the private generateRandomString, so we test
-// the public apiKey plugin's key generation indirectly via the exported plugin.
-// Instead, we replicate the logic here for unit testing the Base62 properties.
-
-const BASE62_CHARS =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const BASE62_PATTERN = /^[a-zA-Z0-9]+$/;
-
-function generateRandomString(length: number): string {
-  const chars = BASE62_CHARS;
-  let result = "";
-  const randomValues = new Uint8Array(length * 2);
-  crypto.getRandomValues(randomValues);
-  for (let i = 0, j = 0; i < length; j += 1) {
-    if (j >= randomValues.length) {
-      crypto.getRandomValues(randomValues);
-      j = 0;
-    }
-    const byte = randomValues[j];
-    if (byte < 248) {
-      result += chars[byte % 62];
-      i += 1;
-    }
-  }
-  return result;
-}
 
 describe("Base62 key generation", () => {
   test("generates string of requested length", () => {

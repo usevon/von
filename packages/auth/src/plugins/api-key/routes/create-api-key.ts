@@ -2,15 +2,14 @@ import {
   APIError,
   createAuthEndpoint,
   getSessionFromCtx,
+  sessionMiddleware,
 } from "better-auth/api";
 import { z } from "zod";
-import { ERROR_CODES } from "@/plugins/api-key";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
 import { setApiKey } from "@/plugins/api-key/adapter";
 import { hashKey } from "@/plugins/api-key/crypto";
 import { VALID_SCOPES } from "@/plugins/api-key/scopes";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
-
-const API_KEY_TABLE_NAME = "apikey";
 
 export function createApiKey({
   keyGenerator,
@@ -31,6 +30,7 @@ export function createApiKey({
     "/api-key/create",
     {
       method: "POST",
+      use: [sessionMiddleware],
       body: z.object({
         name: z.string().min(1).max(maxNameLength),
         expiresIn: z.number().min(1).optional(),
@@ -122,18 +122,12 @@ export function createApiKey({
 
       await setApiKey(ctx as never, apiKey, opts);
 
-      // Audit log
-      ctx.context.logger.info("API key created", {
-        userId: session.user.id,
-        keyId: apiKey.id,
-        environment,
-        organizationId: organizationId ?? null,
-      });
+      if (opts.apiKeyHooks?.afterCreate) {
+        const { key: _, ...payload } = apiKey;
+        await opts.apiKeyHooks.afterCreate(payload);
+      }
 
-      return ctx.json({
-        ...apiKey,
-        key,
-      });
+      return ctx.json({ ...apiKey, key });
     }
   );
 }

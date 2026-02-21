@@ -3,16 +3,18 @@ import {
   createAuthEndpoint,
   getSessionFromCtx,
 } from "better-auth/api";
-import { ERROR_CODES } from "@/plugins/api-key";
+import { z } from "zod";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
 import type { ApiKey } from "@/plugins/api-key/types";
-
-const API_KEY_TABLE_NAME = "apikey";
 
 export function listApiKeys() {
   return createAuthEndpoint(
     "/api-key/list",
     {
       method: "GET",
+      query: z.object({
+        organizationId: z.string().optional(),
+      }),
     },
     async (ctx) => {
       const session = await getSessionFromCtx(ctx);
@@ -22,9 +24,20 @@ export function listApiKeys() {
         });
       }
 
+      const where: Array<{ field: string; value: string }> = [
+        { field: "userId", value: session.user.id },
+      ];
+
+      if (ctx.query.organizationId) {
+        where.push({
+          field: "organizationId",
+          value: ctx.query.organizationId,
+        });
+      }
+
       const keys = await ctx.context.adapter.findMany<ApiKey>({
         model: API_KEY_TABLE_NAME,
-        where: [{ field: "userId", value: session.user.id }],
+        where,
         sortBy: { field: "createdAt", direction: "desc" },
       });
 

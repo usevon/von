@@ -4,11 +4,9 @@ import {
   getSessionFromCtx,
 } from "better-auth/api";
 import { z } from "zod";
-import { ERROR_CODES } from "@/plugins/api-key";
-import { deleteApiKey as deleteApiKeyFromStorage } from "@/plugins/api-key/adapter";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
+import { deleteApiKeyFromSecondaryStorage } from "@/plugins/api-key/adapter";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
-
-const API_KEY_TABLE_NAME = "apikey";
 
 export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
   return createAuthEndpoint(
@@ -44,7 +42,6 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
         });
       }
 
-      // If key belongs to an organization, verify user is still a member
       if (apiKey.organizationId) {
         const membership = await ctx.context.adapter.findOne<{ id: string }>({
           model: "member",
@@ -60,20 +57,17 @@ export function deleteApiKey({ opts }: { opts: ResolvedApiKeyOptions }) {
         }
       }
 
-      // Delete from cache first, then DB (Fix #10: atomic cache invalidation)
-      await deleteApiKeyFromStorage(ctx as never, apiKey, opts);
+      await deleteApiKeyFromSecondaryStorage(ctx as never, apiKey, opts);
 
       await ctx.context.adapter.delete({
         model: API_KEY_TABLE_NAME,
         where: [{ field: "id", value: ctx.body.keyId }],
       });
 
-      // Audit log
-      ctx.context.logger.info("API key deleted", {
-        userId: session.user.id,
-        keyId: apiKey.id,
-        organizationId: apiKey.organizationId ?? null,
-      });
+      if (opts.apiKeyHooks?.afterDelete) {
+        const { key: _, ...payload } = apiKey;
+        await opts.apiKeyHooks.afterDelete(payload);
+      }
 
       return ctx.json({ success: true });
     }

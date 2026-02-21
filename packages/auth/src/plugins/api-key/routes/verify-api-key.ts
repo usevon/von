@@ -1,8 +1,9 @@
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { z } from "zod";
-import { ERROR_CODES } from "@/plugins/api-key";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
+import type { GenericEndpointContext } from "@/plugins/api-key/adapter";
 import {
-  deleteApiKey as deleteApiKeyFromStorage,
+  deleteApiKeyFromSecondaryStorage,
   getApiKey,
 } from "@/plugins/api-key/adapter";
 import {
@@ -12,33 +13,6 @@ import {
 } from "@/plugins/api-key/crypto";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
 
-const API_KEY_TABLE_NAME = "apikey";
-
-type EndpointContext = {
-  context: {
-    adapter: {
-      findOne: <T>(opts: {
-        model: string;
-        where: { field: string; value: unknown }[];
-      }) => Promise<T | null>;
-      delete: (opts: {
-        model: string;
-        where: { field: string; value: unknown }[];
-      }) => Promise<void>;
-    };
-    logger: { error: (msg: string, ...args: unknown[]) => void };
-    secondaryStorage?: {
-      get: (key: string) => Promise<unknown> | unknown;
-      set: (
-        key: string,
-        value: string,
-        ttl?: number
-      ) => Promise<undefined | null | unknown> | undefined;
-      delete: (key: string) => Promise<undefined | null | string> | undefined;
-    } | null;
-  };
-};
-
 export async function validateApiKey({
   hashedKey,
   ctx,
@@ -46,7 +20,7 @@ export async function validateApiKey({
 }: {
   hashedKey: string;
   opts: ResolvedApiKeyOptions;
-  ctx: EndpointContext;
+  ctx: GenericEndpointContext;
 }): Promise<ApiKey> {
   const apiKey = await getApiKey(ctx as never, hashedKey, opts);
 
@@ -71,7 +45,7 @@ export async function validateApiKey({
           model: API_KEY_TABLE_NAME,
           where: [{ field: "id", value: apiKey.id }],
         });
-        await deleteApiKeyFromStorage(ctx, apiKey, opts);
+        await deleteApiKeyFromSecondaryStorage(ctx, apiKey, opts);
       } catch (error) {
         ctx.context.logger.error("Failed to delete expired API key:", error);
       }

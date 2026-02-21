@@ -4,10 +4,8 @@ import {
   getSessionFromCtx,
 } from "better-auth/api";
 import { z } from "zod";
-import { ERROR_CODES } from "@/plugins/api-key";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
 import type { ApiKey } from "@/plugins/api-key/types";
-
-const API_KEY_TABLE_NAME = "apikey";
 
 export function getApiKey() {
   return createAuthEndpoint(

@@ -1,5 +1,6 @@
 import type { BetterAuthPlugin } from "better-auth/minimal";
 import { hmacSign } from "@/plugins/api-key/crypto";
+import { generateRandomString } from "@/plugins/api-key/generate";
 import { createApiKeyRoutes } from "@/plugins/api-key/routes";
 import { apiKeySchema } from "@/plugins/api-key/schema";
 import type {
@@ -7,34 +8,13 @@ import type {
   ResolvedApiKeyOptions,
 } from "@/plugins/api-key/types";
 
+export const API_KEY_TABLE_NAME = "apikey";
+
 const KEY_LENGTH = 64;
 const START_LENGTH = 12;
 const MAX_NAME_LENGTH = 64;
 const MAX_EXPIRES_DAYS = 365;
 const MAX_KEYS_PER_USER = 20;
-
-function generateRandomString(length: number): string {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  // Generate extra bytes to account for rejection sampling
-  const randomValues = new Uint8Array(length * 2);
-  crypto.getRandomValues(randomValues);
-  for (let i = 0, j = 0; i < length; j++) {
-    if (j >= randomValues.length) {
-      // Extremely unlikely: refill random bytes
-      crypto.getRandomValues(randomValues);
-      j = 0;
-    }
-    const byte = randomValues[j];
-    // Reject bytes >= 248 to eliminate modulo bias (248 = 62 * 4)
-    if (byte < 248) {
-      result += chars[byte % 62];
-      i += 1;
-    }
-  }
-  return result;
-}
 
 function getEnvironmentPrefix(environment: string): string {
   const prefixMap: Record<string, string> = {
@@ -42,7 +22,7 @@ function getEnvironmentPrefix(environment: string): string {
     staging: "von_stg_",
     prod: "von_prod_",
   };
-  return prefixMap[environment] || "von_dev_";
+  return prefixMap[environment] ?? "von_dev_";
 }
 
 export const ERROR_CODES = {
@@ -57,8 +37,6 @@ export const ERROR_CODES = {
   EXPIRATION_TOO_LONG: "Expiration exceeds maximum allowed days",
 } as const;
 
-export const API_KEY_TABLE_NAME = "apikey";
-
 export const apiKey = (options?: ApiKeyOptions) => {
   if (!options?.signingSecret && process.env.NODE_ENV === "production") {
     throw new Error("API key signingSecret is required in production");
@@ -69,6 +47,7 @@ export const apiKey = (options?: ApiKeyOptions) => {
     fallbackToDatabase: options?.fallbackToDatabase ?? false,
     secondaryStorage: options?.secondaryStorage,
     signingSecret: options?.signingSecret,
+    apiKeyHooks: options?.apiKeyHooks,
   };
 
   const schema = apiKeySchema();
@@ -108,4 +87,8 @@ export const apiKey = (options?: ApiKeyOptions) => {
   } satisfies BetterAuthPlugin;
 };
 
-export type { ApiKey, ApiKeyOptions } from "@/plugins/api-key/types";
+export type {
+  ApiKey,
+  ApiKeyHookPayload,
+  ApiKeyOptions,
+} from "@/plugins/api-key/types";

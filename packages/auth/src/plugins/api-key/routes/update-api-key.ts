@@ -4,12 +4,10 @@ import {
   getSessionFromCtx,
 } from "better-auth/api";
 import { z } from "zod";
-import { ERROR_CODES } from "@/plugins/api-key";
+import { API_KEY_TABLE_NAME, ERROR_CODES } from "@/plugins/api-key";
 import { setApiKey } from "@/plugins/api-key/adapter";
 import { VALID_SCOPES } from "@/plugins/api-key/scopes";
 import type { ApiKey, ResolvedApiKeyOptions } from "@/plugins/api-key/types";
-
-const API_KEY_TABLE_NAME = "apikey";
 
 export function updateApiKey({
   opts,
@@ -92,10 +90,14 @@ export function updateApiKey({
         });
       }
 
-      const completeApiKey: ApiKey = { ...apiKey, ...update };
-      await setApiKey(ctx as never, completeApiKey, opts);
+      await setApiKey(ctx as never, updated, opts);
 
-      const { key: _, ...safeKey } = completeApiKey;
+      if (opts.apiKeyHooks?.afterUpdate) {
+        const { key: _k, ...payload } = updated;
+        await opts.apiKeyHooks.afterUpdate(payload);
+      }
+
+      const { key: _, ...safeKey } = updated;
       return ctx.json(safeKey);
     }
   );

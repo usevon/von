@@ -7,6 +7,11 @@ export type ApiKeyOptions = {
     set: (key: string, value: string, ttl?: number) => Promise<void> | void;
     delete: (key: string) => Promise<void> | void;
   };
+  apiKeyHooks?: {
+    afterCreate?: (key: ApiKeyHookPayload) => Promise<void> | void;
+    afterUpdate?: (key: ApiKeyHookPayload) => Promise<void> | void;
+    afterDelete?: (key: ApiKeyHookPayload) => Promise<void> | void;
+  };
 };
 
 export type ApiKey = {
@@ -25,9 +30,12 @@ export type ApiKey = {
   updatedAt: Date;
 };
 
+export type ApiKeyHookPayload = Omit<ApiKey, "key">;
+
 export type ResolvedApiKeyOptions = {
   signingSecret?: string;
   storage: "database" | "secondary-storage";
   fallbackToDatabase: boolean;
   secondaryStorage?: ApiKeyOptions["secondaryStorage"];
+  apiKeyHooks?: ApiKeyOptions["apiKeyHooks"];
 };
