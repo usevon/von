@@ -49,7 +49,6 @@ export const TextHoverEffect = ({
   const enterControlsRef = useRef<ReturnType<typeof animate> | null>(null);
   const exitControlsRef = useRef<ReturnType<typeof animate> | null>(null);
   const settledRef = useRef(false);
-  // Track last mouse direction: 1 = moving right, -1 = moving left
   const lastDirectionRef = useRef<1 | -1>(1);
   const lastMouseXRef = useRef(0);
 
@@ -80,7 +79,9 @@ export const TextHoverEffect = ({
   // Convert mouse clientX to 0..1 fraction of container width
   const mouseToFraction = useCallback((clientX: number): number => {
     const el = containerRef.current;
-    if (!el) { return 0.5; }
+    if (!el) {
+      return 0.5;
+    }
     const rect = el.getBoundingClientRect();
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }, []);
@@ -97,10 +98,9 @@ export const TextHoverEffect = ({
         repeatDelay: sweepPause,
       });
     },
-    [beamX, sweepStart, sweepEnd, sweepDuration, sweepPause],
+    [beamX, sweepStart, sweepEnd, sweepDuration, sweepPause]
   );
 
-  // Auto-sweep on mount
   useEffect(() => {
     if (!hoveredRef.current) {
       startLoop(sweepStart);
@@ -112,6 +112,9 @@ export const TextHoverEffect = ({
 
   const handleMouseEnter = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        return;
+      }
       hoveredRef.current = true;
       settledRef.current = false;
 
@@ -139,14 +142,17 @@ export const TextHoverEffect = ({
         },
       });
     },
-    [beamX, beamVelocity, mouseToFraction],
+    [beamX, beamVelocity, mouseToFraction]
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      // Track direction
-      if (e.clientX > lastMouseXRef.current) { lastDirectionRef.current = 1; }
-      else if (e.clientX < lastMouseXRef.current) {
+      if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        return;
+      }
+      if (e.clientX > lastMouseXRef.current) {
+        lastDirectionRef.current = 1;
+      } else if (e.clientX < lastMouseXRef.current) {
         lastDirectionRef.current = -1;
       }
       lastMouseXRef.current = e.clientX;
@@ -168,10 +174,13 @@ export const TextHoverEffect = ({
         beamX.set(target);
       }
     },
-    [beamX, mouseToFraction],
+    [beamX, mouseToFraction]
   );
 
   const handleMouseLeave = useCallback(() => {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      return;
+    }
     hoveredRef.current = false;
     enterControlsRef.current?.stop();
     enterControlsRef.current = null;
@@ -184,7 +193,8 @@ export const TextHoverEffect = ({
     // Duration is proportional to remaining distance so speed matches the normal sweep.
     const nearEdge = movingRight ? sweepEnd : sweepStart;
     const remainingDistance = Math.abs(nearEdge - current);
-    const proportionalDuration = (remainingDistance / totalRange) * sweepDuration;
+    const proportionalDuration =
+      (remainingDistance / totalRange) * sweepDuration;
 
     // Clamp to a reasonable minimum so very short distances don't pop
     const exitDuration = Math.max(0.15, proportionalDuration);
@@ -207,12 +217,12 @@ export const TextHoverEffect = ({
 
   return (
     <div
-      ref={containerRef}
+      aria-hidden="true"
       className={cn("relative", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
-      aria-hidden="true"
+      ref={containerRef}
       role="presentation"
     >
       {/*
@@ -225,7 +235,8 @@ export const TextHoverEffect = ({
           className={cn(textClass, "text-transparent")}
           style={{
             fontSize: "1em",
-            WebkitTextStroke: "0.012em color-mix(in srgb, var(--color-foreground) 15%, transparent)",
+            WebkitTextStroke:
+              "0.012em color-mix(in srgb, var(--color-foreground) 15%, transparent)",
           }}
         >
           {text}
