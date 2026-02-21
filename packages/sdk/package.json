@@ -43,7 +43,6 @@
     "@types/node": "^20",
     "@usevon/api": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
-    "@usevon/utils": "workspace:*",
     "tsdown": "^0.20.3"
   },
   "publishConfig": {

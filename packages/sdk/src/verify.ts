@@ -1,4 +1,16 @@
-import { hmacSign, timingSafeEqual } from "@usevon/utils";
+import {
+  createHmac,
+  timingSafeEqual as nodeTimingSafeEqual,
+} from "node:crypto";
+
+function hmacSign(data: string, secret: string): string {
+  return createHmac("sha256", secret).update(data).digest("hex");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return nodeTimingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export class WebhookVerificationError extends Error {
   constructor(message: string) {
