@@ -5,9 +5,10 @@ const TEST_ID = "550e8400-e29b-41d4-a716-446655440000";
 const TEST_VERSION = "2024-06-01";
 
 describe("API auth guards", () => {
-  const cases: Array<
-    [string, () => Promise<{ error?: { status?: number } | null }>]
-  > = [
+  const cases: [
+    string,
+    () => Promise<{ error?: { status?: number } | null }>,
+  ][] = [
     [
       "POST /endpoints",
       () =>
@@ -39,13 +40,11 @@ describe("API auth guards", () => {
     [
       "PATCH /versions/:version",
       () =>
-        client
-          .versions({ version: TEST_VERSION })
-          .patch({
-            transforms: {
-              "product.updated": { rename: { features: "newItems" } },
-            },
-          }),
+        client.versions({ version: TEST_VERSION }).patch({
+          transforms: {
+            "product.updated": { rename: { features: "newItems" } },
+          },
+        }),
     ],
     [
       "DELETE /versions/:version",
