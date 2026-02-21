@@ -241,7 +241,7 @@ export const event = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     eventType: text("event_type").notNull(),
-    payload: text("payload").notNull(),
+    payload: jsonb("payload").$type<unknown>().notNull(),
     idempotencyKey: text("idempotency_key"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -345,8 +345,8 @@ export const inboundDelivery = pgTable(
     inboundEndpointId: uuid("inbound_endpoint_id")
       .notNull()
       .references(() => inboundEndpoint.id, { onDelete: "cascade" }),
-    payload: text("payload").notNull(),
-    headers: text("headers"),
+    payload: jsonb("payload").$type<unknown>().notNull(),
+    headers: jsonb("headers").$type<Record<string, string>>(),
     status: text("status").default("pending").notNull(),
     attempts: integer("attempts").default(0).notNull(),
     lastAttemptAt: timestamp("last_attempt_at"),
@@ -413,6 +413,35 @@ export const webhookVersion = pgTable(
   ]
 );
 
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id"),
+    actorType: text("actor_type").notNull(),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: text("resource_id").notNull(),
+    resourceName: text("resource_name"),
+    metadata: jsonb("metadata"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => [
+    index("audit_log_org_created_idx").on(
+      table.organizationId,
+      table.createdAt
+    ),
+    index("audit_log_org_action_idx").on(table.organizationId, table.action),
+    index("audit_log_expires_at_idx").on(table.expiresAt),
+  ]
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
@@ -443,6 +472,7 @@ export const organizationRelations = relations(organization, ({ many }) => ({
   events: many(event),
   inboundEndpoints: many(inboundEndpoint),
   webhookVersions: many(webhookVersion),
+  auditLogs: many(auditLog),
 }));
 
 export const memberRelations = relations(member, ({ one }) => ({
@@ -529,6 +559,13 @@ export const inboundDeliveryRelations = relations(
 export const webhookVersionRelations = relations(webhookVersion, ({ one }) => ({
   organization: one(organization, {
     fields: [webhookVersion.organizationId],
+    references: [organization.id],
+  }),
+}));
+
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  organization: one(organization, {
+    fields: [auditLog.organizationId],
     references: [organization.id],
   }),
 }));

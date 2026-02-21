@@ -251,8 +251,6 @@ export abstract class InboundService {
       async () => {
         const now = new Date();
         const deliveryId = crypto.randomUUID();
-        const payloadStr = JSON.stringify(params.payload);
-        const headersStr = JSON.stringify(params.headers);
 
         const delivery = await db.transaction(async (tx) => {
           const result = await tx
@@ -260,8 +258,8 @@ export abstract class InboundService {
             .values({
               id: deliveryId,
               inboundEndpointId: params.endpointId,
-              payload: payloadStr,
-              headers: headersStr,
+              payload: params.payload,
+              headers: params.headers,
               status: "pending",
               createdAt: now,
             })
@@ -276,14 +274,14 @@ export abstract class InboundService {
         await enqueueInboundForwardingJob({
           deliveryId,
           endpoint: params.endpoint,
-          payload: payloadStr,
-          headers: headersStr,
+          payload: JSON.stringify(params.payload),
+          headers: JSON.stringify(params.headers),
         });
 
         return {
           id: delivery.id,
-          payload: delivery.payload ? JSON.parse(delivery.payload) : null,
-          headers: delivery.headers ? JSON.parse(delivery.headers) : null,
+          payload: delivery.payload ?? null,
+          headers: delivery.headers ?? null,
           status: delivery.status,
           forwardedAt: delivery.forwardedAt?.toISOString() ?? null,
           response:

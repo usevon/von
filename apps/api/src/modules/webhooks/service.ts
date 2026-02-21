@@ -63,13 +63,7 @@ const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
 const toEvent = (e: EventRow): WebhookModel.event => ({
   id: e.id,
   eventType: e.eventType,
-  payload: (() => {
-    try {
-      return JSON.parse(e.payload);
-    } catch {
-      return { raw: e.payload };
-    }
-  })(),
+  payload: e.payload,
   idempotencyKey: e.idempotencyKey,
   createdAt: e.createdAt.toISOString(),
 });
@@ -277,7 +271,7 @@ export abstract class WebhookService {
               id: e.id,
               organizationId: params.organizationId,
               eventType: e.eventType,
-              payload: JSON.stringify(e.payload),
+              payload: e.payload,
               idempotencyKey: e.idempotencyKey,
               createdAt: now,
             }))
@@ -563,7 +557,7 @@ export abstract class WebhookService {
       targets.length,
       async () => {
         const now = new Date();
-        const payloadStr = eventRecord.payload;
+        const payloadStr = JSON.stringify(eventRecord.payload);
         const deliveryRecords: (typeof delivery.$inferInsert)[] = [];
         const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
 
@@ -663,7 +657,7 @@ export abstract class WebhookService {
         data: {
           deliveryId,
           eventId: failed.eventId,
-          payload: failed.payload,
+          payload: JSON.stringify(failed.payload),
           eventType: failed.eventType,
           endpoint: ep,
           organizationId,
