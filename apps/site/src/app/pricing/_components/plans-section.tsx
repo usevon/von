@@ -249,9 +249,9 @@ export function PlansSection() {
 
   return (
     <>
-      <div className="mt-4 flex w-full flex-col items-center gap-4 px-8 sm:px-12 md:flex-row md:items-end md:justify-center md:gap-0">
+      <div className="mt-4 flex w-full flex-col gap-4 px-8 sm:px-12 md:flex-row md:items-center md:justify-center md:gap-0">
         <PlanCard
-          className="bg-accent/40 shadow-none md:w-96 md:border-r-0"
+          className="w-full bg-accent/40 shadow-none md:w-96 md:border-r-0"
           plan={hobbyPlan}
         />
 

@@ -2,7 +2,6 @@
 
 import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import {
-  Button,
   Collapsible,
   CollapsibleContent,
   Dialog,
@@ -22,7 +21,7 @@ import { CalculatorSections } from "./calculator-sections";
 import type { CalculatorState } from "./use-calculator-state";
 
 export function CalculatorDialog({ state }: { state: CalculatorState }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const total = state.billedTotal;
   const atMinimum = state.usageCost + state.addons <= MIN_PAYG_MONTHLY;
 
@@ -52,7 +51,12 @@ export function CalculatorDialog({ state }: { state: CalculatorState }) {
   return (
     <Dialog>
       <DialogTrigger
-        render={<Button className="w-full" size="xl" variant="outline" />}
+        render={
+          <button
+            className="w-full cursor-pointer text-center text-muted-foreground text-sm underline-offset-4 hover:underline"
+            type="button"
+          />
+        }
       >
         Estimate your cost
       </DialogTrigger>
