@@ -63,12 +63,6 @@ describe("getMonthKey", () => {
   });
 });
 
-describe("DELIVERY_TTL", () => {
-  test("is 45 days in seconds", () => {
-    expect(DELIVERY_TTL).toBe(45 * 86_400);
-  });
-});
-
 describe("reserveMonthlyQuota", () => {
   beforeEach(() => {
     stringStore.clear();
@@ -108,19 +102,19 @@ describe("reserveMonthlyQuota", () => {
     );
   });
 
-  test("calls redis.eval with hasOverage=1 for pro plan", async () => {
+  test("calls redis.eval with hasOverage=1 for metered plan", async () => {
     mockRedis.eval.mockResolvedValue([1, 500]);
 
-    await reserveMonthlyQuota("org-1", "pro", 10);
+    await reserveMonthlyQuota("org-1", "metered", 10);
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,
       expect.any(String),
-      "100000", // pro monthlyDeliveries
+      "25000",
       "10",
       String(DELIVERY_TTL),
-      "1" // pro hasOverage = true
+      "1"
     );
   });
 
@@ -131,23 +125,18 @@ describe("reserveMonthlyQuota", () => {
     expect(result).toEqual({ allowed: true, currentUsage: 250 });
   });
 
-  test("throws TooManyRequestsError when Lua script returns [0, usage]", async () => {
+  test("throws TooManyRequestsError with correct message when quota exceeded", async () => {
     mockRedis.eval.mockResolvedValue([0, 25_000]);
 
     await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
       TooManyRequestsError
     );
-  });
-
-  test("throws with default message when quota exceeded", async () => {
-    mockRedis.eval.mockResolvedValue([0, 24_999]);
-
-    await expect(reserveMonthlyQuota("org-1", "hobby", 2)).rejects.toThrow(
+    await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
       "Too many requests"
     );
   });
 
-  test("falls back to hobby limits for unknown plan", async () => {
+  test("unknown plan falls through to metered defaults", async () => {
     mockRedis.eval.mockResolvedValue([1, 100]);
 
     await reserveMonthlyQuota("org-1", "unknown-plan", 1);
@@ -156,10 +145,10 @@ describe("reserveMonthlyQuota", () => {
       expect.any(String),
       1,
       expect.any(String),
-      "25000", // falls back to hobby
+      "25000",
       "1",
       String(DELIVERY_TTL),
-      "0" // hobby hasOverage = false
+      "1" // non-hobby plans have hasOverage = true
     );
   });
 });

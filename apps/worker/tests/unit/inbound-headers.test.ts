@@ -1,52 +1,18 @@
 import { describe, expect, test } from "bun:test";
-
-const BLOCKED_HEADERS = new Set([
-  "x-von-signature",
-  "x-von-timestamp",
-  "x-von-inbound-delivery-id",
-  "authorization",
-  "host",
-]);
-
-function filterHeaders(
-  original: Record<string, string>
-): Record<string, string> {
-  const safe: Record<string, string> = {};
-  for (const [key, value] of Object.entries(original)) {
-    if (!BLOCKED_HEADERS.has(key.toLowerCase())) {
-      safe[key] = value;
-    }
-  }
-  return safe;
-}
+import {
+  BLOCKED_HEADERS,
+  filterHeaders,
+} from "../../src/processors/inbound-headers";
 
 describe("inbound header filtering", () => {
-  test("removes x-von-signature", () => {
-    const result = filterHeaders({ "X-Von-Signature": "t=123,v1=abc" });
-    expect(result).toEqual({});
+  test("blocks all headers in the blocked set", () => {
+    for (const header of BLOCKED_HEADERS) {
+      const result = filterHeaders({ [header]: "value" });
+      expect(result).toEqual({});
+    }
   });
 
-  test("removes x-von-timestamp", () => {
-    const result = filterHeaders({ "X-Von-Timestamp": "123" });
-    expect(result).toEqual({});
-  });
-
-  test("removes x-von-inbound-delivery-id", () => {
-    const result = filterHeaders({ "X-Von-Inbound-Delivery-Id": "del_1" });
-    expect(result).toEqual({});
-  });
-
-  test("removes authorization", () => {
-    const result = filterHeaders({ Authorization: "Bearer token123" });
-    expect(result).toEqual({});
-  });
-
-  test("removes host", () => {
-    const result = filterHeaders({ Host: "evil.com" });
-    expect(result).toEqual({});
-  });
-
-  test("is case-insensitive", () => {
+  test("is case-insensitive for blocked headers", () => {
     const result = filterHeaders({
       AUTHORIZATION: "Bearer token",
       HOST: "evil.com",

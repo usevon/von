@@ -5,6 +5,9 @@ import { buildSignatureHeader } from "@usevon/utils";
 import { eq, sql } from "drizzle-orm";
 import { createWorker } from "@/lib/create-worker";
 import { type DeliveryConfig, processDelivery } from "@/lib/process-delivery";
+import { filterHeaders } from "./inbound-headers";
+
+export { BLOCKED_HEADERS, filterHeaders } from "./inbound-headers";
 
 const getInboundDeliveryStmt = db
   .select()
@@ -24,14 +27,6 @@ const getInboundEndpointStateStmt = db
   .where(eq(inboundEndpoint.id, sql.placeholder("id")))
   .limit(1)
   .prepare("worker_get_inbound_endpoint_state");
-
-const BLOCKED_HEADERS = new Set([
-  "x-von-signature",
-  "x-von-timestamp",
-  "x-von-inbound-delivery-id",
-  "authorization",
-  "host",
-]);
 
 const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
   label: "Inbound",
@@ -71,12 +66,7 @@ const inboundConfig: DeliveryConfig<InboundForwardingJob> = {
       ? JSON.parse(job.headers)
       : {};
 
-    const safeHeaders: Record<string, string> = {};
-    for (const [key, value] of Object.entries(originalHeaders)) {
-      if (!BLOCKED_HEADERS.has(key.toLowerCase())) {
-        safeHeaders[key] = value;
-      }
-    }
+    const safeHeaders = filterHeaders(originalHeaders);
 
     return {
       url: job.endpoint.forwardUrl,

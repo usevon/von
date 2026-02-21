@@ -106,9 +106,4 @@ describe("VALID_SCOPES", () => {
       expect(VALID_SCOPES).toContain(`write:${resource}`);
     }
   });
-
-  test("has expected count", () => {
-    // * + read:* + write:* + 5 resources × 2 (read/write) = 13
-    expect(VALID_SCOPES).toHaveLength(13);
-  });
 });

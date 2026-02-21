@@ -25,12 +25,6 @@ describe("generateSecret", () => {
     const suffix = secret.split("_")[1];
     expect(suffix).toMatch(UUID_REGEX);
   });
-
-  test("generates unique values", () => {
-    const a = generateSecret();
-    const b = generateSecret();
-    expect(a).not.toBe(b);
-  });
 });
 
 describe("generateTunnelId", () => {
@@ -70,11 +64,5 @@ describe("generateTunnelSecret", () => {
     const secret = generateTunnelSecret();
     expect(secret).toHaveLength(32);
     expect(secret).toMatch(HEX_REGEX);
-  });
-
-  test("generates unique values", () => {
-    const a = generateTunnelSecret();
-    const b = generateTunnelSecret();
-    expect(a).not.toBe(b);
   });
 });

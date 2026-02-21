@@ -91,7 +91,7 @@ describe("checkThroughputLimit", () => {
     expect(args[1]).toBe(1); // numkeys
     expect(args[2]).toBe("org:throughput:org-1"); // key
     expect(args[3]).toBe("25"); // rate (hobby)
-    expect(args[4]).toBe("25"); // burst (hobby)
+    expect(args[4]).toBe("35"); // burst (hobby, 1.4x rate)
     expect(typeof args[5]).toBe("string"); // now (timestamp)
     expect(args[6]).toBe("3"); // requested tokens
   });
@@ -103,7 +103,7 @@ describe("checkThroughputLimit", () => {
 
     const args = mockEval.mock.calls[0];
     expect(args[3]).toBe("100"); // rate (pro)
-    expect(args[4]).toBe("150"); // burst (pro)
+    expect(args[4]).toBe("140"); // burst (pro, 1.4x rate)
     expect(args[6]).toBe("1"); // requested tokens
   });
 });

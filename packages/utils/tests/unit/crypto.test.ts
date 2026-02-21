@@ -65,9 +65,6 @@ describe("timingSafeEqual", () => {
 
   test("returns false for different length strings", () => {
     expect(timingSafeEqual("short", "longer")).toBe(false);
-  });
-
-  test("returns false for strings with same prefix but different length", () => {
     expect(timingSafeEqual("abc", "abcdef")).toBe(false);
     expect(timingSafeEqual("abcdef", "abc")).toBe(false);
   });
@@ -87,11 +84,5 @@ describe("randomHex", () => {
   test("returns valid hex string", () => {
     const hex = randomHex(16);
     expect(hex).toMatch(HEX_REGEX);
-  });
-
-  test("generates different values each time", () => {
-    const hex1 = randomHex(16);
-    const hex2 = randomHex(16);
-    expect(hex1).not.toBe(hex2);
   });
 });

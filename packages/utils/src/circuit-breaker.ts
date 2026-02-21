@@ -33,10 +33,12 @@ export function shouldTransitionToHalfOpen(
 export function getSuccessUpdate(): {
   circuitState: CircuitState;
   failureCount: number;
+  circuitOpenedAt: null;
 } {
   return {
     circuitState: "closed",
     failureCount: 0,
+    circuitOpenedAt: null,
   };
 }
 

@@ -16,8 +16,8 @@ describe("Health endpoints", () => {
     const { data, error } = await client.ready.get();
 
     const payload = data ?? error?.value;
-    expect(payload?.services).toBeDefined();
-    expect(payload?.services.database).toBeDefined();
-    expect(payload?.services.redis).toBeDefined();
+    expect(payload?.status).toBe("ok");
+    expect(payload?.services.database).toBe("ok");
+    expect(payload?.services.redis).toBe("ok");
   }, 15_000);
 });

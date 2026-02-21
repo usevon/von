@@ -123,10 +123,11 @@ describe("circuit-breaker", () => {
   });
 
   describe("getSuccessUpdate", () => {
-    test("resets to closed with 0 failures", () => {
+    test("resets to closed with 0 failures and clears circuitOpenedAt", () => {
       const result = getSuccessUpdate();
       expect(result.circuitState).toBe("closed");
       expect(result.failureCount).toBe(0);
+      expect(result.circuitOpenedAt).toBeNull();
     });
   });
 

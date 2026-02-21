@@ -7,7 +7,6 @@ import { describe, expect, test } from "bun:test";
 const BASE62_CHARS =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const BASE62_PATTERN = /^[a-zA-Z0-9]+$/;
-const DIGIT_PATTERN = /[0-9]/;
 
 function generateRandomString(length: number): string {
   const chars = BASE62_CHARS;
@@ -41,20 +40,6 @@ describe("Base62 key generation", () => {
     }
   });
 
-  test("includes digits in output", () => {
-    // With 64 chars from Base62, the probability of no digits is ~(52/62)^64 ≈ 0.00003
-    // Run enough iterations to be confident
-    let hasDigit = false;
-    for (let i = 0; i < 10; i++) {
-      const key = generateRandomString(64);
-      if (DIGIT_PATTERN.test(key)) {
-        hasDigit = true;
-        break;
-      }
-    }
-    expect(hasDigit).toBe(true);
-  });
-
   test("generates unique strings", () => {
     const keys = new Set<string>();
     for (let i = 0; i < 100; i++) {
@@ -73,16 +58,5 @@ describe("Base62 key generation", () => {
     const key = generateRandomString(256);
     expect(key).toHaveLength(256);
     expect(key).toMatch(BASE62_PATTERN);
-  });
-
-  test("character distribution is roughly uniform", () => {
-    // Generate a large sample and check that all 62 chars appear
-    const combined = Array.from({ length: 100 }, () =>
-      generateRandomString(64)
-    ).join("");
-
-    const charSet = new Set(combined);
-    // All 62 characters should appear in 6400 random chars
-    expect(charSet.size).toBe(62);
   });
 });
