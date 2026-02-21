@@ -9,6 +9,11 @@
     "signature": true
   },
   "tasks": {
+    "@usevon/queue#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": [
