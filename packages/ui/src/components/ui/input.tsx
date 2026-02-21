@@ -50,4 +50,4 @@ function Input({
   );
 }
 
-export { Input, type InputProps };
+export { Input, type InputProps, InputPrimitive };

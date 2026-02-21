@@ -61,7 +61,7 @@ function DialogPopup({
       <DialogViewport>
         <DialogPrimitive.Popup
           className={cn(
-            "relative row-start-2 flex max-h-full min-h-0 w-full min-w-0 flex-col border-t bg-popover bg-clip-padding text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-lg transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-nested-dialog-open:origin-top data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:opacity-[calc(1-min(var(--nested-dialogs),1))] max-sm:data-ending-style:translate-y-4 max-sm:data-starting-style:translate-y-4 max-sm:before:hidden sm:max-w-lg sm:-translate-y-[calc(1.25rem*var(--nested-dialogs))] sm:data-nested:data-ending-style:translate-y-8 sm:data-nested:data-starting-style:translate-y-8 sm:scale-[calc(1-0.1*var(--nested-dialogs))] sm:rounded-2xl sm:border sm:data-ending-style:scale-98 sm:data-starting-style:scale-98 sm:before:rounded-[calc(var(--radius-2xl)-1px)] dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
+            "relative row-start-2 flex max-h-full min-h-0 w-full min-w-0 flex-col border-t bg-popover bg-clip-padding text-popover-foreground opacity-[calc(1-0.1*var(--nested-dialogs))] shadow-lg transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-nested-dialog-open:origin-top data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:opacity-[calc(1-min(var(--nested-dialogs),1))] max-sm:data-ending-style:translate-y-4 max-sm:data-starting-style:translate-y-4 max-sm:before:hidden sm:max-w-lg sm:-translate-y-[calc(1.25rem*var(--nested-dialogs))] sm:data-nested:data-ending-style:translate-y-8 sm:data-nested:data-starting-style:translate-y-8 sm:scale-[calc(1-0.1*var(--nested-dialogs))] sm:border sm:data-ending-style:scale-98 sm:data-starting-style:scale-98 dark:bg-clip-border dark:before:shadow-[0_-1px_--theme(--color-white/8%)]",
             className
           )}
           data-slot="dialog-popup"
@@ -85,7 +85,7 @@ function DialogHeader({
   return (
     <div
       className={cn(
-        "grid grid-cols-[1fr_auto] gap-x-4 p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-2 max-sm:pb-4 [&_[data-slot=dialog-description]]:col-span-full",
+        "grid grid-cols-[1fr_auto] items-center gap-x-4 p-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-panel])]:pb-2 max-sm:pb-4 [&_[data-slot=dialog-description]]:col-span-full",
         className
       )}
       data-slot="dialog-header"
@@ -115,7 +115,7 @@ function DialogFooter({
   return (
     <div
       className={cn(
-        "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end sm:rounded-b-xl",
+        "flex flex-col-reverse gap-2 px-6 sm:flex-row sm:justify-end",
         variant === "default" && "border-t bg-muted/50 py-4",
         variant === "bare" && "pb-6",
         className
@@ -153,10 +153,7 @@ function DialogPanel({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <ScrollArea>
       <div
-        className={cn(
-          "px-6 in-[[data-slot=dialog-popup]:has([data-slot=dialog-header])]:pt-1 in-[[data-slot=dialog-popup]:not(:has([data-slot=dialog-header]))]:pt-6 in-[[data-slot=dialog-popup]:not(:has([data-slot=dialog-footer]))]:pb-6! in-[[data-slot=dialog-popup]:not(:has([data-slot=dialog-footer].border-t))]:pb-1 pb-6",
-          className
-        )}
+        className={cn("px-6 py-4", className)}
         data-slot="dialog-panel"
         {...props}
       />
