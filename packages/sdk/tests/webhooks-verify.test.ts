@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { hmacSign } from "@usevon/utils";
+import { createHmac } from "node:crypto";
 import { verifyWebhook, WebhookVerificationError } from "../src";
+
+function hmacSign(data: string, secret: string): string {
+  return createHmac("sha256", secret).update(data).digest("hex");
+}
 
 const createSignature = (
   payload: string,
