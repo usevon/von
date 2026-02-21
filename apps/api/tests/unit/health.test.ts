@@ -1,7 +1,15 @@
-import { describe, expect, test } from "bun:test";
-import { client } from "../setup";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { treaty } from "@elysiajs/eden";
+import type { App } from "../setup";
 
 describe("Health endpoints", () => {
+  let client: ReturnType<typeof treaty<App>>;
+
+  beforeAll(async () => {
+    const setup = await import("../setup");
+    client = treaty(setup.app);
+  });
+
   test("GET /live returns ok status", async () => {
     const { data, error } = await client.live.get();
 
