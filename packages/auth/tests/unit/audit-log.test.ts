@@ -1,36 +1,23 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
+import { auditLog } from "../../src/plugins/audit-log/index";
+import type { AuditLogInserter } from "../../src/plugins/audit-log/writer";
 
-type InsertedRow = Record<string, unknown>;
+type InsertedRow = Parameters<AuditLogInserter>[0];
 
-const insertedRows: InsertedRow[] = [];
-
-const mockInsert = (row: InsertedRow) => {
-  insertedRows.push(row);
-  return Promise.resolve();
+const createFakeInserter = () => {
+  const rows: InsertedRow[] = [];
+  const inserter: AuditLogInserter = (row) => {
+    rows.push(row);
+    return Promise.resolve();
+  };
+  return { rows, inserter };
 };
 
-mock.module("@usevon/db", () => ({
-  db: {
-    insert: () => ({
-      values: (row: InsertedRow) => mockInsert(row),
-    }),
-    select: () => ({
-      from: () => ({
-        where: () => ({
-          limit: () => Promise.resolve([{ plan: "hobby" }]),
-        }),
-      }),
-    }),
-  },
-  eq: () => ({}),
-}));
+const RETENTION_DAYS = 3;
 
-mock.module("@usevon/db/schema", () => ({
-  auditLog: {},
-  organization: {},
-}));
-
-const { auditLog } = await import("../../src/plugins/audit-log/index");
+const fakeOpts = {
+  getRetentionDays: () => Promise.resolve(RETENTION_DAYS),
+};
 
 const BASE_API_KEY = {
   id: "key_001",
@@ -71,18 +58,22 @@ const BASE_INVITATION = {
 } as const;
 
 describe("audit log plugin", () => {
-  const { apiKeyHooks, organizationHooks } = auditLog();
+  let rows: InsertedRow[];
+  let inserter: AuditLogInserter;
+  let apiKeyHooks: ReturnType<typeof auditLog>["apiKeyHooks"];
+  let organizationHooks: ReturnType<typeof auditLog>["organizationHooks"];
 
   beforeEach(() => {
-    insertedRows.length = 0;
+    ({ rows, inserter } = createFakeInserter());
+    ({ apiKeyHooks, organizationHooks } = auditLog(fakeOpts, inserter));
   });
 
   describe("apiKeyHooks", () => {
     test("afterCreate writes apikey.created entry", async () => {
       await apiKeyHooks.afterCreate(BASE_API_KEY);
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("apikey.created");
       expect(row?.resourceType).toBe("apikey");
       expect(row?.resourceId).toBe("key_001");
@@ -91,7 +82,7 @@ describe("audit log plugin", () => {
       expect(row?.actorType).toBe("user");
       expect(row?.organizationId).toBe("org_001");
       expect(row?.expiresAt).toBeInstanceOf(Date);
-      expect((row?.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+      expect(row?.expiresAt.getTime()).toBeGreaterThan(Date.now());
       const meta = row?.metadata as Record<string, unknown>;
       expect(meta?.environment).toBe("dev");
       expect(meta?.scopes).toEqual(["read:webhooks"]);
@@ -100,8 +91,8 @@ describe("audit log plugin", () => {
     test("afterUpdate writes apikey.updated entry", async () => {
       await apiKeyHooks.afterUpdate({ ...BASE_API_KEY, name: "Renamed Key" });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("apikey.updated");
       expect(row?.resourceId).toBe("key_001");
       expect(row?.resourceName).toBe("Renamed Key");
@@ -112,8 +103,8 @@ describe("audit log plugin", () => {
     test("afterDelete writes apikey.deleted entry", async () => {
       await apiKeyHooks.afterDelete(BASE_API_KEY);
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("apikey.deleted");
       expect(row?.resourceId).toBe("key_001");
       expect(row?.resourceName).toBe("Test Key");
@@ -121,24 +112,22 @@ describe("audit log plugin", () => {
 
     test("skips write when key has no organizationId", async () => {
       await apiKeyHooks.afterCreate({ ...BASE_API_KEY, organizationId: null });
-      expect(insertedRows).toHaveLength(0);
+      expect(rows).toHaveLength(0);
     });
 
-    test("expiresAt is 3 days out for hobby plan", async () => {
+    test("expiresAt is set to retention window from now", async () => {
       await apiKeyHooks.afterCreate(BASE_API_KEY);
 
-      const row = insertedRows[0];
-      const expiresAt = (row?.expiresAt as Date).getTime();
-      const expectedMin = Date.now() + 2 * 86_400_000;
-      const expectedMax = Date.now() + 4 * 86_400_000;
-      expect(expiresAt).toBeGreaterThan(expectedMin);
-      expect(expiresAt).toBeLessThan(expectedMax);
+      const expiresAt = rows[0]?.expiresAt.getTime() ?? 0;
+      const expectedMs = RETENTION_DAYS * 86_400_000;
+      expect(expiresAt).toBeGreaterThan(Date.now() + expectedMs - 5000);
+      expect(expiresAt).toBeLessThan(Date.now() + expectedMs + 5000);
     });
 
-    test("never throws when db insert fails", async () => {
-      const { apiKeyHooks: badHooks } = auditLog({
-        getRetentionDays: () => Promise.reject(new Error("db down")),
-      });
+    test("never throws when inserter fails", async () => {
+      const failingInserter: AuditLogInserter = () =>
+        Promise.reject(new Error("db down"));
+      const { apiKeyHooks: badHooks } = auditLog(fakeOpts, failingInserter);
       await expect(badHooks.afterCreate(BASE_API_KEY)).resolves.toBeUndefined();
     });
   });
@@ -151,8 +140,8 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("member.added");
       expect(row?.resourceType).toBe("member");
       expect(row?.resourceId).toBe("mem_001");
@@ -171,13 +160,12 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
-      expect(row?.action).toBe("member.removed");
-      expect(row?.resourceId).toBe("mem_001");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.action).toBe("member.removed");
+      expect(rows[0]?.resourceId).toBe("mem_001");
     });
 
-    test("afterUpdateMemberRole writes member.role_changed entry with previous role", async () => {
+    test("afterUpdateMemberRole writes member.role_changed with previous and new role", async () => {
       await organizationHooks.afterUpdateMemberRole({
         member: { ...BASE_MEMBER, role: "admin" },
         previousRole: "member",
@@ -185,8 +173,8 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("member.role_changed");
       const meta = row?.metadata as Record<string, unknown>;
       expect(meta?.previousRole).toBe("member");
@@ -201,8 +189,8 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("invitation.created");
       expect(row?.resourceType).toBe("invitation");
       expect(row?.resourceId).toBe("inv_001");
@@ -221,8 +209,8 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("invitation.accepted");
       expect(row?.actorId).toBe("user_001");
       expect(row?.resourceName).toBe("bob@example.com");
@@ -235,20 +223,19 @@ describe("audit log plugin", () => {
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
-      expect(row?.action).toBe("invitation.rejected");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.action).toBe("invitation.rejected");
     });
 
-    test("afterCancelInvitation writes invitation.cancelled entry using cancelledBy", async () => {
+    test("afterCancelInvitation uses cancelledBy as actorId", async () => {
       await organizationHooks.afterCancelInvitation({
         invitation: BASE_INVITATION,
         cancelledBy: { ...BASE_USER, id: "user_002" },
         organization: BASE_ORG,
       });
 
-      expect(insertedRows).toHaveLength(1);
-      const row = insertedRows[0];
+      expect(rows).toHaveLength(1);
+      const row = rows[0];
       expect(row?.action).toBe("invitation.cancelled");
       expect(row?.actorId).toBe("user_002");
     });

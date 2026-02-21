@@ -1,6 +1,3 @@
-import { db } from "@usevon/db";
-import { auditLog, organization } from "@usevon/db/schema";
-import { eq } from "drizzle-orm";
 import type {
   AuditLogEntry,
   ResolvedAuditLogOptions,
@@ -14,6 +11,9 @@ const DEFAULT_RETENTION_DAYS = 7;
 export async function defaultGetRetentionDays(
   organizationId: string
 ): Promise<number> {
+  const { db } = await import("@usevon/db");
+  const { organization } = await import("@usevon/db/schema");
+  const { eq } = await import("drizzle-orm");
   const rows = await db
     .select({ plan: organization.plan })
     .from(organization)
@@ -23,14 +23,25 @@ export async function defaultGetRetentionDays(
   return RETENTION_BY_PLAN[plan] ?? DEFAULT_RETENTION_DAYS;
 }
 
+export type AuditLogInserter = (
+  entry: AuditLogEntry & { expiresAt: Date }
+) => Promise<void>;
+
+export const defaultInserter: AuditLogInserter = async (entry) => {
+  const { db } = await import("@usevon/db");
+  const { auditLog } = await import("@usevon/db/schema");
+  await db.insert(auditLog).values(entry);
+};
+
 export async function writeAuditLog(
   entry: AuditLogEntry,
-  opts: ResolvedAuditLogOptions
+  opts: ResolvedAuditLogOptions,
+  inserter: AuditLogInserter = defaultInserter
 ): Promise<void> {
   try {
     const retentionDays = await opts.getRetentionDays(entry.organizationId);
     const expiresAt = new Date(Date.now() + retentionDays * 86_400_000);
-    await db.insert(auditLog).values({ ...entry, expiresAt });
+    await inserter({ ...entry, expiresAt });
   } catch {
     // never re-throws — audit log errors must not break the primary action
   }

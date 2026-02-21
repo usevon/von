@@ -6,12 +6,17 @@ import type {
   ResolvedAuditLogOptions,
 } from "@/plugins/audit-log/types";
 import { ACTIONS } from "@/plugins/audit-log/types";
+import type { AuditLogInserter } from "@/plugins/audit-log/writer";
 import {
   defaultGetRetentionDays,
+  defaultInserter,
   writeAuditLog,
 } from "@/plugins/audit-log/writer";
 
-export const auditLog = (options?: AuditLogOptions) => {
+export const auditLog = (
+  options?: AuditLogOptions,
+  inserter: AuditLogInserter = defaultInserter
+) => {
   const opts: ResolvedAuditLogOptions = {
     getRetentionDays: options?.getRetentionDays ?? defaultGetRetentionDays,
   };
@@ -39,7 +44,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -64,7 +70,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -88,7 +95,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
   };
@@ -127,7 +135,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -149,7 +158,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -176,7 +186,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -201,7 +212,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -224,7 +236,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -246,7 +259,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
 
@@ -268,7 +282,8 @@ export const auditLog = (options?: AuditLogOptions) => {
           ipAddress: null,
           userAgent: null,
         },
-        opts
+        opts,
+        inserter
       );
     },
   };
