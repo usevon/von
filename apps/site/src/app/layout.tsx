@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
 
 import "../index.css";
-import { Providers } from "@/components/providers";
-import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
+import { Providers } from "@/components/providers";
 import { ScrollToTop } from "@/components/scroll-to-top";
 
 const familjen = Familjen_Grotesk({
