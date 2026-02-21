@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type TocItem = {
   id: string;
@@ -61,11 +61,16 @@ const useActiveHeading = (headingIds: string[]) => {
     }
 
     const update = () => {
-      if (manualId.current) { return; }
+      if (manualId.current) {
+        return;
+      }
 
       // At the bottom of the page, activate the last heading
-      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 100) {
-        setActiveId(headingIds.at(-1));
+      if (
+        window.innerHeight + window.scrollY >=
+        document.body.scrollHeight - 100
+      ) {
+        setActiveId(headingIds.at(-1) ?? null);
         return;
       }
 
@@ -89,7 +94,9 @@ const useActiveHeading = (headingIds: string[]) => {
     manualId.current = id;
     setActiveId(id);
 
-    if (manualTimer.current) { clearTimeout(manualTimer.current); }
+    if (manualTimer.current) {
+      clearTimeout(manualTimer.current);
+    }
     manualTimer.current = setTimeout(() => {
       manualId.current = null;
     }, 1000);
@@ -122,11 +129,15 @@ export const TableOfContents = () => {
 
   // Measure active tab position
   useEffect(() => {
-    if (!currentId) { return; }
+    if (!currentId) {
+      return;
+    }
 
     const tab = tabRefs.current.get(currentId);
     const list = listRef.current;
-    if (!(tab && list)) { return; }
+    if (!(tab && list)) {
+      return;
+    }
 
     const listRect = list.getBoundingClientRect();
     const tabRect = tab.getBoundingClientRect();
@@ -165,36 +176,45 @@ export const TableOfContents = () => {
       <p className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
         On This Page
       </p>
-      <div className="relative flex flex-col border-border border-l" ref={listRef}>
+      <div
+        className="relative flex flex-col border-border border-l"
+        ref={listRef}
+      >
         {/* Motion indicator line */}
         <motion.div
-          className="absolute left-0 w-0.5 bg-primary"
           animate={{
             top: indicatorStyle.top,
             height: indicatorStyle.height,
           }}
+          className="absolute left-0 w-0.5 bg-primary"
           transition={shouldAnimate ? springTransition : { duration: 0 }}
         />
 
         {headings.map((item) => (
           <button
-            key={item.id}
-            ref={(el) => {
-              if (el) { tabRefs.current.set(item.id, el); }
-              else { tabRefs.current.delete(item.id); }
-            }}
             className={cn(
               "cursor-pointer border-none bg-transparent py-1 pl-3 text-left text-muted-foreground text-sm no-underline transition-colors",
               "hover:text-foreground",
               item.id === currentId && "text-primary",
               item.depth > 2 && "pl-6"
             )}
+            key={item.id}
             onClick={() => scrollToHeading(item.id)}
+            ref={(el) => {
+              if (el) {
+                tabRefs.current.set(item.id, el);
+              } else {
+                tabRefs.current.delete(item.id);
+              }
+            }}
             type="button"
           >
             <span className="relative">
               {item.title}
-              <span aria-hidden className="pointer-events-none invisible block h-0 select-none font-medium">
+              <span
+                aria-hidden
+                className="pointer-events-none invisible block h-0 select-none font-medium"
+              >
                 {item.title}
               </span>
             </span>
