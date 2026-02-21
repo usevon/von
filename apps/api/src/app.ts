@@ -6,6 +6,7 @@ import { apiBase, baseElysiaOptions } from "@/lib/elysia-base";
 import { idempotency } from "@/lib/idempotency";
 import { log } from "@/lib/logger";
 import { requestGuards } from "@/lib/request-guards";
+import { auditLogRead } from "@/modules/audit-log";
 import { auth } from "@/modules/auth";
 import { endpointsRead, endpointsWrite } from "@/modules/endpoints";
 import { inboundPublic, inboundRead, inboundWrite } from "@/modules/inbound";
@@ -77,6 +78,7 @@ export const app = new Elysia({
   .use(inboundWrite)
   .use(versionsRead)
   .use(versionsWrite)
+  .use(auditLogRead)
   .group("/t", (group) => group.use(tunnelProxy));
 
 export type App = typeof app;

@@ -1,5 +1,6 @@
 import {
   apiKey,
+  auditLog,
   bearer,
   deviceAuthorization,
   emailHarmony,
@@ -14,6 +15,8 @@ import { env } from "@/env";
 import type { SecondaryStorageAdapter } from "@/modules/auth/storage";
 
 type SessionInsert = typeof schema.session.$inferInsert;
+
+const { plugin: auditLogPlugin, apiKeyHooks, organizationHooks } = auditLog();
 
 export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
   emailHarmony({
@@ -30,6 +33,7 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
     },
   }),
   bearer(),
+  auditLogPlugin,
   organization({
     schema: {
       organization: {
@@ -44,11 +48,15 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
       },
     },
     organizationHooks: {
-      afterAddMember: async ({ member }) => {
+      ...organizationHooks,
+      afterAddMember: async (
+        data: Parameters<typeof organizationHooks.afterAddMember>[0]
+      ) => {
+        await organizationHooks.afterAddMember(data);
         await db
           .update(schema.session)
-          .set({ activeOrganizationId: member.organizationId })
-          .where(eq(schema.session.userId, member.userId));
+          .set({ activeOrganizationId: data.member.organizationId })
+          .where(eq(schema.session.userId, data.member.userId));
       },
     },
   }),
@@ -59,6 +67,7 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
           fallbackToDatabase: true,
           signingSecret: env.API_KEY_SIGNING_SECRET,
           secondaryStorage,
+          apiKeyHooks,
         }),
       ]
     : []),

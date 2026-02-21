@@ -20,7 +20,11 @@ export {
 export { emailHarmony } from "better-auth-harmony";
 
 // Custom API key plugin
-export type { ApiKey, ApiKeyOptions } from "@/plugins/api-key";
+export type {
+  ApiKey,
+  ApiKeyHookPayload,
+  ApiKeyOptions,
+} from "@/plugins/api-key";
 export { apiKey } from "@/plugins/api-key";
 export {
   hasScope,
@@ -28,3 +32,6 @@ export {
   type Scope,
   VALID_SCOPES,
 } from "@/plugins/api-key/scopes";
+export type { AuditLogOptions } from "@/plugins/audit-log";
+// Audit log plugin
+export { auditLog } from "@/plugins/audit-log";
