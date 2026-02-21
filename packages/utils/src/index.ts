@@ -2,6 +2,7 @@ export {
   CIRCUIT_CONFIG,
   type CircuitBreakerState,
   type CircuitState,
+  getFailureUpdate,
   getSuccessUpdate,
   isCircuitOpen,
   shouldTransitionToHalfOpen,

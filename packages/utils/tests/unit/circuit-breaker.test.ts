@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   CIRCUIT_CONFIG,
   type CircuitBreakerState,
+  getFailureUpdate,
   getSuccessUpdate,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
@@ -126,6 +127,55 @@ describe("circuit-breaker", () => {
       const result = getSuccessUpdate();
       expect(result.circuitState).toBe("closed");
       expect(result.failureCount).toBe(0);
+    });
+  });
+
+  describe("getFailureUpdate", () => {
+    test("increments failure count", () => {
+      const state: CircuitBreakerState = {
+        circuitState: "closed",
+        circuitOpenedAt: null,
+        failureCount: 2,
+      };
+      const result = getFailureUpdate(state);
+      expect(result.failureCount).toBe(3);
+      expect(result.circuitState).toBe("closed");
+      expect(result.circuitOpenedAt).toBeNull();
+    });
+
+    test("opens circuit when failure count reaches threshold", () => {
+      const state: CircuitBreakerState = {
+        circuitState: "closed",
+        circuitOpenedAt: null,
+        failureCount: CIRCUIT_CONFIG.failureThreshold - 1,
+      };
+      const result = getFailureUpdate(state);
+      expect(result.circuitState).toBe("open");
+      expect(result.failureCount).toBe(CIRCUIT_CONFIG.failureThreshold);
+      expect(result.circuitOpenedAt).toBeInstanceOf(Date);
+    });
+
+    test("does not overwrite circuitOpenedAt if already open", () => {
+      const openedAt = new Date(mockNow - 10_000);
+      const state: CircuitBreakerState = {
+        circuitState: "open",
+        circuitOpenedAt: openedAt,
+        failureCount: CIRCUIT_CONFIG.failureThreshold + 1,
+      };
+      const result = getFailureUpdate(state);
+      expect(result.circuitState).toBe("open");
+      expect(result.circuitOpenedAt).toBe(openedAt);
+    });
+
+    test("does not open circuit below threshold", () => {
+      const state: CircuitBreakerState = {
+        circuitState: "closed",
+        circuitOpenedAt: null,
+        failureCount: 0,
+      };
+      const result = getFailureUpdate(state);
+      expect(result.circuitState).toBe("closed");
+      expect(result.circuitOpenedAt).toBeNull();
     });
   });
 });

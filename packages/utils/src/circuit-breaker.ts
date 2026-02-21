@@ -39,3 +39,20 @@ export function getSuccessUpdate(): {
     failureCount: 0,
   };
 }
+
+export function getFailureUpdate(current: CircuitBreakerState): {
+  circuitState: CircuitState;
+  failureCount: number;
+  circuitOpenedAt: Date | null;
+} {
+  const failureCount = current.failureCount + 1;
+  const willOpen =
+    failureCount >= CIRCUIT_CONFIG.failureThreshold &&
+    current.circuitState !== "open";
+
+  return {
+    failureCount,
+    circuitState: willOpen ? "open" : current.circuitState,
+    circuitOpenedAt: willOpen ? new Date() : current.circuitOpenedAt,
+  };
+}

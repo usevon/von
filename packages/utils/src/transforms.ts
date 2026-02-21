@@ -12,18 +12,18 @@ export function applyTransforms(
 ): Record<string, unknown> {
   const result = { ...payload };
 
-  if (transforms.remove) {
-    for (const field of transforms.remove) {
-      delete result[field];
-    }
-  }
-
   if (transforms.rename) {
     for (const [from, to] of Object.entries(transforms.rename)) {
       if (from in result) {
         result[to] = result[from];
         delete result[from];
       }
+    }
+  }
+
+  if (transforms.remove) {
+    for (const field of transforms.remove) {
+      delete result[field];
     }
   }
 

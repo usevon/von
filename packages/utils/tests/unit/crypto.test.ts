@@ -67,6 +67,11 @@ describe("timingSafeEqual", () => {
     expect(timingSafeEqual("short", "longer")).toBe(false);
   });
 
+  test("returns false for strings with same prefix but different length", () => {
+    expect(timingSafeEqual("abc", "abcdef")).toBe(false);
+    expect(timingSafeEqual("abcdef", "abc")).toBe(false);
+  });
+
   test("returns true for empty strings", () => {
     expect(timingSafeEqual("", "")).toBe(true);
   });

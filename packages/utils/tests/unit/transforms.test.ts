@@ -38,12 +38,20 @@ describe("applyTransforms", () => {
     expect(result).toEqual({ a: 1, b: 2 });
   });
 
-  test("applies all transforms in order: remove → rename → defaults", () => {
+  test("applies all transforms in order: rename → remove → defaults", () => {
     const result = applyTransforms(
       { old: "val", temp: true },
       { remove: ["temp"], rename: { old: "new" }, defaults: { extra: 42 } }
     );
     expect(result).toEqual({ new: "val", extra: 42 });
+  });
+
+  test("rename runs before remove, so renamed field survives remove", () => {
+    const result = applyTransforms(
+      { foo: "val" },
+      { remove: ["foo"], rename: { foo: "bar" } }
+    );
+    expect(result).toEqual({ bar: "val" });
   });
 
   test("returns copy, does not mutate input", () => {

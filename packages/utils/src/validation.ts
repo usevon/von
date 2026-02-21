@@ -129,10 +129,6 @@ export const isSafeWebhookUrl = async (url: string): Promise<boolean> => {
       return false;
     }
 
-    if (isIP(parsed.hostname)) {
-      return !isPrivateIP(parsed.hostname);
-    }
-
     const records = await lookup(parsed.hostname, {
       all: true,
       verbatim: true,
