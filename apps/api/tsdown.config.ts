@@ -5,7 +5,8 @@ export default defineConfig({
   format: "esm",
   failOnWarn: false,
   dts: true,
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
   outDir: "dist",
+  checks: { pluginTimings: false },
 });
