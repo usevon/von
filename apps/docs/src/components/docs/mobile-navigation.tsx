@@ -21,7 +21,9 @@ export const MobileNavigation = () => {
   return (
     <Sheet onOpenChange={setOpen} open={open}>
       <SheetTrigger
-        render={<Button className="lg:hidden" size="icon-lg" variant="outline" />}
+        render={
+          <Button className="lg:hidden" size="icon-lg" variant="outline" />
+        }
       >
         <ListIcon className="size-4" />
       </SheetTrigger>
@@ -39,8 +41,8 @@ export const MobileNavigation = () => {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href={siteUrl()} />}
                     className="flex-1"
+                    render={<Link href={siteUrl()} />}
                     size="lg"
                     variant="outline"
                   />
@@ -52,8 +54,8 @@ export const MobileNavigation = () => {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href={appUrl()} />}
                     className="flex-1"
+                    render={<Link href={appUrl()} />}
                     size="lg"
                   />
                 }
@@ -61,7 +63,7 @@ export const MobileNavigation = () => {
                 Dashboard
               </SheetClose>
             </div>
-            <Navigation onNavigate={() => setOpen(false)} />
+            <Navigation noAnimation onNavigate={() => setOpen(false)} />
           </div>
         </SheetPanel>
       </SheetPopup>

@@ -2,25 +2,30 @@
 
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { TabsPrimitive as Tabs } from "@usevon/ui";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
 import { navigation, topLinks } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 
 const isPathActive = (pathname: string, href: string) => {
-  if (href === "/") { return pathname === "/"; }
+  if (href === "/") {
+    return pathname === "/";
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
 const findActiveHref = (pathname: string) => {
   for (const link of topLinks) {
-    if (isPathActive(pathname, link.href)) { return link.href; }
+    if (isPathActive(pathname, link.href)) {
+      return link.href;
+    }
   }
   for (const section of navigation) {
     for (const item of section.items) {
-      if (isPathActive(pathname, item.href)) { return item.href; }
+      if (isPathActive(pathname, item.href)) {
+        return item.href;
+      }
     }
   }
   return null;
@@ -32,7 +37,13 @@ const tabClass = cn(
   "data-[active]:text-foreground"
 );
 
-export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => {
+export const Navigation = ({
+  onNavigate,
+  noAnimation,
+}: {
+  onNavigate?: () => void;
+  noAnimation?: boolean;
+} = {}) => {
   const pathname = usePathname();
   const router = useRouter();
   const activeHref = findActiveHref(pathname);
@@ -81,14 +92,18 @@ export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => 
                     href={item.href}
                     key={item.href}
                     onClick={() => onNavigate?.()}
-                    target="_blank"
                     rel="noopener noreferrer"
+                    target="_blank"
                   >
                     {item.title}
-                    <ArrowSquareOutIcon className="size-3.5 text-muted-foreground/60" />
+                    <ArrowSquareOutIcon className="ml-auto size-4 text-muted-foreground/60" />
                   </Link>
                 ) : (
-                  <Tabs.Tab className={tabClass} key={item.href} value={item.href}>
+                  <Tabs.Tab
+                    className={tabClass}
+                    key={item.href}
+                    value={item.href}
+                  >
                     {item.title}
                   </Tabs.Tab>
                 )
@@ -98,7 +113,11 @@ export const Navigation = ({ onNavigate }: { onNavigate?: () => void } = {}) => 
         ))}
 
         <Tabs.Indicator
-          className="absolute top-0 left-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-none bg-accent transition-[width,translate] duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className={cn(
+            "absolute top-0 left-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-none bg-accent",
+            !noAnimation &&
+              "transition-[width,translate] duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          )}
           renderBeforeHydration
         />
       </Tabs.List>
