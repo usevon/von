@@ -91,7 +91,7 @@ If your local server is down or times out (30 seconds), the tunnel returns a 502
 
 ## Reconnection
 
-If the WebSocket connection drops, the CLI reconnects automatically with exponential backoff (1s, 2s, 4s, up to 30s). After 5 failed reconnection attempts, the tunnel is removed.
+If the WebSocket connection drops, the CLI reconnects automatically with exponential backoff (2s, 4s, 8s, 16s, 30s). After 5 failed reconnection attempts, the tunnel is removed.
 
 ## Rotating tunnel secrets
 

@@ -61,10 +61,10 @@ For the Von dashboard or apps that share a session:
 
 <Properties>
   <Property name="apiUrl" type="string">
-    Base URL for API requests. Defaults to `"/api"`.
+    Defaults to `"/api"`.
   </Property>
   <Property name="apiKey" type="string">
-    API key for Bearer token auth.
+    Bearer token for API key auth.
   </Property>
   <Property name="useSession" type="boolean">
     Use cookie-based session auth instead of a Bearer token.
@@ -147,7 +147,7 @@ All three hooks return the same shape:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| data array | `T[]` | The fetched items (`endpoints`, `events`, etc.) |
+| data | `T[]` | The fetched items (`endpoints`, `events`, etc.) |
 | `nextCursor` | `string \| null` | Cursor for the next page |
 | `isLoading` | `boolean` | True during initial fetch |
 | `isRefreshing` | `boolean` | True during revalidation after initial load |

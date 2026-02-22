@@ -23,31 +23,29 @@ Keys are 64 random characters plus an HMAC signature suffix, making them safe to
 
 ## Creating a key
 
-Create API keys from the [dashboard](https://app.usevon.com/settings/api-keys) or through the API. The full key is only shown once at creation time.
-
-Each key is scoped to a user and optionally to an organization. Keys inherit the organization context for all API calls.
+Create keys from the [dashboard](https://app.usevon.com/settings/api-keys) or the API. The full key is shown once at creation, so copy it immediately. Keys are scoped to a user and carry the organization context for every request they make.
 
 <Properties>
   <Property name="name" type="string" required>
-    A label for the key (max 64 characters).
+    A display label, max 64 characters.
   </Property>
   <Property name="environment" type="string" required>
-    One of `dev`, `staging`, or `prod`.
+    The environment this key belongs to: `dev`, `staging`, or `prod`.
   </Property>
   <Property name="scopes" type="string[]">
-    Permission scopes. Defaults to `["*"]` (full access).
+    Defaults to `["*"]` for full access.
   </Property>
   <Property name="expiresIn" type="number">
-    Time until expiration in seconds. Maximum 365 days. Omit for no expiration.
+    Seconds until expiry, max 365 days. Omit for no expiration.
   </Property>
   <Property name="organizationId" type="string">
-    The organization this key belongs to. Defaults to your active organization.
+    Defaults to your active organization.
   </Property>
 </Properties>
 
 ## Scopes
 
-Scopes control what a key can access. You can assign broad or narrow permissions:
+Each key is scoped to exactly what it needs:
 
 | Scope | Access |
 | --- | --- |
@@ -158,7 +156,7 @@ const readKey = await von.apiKeys.create({
 There is no atomic rotation endpoint. Create a new key with the same scopes, deploy it to your services, confirm it is appearing in `lastUsedAt`, then disable and delete the old one.
 
 <Tip title="Keep the overlap window short">
-  Both the old and new key are active until you delete the old one. Disable it first so it stops accepting requests, then delete it once you have confirmed nothing is still using it.
+  Disable the old key first to stop it accepting requests, then delete it once you've confirmed nothing still depends on it.
 </Tip>
 
 ### If a key is exposed

@@ -33,16 +33,16 @@ https://api.usevon.com/in/{id}
 
 <Properties>
   <Property name="forwardUrl" type="string" required>
-    The URL where Von forwards incoming webhooks to your application.
+    Where Von forwards received webhooks in your application.
   </Property>
   <Property name="name" type="string">
-    A label for the inbound endpoint.
+    A display label.
   </Property>
   <Property name="provider" type="string">
-    The third-party service name (e.g. `stripe`, `github`, `shopify`). Used for labeling only.
+    The third-party service (e.g. `stripe`, `github`, `shopify`). Used for labeling only.
   </Property>
   <Property name="status" type="string">
-    One of `active`, `paused`, or `disabled`. Defaults to `active`.
+    `active`, `paused`, or `disabled`. Defaults to `active`.
   </Property>
 </Properties>
 
@@ -50,12 +50,16 @@ https://api.usevon.com/in/{id}
 
 When a webhook arrives at your inbound URL, Von:
 
-1. Stores the raw payload and headers as an inbound delivery
+1. Parses and stores the JSON payload and headers as an inbound delivery
 2. Signs the forwarded request with an HMAC signature using the inbound endpoint's secret
-3. Strips sensitive headers from the original request (`authorization`, `host`, `cookie`)
+3. Strips Von signature headers and sensitive headers (`authorization`, `host`) from the original request
 4. Forwards the payload to your `forwardUrl` with Von delivery headers
 
 The forwarded request includes an `X-Von-Inbound-Delivery-Id` header so you can correlate it with the original.
+
+<Tip title="Verifying forwarded requests">
+  Von re-signs the forwarded request with your inbound endpoint's secret. Use the same `verifyWebhook` helper you use for outbound webhooks to confirm the request came from Von, not directly from the third party.
+</Tip>
 
 ## Rate limiting
 
