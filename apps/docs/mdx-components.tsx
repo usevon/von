@@ -25,6 +25,7 @@ import {
 import { Properties, Property } from "@/mdx/properties";
 import { Col, Row } from "@/mdx/row-col";
 import { Timeline, TimelineItem } from "@/mdx/timeline";
+import { Tip } from "@/mdx/tip";
 
 const _getTextContent = (node: ReactNode): string => {
   if (typeof node === "string") {
@@ -57,6 +58,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Timeline,
     TimelineItem,
     PageActions,
+    Tip,
     pre: CodeBlock,
     code: (props: React.ComponentPropsWithoutRef<"code">) => {
       const isInline = typeof props.children === "string" && !props.className;
