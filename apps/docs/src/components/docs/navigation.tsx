@@ -78,7 +78,7 @@ export const Navigation = ({
         ))}
       </div>
 
-      <Tabs.List className="relative flex flex-col gap-y-3">
+      <Tabs.List className="relative mt-3 flex flex-col gap-y-3">
         {navigation.map((section) => (
           <div className="flex flex-col gap-1" key={section.title}>
             <p className="px-3 font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
