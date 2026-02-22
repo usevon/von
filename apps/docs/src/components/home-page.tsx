@@ -18,16 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@usevon/ui";
 import Link from "next/link";
-
-const sideGridCells = [
-  [10, 18, 26, 34, 35, 35, 35],
-  [0, 10, 18, 26, 34, 35, 30],
-  [0, 0, 10, 18, 26, 30, 18],
-  [0, 0, 0, 10, 18, 20, 0],
-  [0, 0, 0, 0, 10, 0, 0],
-] as const;
-
-const mirroredGridCells = sideGridCells.map((row) => [...row].reverse());
+import { cn } from "@/lib/utils";
 
 type FeatureCardProps = {
   href: string;
@@ -162,10 +153,13 @@ const featureSections: FeatureSection[] = [
 
 const FeatureCard = (props: FeatureCardProps) => (
   <Link
-    className="flex h-full flex-col gap-3 border border-border bg-background px-6 py-5 transition-colors hover:bg-accent/50"
+    className="flex h-full flex-col gap-3 border border-border bg-muted/60 px-6 py-5 transition-colors hover:bg-muted"
     href={props.href}
   >
-    <props.icon className="mb-2 size-6 text-muted-foreground" weight="regular" />
+    <props.icon
+      className="mb-2 size-6 text-muted-foreground"
+      weight="regular"
+    />
     <h3 className="font-medium text-lg">{props.title}</h3>
     <p className="text-muted-foreground text-sm leading-relaxed">
       {props.description}
@@ -173,62 +167,73 @@ const FeatureCard = (props: FeatureCardProps) => (
   </Link>
 );
 
-function SideSquares(props: { side: "left" | "right" }) {
-  const cells = props.side === "left" ? sideGridCells : mirroredGridCells;
+const staircaseGrid = [
+  [0, 0, 0, 1, 1, 1, 1],
+  [0, 0, 1, 1, 1, 1, 1],
+  [0, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1],
+] as const;
 
+const COLS = 7;
+
+function HeroBackground() {
   return (
-    <div
-      className={`pointer-events-none absolute top-0 hidden w-1/2 opacity-80 sm:grid ${props.side === "left" ? "left-0 [mask-image:linear-gradient(to_right,transparent_0%,black_18%,black_100%)]" : "right-0 [mask-image:linear-gradient(to_left,transparent_0%,black_18%,black_100%)]"}`}
-      style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-    >
-      {cells.flatMap((row, ri) =>
-        row.map((fill, ci) => {
-          const isLastRow = ri === cells.length - 1;
-          const isLastCol = ci === row.length - 1;
-
-          return (
+    <>
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(100% 100% at 100% 100%, #6366f1 0%, var(--background) 60%)",
+        }}
+      />
+      <div
+        className="mask-intersect mask-[linear-gradient(to_top,black_0%,black_50%,transparent_100%),linear-gradient(to_right,transparent_0%,black_30%,black_100%)] pointer-events-none absolute right-0 bottom-0 left-[30%] z-10"
+        style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
+      >
+        {staircaseGrid.flatMap((row, ri) =>
+          row.map((fill, ci) => (
             <div
-              className={`aspect-square border-border ${isLastCol ? "" : "border-r"} ${isLastRow ? "" : "border-b"}`}
-              key={`${props.side}-${ri}-${ci}`}
+              className={cn(
+                "aspect-square border-border",
+                ci < COLS - 1 && "border-r",
+                ri < staircaseGrid.length - 1 && "border-b"
+              )}
+              key={`hero-${ri}-${ci}`}
               style={
                 fill
                   ? {
-                      backgroundColor: `color-mix(in srgb, var(--wallpaper-4) ${fill}%, transparent)`,
+                      backgroundColor:
+                        "color-mix(in srgb, var(--wallpaper-4) 35%, transparent)",
                     }
                   : undefined
               }
             />
-          );
-        })
-      )}
-    </div>
+          ))
+        )}
+      </div>
+    </>
   );
 }
 
 export const HomePage = () => (
   <div>
     <section className="relative overflow-hidden">
-      <SideSquares side="left" />
-      <SideSquares side="right" />
-
-      <div className="relative z-10 flex flex-col items-center gap-4 px-6 py-14 text-center sm:py-16">
+      <HeroBackground />
+      <div className="relative z-10 flex flex-col gap-6 px-8 py-20 sm:px-12 sm:py-24">
         <p className="font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
           Documentation
         </p>
-        <h1 className="max-w-3xl font-semibold text-4xl tracking-tight sm:text-5xl">
-          Welcome to the Von documentation
+        <h1 className="max-w-2xl font-semibold text-4xl tracking-tight sm:text-5xl">
+          Welcome to the Von docs
         </h1>
-        <p className="max-w-2xl text-lg text-muted-foreground">
+        <p className="max-w-lg text-lg text-muted-foreground">
           Von is a webhook infrastructure platform for reliable delivery,
           retries, signature verification, and developer-first tooling.
         </p>
-        <div className="mt-2 flex flex-col items-center gap-2">
+        <div>
           <Button render={<Link href="/getting-started" />} size="xl">
             Quick Start
           </Button>
-          <p className="text-muted-foreground text-sm">
-            Get started with Von in under 5 minutes.
-          </p>
         </div>
       </div>
     </section>
