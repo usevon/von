@@ -14,7 +14,7 @@ export const Tip = (props: TipProps) => {
 
   return (
     <Collapsible
-      className="not-prose my-6 rounded-md border border-border border-l-4 border-l-muted-foreground/30 py-3 pr-4 pl-4"
+      className="not-prose my-6 border border-border border-l-4 border-l-muted-foreground/30 py-3 pr-4 pl-4"
       onOpenChange={setOpen}
       open={open}
     >

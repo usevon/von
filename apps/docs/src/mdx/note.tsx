@@ -14,7 +14,7 @@ export const Note = ({ type = "info", title, children }: NoteProps) => {
   return (
     <div
       className={cn(
-        "not-prose my-6 rounded-md border border-border border-l-4 py-3 pr-4 pl-4 text-sm",
+        "not-prose my-6 border border-border border-l-4 py-3 pr-4 pl-4 text-sm",
         isWarning ? "border-l-warning" : "border-l-info"
       )}
     >
