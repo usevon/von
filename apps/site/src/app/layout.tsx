@@ -38,7 +38,7 @@ export default function RootLayout(props: RootLayoutProps) {
         <Providers>
           <div className="bg-background text-foreground">
             <div className="mx-auto w-full max-w-304">
-              <div className="border-border border-x">
+              <div className="sm:border-border sm:border-x">
                 <ScrollToTop />
                 <Header />
                 {props.children}
