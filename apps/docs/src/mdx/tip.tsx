@@ -14,20 +14,20 @@ export const Tip = (props: TipProps) => {
 
   return (
     <Collapsible
-      className="not-prose my-6 border-border border-l-2 bg-muted/40 pt-3 pr-4 pb-3 pl-4"
+      className="not-prose my-6 rounded-md border border-border border-l-4 border-l-muted-foreground/30 py-3 pr-4 pl-4"
       onOpenChange={setOpen}
       open={open}
     >
-      <CollapsibleTrigger className="flex w-full items-center gap-2 text-left">
+      <div className="flex w-full items-center gap-2">
         <LightbulbIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+        <span className="font-semibold text-muted-foreground text-sm uppercase tracking-wider">
           Tip
         </span>
         <span className="flex-1 text-foreground text-sm">{props.title}</span>
-        <span className="shrink-0 border border-border bg-background px-2 py-0.5 text-muted-foreground text-xs">
+        <CollapsibleTrigger className="shrink-0 text-muted-foreground text-sm underline decoration-muted-foreground/40 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground">
           {open ? "Hide" : "Show details"}
-        </span>
-      </CollapsibleTrigger>
+        </CollapsibleTrigger>
+      </div>
       <CollapsiblePanel>
         <div className="mt-2 text-muted-foreground text-sm leading-6">
           {props.children}

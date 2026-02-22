@@ -4,27 +4,36 @@ import { cn } from "@/lib/utils";
 
 type NoteProps = {
   type?: "info" | "warning";
+  title?: string;
   children: ReactNode;
 };
 
-export const Note = ({ type = "info", children }: NoteProps) => {
+export const Note = ({ type = "info", title, children }: NoteProps) => {
   const isWarning = type === "warning";
 
   return (
     <div
       className={cn(
-        "not-prose my-6 flex gap-3 border-l-2 py-3 pr-4 pl-4 text-sm",
-        isWarning
-          ? "border-warning bg-warning/5 text-warning-foreground"
-          : "border-info bg-info/5 text-info-foreground"
+        "not-prose my-6 rounded-md border border-border border-l-4 py-3 pr-4 pl-4 text-sm",
+        isWarning ? "border-l-warning" : "border-l-info"
       )}
     >
-      {isWarning ? (
-        <WarningIcon className="mt-0.5 size-4 shrink-0 text-warning" />
-      ) : (
-        <InfoIcon className="mt-0.5 size-4 shrink-0 text-info" />
-      )}
-      <div className="text-muted-foreground leading-6">{children}</div>
+      <div className="flex items-center gap-2">
+        {isWarning ? (
+          <WarningIcon className="size-4 shrink-0 text-warning" />
+        ) : (
+          <InfoIcon className="size-4 shrink-0 text-info" />
+        )}
+        <span
+          className={cn(
+            "font-semibold text-sm",
+            isWarning ? "text-warning" : "text-info"
+          )}
+        >
+          {title ?? (isWarning ? "Warning" : "Note")}
+        </span>
+      </div>
+      <div className="mt-1 text-muted-foreground leading-6">{children}</div>
     </div>
   );
 };
