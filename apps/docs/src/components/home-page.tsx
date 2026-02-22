@@ -49,6 +49,13 @@ const featureSections: FeatureSection[] = [
         description:
           "Choose Von Cloud for fast setup, or self-host for full infrastructure and data control.",
       },
+      {
+        href: "/verification",
+        icon: LockIcon,
+        title: "Verifying Signatures",
+        description:
+          "Verify HMAC signatures on incoming webhooks to confirm authenticity and prevent replay attacks.",
+      },
     ],
   },
   {
@@ -238,7 +245,7 @@ export const HomePage = () => (
             className="flex flex-col gap-4 p-6 sm:flex-row sm:gap-0 sm:p-0"
             key={section.title}
           >
-            <div className="flex shrink-0 items-start sm:w-64 sm:p-8">
+            <div className="flex shrink-0 items-start sm:w-64 sm:px-8 sm:py-4">
               <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
                 {section.title}
               </p>
