@@ -3,10 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Pagination } from "@/components/docs/pagination";
 import { HomePage } from "@/components/home-page";
-import { navigation, topLinks } from "@/lib/navigation";
-
 import AuthenticationContent from "@/content/authentication.mdx";
-import ComparisonContent from "@/content/comparison.mdx";
 import EndpointsContent from "@/content/endpoints.mdx";
 import EventsDeliveriesContent from "@/content/events-deliveries.mdx";
 import GettingStartedContent from "@/content/getting-started.mdx";
@@ -18,6 +15,7 @@ import ReactSdkContent from "@/content/sdk/react.mdx";
 import TypeScriptSdkContent from "@/content/sdk/typescript.mdx";
 import VerificationContent from "@/content/verification.mdx";
 import VersioningContent from "@/content/versioning.mdx";
+import { navigation, topLinks } from "@/lib/navigation";
 
 type DocsPageProps = {
   params: Promise<{ slug?: string[] }>;
@@ -25,7 +23,6 @@ type DocsPageProps = {
 
 const pages: Record<string, React.ComponentType> = {
   "getting-started": GettingStartedContent,
-  comparison: ComparisonContent,
   hosting: HostingContent,
   endpoints: EndpointsContent,
   "events-deliveries": EventsDeliveriesContent,
@@ -49,25 +46,33 @@ const allSlugs = new Set([
 ]);
 
 function getTitle(slug: string): string {
-  if (slug === "") { return "Von Docs"; }
+  if (slug === "") {
+    return "Von Docs";
+  }
   for (const link of topLinks) {
-    if (link.href === `/${slug}`) { return link.title; }
+    if (link.href === `/${slug}`) {
+      return link.title;
+    }
   }
   for (const section of navigation) {
     for (const item of section.items) {
-      if (item.href === `/${slug}`) { return item.title; }
+      if (item.href === `/${slug}`) {
+        return item.title;
+      }
     }
   }
   return "Von Docs";
 }
 
 export async function generateMetadata(
-  props: DocsPageProps,
+  props: DocsPageProps
 ): Promise<Metadata> {
   const params = await props.params;
   const slug = (params.slug ?? []).join("/");
 
-  if (!allSlugs.has(slug)) { return { title: "Not Found" }; }
+  if (!allSlugs.has(slug)) {
+    return { title: "Not Found" };
+  }
 
   const title = getTitle(slug);
   return {
@@ -85,12 +90,18 @@ export default async function DocsPage(props: DocsPageProps) {
   const params = await props.params;
   const slug = (params.slug ?? []).join("/");
 
-  if (!allSlugs.has(slug)) { notFound(); }
+  if (!allSlugs.has(slug)) {
+    notFound();
+  }
 
-  if (slug === "") { return <HomePage />; }
+  if (slug === "") {
+    return <HomePage />;
+  }
 
   const Content = pages[slug];
-  if (!Content) { notFound(); }
+  if (!Content) {
+    notFound();
+  }
 
   return (
     <>

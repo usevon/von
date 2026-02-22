@@ -22,6 +22,7 @@ import {
   Th,
   Ul,
 } from "@/mdx/elements";
+import { Note } from "@/mdx/note";
 import { Properties, Property } from "@/mdx/properties";
 import { Col, Row } from "@/mdx/row-col";
 import { Timeline, TimelineItem } from "@/mdx/timeline";
@@ -58,6 +59,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Timeline,
     TimelineItem,
     PageActions,
+    Note,
     Tip,
     pre: CodeBlock,
     code: (props: React.ComponentPropsWithoutRef<"code">) => {

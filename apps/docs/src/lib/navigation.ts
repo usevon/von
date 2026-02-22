@@ -9,16 +9,13 @@ export type NavSection = {
   items: NavLink[];
 };
 
-export const topLinks: NavLink[] = [
-  { title: "Home", href: "/" },
-];
+export const topLinks: NavLink[] = [{ title: "Home", href: "/" }];
 
 export const navigation: NavSection[] = [
   {
     title: "Start Here",
     items: [
       { title: "Quick Start", href: "/getting-started" },
-      { title: "Von vs Others", href: "/comparison" },
       { title: "Cloud or Self-Hosted", href: "/hosting" },
     ],
   },
@@ -40,9 +37,7 @@ export const navigation: NavSection[] = [
   },
   {
     title: "Security",
-    items: [
-      { title: "API Keys & Environments", href: "/authentication" },
-    ],
+    items: [{ title: "API Keys & Environments", href: "/authentication" }],
   },
   {
     title: "SDKs & Local Dev",

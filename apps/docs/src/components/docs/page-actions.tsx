@@ -81,7 +81,7 @@ export const PageActions = ({ className }: PageActionsProps) => {
         <Button
           className="group w-full justify-start pl-3"
           onClick={handleOpenMarkdown}
-          size="sm"
+          size="default"
           variant="ghost"
         >
           View as Markdown
@@ -96,7 +96,7 @@ export const PageActions = ({ className }: PageActionsProps) => {
             onClick={() =>
               window.open(item.url, "_blank", "noopener,noreferrer")
             }
-            size="sm"
+            size="default"
             variant="ghost"
           >
             {item.label}

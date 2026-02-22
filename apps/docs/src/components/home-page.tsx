@@ -5,7 +5,6 @@ import {
   ArrowCounterClockwiseIcon,
   ArrowRightIcon,
   AtomIcon,
-  BookOpenIcon,
   CodeIcon,
   GlobeIcon,
   HouseIcon,
@@ -42,13 +41,6 @@ const featureSections: FeatureSection[] = [
         title: "Quick Start",
         description:
           "Install the SDK, configure your endpoint, and ship your first real webhook flow in minutes.",
-      },
-      {
-        href: "/comparison",
-        icon: BookOpenIcon,
-        title: "Von vs Others",
-        description:
-          "Compare Von with Svix and Hookdeck across reliability, inbound routing, and payload versioning.",
       },
       {
         href: "/hosting",
@@ -151,69 +143,45 @@ const featureSections: FeatureSection[] = [
   },
 ];
 
-const FeatureCard = (props: FeatureCardProps) => (
-  <Link
-    className="flex h-full flex-col gap-3 border border-border bg-muted/60 px-6 py-5 transition-colors hover:bg-muted"
-    href={props.href}
-  >
-    <props.icon
-      className="mb-2 size-6 text-muted-foreground"
-      weight="regular"
-    />
-    <h3 className="font-medium text-lg">{props.title}</h3>
-    <p className="text-muted-foreground text-sm leading-relaxed">
-      {props.description}
-    </p>
-  </Link>
+const HERO_COLS = 7;
+const HERO_ROWS = 5;
+const heroGrid = Array.from({ length: HERO_ROWS }, (_, ri) =>
+  Array.from({ length: HERO_COLS }, (_, ci) => {
+    const d = ci - ri;
+    return d >= 0 && d <= 2 ? 1 : 0;
+  })
 );
 
-const staircaseGrid = [
-  [0, 0, 0, 1, 1, 1, 1],
-  [0, 0, 1, 1, 1, 1, 1],
-  [0, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1],
-] as const;
-
-const COLS = 7;
+const heroFill = "color-mix(in srgb, var(--wallpaper-4) 35%, transparent)";
 
 function HeroBackground() {
   return (
-    <>
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          background:
-            "radial-gradient(100% 100% at 100% 100%, #6366f1 0%, var(--background) 60%)",
-        }}
-      />
-      <div
-        className="mask-intersect mask-[linear-gradient(to_top,black_0%,black_50%,transparent_100%),linear-gradient(to_right,transparent_0%,black_30%,black_100%)] pointer-events-none absolute right-0 bottom-0 left-[30%] z-10"
-        style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
-      >
-        {staircaseGrid.flatMap((row, ri) =>
-          row.map((fill, ci) => (
-            <div
-              className={cn(
-                "aspect-square border-border",
-                ci < COLS - 1 && "border-r",
-                ri < staircaseGrid.length - 1 && "border-b"
-              )}
-              key={`hero-${ri}-${ci}`}
-              style={
-                fill
-                  ? {
-                      backgroundColor:
-                        "color-mix(in srgb, var(--wallpaper-4) 35%, transparent)",
-                    }
-                  : undefined
-              }
-            />
-          ))
-        )}
-      </div>
-    </>
+    <div
+      className="mask-intersect mask-[linear-gradient(to_bottom,black_30%,transparent_100%),linear-gradient(to_right,transparent_0%,black_20%,black_100%)] pointer-events-none absolute inset-y-0 right-0 w-[55%]"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${HERO_COLS}, 1fr)`,
+      }}
+    >
+      {heroGrid.flatMap((row, ri) =>
+        row.map((fill, ci) => (
+          <div
+            className={cn(
+              "aspect-square border-border",
+              ci < HERO_COLS - 1 && "border-r",
+              ri < HERO_ROWS - 1 && "border-b"
+            )}
+            key={`hero-${ri}-${ci}`}
+            style={fill ? { backgroundColor: heroFill } : undefined}
+          />
+        ))
+      )}
+    </div>
   );
 }
+
+const featured = featureSections[0].cards;
+const rest = featureSections.slice(1);
 
 export const HomePage = () => (
   <div>
@@ -226,9 +194,9 @@ export const HomePage = () => (
         <h1 className="max-w-2xl font-semibold text-4xl tracking-tight sm:text-5xl">
           Welcome to the Von docs
         </h1>
-        <p className="max-w-lg text-lg text-muted-foreground">
-          Von is a webhook infrastructure platform for reliable delivery,
-          retries, signature verification, and developer-first tooling.
+        <p className="max-w-lg text-lg text-muted-foreground leading-relaxed">
+          Reliable webhook delivery with automatic retries, circuit breakers,
+          and developer-first tooling.
         </p>
         <div>
           <Button render={<Link href="/getting-started" />} size="xl">
@@ -238,25 +206,66 @@ export const HomePage = () => (
       </div>
     </section>
 
-    <div className="space-y-8 p-6 pb-14 sm:space-y-10 sm:p-8 sm:pb-16">
-      {featureSections.map((section) => (
-        <section className="space-y-3" key={section.title}>
-          <p className="font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
-            {section.title}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {section.cards.map((card) => (
-              <FeatureCard
-                description={card.description}
-                href={card.href}
-                icon={card.icon}
-                key={card.title}
-                title={card.title}
+    <div>
+      <div className="grid grid-cols-1 border-border border-y sm:grid-cols-3">
+        {featured.map((card, i) => (
+          <Link
+            className={cn(
+              "flex flex-col justify-between gap-16 p-6 transition-colors hover:bg-muted/40 sm:p-10",
+              i < featured.length - 1 &&
+                "border-border border-b sm:border-r sm:border-b-0"
+            )}
+            href={card.href}
+            key={card.title}
+          >
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {card.description}
+            </p>
+            <div className="flex items-center gap-3">
+              <card.icon
+                className="size-5 shrink-0 text-muted-foreground"
+                weight="regular"
               />
-            ))}
+              <p className="font-semibold text-sm">{card.title}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="divide-y divide-border">
+        {rest.map((section) => (
+          <div
+            className="flex flex-col gap-4 p-6 sm:flex-row sm:gap-0 sm:p-0"
+            key={section.title}
+          >
+            <div className="flex shrink-0 items-start sm:w-64 sm:p-8">
+              <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+                {section.title}
+              </p>
+            </div>
+            <div className="flex-1 sm:border-border sm:border-l">
+              {section.cards.map((card) => (
+                <Link
+                  className="flex items-start gap-3 border-border border-t px-6 py-4 transition-colors first:border-t-0 hover:bg-muted/40"
+                  href={card.href}
+                  key={card.title}
+                >
+                  <card.icon
+                    className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                    weight="regular"
+                  />
+                  <div className="flex flex-col gap-0.5">
+                    <p className="font-medium text-sm">{card.title}</p>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {card.description}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </section>
-      ))}
+        ))}
+      </div>
     </div>
   </div>
 );

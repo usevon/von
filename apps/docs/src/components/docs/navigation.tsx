@@ -16,11 +16,6 @@ const isPathActive = (pathname: string, href: string) => {
 };
 
 const findActiveHref = (pathname: string) => {
-  for (const link of topLinks) {
-    if (isPathActive(pathname, link.href)) {
-      return link.href;
-    }
-  }
   for (const section of navigation) {
     for (const item of section.items) {
       if (isPathActive(pathname, item.href)) {
@@ -67,15 +62,23 @@ export const Navigation = ({
       orientation="vertical"
       value={displayValue}
     >
-      <Tabs.List className="relative flex flex-col gap-y-3">
-        <div className="flex flex-col gap-0.5">
-          {topLinks.map((link) => (
-            <Tabs.Tab className={tabClass} key={link.href} value={link.href}>
-              {link.title}
-            </Tabs.Tab>
-          ))}
-        </div>
+      <div className="flex flex-col gap-0.5">
+        {topLinks.map((link) => (
+          <Link
+            className={cn(
+              tabClass,
+              isPathActive(pathname, link.href) && "text-foreground"
+            )}
+            href={link.href}
+            key={link.href}
+            onClick={() => onNavigate?.()}
+          >
+            {link.title}
+          </Link>
+        ))}
+      </div>
 
+      <Tabs.List className="relative flex flex-col gap-y-3">
         {navigation.map((section) => (
           <div className="flex flex-col gap-1" key={section.title}>
             <p className="px-3 font-medium text-muted-foreground/60 text-xs uppercase tracking-widest">
