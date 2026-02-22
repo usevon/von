@@ -62,7 +62,7 @@ export default function PricingPage() {
           Pick your plan
         </h1>
         <p className="mt-4 text-muted-foreground">
-          Free to start, pay as you scale. No contracts, no surprises.
+          Free to start. Pay only for what you use.
         </p>
       </div>
 

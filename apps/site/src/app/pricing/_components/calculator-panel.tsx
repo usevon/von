@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@usevon/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { MIN_PAYG_MONTHLY } from "@/lib/calculator";
 
@@ -21,7 +21,14 @@ import { CalculatorSections } from "./calculator-sections";
 import type { CalculatorState } from "./use-calculator-state";
 
 export function CalculatorDialog({ state }: { state: CalculatorState }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    if (window.location.hash === "#calculator") {
+      setDialogOpen(true);
+    }
+  }, []);
   const total = state.billedTotal;
   const atMinimum = state.usageCost + state.addons <= MIN_PAYG_MONTHLY;
 
@@ -49,11 +56,12 @@ export function CalculatorDialog({ state }: { state: CalculatorState }) {
   ];
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={setDialogOpen} open={dialogOpen}>
       <DialogTrigger
+        onClick={() => setDialogOpen(true)}
         render={
           <button
-            className="w-full cursor-pointer text-center text-muted-foreground text-sm underline-offset-4 hover:underline"
+            className="w-full cursor-pointer text-center text-muted-foreground text-sm underline decoration-muted-foreground/40 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
             type="button"
           />
         }

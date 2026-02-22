@@ -1,7 +1,6 @@
 "use client";
 
 import { ListIcon, XIcon } from "@phosphor-icons/react";
-import Link from "next/link";
 import {
   Button,
   Sheet,
@@ -11,6 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@usevon/ui";
+import Link from "next/link";
 import { docsUrl, urls } from "@/lib/urls";
 
 export function MobileNavigation() {
@@ -25,7 +25,7 @@ export function MobileNavigation() {
       </SheetTrigger>
       <SheetPopup showCloseButton={false} side="right">
         <div className="flex h-16 items-center justify-between px-8 sm:px-12">
-          <SheetTitle>Menu</SheetTitle>
+          <SheetTitle>Navigation</SheetTitle>
           <SheetClose render={<Button size="icon" variant="ghost" />}>
             <XIcon />
           </SheetClose>
@@ -37,8 +37,8 @@ export function MobileNavigation() {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href={urls.login} />}
                     className="flex-1"
+                    render={<Link href={urls.login} />}
                     size="lg"
                     variant="outline"
                   />
@@ -50,8 +50,8 @@ export function MobileNavigation() {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href={urls.signup} />}
                     className="flex-1"
+                    render={<Link href={urls.signup} />}
                     size="lg"
                   />
                 }
@@ -64,8 +64,8 @@ export function MobileNavigation() {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href={docsUrl()} />}
                     className="w-full justify-start"
+                    render={<Link href={docsUrl()} />}
                     size="lg"
                     variant="ghost"
                   />
@@ -77,8 +77,8 @@ export function MobileNavigation() {
                 nativeButton={false}
                 render={
                   <Button
-                    render={<Link href="/pricing" />}
                     className="w-full justify-start"
+                    render={<Link href="/pricing" />}
                     size="lg"
                     variant="ghost"
                   />

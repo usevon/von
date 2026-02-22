@@ -72,7 +72,7 @@ export function PlanCards({ comparePath }: { comparePath?: string }) {
       {!!comparePath && (
         <div className="mt-4 w-full text-center md:hidden">
           <Link
-            className="text-muted-foreground text-sm underline underline-offset-4"
+            className="text-muted-foreground text-sm underline decoration-muted-foreground/40 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
             href={comparePath}
           >
             Compare all features
