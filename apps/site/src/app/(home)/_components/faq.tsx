@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 type FAQ = {
@@ -13,8 +14,18 @@ const faqs: FAQ[] = [
   },
   {
     question: "What happens if I exceed my limit?",
-    answer:
-      "We'll never cut you off without warning. On Hobby, we reach out as you near 25k. On Pro, overages are billed at $1 per 10,000.",
+    answer: (
+      <>
+        Hobby pauses at 25k; Metered bills overages with no cutoff, use the{" "}
+        <Link
+          className="text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+          href="/pricing#calculator"
+        >
+          cost calculator
+        </Link>{" "}
+        to estimate.
+      </>
+    ),
   },
   {
     question: "How does throughput scaling work?",

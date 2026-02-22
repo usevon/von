@@ -9,8 +9,9 @@ export function Pricing() {
         <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
           Pricing
         </p>
-        <h2 className="max-w-[24ch] font-semibold text-3xl tracking-tight sm:text-4xl">
-          Simple, transparent pricing for every stage.
+        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          Start free.{" "}
+          <span className="text-foreground/50">Pay as you grow.</span>
         </h2>
       </div>
 
@@ -20,7 +21,7 @@ export function Pricing() {
         <p className="text-muted-foreground text-sm">
           Compare all plan features on the{" "}
           <Link
-            className="text-foreground underline underline-offset-4"
+            className="text-foreground underline decoration-foreground/40 underline-offset-4 transition-colors hover:decoration-foreground"
             href="/pricing"
           >
             pricing page

@@ -1,10 +1,10 @@
 import type { Icon } from "@phosphor-icons/react";
 import {
+  ArrowBendDownRightIcon,
   ArrowCounterClockwiseIcon,
+  LockIcon,
   ShieldWarningIcon,
   TagIcon,
-  LockIcon,
-  ArrowBendDownRightIcon,
   TerminalIcon,
 } from "@phosphor-icons/react/ssr";
 
@@ -54,21 +54,19 @@ export function FeatureGrid() {
         <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
           Features
         </p>
-        <h2 className="max-w-[20ch] font-semibold text-3xl tracking-tight sm:text-4xl">
-          Reliable webhook delivery,{" "}
-          <span className="text-foreground/50">
-            out of the box.
-          </span>
+        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          Everything you need{" "}
+          <span className="text-foreground/50">to ship webhooks.</span>
         </h2>
       </div>
 
       <div className="grid grid-cols-1 border-border border-t sm:grid-cols-2 lg:grid-cols-3 [&>*:nth-child(2n)]:sm:border-r-0 [&>*:nth-child(2n)]:lg:border-r [&>*:nth-child(3n)]:lg:border-r-0 [&>*]:border-border [&>*]:border-b [&>*]:sm:border-r">
         {features.map((feature, _index) => (
-          <div
-            className="flex flex-col gap-3 p-8 sm:p-10"
-            key={feature.title}
-          >
-            <feature.icon className="mb-4 size-6 text-muted-foreground" weight="regular" />
+          <div className="flex flex-col gap-3 p-8 sm:p-10" key={feature.title}>
+            <feature.icon
+              className="mb-4 size-6 text-muted-foreground"
+              weight="regular"
+            />
             <h3 className="font-medium text-lg">{feature.title}</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
               {feature.description}

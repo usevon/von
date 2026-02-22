@@ -14,8 +14,9 @@ export function Integrations() {
         <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
           Integrations
         </p>
-        <h2 className="max-w-[28ch] font-semibold text-3xl tracking-tight sm:text-4xl">
-          Connect to the tools you already use.
+        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+          Works with the tools{" "}
+          <span className="text-foreground/50">you already use.</span>
         </h2>
       </div>
       <div className="flex flex-wrap items-center gap-6 px-8 pb-24 sm:px-12">
