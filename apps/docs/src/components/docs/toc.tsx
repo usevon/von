@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "motion/react";
+import { animate, motion, useMotionValue } from "motion/react";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type TocItem = {
@@ -49,127 +49,123 @@ const useHeadings = () => {
   return headings;
 };
 
-const useActiveHeading = (headingIds: string[]) => {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const manualId = useRef<string | null>(null);
-  const manualTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+const getActiveId = (headingIds: string[]): string | null => {
+  if (!headingIds.length) return null;
 
-  useEffect(() => {
-    if (!headingIds.length) {
-      setActiveId(null);
-      return;
+  if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 100) {
+    return headingIds.at(-1) ?? null;
+  }
+
+  let best = headingIds[0];
+  for (const id of headingIds) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 88) {
+      best = id;
     }
-
-    const update = () => {
-      if (manualId.current) {
-        return;
-      }
-
-      // At the bottom of the page, activate the last heading
-      if (
-        window.innerHeight + window.scrollY >=
-        document.body.scrollHeight - 100
-      ) {
-        setActiveId(headingIds.at(-1) ?? null);
-        return;
-      }
-
-      // Find the last heading that scrolled past 100px from top
-      let best = headingIds[0];
-      for (const id of headingIds) {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= 100) {
-          best = id;
-        }
-      }
-      setActiveId(best);
-    };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
-  }, [headingIds]);
-
-  const setManual = useCallback((id: string) => {
-    manualId.current = id;
-    setActiveId(id);
-
-    if (manualTimer.current) {
-      clearTimeout(manualTimer.current);
-    }
-    manualTimer.current = setTimeout(() => {
-      manualId.current = null;
-    }, 1000);
-  }, []);
-
-  return { activeId, setManual };
-};
-
-const springTransition = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.8,
+  }
+  return best ?? null;
 };
 
 export const TableOfContents = () => {
   const pathname = usePathname();
   const headings = useHeadings();
   const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
-  const { activeId, setManual } = useActiveHeading(headingIds);
 
-  // Track tab element positions for the motion indicator
-  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const tabRefs = useRef<Map<string, HTMLElement>>(new Map());
   const listRef = useRef<HTMLDivElement>(null);
-  const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, height: 0 });
-  const prevPathnameRef = useRef(pathname);
-  const [shouldAnimate, setShouldAnimate] = useState(true);
 
-  const currentId = activeId ?? headings[0]?.id ?? "";
+  const indicatorTop = useMotionValue(0);
+  const indicatorHeight = useMotionValue(0);
+  const clickAnim = useRef<ReturnType<typeof animate>[]>([]);
 
-  // Measure active tab position
-  useEffect(() => {
-    if (!currentId) {
-      return;
-    }
-
-    const tab = tabRefs.current.get(currentId);
+  const getTabRect = (id: string) => {
+    const tab = tabRefs.current.get(id);
     const list = listRef.current;
-    if (!(tab && list)) {
-      return;
-    }
-
+    if (!(tab && list)) return null;
     const listRect = list.getBoundingClientRect();
     const tabRect = tab.getBoundingClientRect();
+    return { top: tabRect.top - listRect.top, height: tabRect.height };
+  };
 
-    setIndicatorStyle({
-      top: tabRect.top - listRect.top,
-      height: tabRect.height,
-    });
-  }, [currentId]);
+  // Jump instantly on scroll — cancel any in-flight click animation first
+  const syncOnScroll = (id: string) => {
+    const rect = getTabRect(id);
+    if (!rect) return;
+    for (const a of clickAnim.current) a.stop();
+    clickAnim.current = [];
+    indicatorTop.jump(rect.top);
+    indicatorHeight.jump(rect.height);
+  };
 
-  // Disable animation on page change, re-enable after
+  // Spring animate on click
+  const syncOnClick = (id: string) => {
+    const rect = getTabRect(id);
+    if (!rect) return;
+    for (const a of clickAnim.current) a.stop();
+    clickAnim.current = [
+      animate(indicatorTop, rect.top, {
+        type: "spring",
+        stiffness: 500,
+        damping: 50,
+        mass: 0.3,
+      }),
+      animate(indicatorHeight, rect.height, {
+        type: "spring",
+        stiffness: 500,
+        damping: 50,
+        mass: 0.3,
+      }),
+    ];
+  };
+
+  // Scroll-driven active heading + indicator
   useEffect(() => {
-    if (pathname !== prevPathnameRef.current) {
-      prevPathnameRef.current = pathname;
-      setShouldAnimate(false);
-      const timer = setTimeout(() => setShouldAnimate(true), 50);
-      return () => clearTimeout(timer);
+    if (!headingIds.length) {
+      setActiveId(null);
+      return;
     }
-  }, [pathname]);
 
-  if (!headings.length) {
-    return null;
-  }
+    let rafId: number;
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const id = getActiveId(headingIds);
+        if (id === null) return;
+        setActiveId(id);
+        syncOnScroll(id);
+      });
+    };
+
+    const id = getActiveId(headingIds);
+    if (id) {
+      setActiveId(id);
+      syncOnScroll(id);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headingIds]);
 
   const scrollToHeading = (id: string) => {
-    setManual(id);
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+      const targetY = el.getBoundingClientRect().top + window.scrollY - 64 - 24;
+      window.scrollTo({ top: targetY, behavior: "smooth" });
     }
+    setActiveId(id);
+    syncOnClick(id);
     window.history.replaceState(null, "", `#${id}`);
   };
+
+  if (!headings.length) return null;
+
+  const currentId = activeId ?? headings[0]?.id ?? "";
 
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -180,14 +176,9 @@ export const TableOfContents = () => {
         className="relative flex flex-col border-border border-l"
         ref={listRef}
       >
-        {/* Motion indicator line */}
         <motion.div
-          animate={{
-            top: indicatorStyle.top,
-            height: indicatorStyle.height,
-          }}
           className="absolute left-0 w-0.5 bg-primary"
-          transition={shouldAnimate ? springTransition : { duration: 0 }}
+          style={{ top: indicatorTop, height: indicatorHeight }}
         />
 
         {headings.map((item) => (
@@ -201,11 +192,8 @@ export const TableOfContents = () => {
             key={item.id}
             onClick={() => scrollToHeading(item.id)}
             ref={(el) => {
-              if (el) {
-                tabRefs.current.set(item.id, el);
-              } else {
-                tabRefs.current.delete(item.id);
-              }
+              if (el) tabRefs.current.set(item.id, el);
+              else tabRefs.current.delete(item.id);
             }}
             type="button"
           >
