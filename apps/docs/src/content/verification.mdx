@@ -18,11 +18,11 @@ Every webhook Von delivers includes two headers:
 | `X-Von-Signature` | `t={timestamp},v1={hmac_hex}` |
 | `X-Von-Timestamp` | Unix timestamp in seconds |
 
-The signature is computed as `HMAC-SHA256("{timestamp}.{raw_body}", secret)` where `secret` is the endpoint's signing key.
+Von signs each request by HMAC-SHA256 hashing `{timestamp}.{raw_body}` with the endpoint's signing secret, then encoding the result as hex in the `v1` field of `X-Von-Signature`.
 
 ## Verifying with the SDK
 
-The SDK provides a `verifyWebhook` function that handles parsing, timestamp validation, and timing-safe comparison:
+The SDK's `verifyWebhook` function handles parsing, timestamp validation, and timing-safe comparison:
 
 ```typescript
 import { verifyWebhook, WebhookVerificationError } from "@usevon/sdk";
@@ -46,7 +46,7 @@ app.post("/webhooks", async (req) => {
 
 <Properties>
   <Property name="payload" type="string" required>
-    The raw request body as a string. Must be the exact bytes that were signed, not a parsed and re-serialized object.
+    The raw request body as a string. Pass the exact bytes received, not a parsed and re-serialized value.
   </Property>
   <Property name="signatureHeader" type="string" required>
     The value of the `X-Von-Signature` header.
@@ -55,9 +55,13 @@ app.post("/webhooks", async (req) => {
     The endpoint's signing secret.
   </Property>
   <Property name="options.maxAge" type="number">
-    Maximum allowed age of the timestamp in seconds. Defaults to 300 (5 minutes). Webhooks older than this are rejected.
+    Max timestamp age in seconds before the webhook is rejected. Defaults to 300 (5 minutes).
   </Property>
 </Properties>
+
+<Tip title="Always read the raw body before your framework parses it">
+  If your framework automatically parses the request body as JSON, the re-serialized string may differ from what Von signed. Read the raw body bytes first, then pass that string to `verifyWebhook`. In Express use `express.raw()`, in Hono use `c.req.text()`, in Next.js read `req.body` as a buffer before the JSON middleware runs.
+</Tip>
 
 ## What the SDK checks
 
@@ -73,7 +77,7 @@ If any check fails, a `WebhookVerificationError` is thrown with a descriptive me
 
 ## Verifying manually
 
-If you are not using the SDK, here is the algorithm:
+If you are not using the SDK:
 
 ```typescript
 import { createHmac, timingSafeEqual } from "crypto";
@@ -116,13 +120,12 @@ When you rotate an endpoint's secret, Von includes two signatures during the tra
 t=1700000000,v1=<current_hmac>,v2=<previous_hmac>
 ```
 
-`v1` is signed with the current secret, `v2` with the previous. Your consumer can verify against either key. Once you have updated your consumer to use the new secret, call `DELETE /endpoints/:id/previous-secret` to finalize the rotation and stop including `v2`.
+`v1` is signed with the current secret and `v2` with the previous, so your consumer can verify against either. Once updated to use the new secret, call `DELETE /endpoints/:id/previous-secret` to stop including `v2`.
 
 ## Common mistakes
 
-**Parsing the body before verifying.** If your framework parses the request body as JSON automatically, the re-serialized string may differ from the original. Always verify against the raw body string.
+**Parsing the body before verifying.** If your framework parses the request body as JSON automatically, the re-serialized string may differ from what Von signed. Always verify against the raw body string.
 
-**Ignoring the timestamp.** Without timestamp validation, an attacker could replay a captured webhook indefinitely. The `maxAge` check prevents this.
+**Ignoring the timestamp.** Without timestamp validation, an attacker can replay a captured webhook indefinitely. The `maxAge` check prevents this.
 
-**Using non-constant-time comparison.** A simple `===` comparison leaks timing information that can be used to forge signatures character by character. Always use `timingSafeEqual` or the SDK.
-
+**Using non-constant-time comparison.** A plain `===` check leaks timing information that can be used to forge signatures character by character. Always use `timingSafeEqual` or the SDK.

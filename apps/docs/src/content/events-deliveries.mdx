@@ -26,7 +26,7 @@ const { data: event } = await von.webhooks.post({
 
 ## Targeting specific endpoints
 
-By default, Von delivers to all matching endpoints. Pass `endpointIds` to target specific ones:
+Von delivers to all matching active endpoints by default. Pass `endpointIds` to target specific ones:
 
 ```typescript
 const { data: event } = await von.webhooks.post({
@@ -50,13 +50,13 @@ const { data } = await von.webhooks.batch.post({
 });
 ```
 
-The response includes `created` (the number of new events) and the full `events` array.
+The response includes the count of `created` events and the full `events` array.
 
 ## Idempotency
 
 ### Event-level idempotency
 
-Use `idempotencyKey` to prevent duplicate events. If an event with the same key already exists in your organization, Von returns the existing event without creating new deliveries.
+Pass `idempotencyKey` to avoid creating duplicate events. If an event with that key already exists in your organization, Von returns it without creating new deliveries.
 
 ```typescript
 const { data: event } = await von.webhooks.post({
@@ -66,9 +66,13 @@ const { data: event } = await von.webhooks.post({
 });
 ```
 
+<Tip title="Pick a stable idempotency key">
+  Use an identifier that uniquely describes the logical event, not a retry counter. A good key for an order is the order ID plus the event type, so retrying the same request always deduplicates correctly.
+</Tip>
+
 ### Request-level idempotency
 
-For any mutating request, include the `X-Idempotency-Key` header. Von caches the complete response in Redis for 5 minutes, so retrying the same request returns the original response.
+Add `X-Idempotency-Key` to any mutating request and Von returns the cached response for 5 minutes, skipping reprocessing entirely. This applies to any POST, PUT, or PATCH request, not just event sending.
 
 ## Delivery statuses
 
@@ -80,7 +84,7 @@ Each delivery tracks its state through the lifecycle:
 | `delivered` | Endpoint responded with HTTP 2xx |
 | `failed` | All retry attempts exhausted |
 | `skipped` | Endpoint was disabled when delivery was attempted |
-| `paused` | Endpoint was paused |
+| `paused` | Endpoint was paused when delivery was attempted |
 | `circuit_open` | Circuit breaker was open, delivery skipped |
 
 ## Querying events
@@ -121,7 +125,7 @@ const { data } = await von.webhooks.events["evt_xxx"].deliveries.get({
 });
 ```
 
-Each delivery includes the number of attempts, the last attempt timestamp, and the response details (HTTP status code, duration, error message).
+Each delivery includes the attempt count, last attempt timestamp, and response details including HTTP status, duration, and any error message.
 
 ## Replaying events
 
@@ -147,7 +151,7 @@ await von.webhooks.events.replay.post({
 });
 ```
 
-Both `status` and `endpointId` are optional filters. Omit them to replay everything.
+Both `status` and `endpointId` are optional filters.
 
 ## Delivery headers
 
@@ -163,5 +167,4 @@ Every webhook delivery includes these headers:
 
 ## Data retention
 
-Events and deliveries are automatically cleaned up after 90 days by default. This is configurable via `EVENT_RETENTION_DAYS` and `DELIVERY_RETENTION_DAYS` when self-hosting.
-
+Events and deliveries are cleaned up after 90 days by default, configurable via `EVENT_RETENTION_DAYS` and `DELIVERY_RETENTION_DAYS` when self-hosting.

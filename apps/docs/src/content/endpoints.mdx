@@ -11,7 +11,7 @@ Endpoints are the destination URLs where Von delivers your webhook events.
 
 ## Creating an endpoint
 
-Register a URL to start receiving webhooks. Von generates a unique signing secret for each endpoint automatically.
+Register a URL to receive webhooks, each endpoint gets a unique signing secret on creation.
 
 ```typescript
 const { data: endpoint } = await von.endpoints.post({
@@ -20,37 +20,39 @@ const { data: endpoint } = await von.endpoints.post({
 });
 ```
 
-The response includes the endpoint's `secret`, which your consumer uses to verify signatures. This is the only time the secret is returned in full.
+<Note>
+  Save the endpoint `secret` from the response as it is never shown again and can only be recovered by rotating the endpoint.
+</Note>
 
 ## Configuration options
 
 <Properties>
   <Property name="url" type="string" required>
-    The destination URL. Must be a public HTTPS URL. Von validates against SSRF by blocking private IP ranges, localhost, and cloud metadata endpoints.
+    Public HTTPS destination, with private IPs, localhost, and cloud metadata endpoints blocked.
   </Property>
   <Property name="description" type="string">
-    A human-readable label for the endpoint.
+    A display label.
   </Property>
   <Property name="status" type="string">
-    One of `active`, `paused`, or `disabled`. Active endpoints receive deliveries normally. Paused endpoints queue deliveries with a `paused` status. Disabled endpoints skip deliveries entirely.
+    `active` delivers normally, `paused` queues deliveries with a paused status, `disabled` skips deliveries entirely.
   </Property>
   <Property name="events" type="string[]">
-    An array of event type patterns to subscribe to. When set, only matching events are delivered to this endpoint. Set to `null` to receive all events.
+    Event type patterns to subscribe to, where omitting or passing `null` receives all events and an empty array receives nothing.
   </Property>
   <Property name="version" type="string">
-    Pin this endpoint to a specific payload version. When set, Von applies the version's transforms before delivering.
+    Pins the endpoint to a payload version, applying its transforms before delivery.
   </Property>
   <Property name="maxAttempts" type="number">
-    Maximum delivery attempts including the initial try. Range: 1 to 10. Defaults to 4.
+    Total delivery attempts including the initial try. Range 1 to 10, defaults to 4.
   </Property>
   <Property name="timeoutMs" type="number">
-    How long Von waits for a response before marking the attempt as failed. Range: 1000 to 60000. Defaults to 30000 (30 seconds).
+    Response timeout in ms before the attempt is marked failed. Range 1000 to 60000, defaults to 30000.
   </Property>
 </Properties>
 
 ## Event filtering
 
-Endpoints can subscribe to specific event types using pattern matching.
+Endpoints subscribe to specific event types using pattern matching.
 
 | Pattern | Matches |
 | --- | --- |
@@ -58,8 +60,6 @@ Endpoints can subscribe to specific event types using pattern matching.
 | `order.*` | Any event starting with `order.` |
 | `*.created` | Any event ending with `.created` |
 | `*` | All events |
-
-When `events` is `null` or omitted, the endpoint receives everything. An empty array means the endpoint receives nothing.
 
 ```typescript
 const { data: endpoint } = await von.endpoints.post({
@@ -78,11 +78,11 @@ await von.endpoints["ep_xxx"].patch({
 });
 ```
 
-All fields are optional. Only the fields you include are updated.
+All fields are optional and only the fields you include are updated.
 
 ## Test deliveries
 
-Send a test webhook to verify your endpoint is reachable and responding correctly.
+Send a test webhook to the endpoint and review the resulting event and delivery in the dashboard.
 
 ```typescript
 const { data } = await von.endpoints["ep_xxx"].test.post({
@@ -91,25 +91,21 @@ const { data } = await von.endpoints["ep_xxx"].test.post({
 });
 ```
 
-This creates a real event and delivery that appears in the dashboard, so you can inspect the full request and response.
-
 ## Secret rotation
 
-Rotate an endpoint's signing secret without downtime. During rotation, Von includes both the current and previous signatures in every delivery so your consumer can verify with either key.
+Rotate an endpoint's signing secret without downtime. During the rotation window, Von includes both the current and previous signatures so your consumer can verify with either key.
 
 ```typescript
 const { data } = await von.endpoints["ep_xxx"].rotate.post();
 ```
 
-The response contains the new `secret` and the `previousSecret`. Both produce valid signatures until you finalize the rotation.
-
-When your consumer has been updated to use the new secret, clear the previous one:
+The response includes the new `secret` and `previousSecret`, so once your consumer is updated to the new secret, clear the old one:
 
 ```typescript
 await von.endpoints["ep_xxx"]["previous-secret"].delete();
 ```
 
-During the rotation window, the `X-Von-Signature` header contains two signatures:
+During rotation the `X-Von-Signature` header contains two signatures:
 
 ```
 t=1700000000,v1=<current_secret_hmac>,v2=<previous_secret_hmac>
@@ -121,14 +117,18 @@ t=1700000000,v1=<current_secret_hmac>,v2=<previous_secret_hmac>
 await von.endpoints["ep_xxx"].delete();
 ```
 
-Deleting an endpoint also removes all associated delivery records.
+Deleting an endpoint removes all associated delivery records.
 
 ## SSRF protection
 
-Von validates endpoint URLs at creation time and again at delivery time:
+Von validates endpoint URLs at creation and again at delivery time. The following are blocked:
 
-- Private IP ranges are blocked (10.x, 172.16.x, 192.168.x, 127.x, etc.)
-- Cloud metadata endpoints are blocked (169.254.169.254, metadata.google.internal, etc.)
-- DNS resolution is checked at delivery time to catch DNS rebinding attacks
-- Only `http` and `https` protocols are allowed
+- Private IP ranges
+- Cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`)
+- Non-HTTP(S) protocols
 
+DNS is re-resolved at delivery time to catch rebinding attacks.
+
+<Tip title="Testing locally">
+  Localhost and private IPs are blocked as endpoint URLs, so use the [CLI tunnel](/sdk/cli) to get a public URL that forwards to your local server.
+</Tip>

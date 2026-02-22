@@ -11,18 +11,14 @@ Send your first webhook with Von in under 5 minutes.
 
 ## Prerequisites
 
-Before you begin, make sure you have the following:
-
-1. A Von account, which you can [create for free](https://app.usevon.com/).
-2. Node.js 18 or later installed on your machine.
-3. An API key generated from the [API Keys page](https://app.usevon.com/settings/api-keys) in the dashboard.
+1. A Von account ([create one for free](https://app.usevon.com/)).
+2. Node.js 18 or later.
+3. An API key from the [API Keys page](https://app.usevon.com/settings/api-keys).
 
 ## Setup
 
 <Timeline>
   <TimelineItem title="Install the SDK">
-    Let's start by adding Von to your project:
-
     <CodeGroup>
       <CodeGroupTab title="bun">
 ```bash
@@ -43,10 +39,10 @@ pnpm add @usevon/sdk
   </TimelineItem>
 
   <TimelineItem title="Configure environment">
-    Create a `.env` file and add the API key. The key authenticates all requests to the Von API and determines which environment (development, staging, or production) webhooks are sent from.
+    Create a `.env` file and add your API key. The prefix determines the environment: `von_dev_` for development, `von_stg_` for staging, `von_prod_` for production.
 
 ```bash
-VON_API_KEY=von_live_xxxxxxxxxxxxx
+VON_API_KEY=von_dev_xxxxxxxxxxxxx
 ```
   </TimelineItem>
 
@@ -61,10 +57,10 @@ const von = new Von({
   </TimelineItem>
 
   <TimelineItem title="Create an endpoint">
-    An endpoint is the destination URL where Von delivers webhooks.
+    The destination URL where Von delivers webhooks.
 
 ```typescript
-const endpoint = await von.endpoints.create({
+const { data: endpoint } = await von.endpoints.post({
   url: "https://your-app.com/webhooks",
   description: "Production webhook endpoint",
 });
@@ -73,8 +69,7 @@ const endpoint = await von.endpoints.create({
 
   <TimelineItem title="Send a webhook">
 ```typescript
-const webhook = await von.webhooks.send({
-  endpointId: endpoint.id,
+const { data: event } = await von.webhooks.post({
   eventType: "user.created",
   payload: {
     userId: "user_123",
@@ -86,7 +81,10 @@ const webhook = await von.webhooks.send({
   </TimelineItem>
 
   <TimelineItem title="View in dashboard">
-    Once sent, the webhook appears in the [Von dashboard](https://app.usevon.com/) where you can monitor delivery status, view response codes, and debug any failures.
+    Once sent, the webhook appears in the [Von dashboard](https://app.usevon.com/) for monitoring delivery status, response codes, and failures.
   </TimelineItem>
 </Timeline>
 
+<Note>
+  Endpoint URLs must be publicly reachable HTTPS addresses. For local development, use the [CLI tunnel](/sdk/cli) to forward webhooks to localhost.
+</Note>

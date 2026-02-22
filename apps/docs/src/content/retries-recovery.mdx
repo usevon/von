@@ -11,7 +11,7 @@ Von handles delivery failures automatically with retries, circuit breakers, and 
 
 ## Automatic retries
 
-When a delivery fails (non-2xx response or timeout), Von retries it with exponential backoff. The default schedule starts at 1 second and doubles with each attempt:
+When a delivery fails (non-2xx response or timeout), Von retries it with exponential backoff starting at 1 second and doubling each attempt:
 
 | Attempt | Delay |
 | --- | --- |
@@ -30,42 +30,40 @@ const { data: endpoint } = await von.endpoints.post({
 });
 ```
 
-A delivery is marked `failed` only after all retry attempts are exhausted. Failed jobs are retained for 7 days for inspection.
+<Note>
+  `maxAttempts` is the total number of attempts including the first try, not the number of retries after failure.
+</Note>
+
+A delivery is marked `failed` only after all attempts are exhausted.
 
 ## Circuit breakers
 
-Von protects unstable endpoints with a three-state circuit breaker. When an endpoint fails repeatedly, Von stops sending to it temporarily to avoid wasting resources and let it recover.
+Von protects unstable endpoints with a circuit breaker, stopping delivery temporarily when an endpoint fails repeatedly to let it recover.
 
-### How it works
+The circuit has three states:
 
-The circuit breaker has three states:
+Closed is the normal state where all deliveries flow through and Von tracks consecutive failures.
 
-**Closed** is the normal operating state. All deliveries flow through. Von tracks consecutive failures.
+Open activates after 5 consecutive failures, with all deliveries immediately skipped as `circuit_open`.
 
-**Open** activates after 5 consecutive failures. All deliveries are immediately skipped with a `circuit_open` status. No requests are sent to the endpoint.
-
-**Half-open** activates after 5 minutes in the open state. Von sends a single probe delivery to test if the endpoint has recovered. If it succeeds, the circuit resets to closed. If it fails, the circuit re-opens for another 5 minutes.
+Half-open activates after 5 minutes in the open state, allowing deliveries through to test recovery. A successful delivery closes the circuit and a failure reopens it for another 5 minutes.
 
 | Parameter | Value |
 | --- | --- |
 | Failure threshold | 5 consecutive failures |
 | Reset timeout | 5 minutes |
 
-### What triggers the circuit
+Only consecutive failures count toward the threshold. Any successful delivery resets the failure counter to zero.
 
-Only consecutive failures count. A single successful delivery resets the failure counter to zero. Failures from retries within the same delivery count toward the threshold.
-
-### Recovery
-
-When the circuit is half-open and the probe delivery succeeds, the endpoint returns to normal immediately. All queued deliveries resume. You can also replay any deliveries that were skipped while the circuit was open.
+<Tip title="Replaying circuit-skipped deliveries">
+  Deliveries skipped while the circuit was open get a `circuit_open` status. Once the endpoint recovers, use bulk replay to re-deliver them.
+</Tip>
 
 ## Replaying failed deliveries
 
-When something goes wrong at scale, bulk replay lets you re-deliver everything that failed.
-
 ### Single event
 
-Re-deliver one event to all (or specific) endpoints:
+Re-deliver one event to all its endpoints, or target specific ones:
 
 ```typescript
 await von.webhooks.events["evt_xxx"].replay.post({
@@ -88,23 +86,22 @@ You can filter by `status` and `endpointId` to narrow the scope.
 
 ## Endpoint statuses
 
-Endpoint status affects how deliveries are handled:
+Only `active` endpoints receive deliveries. Changing status to `paused` or `disabled` affects future deliveries, not ones already in the queue.
 
 | Status | Behavior |
 | --- | --- |
 | `active` | Deliveries are sent normally |
-| `paused` | Deliveries are created with `paused` status, not attempted |
-| `disabled` | Deliveries are created with `skipped` status, not attempted |
+| `paused` | Deliveries in flight are marked `paused`, not attempted |
+| `disabled` | Deliveries in flight are marked `skipped`, not attempted |
 
-Pausing an endpoint is useful during maintenance. Paused deliveries can be replayed once the endpoint is active again.
+Pausing is useful during maintenance windows, since deliveries marked `paused` can be replayed once the endpoint is active again.
 
 ## Worker configuration
 
-When self-hosting, you can tune the delivery worker:
+When self-hosting, you can configure the delivery worker:
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `WORKER_CONCURRENCY` | 50 | Concurrent delivery jobs (max 500) |
 | `EVENT_RETENTION_DAYS` | 90 | Days before events are cleaned up |
 | `DELIVERY_RETENTION_DAYS` | 90 | Days before deliveries are cleaned up |
-
