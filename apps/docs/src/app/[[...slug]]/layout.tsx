@@ -2,8 +2,9 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/sidebar";
+import { PageActions } from "@/components/docs/page-actions";
 import { TableOfContents } from "@/components/docs/toc";
+import { Sidebar } from "@/components/sidebar";
 
 const transition = {
   duration: 0.2,
@@ -30,10 +31,10 @@ export default function DocsSlugLayout({
           <div className="min-w-0 max-w-4xl flex-1">
             <AnimatePresence mode="wait">
               <motion.div
-                key={pathname}
-                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: 4 }}
+                key={pathname}
                 transition={transition}
               >
                 {children}
@@ -42,6 +43,7 @@ export default function DocsSlugLayout({
           </div>
           <aside className="sticky top-20 hidden h-fit w-48 shrink-0 xl:block">
             <TableOfContents />
+            <PageActions className="mt-4 flex flex-col" />
           </aside>
         </div>
       </div>
