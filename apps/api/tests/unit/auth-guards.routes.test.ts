@@ -48,13 +48,11 @@ describe("API auth guards", () => {
     [
       "PATCH /versions/:version",
       () =>
-        client
-          .versions({ version: TEST_VERSION })
-          .patch({
-            transforms: {
-              "product.updated": { rename: { features: "newItems" } },
-            },
-          }),
+        client.versions({ version: TEST_VERSION }).patch({
+          transforms: {
+            "product.updated": { rename: { features: "newItems" } },
+          },
+        }),
     ],
     [
       "DELETE /versions/:version",
@@ -74,6 +72,7 @@ describe("API auth guards", () => {
       () => client.webhooks.events({ id: TEST_ID }).get(),
     ],
     ["GET /inbound", () => client.inbound.get()],
+    ["GET /audit-log", () => client["audit-log"].get()],
   ];
 
   for (const [name, run] of cases) {

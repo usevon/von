@@ -57,7 +57,34 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
 
     expect(data.id).toBeDefined();
     expect(data.forwardUrl).toBe("https://example.com/inbound-webhook/primary");
+    expect(data.maxAttempts).toBe(4);
+    expect(data.timeoutMs).toBe(30_000);
     primaryInboundEndpointId = data.id;
+  });
+
+  test("PATCH /inbound/:id updates retry settings", async () => {
+    if (!primaryInboundEndpointId) {
+      return;
+    }
+
+    const { data, error } = await client
+      .inbound({ id: primaryInboundEndpointId })
+      .patch(
+        {
+          maxAttempts: 6,
+          timeoutMs: 45_000,
+        },
+        {
+          headers: { authorization: `Bearer ${apiKey}` },
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    expect(data.maxAttempts).toBe(6);
+    expect(data.timeoutMs).toBe(45_000);
   });
 
   test("GET /inbound returns list", async () => {
@@ -98,7 +125,7 @@ describe.skipIf(!apiKey)("Inbound endpoints", () => {
       headers: { authorization: `Bearer ${apiKey}` },
     });
 
-    expect(error?.status).toBe(400);
+    expect((error?.status as number | undefined) ?? 0).toBe(400);
     expect(error?.value).toMatchObject({ error: INVALID_CURSOR_MESSAGE });
   });
 
