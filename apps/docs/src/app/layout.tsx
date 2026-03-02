@@ -1,4 +1,5 @@
 import { Databuddy } from "@databuddy/sdk/react";
+import { BRAND_ASSET_URLS } from "@usevon/ui/lib/utils";
 import type { Metadata } from "next";
 import { Familjen_Grotesk } from "next/font/google";
 
@@ -16,6 +17,11 @@ const familjen = Familjen_Grotesk({
 export const metadata: Metadata = {
   title: "Von Documentation",
   description: "Learn how to use Von webhook infrastructure.",
+  icons: {
+    icon: BRAND_ASSET_URLS.iconBlackPng,
+    shortcut: BRAND_ASSET_URLS.iconBlackPng,
+    apple: BRAND_ASSET_URLS.iconBlackPng,
+  },
 };
 
 type RootLayoutProps = {

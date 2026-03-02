@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { Providers } from "@/components/providers";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { BRAND_ASSET_URLS } from "@/lib/utils";
 
 const familjen = Familjen_Grotesk({
   variable: "--font-familjen",
@@ -16,6 +17,11 @@ const familjen = Familjen_Grotesk({
 export const metadata: Metadata = {
   title: "Von - Webhook Infrastructure",
   description: "Webhooks infrastructure that just works.",
+  icons: {
+    icon: BRAND_ASSET_URLS.iconBlackPng,
+    shortcut: BRAND_ASSET_URLS.iconBlackPng,
+    apple: BRAND_ASSET_URLS.iconBlackPng,
+  },
 };
 
 type RootLayoutProps = {
