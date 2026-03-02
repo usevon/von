@@ -2,7 +2,7 @@
 
 import { animate, motion, useMotionValue } from "motion/react";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type TocItem = {
@@ -50,7 +50,9 @@ const useHeadings = () => {
 };
 
 const getActiveId = (headingIds: string[]): string | null => {
-  if (!headingIds.length) return null;
+  if (!headingIds.length) {
+    return null;
+  }
 
   if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 100) {
     return headingIds.at(-1) ?? null;
@@ -67,7 +69,6 @@ const getActiveId = (headingIds: string[]): string | null => {
 };
 
 export const TableOfContents = () => {
-  const pathname = usePathname();
   const headings = useHeadings();
   const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
 
@@ -79,45 +80,61 @@ export const TableOfContents = () => {
   const indicatorHeight = useMotionValue(0);
   const clickAnim = useRef<ReturnType<typeof animate>[]>([]);
 
-  const getTabRect = (id: string) => {
+  const getTabRect = useCallback((id: string) => {
     const tab = tabRefs.current.get(id);
     const list = listRef.current;
-    if (!(tab && list)) return null;
+    if (!(tab && list)) {
+      return null;
+    }
     const listRect = list.getBoundingClientRect();
     const tabRect = tab.getBoundingClientRect();
     return { top: tabRect.top - listRect.top, height: tabRect.height };
-  };
+  }, []);
 
   // Jump instantly on scroll — cancel any in-flight click animation first
-  const syncOnScroll = (id: string) => {
-    const rect = getTabRect(id);
-    if (!rect) return;
-    for (const a of clickAnim.current) a.stop();
-    clickAnim.current = [];
-    indicatorTop.jump(rect.top);
-    indicatorHeight.jump(rect.height);
-  };
+  const syncOnScroll = useCallback(
+    (id: string) => {
+      const rect = getTabRect(id);
+      if (!rect) {
+        return;
+      }
+      for (const animation of clickAnim.current) {
+        animation.stop();
+      }
+      clickAnim.current = [];
+      indicatorTop.jump(rect.top);
+      indicatorHeight.jump(rect.height);
+    },
+    [getTabRect, indicatorHeight, indicatorTop]
+  );
 
   // Spring animate on click
-  const syncOnClick = (id: string) => {
-    const rect = getTabRect(id);
-    if (!rect) return;
-    for (const a of clickAnim.current) a.stop();
-    clickAnim.current = [
-      animate(indicatorTop, rect.top, {
-        type: "spring",
-        stiffness: 500,
-        damping: 50,
-        mass: 0.3,
-      }),
-      animate(indicatorHeight, rect.height, {
-        type: "spring",
-        stiffness: 500,
-        damping: 50,
-        mass: 0.3,
-      }),
-    ];
-  };
+  const syncOnClick = useCallback(
+    (id: string) => {
+      const rect = getTabRect(id);
+      if (!rect) {
+        return;
+      }
+      for (const animation of clickAnim.current) {
+        animation.stop();
+      }
+      clickAnim.current = [
+        animate(indicatorTop, rect.top, {
+          type: "spring",
+          stiffness: 500,
+          damping: 50,
+          mass: 0.3,
+        }),
+        animate(indicatorHeight, rect.height, {
+          type: "spring",
+          stiffness: 500,
+          damping: 50,
+          mass: 0.3,
+        }),
+      ];
+    },
+    [getTabRect, indicatorHeight, indicatorTop]
+  );
 
   // Scroll-driven active heading + indicator
   useEffect(() => {
@@ -132,7 +149,9 @@ export const TableOfContents = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         const id = getActiveId(headingIds);
-        if (id === null) return;
+        if (id === null) {
+          return;
+        }
         setActiveId(id);
         syncOnScroll(id);
       });
@@ -149,8 +168,7 @@ export const TableOfContents = () => {
       window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(rafId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headingIds]);
+  }, [headingIds, syncOnScroll]);
 
   const scrollToHeading = (id: string) => {
     const el = document.getElementById(id);
@@ -163,7 +181,9 @@ export const TableOfContents = () => {
     window.history.replaceState(null, "", `#${id}`);
   };
 
-  if (!headings.length) return null;
+  if (!headings.length) {
+    return null;
+  }
 
   const currentId = activeId ?? headings[0]?.id ?? "";
 
@@ -192,8 +212,11 @@ export const TableOfContents = () => {
             key={item.id}
             onClick={() => scrollToHeading(item.id)}
             ref={(el) => {
-              if (el) tabRefs.current.set(item.id, el);
-              else tabRefs.current.delete(item.id);
+              if (el) {
+                tabRefs.current.set(item.id, el);
+              } else {
+                tabRefs.current.delete(item.id);
+              }
             }}
             type="button"
           >

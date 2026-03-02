@@ -7,6 +7,9 @@ export const ScrollReset = () => {
   const pathname = usePathname();
 
   useEffect(() => {
+    if (!pathname) {
+      return;
+    }
     window.scrollTo(0, 0);
   }, [pathname]);
 

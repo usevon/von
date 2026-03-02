@@ -121,6 +121,20 @@ const featureSections: FeatureSection[] = [
         description:
           "Track delivery volume, success rates, and retry behavior with overview, timeseries, and retry metrics.",
       },
+      {
+        href: "/rate-limits",
+        icon: LockIcon,
+        title: "Rate Limits & 429",
+        description:
+          "Understand request limits, throughput buckets, and safe retry behavior when you receive 429 responses.",
+      },
+      {
+        href: "/idempotency",
+        icon: ArrowCounterClockwiseIcon,
+        title: "Idempotency",
+        description:
+          "Prevent duplicate mutations with idempotency keys and make client retries safe by default.",
+      },
     ],
   },
   {
@@ -165,9 +179,9 @@ const featureSections: FeatureSection[] = [
 
 const HERO_COLS = 7;
 const HERO_ROWS = 5;
-const heroGrid = Array.from({ length: HERO_ROWS }, (_, ri) =>
-  Array.from({ length: HERO_COLS }, (_, ci) => {
-    const d = ci - ri;
+const heroGrid = Array.from({ length: HERO_ROWS }, (_unusedRow, rowIndex) =>
+  Array.from({ length: HERO_COLS }, (_unusedCol, colIndex) => {
+    const d = colIndex - rowIndex;
     return d >= 0 && d <= 2 ? 1 : 0;
   })
 );
