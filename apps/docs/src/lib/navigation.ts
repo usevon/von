@@ -29,6 +29,10 @@ export const navigation: NavSection[] = [
     ],
   },
   {
+    title: "Operations",
+    items: [{ title: "Analytics", href: "/analytics" }],
+  },
+  {
     title: "Receiving Webhooks",
     items: [
       { title: "Inbound Forwarding", href: "/inbound" },

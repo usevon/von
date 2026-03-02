@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Pagination } from "@/components/docs/pagination";
 import { HomePage } from "@/components/home-page";
+import AnalyticsContent from "@/content/analytics.mdx";
 import AuthenticationContent from "@/content/authentication.mdx";
 import EndpointsContent from "@/content/endpoints.mdx";
 import EventsDeliveriesContent from "@/content/events-deliveries.mdx";
@@ -26,6 +27,7 @@ const pages: Record<string, React.ComponentType> = {
   hosting: HostingContent,
   endpoints: EndpointsContent,
   "events-deliveries": EventsDeliveriesContent,
+  analytics: AnalyticsContent,
   "retries-recovery": RetriesRecoveryContent,
   versioning: VersioningContent,
   inbound: InboundContent,

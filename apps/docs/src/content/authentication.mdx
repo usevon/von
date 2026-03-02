@@ -60,13 +60,16 @@ Each key is scoped to exactly what it needs:
 | `write:inbound` | Create, update, delete inbound endpoints |
 | `read:versions` | List and view versions |
 | `write:versions` | Create, update, delete versions |
+| `read:analytics` | Read analytics resources |
 | `read:tunnels` | List active tunnels |
 | `write:tunnels` | Register and rotate tunnels |
 
 Scopes are hierarchical: `*` grants everything, `read:*` grants all read scopes, `write:*` grants all write scopes.
 
+Use `read:analytics`, `read:*`, or `*` to access analytics routes with API keys.
+
 <Tip title="Avoid using * in production keys">
-  Full-access keys are convenient during development but make every integration a single point of failure in production. Prefer `read:*` or resource-specific scopes so a leaked key has a limited blast radius.
+  Full-access keys are useful in development, but in production use `read:*` or resource-specific scopes to reduce impact if a key leaks.
 </Tip>
 
 ## Using a key
@@ -173,16 +176,6 @@ The audit log records `apikey.created`, `apikey.updated`, and `apikey.deleted` e
 ### CI and secret storage
 
 Store keys in GitHub Actions secrets or your secret manager, not in `.env` files committed to the repo. Use one key per service so you can rotate independently, and set a short `expiresIn` for ephemeral CI jobs.
-
-## Common mistakes
-
-**Using `*` in production.** A single leaked key exposes everything, so scope each key to what its service actually calls.
-
-**Reusing one key across services.** A compromise affects everything at once and makes independent rotation impossible.
-
-**Logging the full key value.** The `start` prefix is enough to identify a key in logs, never the full value.
-
-**Committing keys to source.** Even in private repos, any key that has touched a committed file should be treated as compromised.
 
 ## Limits
 

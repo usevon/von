@@ -1,0 +1,168 @@
+export const frontmatter = {
+  title: "Analytics",
+  description: "Track delivery volume, success rate, and retry behavior across your organization."
+};
+
+# Analytics
+
+Use analytics endpoints to monitor delivery health, chart trends, and measure retry behavior.
+
+<PageActions />
+
+## Access
+
+Analytics routes accept API keys with `read:analytics`, `read:*`, or `*`.
+
+## Date range
+
+All analytics routes accept optional `from` and `to` ISO timestamp query params, and if both are set then `from` must be before or equal to `to`.
+
+## Overview
+
+Use `GET /analytics/overview` when you need a single snapshot for a time window.
+
+It returns:
+
+- Delivery totals by status
+- Event and delivery totals
+- Success, failure, and retry rates
+
+```json
+{
+  "totals": {
+    "events": 1200,
+    "deliveries": 1450,
+    "delivered": 1398,
+    "failed": 21,
+    "pending": 9,
+    "paused": 5,
+    "skipped": 12,
+    "circuitOpen": 5
+  },
+  "rates": {
+    "successRate": 96.41,
+    "failureRate": 1.45,
+    "retryRate": 8.69
+  }
+}
+```
+
+## Timeseries
+
+Use `GET /analytics/timeseries` for line charts and trend views.
+
+Buckets are grouped by delivery `createdAt`.
+
+### Query params
+
+<Properties>
+  <Property name="from" type="string">
+    Optional ISO timestamp lower bound, inclusive.
+  </Property>
+  <Property name="to" type="string">
+    Optional ISO timestamp upper bound, inclusive.
+  </Property>
+  <Property name="interval" type="string">
+    Bucket size: `5m`, `15m`, `1h`, or `1d`. Defaults to `1h`.
+  </Property>
+</Properties>
+
+### Interval guidance
+
+| Interval | Best for |
+| --- | --- |
+| `5m` | Last few hours |
+| `15m` | Last 1 to 2 days |
+| `1h` | Last week to month |
+| `1d` | Longer trends |
+
+### Bucket fields
+
+| Field | Meaning |
+| --- | --- |
+| `ts` | Bucket start time in UTC |
+| `deliveries` | Deliveries created in the bucket |
+| `delivered` | Deliveries with status `delivered` |
+| `failed` | Deliveries with status `failed` |
+| `retries` | Deliveries where `attempts > 1` |
+| `circuitOpen` | Deliveries with status `circuit_open` |
+
+Buckets are sparse, so empty windows are omitted.
+
+```json
+{
+  "interval": "1h",
+  "buckets": [
+    {
+      "ts": "2026-03-01T10:00:00.000Z",
+      "deliveries": 42,
+      "delivered": 40,
+      "failed": 1,
+      "retries": 3,
+      "circuitOpen": 1
+    }
+  ]
+}
+```
+
+For `pending`, `paused`, and `skipped` counts, use `GET /analytics/overview`.
+
+## Retries
+
+Use `GET /analytics/retries` to understand retry quality across the selected range.
+
+It returns:
+
+- `totals`: delivery counts and retry outcomes
+- `rates`: first-attempt success, retry rate, and recovery rate
+- `attempts`: per-attempt-number breakdown
+
+| `totals` field | Meaning |
+| --- | --- |
+| `deliveries` | Total deliveries in range |
+| `deliveriesWithRetry` | Deliveries with more than one attempt |
+| `recoveredAfterRetry` | Deliveries that succeeded after retrying |
+| `exhaustedRetries` | Deliveries that failed after retrying |
+
+| `rates` field | Meaning |
+| --- | --- |
+| `firstAttemptSuccessRate` | Percent delivered on attempt 1 |
+| `retryRate` | Percent of deliveries that retried |
+| `recoveredAfterRetryRate` | Percent of retried deliveries that recovered |
+| `averageAttemptsPerDelivery` | Mean attempt count |
+
+```json
+{
+  "totals": {
+    "deliveries": 1450,
+    "deliveriesWithRetry": 126,
+    "recoveredAfterRetry": 97,
+    "exhaustedRetries": 21
+  },
+  "rates": {
+    "firstAttemptSuccessRate": 91.31,
+    "retryRate": 8.69,
+    "recoveredAfterRetryRate": 76.98,
+    "averageAttemptsPerDelivery": 1.12
+  },
+  "attempts": [
+    {
+      "attemptNumber": 1,
+      "total": 1450,
+      "successes": 1324,
+      "failures": 126
+    },
+    {
+      "attemptNumber": 2,
+      "total": 126,
+      "successes": 84,
+      "failures": 42
+    }
+  ]
+}
+```
+
+## Related pages
+
+- [Events & Deliveries](/events-deliveries) for per-event and per-delivery inspection
+- [Retries & Recovery](/retries-recovery) for retry behavior and replay workflows

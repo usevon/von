@@ -84,6 +84,22 @@ await von.webhooks.events.replay.post({
 
 You can filter by `status` and `endpointId` to narrow the scope.
 
+## Debugging retries
+
+Use delivery attempt history when you need the full timeline for one delivery:
+
+```typescript
+const { data } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
+  query: { sort: "asc" },
+});
+```
+
+Use analytics when you need trend-level retry metrics across the organization:
+
+- [Analytics](/analytics)
+- `GET /analytics/retries`
+- `GET /analytics/timeseries`
+
 ## Endpoint statuses
 
 Only `active` endpoints receive deliveries. Changing status to `paused` or `disabled` affects future deliveries, not ones already in the queue.
@@ -104,4 +120,4 @@ When self-hosting, you can configure the delivery worker:
 | --- | --- | --- |
 | `WORKER_CONCURRENCY` | 50 | Concurrent delivery jobs (max 500) |
 | `EVENT_RETENTION_DAYS` | 90 | Days before events are cleaned up |
-| `DELIVERY_RETENTION_DAYS` | 90 | Days before deliveries are cleaned up |
+| `DELIVERY_RETENTION_DAYS` | 90 | Days before deliveries and delivery attempt history are cleaned up |

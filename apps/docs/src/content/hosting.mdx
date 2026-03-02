@@ -87,7 +87,7 @@ Edit `apps/api/.env` to set `BETTER_AUTH_SECRET` at minimum. In production, also
     Days to retain events before cleanup. Defaults to 90.
   </Property>
   <Property name="DELIVERY_RETENTION_DAYS" type="number">
-    Days to retain deliveries before cleanup. Defaults to 90.
+    Days to retain deliveries and delivery attempt history before cleanup. Defaults to 90.
   </Property>
   <Property name="INBOUND_DELIVERY_RETENTION_DAYS" type="number">
     Days to retain inbound deliveries before cleanup. Defaults to 90.
@@ -127,7 +127,7 @@ pm2 start /app/worker --name worker
 pm2 save && pm2 startup
 ```
 
-For zero-downtime reloads after updates:
+To roll out updates without downtime:
 
 ```bash
 pm2 reload all

@@ -127,6 +127,37 @@ const { data } = await von.webhooks.events["evt_xxx"].deliveries.get({
 
 Each delivery includes the attempt count, last attempt timestamp, and response details including HTTP status, duration, and any error message.
 
+## Delivery attempt history
+
+Get the full attempt timeline for one delivery:
+
+```typescript
+const { data } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
+  query: {
+    sort: "asc",
+    limit: 20,
+  },
+});
+```
+
+Each attempt includes:
+
+- `attemptNumber`
+- `outcome` (`success` or `failure`)
+- `isFinal`
+- `httpStatus`
+- `error`
+- `durationMs`
+- `startedAt` and `finishedAt`
+
+Attempt history uses cursor pagination for consistency with other list endpoints:
+
+```typescript
+const { data: next } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
+  query: { cursor: data.nextCursor },
+});
+```
+
 ## Replaying events
 
 ### Single event replay
@@ -167,4 +198,4 @@ Every webhook delivery includes these headers:
 
 ## Data retention
 
-Events and deliveries are cleaned up after 90 days by default, configurable via `EVENT_RETENTION_DAYS` and `DELIVERY_RETENTION_DAYS` when self-hosting.
+Events, deliveries, and delivery attempt history are cleaned up after 90 days by default, configurable via `EVENT_RETENTION_DAYS` and `DELIVERY_RETENTION_DAYS` when self-hosting.

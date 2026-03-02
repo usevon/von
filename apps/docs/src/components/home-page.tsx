@@ -5,6 +5,7 @@ import {
   ArrowCounterClockwiseIcon,
   ArrowRightIcon,
   AtomIcon,
+  ChartLineUpIcon,
   CodeIcon,
   GlobeIcon,
   HouseIcon,
@@ -107,6 +108,18 @@ const featureSections: FeatureSection[] = [
         title: "Verifying Signatures",
         description:
           "Verify HMAC signatures on incoming webhooks to confirm authenticity, with secret rotation support.",
+      },
+    ],
+  },
+  {
+    title: "Operations",
+    cards: [
+      {
+        href: "/analytics",
+        icon: ChartLineUpIcon,
+        title: "Analytics",
+        description:
+          "Track delivery volume, success rates, and retry behavior with overview, timeseries, and retry metrics.",
       },
     ],
   },
