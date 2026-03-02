@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -19,6 +20,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   experimental: {
     turbopackFileSystemCacheForDev: true,
+  },
+  turbopack: {
+    root: path.join(__dirname, "../.."),
   },
 };
 

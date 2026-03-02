@@ -1,3 +1,4 @@
+import path from "node:path";
 import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
@@ -23,6 +24,7 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForDev: true,
   },
   turbopack: {
+    root: path.join(__dirname, "../.."),
     resolveExtensions: [".mdx", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
   },
   rewrites() {
