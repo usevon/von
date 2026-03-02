@@ -5,7 +5,7 @@ export const frontmatter = {
 
 # Analytics
 
-Use analytics endpoints to monitor delivery health, chart trends, and measure retry behavior.
+Use analytics endpoints to monitor delivery health, trend delivery volume, and measure retry behavior.
 
 <PageActions />
 
@@ -13,47 +13,19 @@ Use analytics endpoints to monitor delivery health, chart trends, and measure re
 
 Analytics routes accept API keys with `read:analytics`, `read:*`, or `*`.
 
-## Date range
+## Endpoint pattern
+
+Analytics routes follow `/analytics/{report}`:
+
+| Endpoint | Use it for |
+| --- | --- |
+| `GET /analytics/overview` | Single-window totals and rates |
+| `GET /analytics/timeseries` | Bucketed trend charts |
+| `GET /analytics/retries` | Retry quality and attempt distribution |
+
+## Shared query options
 
 All analytics routes accept optional `from` and `to` ISO timestamp query params, and if both are set then `from` must be before or equal to `to`.
-
-## Overview
-
-Use `GET /analytics/overview` when you need a single snapshot for a time window.
-
-It returns:
-
-- Delivery totals by status
-- Event and delivery totals
-- Success, failure, and retry rates
-
-```json
-{
-  "totals": {
-    "events": 1200,
-    "deliveries": 1450,
-    "delivered": 1398,
-    "failed": 21,
-    "pending": 9,
-    "paused": 5,
-    "skipped": 12,
-    "circuitOpen": 5
-  },
-  "rates": {
-    "successRate": 96.41,
-    "failureRate": 1.45,
-    "retryRate": 8.69
-  }
-}
-```
-
-## Timeseries
-
-Use `GET /analytics/timeseries` for line charts and trend views.
-
-Buckets are grouped by delivery `createdAt`.
-
-### Query params
 
 <Properties>
   <Property name="from" type="string">
@@ -62,19 +34,39 @@ Buckets are grouped by delivery `createdAt`.
   <Property name="to" type="string">
     Optional ISO timestamp upper bound, inclusive.
   </Property>
+</Properties>
+
+## Overview
+
+Use `GET /analytics/overview` when you need a single snapshot for a time window.
+
+It returns two groups:
+
+- `totals` for event and delivery counts
+- `rates` for success, failure, and retry percentages
+
+Use this for cards and KPI summaries.
+
+## Timeseries
+
+Use `GET /analytics/timeseries` for line charts and trend views.
+
+Buckets are grouped by delivery `createdAt`.
+
+<Properties>
   <Property name="interval" type="string">
     Bucket size: `5m`, `15m`, `1h`, or `1d`. Defaults to `1h`.
   </Property>
 </Properties>
 
-### Interval guidance
+### Interval values
 
-| Interval | Best for |
+| `interval` value | Meaning |
 | --- | --- |
-| `5m` | Last few hours |
-| `15m` | Last 1 to 2 days |
-| `1h` | Last week to month |
-| `1d` | Longer trends |
+| `5m` | 5-minute buckets |
+| `15m` | 15-minute buckets |
+| `1h` | 1-hour buckets |
+| `1d` | 1-day buckets |
 
 ### Bucket fields
 
@@ -89,22 +81,6 @@ Buckets are grouped by delivery `createdAt`.
 
 Buckets are sparse, so empty windows are omitted.
 
-```json
-{
-  "interval": "1h",
-  "buckets": [
-    {
-      "ts": "2026-03-01T10:00:00.000Z",
-      "deliveries": 42,
-      "delivered": 40,
-      "failed": 1,
-      "retries": 3,
-      "circuitOpen": 1
-    }
-  ]
-}
-```
-
 For `pending`, `paused`, and `skipped` counts, use `GET /analytics/overview`.
 
 ## Retries
@@ -117,50 +93,23 @@ It returns:
 - `rates`: first-attempt success, retry rate, and recovery rate
 - `attempts`: per-attempt-number breakdown
 
-| `totals` field | Meaning |
-| --- | --- |
-| `deliveries` | Total deliveries in range |
-| `deliveriesWithRetry` | Deliveries with more than one attempt |
-| `recoveredAfterRetry` | Deliveries that succeeded after retrying |
-| `exhaustedRetries` | Deliveries that failed after retrying |
+Use this for delivery-quality reporting and retry tuning.
 
-| `rates` field | Meaning |
+| Group | Fields |
 | --- | --- |
-| `firstAttemptSuccessRate` | Percent delivered on attempt 1 |
-| `retryRate` | Percent of deliveries that retried |
-| `recoveredAfterRetryRate` | Percent of retried deliveries that recovered |
-| `averageAttemptsPerDelivery` | Mean attempt count |
+| `totals` | `deliveries`, `deliveriesWithRetry`, `recoveredAfterRetry`, `exhaustedRetries` |
+| `rates` | `firstAttemptSuccessRate`, `retryRate`, `recoveredAfterRetryRate`, `averageAttemptsPerDelivery` |
+| `attempts[]` | `attemptNumber`, `total`, `successes`, `failures` |
 
-```json
-{
-  "totals": {
-    "deliveries": 1450,
-    "deliveriesWithRetry": 126,
-    "recoveredAfterRetry": 97,
-    "exhaustedRetries": 21
-  },
-  "rates": {
-    "firstAttemptSuccessRate": 91.31,
-    "retryRate": 8.69,
-    "recoveredAfterRetryRate": 76.98,
-    "averageAttemptsPerDelivery": 1.12
-  },
-  "attempts": [
-    {
-      "attemptNumber": 1,
-      "total": 1450,
-      "successes": 1324,
-      "failures": 126
-    },
-    {
-      "attemptNumber": 2,
-      "total": 126,
-      "successes": 84,
-      "failures": 42
-    }
-  ]
-}
-```
+`attempts` only includes attempt indexes that occurred in the selected window.
+
+## Query patterns
+
+| Goal | Route pattern |
+| --- | --- |
+| Topline health for the last day | `GET /analytics/overview?from=...&to=...` |
+| Trend chart for the last 48 hours | `GET /analytics/timeseries?from=...&to=...&interval=15m` |
+| Weekly retry quality check | `GET /analytics/retries?from=...&to=...` |
 
 ## Related pages
 
