@@ -5,12 +5,70 @@ export const H1 = (props: React.ComponentPropsWithoutRef<"h1">) => (
   />
 );
 
-export const H2 = (props: React.ComponentPropsWithoutRef<"h2">) => (
-  <h2
-    {...props}
-    className="mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-foreground text-xl tracking-tight"
-  />
+const HeadingLinkIcon = () => (
+  <svg
+    aria-hidden
+    className="size-4"
+    fill="none"
+    role="img"
+    viewBox="0 0 16 16"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <title>Section link</title>
+    <path
+      d="M9.5 3.5H12.5V6.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.25"
+    />
+    <path
+      d="M12.5 3.5L7.83333 8.16667"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.25"
+    />
+    <path
+      d="M6.5 3.5H4.83333C4.09695 3.5 3.5 4.09695 3.5 4.83333V11.1667C3.5 11.903 4.09695 12.5 4.83333 12.5H11.1667C11.903 12.5 12.5 11.903 12.5 11.1667V9.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.25"
+    />
+  </svg>
 );
+
+export const H2 = (props: React.ComponentPropsWithoutRef<"h2">) => {
+  const { children, id, ...rest } = props;
+
+  return (
+    <h2
+      {...rest}
+      className="group mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-foreground text-xl tracking-tight"
+      id={id}
+    >
+      {id ? (
+        <a
+          className="inline-flex cursor-pointer items-center gap-2 no-underline hover:no-underline focus-visible:underline"
+          href={`#${id}`}
+        >
+          <span
+            className="underline-offset-4 group-focus-within:underline group-hover:underline"
+            data-heading-text
+          >
+            {children}
+          </span>
+          <span className="text-muted-foreground/70 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <HeadingLinkIcon />
+          </span>
+        </a>
+      ) : (
+        children
+      )}
+    </h2>
+  );
+};
 
 export const H3 = (props: React.ComponentPropsWithoutRef<"h3">) => (
   <h3

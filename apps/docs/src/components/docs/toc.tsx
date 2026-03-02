@@ -28,7 +28,8 @@ const useHeadings = () => {
 
       for (const el of elements) {
         const id = el.getAttribute("id");
-        const title = el.textContent;
+        const labelNode = el.querySelector<HTMLElement>("[data-heading-text]");
+        const title = labelNode?.textContent ?? el.textContent;
         if (id && title) {
           items.push({
             id,
