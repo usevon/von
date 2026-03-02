@@ -1,6 +1,7 @@
 import { contentPages } from "@/lib/get-llm-text";
 
 export const revalidate = false;
+export const dynamic = "force-static";
 
 export function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? "https://docs.usevon.com";
@@ -25,6 +26,7 @@ export function GET() {
   return new Response(lines.join("\n"), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=0, must-revalidate",
     },
   });
 }

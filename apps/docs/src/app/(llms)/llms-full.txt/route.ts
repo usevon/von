@@ -1,6 +1,7 @@
 import { contentPages, getLLMText } from "@/lib/get-llm-text";
 
 export const revalidate = false;
+export const dynamic = "force-static";
 
 export async function GET() {
   const header = `Von - Webhooks infrastructure that just works. Reliable webhook delivery with automatic retries, circuit breakers, and real-time monitoring.
@@ -12,6 +13,7 @@ export async function GET() {
   return new Response(header + pages.join("\n---\n\n"), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=0, must-revalidate",
     },
   });
 }

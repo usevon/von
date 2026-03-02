@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { contentPages, getLLMText, getPageBySlug } from "@/lib/get-llm-text";
 
 export const revalidate = false;
+export const dynamic = "force-static";
 
 type RouteParams = {
   params: Promise<{ slug: string[] }>;
@@ -25,6 +26,7 @@ export async function GET(_req: NextRequest, context: RouteParams) {
   return new NextResponse(content, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
+      "Cache-Control": "public, max-age=0, must-revalidate",
     },
   });
 }
