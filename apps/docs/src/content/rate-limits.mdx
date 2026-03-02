@@ -1,0 +1,86 @@
+export const frontmatter = {
+  title: "Rate Limits & 429",
+  description: "Understand request limits and handle 429 responses safely."
+};
+
+# Rate Limits & 429
+
+Von uses multiple limit layers to protect reliability.
+
+<PageActions />
+
+## Limit layers
+
+| Layer | What it limits | Current limit |
+| --- | --- | --- |
+| Auth request limit | API routes behind authentication | 200 requests/minute per IP |
+| Public inbound limit | Provider traffic to `POST /in/:id` | 100 requests/minute per IP |
+| Org throughput limit | Webhook sends/replays, endpoint writes, and inbound forwards per organization | Token bucket by plan |
+
+Authenticated-route limit coverage:
+
+| Route group |
+| --- |
+| `/endpoints/*` |
+| `/webhooks/*` |
+| `/versions/*` |
+| `/inbound/*` |
+| `/analytics/*` |
+| `/tunnels/*` |
+| `/audit-log` |
+
+## Throughput details
+
+Current throughput buckets:
+
+| Plan | Refill rate | Burst |
+| --- | --- | --- |
+| `hobby` | 25 requests/second | 35 |
+| non-`hobby` | 100 requests/second | 140 |
+
+Throughput checks currently apply to:
+
+| Route group | Operations |
+| --- | --- |
+| `/webhooks` | `POST /`, `POST /batch`, `POST /events/:id/replay`, `POST /events/replay` |
+| `/endpoints` | All write routes |
+| `/in` | `POST /:id` |
+
+## 429 response headers
+
+When a limiter rejects a request, expect `429 Too Many Requests`.
+
+For the request-per-minute limit, responses include:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | Window max |
+| `X-RateLimit-Remaining` | Remaining requests in current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+| `Retry-After` | Seconds to wait before retrying |
+
+For org throughput routes using middleware, responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After: 1`.
+
+## Handling 429 correctly
+
+1. Read `Retry-After` if present.
+2. Retry with jittered backoff.
+3. Keep idempotency enabled on mutating requests.
+
+```typescript
+async function requestWith429Retry(input: RequestInfo, init?: RequestInit) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const res = await fetch(input, init);
+    if (res.status !== 429) {
+      return res;
+    }
+
+    const retryAfter = Number(res.headers.get("retry-after") ?? "0");
+    const baseDelayMs = retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt;
+    const jitterMs = Math.floor(Math.random() * 200);
+    await new Promise((resolve) => setTimeout(resolve, baseDelayMs + jitterMs));
+  }
+
+  throw new Error("Exceeded retry budget after repeated 429 responses");
+}
+```

@@ -11,9 +11,9 @@ Receive webhooks from third-party services through stable Von URLs, then forward
 
 ## How it works
 
-Instead of pointing Stripe, GitHub, or other providers directly at your app, you point them at a Von inbound endpoint. Von receives the webhook, stores it, and forwards it to your application with the same retry and circuit breaker guarantees as outbound webhooks.
+Point providers like Stripe or GitHub to a Von inbound endpoint instead of an app server directly. Von stores each incoming webhook, then forwards it to the configured app URL with the same retry and circuit-breaker behavior as outbound delivery.
 
-This gives you a stable URL that never changes, even if your app's infrastructure moves. You also get automatic retries, delivery tracking, and the ability to replay missed webhooks.
+The provider URL stays stable even if infrastructure changes, with retry handling, delivery tracking, and replay built in.
 
 ## Creating an inbound endpoint
 
@@ -54,7 +54,7 @@ https://api.usevon.com/in/{id}
 
 ## What Von forwards
 
-When a webhook arrives at your inbound URL, Von:
+When a webhook arrives at the inbound URL, Von:
 
 1. Parses and stores the JSON payload and headers as an inbound delivery
 2. Signs the forwarded request with an HMAC signature using the inbound endpoint's secret
@@ -64,12 +64,12 @@ When a webhook arrives at your inbound URL, Von:
 The forwarded request includes an `X-Von-Inbound-Delivery-Id` header so you can correlate it with the original.
 
 <Tip title="Verifying forwarded requests">
-  Von re-signs the forwarded request with your inbound endpoint's secret. Use the same `verifyWebhook` helper you use for outbound webhooks to confirm the request came from Von, not directly from the third party.
+  Von signs forwarded requests with the inbound endpoint secret, so they can be verified with the same `verifyWebhook` helper used for outbound webhooks.
 </Tip>
 
 ## Rate limiting
 
-The public inbound endpoint (`/in/:id`) is rate-limited to 100 requests per minute per IP address. This protects against accidental floods from misconfigured providers.
+The public inbound endpoint (`/in/:id`) is limited to 100 requests per minute per IP and returns `429` with `Retry-After` when exceeded; see [Rate Limits & 429](/rate-limits) for retry guidance.
 
 ## Retries and circuit breakers
 
@@ -89,6 +89,12 @@ const { data } = await von.inbound.get({
 });
 ```
 
+### Getting one endpoint
+
+```typescript
+const { data } = await von.inbound["in_xxx"].get();
+```
+
 ### Updating
 
 ```typescript
@@ -106,4 +112,4 @@ await von.inbound["in_xxx"].delete();
 
 ## Data retention
 
-Inbound deliveries are automatically cleaned up after 90 days by default. This is configurable via `INBOUND_DELIVERY_RETENTION_DAYS` when self-hosting.
+Von retains inbound deliveries for 90 days by default, and self-hosted deployments can change this with `INBOUND_DELIVERY_RETENTION_DAYS`.

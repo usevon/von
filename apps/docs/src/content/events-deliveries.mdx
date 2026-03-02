@@ -111,6 +111,14 @@ const { data: nextPage } = await von.webhooks.events.get({
 });
 ```
 
+## Getting an event by id
+
+Use `GET /webhooks/events/:id` when you already have an event id and need the canonical event payload.
+
+```typescript
+const { data: event } = await von.webhooks.events["evt_xxx"].get();
+```
+
 ## Viewing deliveries
 
 Get all deliveries for a specific event:

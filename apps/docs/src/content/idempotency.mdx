@@ -1,0 +1,67 @@
+export const frontmatter = {
+  title: "Idempotency",
+  description: "Prevent duplicate mutations and make retries safe."
+};
+
+# Idempotency
+
+Von supports request-level idempotency across mutating API calls.
+
+<PageActions />
+
+## How it works
+
+Send `X-Idempotency-Key` on `POST`, `PUT`, or `PATCH` requests.
+
+For the same key and request fingerprint, Von returns the cached response instead of re-running the mutation.
+
+## Cache rules
+
+| Rule | Behavior |
+| --- | --- |
+| Methods | `POST`, `PUT`, `PATCH` only |
+| Header | `X-Idempotency-Key` is required |
+| TTL | 5 minutes |
+| Cache scope | Includes auth scope hash, key, and request fingerprint |
+
+Fingerprint inputs:
+
+- HTTP method
+- Path + query string
+- Request body hash
+
+Same key + different request body (or path/query) does not collide.
+
+## Auth scoping
+
+Idempotency cache keys are scoped by the `Authorization` header hash, so two different API keys do not share idempotency cache entries.
+
+## Example
+
+```typescript
+const idempotencyKey = "order-123-create";
+
+const res = await fetch("https://api.usevon.com/webhooks", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.VON_API_KEY}`,
+    "Content-Type": "application/json",
+    "X-Idempotency-Key": idempotencyKey,
+  },
+  body: JSON.stringify({
+    eventType: "order.created",
+    payload: { orderId: "order_123" },
+  }),
+});
+```
+
+If the client retries the exact same request within 5 minutes, Von returns the same status/body from cache.
+
+## Best practices
+
+- Use stable business identifiers in keys (`order-123-create`, `invoice-9-paid`).
+- Reuse the same key when retrying the same logical mutation.
+- Generate a new key for a new logical mutation.
+- Keep client-side retry backoff and 429 handling in place.
+
+See also: [Events & Deliveries](/events-deliveries) for event-level `idempotencyKey` behavior.

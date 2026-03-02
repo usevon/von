@@ -40,23 +40,21 @@ A delivery is marked `failed` only after all attempts are exhausted.
 
 Von protects unstable endpoints with a circuit breaker, stopping delivery temporarily when an endpoint fails repeatedly to let it recover.
 
-The circuit has three states:
-
-Closed is the normal state where all deliveries flow through and Von tracks consecutive failures.
-
-Open activates after 5 consecutive failures, with all deliveries immediately skipped as `circuit_open`.
-
-Half-open activates after 5 minutes in the open state, allowing deliveries through to test recovery. A successful delivery closes the circuit and a failure reopens it for another 5 minutes.
+| State | Behavior |
+| --- | --- |
+| `closed` | Normal state where deliveries flow and consecutive failures are counted. |
+| `open` | Activates after 5 consecutive failures and immediately skips deliveries as `circuit_open`. |
+| `half_open` | Activates after 5 minutes in `open`, lets deliveries through to test recovery, then closes on success or reopens for another 5 minutes on failure. |
 
 | Parameter | Value |
 | --- | --- |
 | Failure threshold | 5 consecutive failures |
 | Reset timeout | 5 minutes |
 
-Only consecutive failures count toward the threshold. Any successful delivery resets the failure counter to zero.
+Only consecutive failures count toward the threshold, and any successful delivery resets the failure counter to zero.
 
 <Tip title="Replaying circuit-skipped deliveries">
-  Deliveries skipped while the circuit was open get a `circuit_open` status. Once the endpoint recovers, use bulk replay to re-deliver them.
+  Deliveries skipped while the circuit is open are marked `circuit_open`, and after the endpoint recovers you can bulk replay them.
 </Tip>
 
 ## Replaying failed deliveries
@@ -96,13 +94,15 @@ const { data } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
 
 Use analytics when you need trend-level retry metrics across the organization:
 
-- [Analytics](/analytics)
-- `GET /analytics/retries`
-- `GET /analytics/timeseries`
+| Route | Use |
+| --- | --- |
+| [Analytics](/analytics) | Entry point and query patterns |
+| `GET /analytics/retries` | Retry totals, rates, and attempt distribution |
+| `GET /analytics/timeseries` | Time-bucketed trend metrics |
 
 ## Endpoint statuses
 
-Only `active` endpoints receive deliveries. Changing status to `paused` or `disabled` affects future deliveries, not ones already in the queue.
+Von sends deliveries only to endpoints in `active` status, and switching to `paused` or `disabled` affects future deliveries but not jobs already queued.
 
 | Status | Behavior |
 | --- | --- |

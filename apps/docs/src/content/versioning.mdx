@@ -122,7 +122,12 @@ const { data } = await von.versions.get({
 });
 ```
 
+## Getting a version by id
+
+```typescript
+const { data: version } = await von.versions["2025-01-15"].get();
+```
+
 <Tip title="Cache delay after updates">
   Version transforms are cached in Redis with a 60-second TTL. After updating a version, allow up to 60 seconds for changes to apply to new deliveries.
 </Tip>
-

@@ -30,7 +30,11 @@ export const navigation: NavSection[] = [
   },
   {
     title: "Operations",
-    items: [{ title: "Analytics", href: "/analytics" }],
+    items: [
+      { title: "Analytics", href: "/analytics" },
+      { title: "Rate Limits & 429", href: "/rate-limits" },
+      { title: "Idempotency", href: "/idempotency" },
+    ],
   },
   {
     title: "Receiving Webhooks",

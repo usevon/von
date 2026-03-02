@@ -9,7 +9,9 @@ import EndpointsContent from "@/content/endpoints.mdx";
 import EventsDeliveriesContent from "@/content/events-deliveries.mdx";
 import GettingStartedContent from "@/content/getting-started.mdx";
 import HostingContent from "@/content/hosting.mdx";
+import IdempotencyContent from "@/content/idempotency.mdx";
 import InboundContent from "@/content/inbound.mdx";
+import RateLimitsContent from "@/content/rate-limits.mdx";
 import RetriesRecoveryContent from "@/content/retries-recovery.mdx";
 import CliContent from "@/content/sdk/cli.mdx";
 import ReactSdkContent from "@/content/sdk/react.mdx";
@@ -28,6 +30,8 @@ const pages: Record<string, React.ComponentType> = {
   endpoints: EndpointsContent,
   "events-deliveries": EventsDeliveriesContent,
   analytics: AnalyticsContent,
+  "rate-limits": RateLimitsContent,
+  idempotency: IdempotencyContent,
   "retries-recovery": RetriesRecoveryContent,
   versioning: VersioningContent,
   inbound: InboundContent,

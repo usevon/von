@@ -133,6 +133,17 @@ To roll out updates without downtime:
 pm2 reload all
 ```
 
+### Internal probes (self-hosted)
+
+For self-hosted deployments, the API exposes lightweight probe routes:
+
+| Route | Use |
+| --- | --- |
+| `GET /live` | Liveness probe |
+| `GET /ready` | Readiness probe (database + Redis) |
+
+Keep these routes on private infrastructure (internal load balancer, VPN, or cluster-only networking) rather than exposing them as public product endpoints.
+
 ### Architecture
 
 Von consists of five services:

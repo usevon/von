@@ -121,11 +121,3 @@ t=1700000000,v1=<current_hmac>,v2=<previous_hmac>
 ```
 
 `v1` is signed with the current secret and `v2` with the previous, so your consumer can verify against either. Once updated to use the new secret, call `DELETE /endpoints/:id/previous-secret` to stop including `v2`.
-
-## Common mistakes
-
-**Parsing the body before verifying.** If your framework parses the request body as JSON automatically, the re-serialized string may differ from what Von signed. Always verify against the raw body string.
-
-**Ignoring the timestamp.** Without timestamp validation, an attacker can replay a captured webhook indefinitely. The `maxAge` check prevents this.
-
-**Using non-constant-time comparison.** A plain `===` check leaks timing information that can be used to forge signatures character by character. Always use `timingSafeEqual` or the SDK.

@@ -93,39 +93,23 @@ The SDK also reads from the `VON_API_KEY` environment variable automatically.
 
 ## Key lifecycle
 
-### Listing keys
+| Lifecycle step | Behavior |
+| --- | --- |
+| Listing | Full key values are never returned after creation; use the `start` prefix (first 12 chars) for identification. |
+| Disabling | Set `disabled` to stop key usage immediately without deleting metadata. |
+| Expiration | Set `expiresIn` at creation (max 365 days); expired keys are deleted automatically on next use. |
+| Rotation | Create a replacement key, deploy it, verify traffic, then disable and delete the old key. |
 
-Keys are listed without the hashed secret. The `start` field shows the first 12 characters for identification.
-
-### Disabling a key
-
-Disable a key without deleting it. Disabled keys are rejected immediately on verification.
-
-### Expiration
-
-Expired keys are automatically deleted when they are next used. You can set expiration at creation time with `expiresIn` (in seconds, max 365 days).
-
-### Rotation
-
-Create a new key, update your services to use it, then delete the old one. There is no atomic rotation endpoint, so plan for a brief overlap where both keys are active.
+There is no atomic rotation endpoint, so keep a short overlap window during rotation.
 
 ## Security details
 
-### Storage
-
-Hashed with SHA-256, only the first 12 characters (`start`) are stored in plaintext.
-
-### Integrity verification
-
-In production, keys include an HMAC signature suffix. Von verifies this signature before checking the database, which rejects forged or corrupted keys without a database lookup.
-
-### Rate limiting
-
-All authenticated API requests are rate-limited to 200 requests per minute per IP address, and per-organization throughput limits currently apply to webhook send/replay and endpoint write routes.
-
-### Usage tracking
-
-`lastUsedAt` is updated when a key is used. Updates are batched in Redis and flushed to the database every 5 minutes to avoid write pressure on every request.
+| Topic | Behavior |
+| --- | --- |
+| Storage | Keys are hashed with SHA-256; only the `start` prefix is stored in plaintext for identification. |
+| Integrity verification | Production keys include an HMAC suffix, and invalid signatures are rejected before database lookup. |
+| Rate limiting | Authenticated routes are IP rate-limited, and throughput limits apply to webhook sends/replays and endpoint writes. |
+| Usage tracking | `lastUsedAt` updates are buffered in Redis and flushed to the database every 5 minutes. |
 
 ## Scopes in practice
 
@@ -156,10 +140,10 @@ const readKey = await von.apiKeys.create({
 
 ### Rotating keys without downtime
 
-There is no atomic rotation endpoint. Create a new key with the same scopes, deploy it to your services, confirm it is appearing in `lastUsedAt`, then disable and delete the old one.
+There is no atomic rotation endpoint. Create a new key with the same scopes, deploy it across services, confirm it appears in `lastUsedAt`, then disable and delete the old one.
 
 <Tip title="Keep the overlap window short">
-  Disable the old key first to stop it accepting requests, then delete it once you've confirmed nothing still depends on it.
+  Disable the old key first to stop request acceptance, then delete it after confirming no service still depends on it.
 </Tip>
 
 ### If a key is exposed
@@ -167,15 +151,11 @@ There is no atomic rotation endpoint. Create a new key with the same scopes, dep
 1. Disable the key from the dashboard or via `PATCH /api-keys/:id` with `{ "disabled": true }`.
 2. Create a replacement and rotate all services to it.
 3. Delete the old key.
-4. Search your logs by the `start` prefix to understand what was accessed before rotating downstream secrets.
+4. Search logs by the `start` prefix to understand what was accessed before rotating downstream secrets.
 
 ### Auditing
 
-The audit log records `apikey.created`, `apikey.updated`, and `apikey.deleted` events. View them in the dashboard under Settings or query `GET /audit-log` with session authentication. API keys cannot access this endpoint regardless of scope.
-
-### CI and secret storage
-
-Store keys in GitHub Actions secrets or your secret manager, not in `.env` files committed to the repo. Use one key per service so you can rotate independently, and set a short `expiresIn` for ephemeral CI jobs.
+The audit log records `apikey.created`, `apikey.updated`, and `apikey.deleted`; view it in Settings or query `GET /audit-log` with a session (API keys are always rejected).
 
 ## Limits
 
