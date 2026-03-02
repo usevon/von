@@ -71,6 +71,27 @@
       "when": 1771012800000,
       "tag": "0009_add_organization_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771362000000,
+      "tag": "0010_jsonb_payloads",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771881600000,
+      "tag": "0011_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772486400000,
+      "tag": "0012_delivery_attempt_history",
+      "breakpoints": true
     }
   ]
 }

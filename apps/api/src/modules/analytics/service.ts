@@ -22,11 +22,20 @@ const roundValue = (value: number, precision = 2) =>
 
 type TimeseriesInterval = "5m" | "15m" | "1h" | "1d";
 
-const INTERVAL_SECONDS: Record<TimeseriesInterval, number> = {
-  "5m": 300,
-  "15m": 900,
-  "1h": 3600,
-  "1d": 86_400,
+const getBucketExpression = (interval: TimeseriesInterval) => {
+  if (interval === "5m") {
+    return sql<Date>`date_trunc('hour', ${delivery.createdAt}) + floor(extract(minute from ${delivery.createdAt}) / 5) * interval '5 minute'`;
+  }
+
+  if (interval === "15m") {
+    return sql<Date>`date_trunc('hour', ${delivery.createdAt}) + floor(extract(minute from ${delivery.createdAt}) / 15) * interval '15 minute'`;
+  }
+
+  if (interval === "1d") {
+    return sql<Date>`date_trunc('day', ${delivery.createdAt})`;
+  }
+
+  return sql<Date>`date_trunc('hour', ${delivery.createdAt})`;
 };
 
 const validateRange = (from: Date | null, to: Date | null) => {
@@ -114,7 +123,6 @@ export abstract class AnalyticsService {
     validateRange(from, to);
 
     const interval: TimeseriesInterval = query.interval ?? "1h";
-    const bucketSeconds = INTERVAL_SECONDS[interval];
 
     const where = and(
       eq(event.organizationId, organizationId),
@@ -122,7 +130,7 @@ export abstract class AnalyticsService {
       to ? lte(delivery.createdAt, to) : undefined
     );
 
-    const bucketTs = sql<Date>`to_timestamp(floor(extract(epoch from ${delivery.createdAt}) / ${bucketSeconds}) * ${bucketSeconds})`;
+    const bucketTs = getBucketExpression(interval);
 
     const rows = await db
       .select({
