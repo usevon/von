@@ -15,7 +15,7 @@ Von uses multiple limit layers to protect reliability.
 | --- | --- | --- |
 | Auth request limit | API routes behind authentication | 200 requests/minute per IP |
 | Public inbound limit | Provider traffic to `POST /in/:id` | 100 requests/minute per IP |
-| Org throughput limit | Webhook sends/replays, endpoint writes, and inbound forwards per organization | Token bucket by plan |
+| Org throughput limit | Webhook sends/replays, endpoint writes, and inbound forwards per organization | Token bucket by plan profile |
 
 Authenticated-route limit coverage:
 
@@ -31,12 +31,14 @@ Authenticated-route limit coverage:
 
 ## Throughput details
 
-Current throughput buckets:
+Cloud pricing starts Metered throughput at 25/sec and allows higher throughput via add-ons.
 
-| Plan | Refill rate | Burst |
+Current API throughput profiles are:
+
+| Profile | Refill rate | Burst |
 | --- | --- | --- |
 | `hobby` | 25 requests/second | 35 |
-| non-`hobby` | 100 requests/second | 140 |
+| temporary non-`hobby` fallback | 100 requests/second | 140 |
 
 Throughput checks currently apply to:
 
