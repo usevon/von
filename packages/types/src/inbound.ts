@@ -8,6 +8,8 @@ export type InboundEndpoint = {
   secret: string;
   forwardUrl: string;
   status: EndpointStatus;
+  maxAttempts: number;
+  timeoutMs: number;
   lastSuccessAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -17,6 +19,8 @@ export type CreateInboundEndpoint = {
   name?: string;
   provider?: string;
   forwardUrl: string;
+  maxAttempts?: number;
+  timeoutMs?: number;
   status?: EndpointStatus;
 };
 
@@ -24,6 +28,8 @@ export type UpdateInboundEndpoint = {
   name?: string;
   provider?: string;
   forwardUrl?: string;
+  maxAttempts?: number;
+  timeoutMs?: number;
   status?: EndpointStatus;
 };
 

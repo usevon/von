@@ -5,6 +5,10 @@ export namespace InboundModel {
     name: t.Optional(t.String({ maxLength: 255 })),
     provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.String({ format: "uri" }),
+    maxAttempts: t.Optional(t.Number({ default: 4, minimum: 1, maximum: 10 })),
+    timeoutMs: t.Optional(
+      t.Number({ default: 30_000, minimum: 1000, maximum: 60_000 })
+    ),
     status: t.Optional(
       t.Union(
         [t.Literal("active"), t.Literal("paused"), t.Literal("disabled")],
@@ -21,6 +25,8 @@ export namespace InboundModel {
     name: t.Optional(t.String({ maxLength: 255 })),
     provider: t.Optional(t.String({ maxLength: 100 })),
     forwardUrl: t.Optional(t.String({ format: "uri" })),
+    maxAttempts: t.Optional(t.Number({ minimum: 1, maximum: 10 })),
+    timeoutMs: t.Optional(t.Number({ minimum: 1000, maximum: 60_000 })),
     status: t.Optional(
       t.Union([t.Literal("active"), t.Literal("paused"), t.Literal("disabled")])
     ),
@@ -35,6 +41,8 @@ export namespace InboundModel {
     secret: t.String(),
     forwardUrl: t.String(),
     status: t.String(),
+    maxAttempts: t.Number(),
+    timeoutMs: t.Number(),
     lastSuccessAt: t.Union([t.String(), t.Null()]),
     createdAt: t.String(),
     updatedAt: t.String(),

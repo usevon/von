@@ -10,7 +10,11 @@ export const auditLogRead = new Elysia({ prefix: "/audit-log" })
   .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
   .get(
     "/",
-    ({ organizationId, scopes, query, status }) => {
+    ({ organizationId, scopes, headers, query, status }) => {
+      if (headers.authorization?.startsWith("Bearer ")) {
+        return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
+      }
+
       if (!scopes.includes("*")) {
         return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
       }
