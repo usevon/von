@@ -20,5 +20,6 @@ export type {
   SendBatch,
   SendEvent,
   WebhookDelivery,
+  WebhookDeliveryAttempt,
   WebhookEvent,
 } from "./webhooks";

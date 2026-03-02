@@ -105,6 +105,21 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
       query: WebhookModel.deliveryQuery,
       response: WebhookModel.deliveryList,
     }
+  )
+  .get(
+    "/deliveries/:id/attempts",
+    ({ organizationId, params, query }) =>
+      WebhookService.getDeliveryAttempts(
+        organizationId,
+        params.id,
+        toCursorPageInput(query),
+        query.sort ?? "asc"
+      ),
+    {
+      params: IdParam,
+      query: WebhookModel.deliveryAttemptQuery,
+      response: WebhookModel.deliveryAttemptList,
+    }
   );
 
 export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })

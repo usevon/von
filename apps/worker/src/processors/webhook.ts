@@ -1,5 +1,10 @@
 import { db } from "@usevon/db";
-import { delivery, endpoint, webhookVersion } from "@usevon/db/schema";
+import {
+  delivery,
+  deliveryAttempt,
+  endpoint,
+  webhookVersion,
+} from "@usevon/db/schema";
 import { getRedisClient, type WebhookDeliveryJob } from "@usevon/queue";
 import {
   applyTransforms,
@@ -98,6 +103,36 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
     lastAttemptAt: now,
     ...(isFinalAttempt ? { response: { error, durationMs } } : {}),
   }),
+
+  recordAttempt: async ({
+    tx,
+    job,
+    deliveryId,
+    attempts,
+    now,
+    startedAt,
+    durationMs,
+    isFinalAttempt,
+    responseStatus,
+    error,
+  }) => {
+    await tx.insert(deliveryAttempt).values({
+      id: crypto.randomUUID(),
+      organizationId: job.organizationId,
+      deliveryId,
+      eventId: job.eventId,
+      endpointId: job.endpoint.id,
+      attemptNumber: attempts,
+      outcome: error ? "failure" : "success",
+      isFinal: isFinalAttempt,
+      httpStatus: responseStatus,
+      error: error ?? null,
+      durationMs,
+      startedAt,
+      finishedAt: now,
+      createdAt: now,
+    });
+  },
 
   buildRequest: ({
     payload,

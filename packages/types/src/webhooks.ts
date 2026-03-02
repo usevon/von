@@ -23,6 +23,22 @@ export type WebhookDelivery = {
   createdAt: string;
 };
 
+export type WebhookDeliveryAttempt = {
+  id: string;
+  deliveryId: string;
+  eventId: string;
+  endpointId: string;
+  attemptNumber: number;
+  outcome: string;
+  isFinal: boolean;
+  httpStatus: number | null;
+  error: string | null;
+  durationMs: number;
+  startedAt: string;
+  finishedAt: string;
+  createdAt: string;
+};
+
 export type SendEvent = {
   eventType: string;
   payload: unknown;

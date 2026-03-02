@@ -299,6 +299,58 @@ export const delivery = pgTable(
   ]
 );
 
+export const deliveryAttempt = pgTable(
+  "delivery_attempt",
+  {
+    id: uuid("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    deliveryId: uuid("delivery_id")
+      .notNull()
+      .references(() => delivery.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => event.id, { onDelete: "cascade" }),
+    endpointId: uuid("endpoint_id")
+      .notNull()
+      .references(() => endpoint.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    outcome: text("outcome").notNull(),
+    isFinal: boolean("is_final").default(false).notNull(),
+    httpStatus: integer("http_status"),
+    error: text("error"),
+    durationMs: integer("duration_ms").notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    finishedAt: timestamp("finished_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("delivery_attempt_delivery_number_unique").on(
+      table.deliveryId,
+      table.attemptNumber
+    ),
+    index("delivery_attempt_delivery_number_idx").on(
+      table.deliveryId,
+      table.attemptNumber
+    ),
+    index("delivery_attempt_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
+    index("delivery_attempt_endpoint_created_id_idx").on(
+      table.endpointId,
+      table.createdAt,
+      table.id
+    ),
+    index("delivery_attempt_outcome_created_idx").on(
+      table.outcome,
+      table.createdAt
+    ),
+  ]
+);
+
 export const inboundEndpoint = pgTable(
   "inbound_endpoint",
   {
@@ -514,6 +566,7 @@ export const endpointRelations = relations(endpoint, ({ one, many }) => ({
     references: [organization.id],
   }),
   deliveries: many(delivery),
+  deliveryAttempts: many(deliveryAttempt),
 }));
 
 export const eventRelations = relations(event, ({ one, many }) => ({
@@ -522,9 +575,10 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     references: [organization.id],
   }),
   deliveries: many(delivery),
+  deliveryAttempts: many(deliveryAttempt),
 }));
 
-export const deliveryRelations = relations(delivery, ({ one }) => ({
+export const deliveryRelations = relations(delivery, ({ one, many }) => ({
   event: one(event, {
     fields: [delivery.eventId],
     references: [event.id],
@@ -533,7 +587,30 @@ export const deliveryRelations = relations(delivery, ({ one }) => ({
     fields: [delivery.endpointId],
     references: [endpoint.id],
   }),
+  attempts: many(deliveryAttempt),
 }));
+
+export const deliveryAttemptRelations = relations(
+  deliveryAttempt,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [deliveryAttempt.organizationId],
+      references: [organization.id],
+    }),
+    delivery: one(delivery, {
+      fields: [deliveryAttempt.deliveryId],
+      references: [delivery.id],
+    }),
+    event: one(event, {
+      fields: [deliveryAttempt.eventId],
+      references: [event.id],
+    }),
+    endpoint: one(endpoint, {
+      fields: [deliveryAttempt.endpointId],
+      references: [endpoint.id],
+    }),
+  })
+);
 
 export const inboundEndpointRelations = relations(
   inboundEndpoint,

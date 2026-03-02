@@ -23,6 +23,13 @@ type EndpointState = {
   failureCount: number;
 };
 
+type DeliveryState = {
+  status: string;
+  attempts: number;
+};
+
+type AttemptWriterTx = Pick<typeof db, "insert" | "update">;
+
 type CircuitColumns = {
   failureCount: PgColumn;
   circuitState: PgColumn;
@@ -64,6 +71,18 @@ export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
     durationMs: number;
     error: string;
   }) => Record<string, unknown>;
+  recordAttempt?: (params: {
+    tx: AttemptWriterTx;
+    job: TJob;
+    deliveryId: string;
+    attempts: number;
+    now: Date;
+    startedAt: Date;
+    durationMs: number;
+    isFinalAttempt: boolean;
+    responseStatus?: number;
+    error?: string;
+  }) => Promise<void>;
   buildRequest: (params: {
     payload: string;
     timestamp: number;
@@ -81,7 +100,9 @@ export async function processDelivery<TJob extends BaseJobData>(
   const { deliveryId, endpoint: ep } = job.data;
 
   const [[deliveryRecord], [endpointState]] = await Promise.all([
-    config.getDeliveryStmt.execute({ id: deliveryId }) as Promise<unknown[]>,
+    config.getDeliveryStmt.execute({ id: deliveryId }) as Promise<
+      DeliveryState[]
+    >,
     config.getEndpointStmt.execute({ id: ep.id }) as Promise<EndpointState[]>,
   ]);
 
@@ -168,6 +189,7 @@ export async function processDelivery<TJob extends BaseJobData>(
     job: job.data,
   });
 
+  const startedAt = new Date();
   const start = performance.now();
 
   try {
@@ -185,23 +207,39 @@ export async function processDelivery<TJob extends BaseJobData>(
     const durationMs = Math.round(performance.now() - start);
 
     if (response.ok) {
-      await Promise.all([
-        db
+      const attempts = deliveryRecord.attempts + 1;
+      await db.transaction(async (tx) => {
+        await tx
           .update(config.deliveryTable)
           .set(
             config.buildSuccessSet({
-              attempts: deliveryRecord.attempts + 1,
+              attempts,
               now,
               responseStatus: response.status,
               durationMs,
             })
           )
-          .where(eq(config.deliveryTable.id, deliveryId)),
-        db
+          .where(eq(config.deliveryTable.id, deliveryId));
+
+        await tx
           .update(config.endpointTable)
           .set(circuitSuccessSet(now))
-          .where(eq(config.endpointTable.id, ep.id)),
-      ]);
+          .where(eq(config.endpointTable.id, ep.id));
+
+        if (config.recordAttempt) {
+          await config.recordAttempt({
+            tx,
+            job: job.data,
+            deliveryId,
+            attempts,
+            now,
+            startedAt,
+            durationMs,
+            isFinalAttempt: false,
+            responseStatus: response.status,
+          });
+        }
+      });
 
       log.info(
         { deliveryId, status: response.status },
@@ -216,8 +254,13 @@ export async function processDelivery<TJob extends BaseJobData>(
     const maxAttempts = ep.maxAttempts;
     const isFinalAttempt = attempts >= maxAttempts;
 
-    const [, [endpointResult]] = await Promise.all([
-      db
+    const failureError = String(error).slice(0, 500);
+    let endpointResult:
+      | { failureCount: number; circuitState: string }
+      | undefined;
+
+    await db.transaction(async (tx) => {
+      await tx
         .update(config.deliveryTable)
         .set(
           config.buildFailureSet({
@@ -225,19 +268,38 @@ export async function processDelivery<TJob extends BaseJobData>(
             now,
             isFinalAttempt,
             durationMs,
-            error: String(error).slice(0, 500),
+            error: failureError,
           })
         )
-        .where(eq(config.deliveryTable.id, deliveryId)),
-      db
+        .where(eq(config.deliveryTable.id, deliveryId));
+
+      const result = await tx
         .update(config.endpointTable)
         .set(circuitFailureSet(config.endpointTable, now))
         .where(eq(config.endpointTable.id, ep.id))
         .returning({
           failureCount: config.endpointTable.failureCount,
           circuitState: config.endpointTable.circuitState,
-        }),
-    ]);
+        });
+      endpointResult = result[0] as {
+        failureCount: number;
+        circuitState: string;
+      };
+
+      if (config.recordAttempt) {
+        await config.recordAttempt({
+          tx,
+          job: job.data,
+          deliveryId,
+          attempts,
+          now,
+          startedAt,
+          durationMs,
+          isFinalAttempt,
+          error: failureError,
+        });
+      }
+    });
 
     if (
       endpointResult?.circuitState === "open" &&

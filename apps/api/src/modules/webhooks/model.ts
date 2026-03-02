@@ -81,6 +81,31 @@ export namespace WebhookModel {
 
   export type delivery = typeof delivery.static;
 
+  export const deliveryAttempt = t.Object({
+    id: t.String({ format: "uuid" }),
+    deliveryId: t.String({ format: "uuid" }),
+    eventId: t.String({ format: "uuid" }),
+    endpointId: t.String({ format: "uuid" }),
+    attemptNumber: t.Number(),
+    outcome: t.String(),
+    isFinal: t.Boolean(),
+    httpStatus: t.Union([t.Number(), t.Null()]),
+    error: t.Union([t.String(), t.Null()]),
+    durationMs: t.Number(),
+    startedAt: t.String(),
+    finishedAt: t.String(),
+    createdAt: t.String(),
+  });
+
+  export type deliveryAttempt = typeof deliveryAttempt.static;
+
+  export const deliveryAttemptList = t.Object({
+    attempts: t.Array(deliveryAttempt),
+    nextCursor: t.Union([t.String(), t.Null()]),
+  });
+
+  export type deliveryAttemptList = typeof deliveryAttemptList.static;
+
   export const eventQuery = t.Object({
     eventTypes: t.Optional(
       t.Array(t.String({ maxLength: 100 }), { maxItems: 20 })
@@ -106,6 +131,14 @@ export namespace WebhookModel {
     endpointId: t.Optional(t.String({ format: "uuid" })),
     from: t.Optional(t.String()),
     to: t.Optional(t.String()),
+    limit: t.Optional(t.Numeric({ default: 20, minimum: 1, maximum: 100 })),
+    cursor: t.Optional(t.String({ maxLength: 256 })),
+  });
+
+  export const deliveryAttemptQuery = t.Object({
+    sort: t.Optional(
+      t.Union([t.Literal("asc"), t.Literal("desc")], { default: "asc" })
+    ),
     limit: t.Optional(t.Numeric({ default: 20, minimum: 1, maximum: 100 })),
     cursor: t.Optional(t.String({ maxLength: 256 })),
   });

@@ -1,5 +1,5 @@
 import { db } from "@usevon/db";
-import { delivery, event } from "@usevon/db/schema";
+import { delivery, deliveryAttempt, event } from "@usevon/db/schema";
 import type { DeliveryEndpoint, WebhookDeliveryJob } from "@usevon/queue";
 import type { DeliveryResponse, WebhookDelivery } from "@usevon/types";
 import {
@@ -30,6 +30,7 @@ import type { WebhookModel } from "@/modules/webhooks/model";
 
 type EventRow = typeof event.$inferSelect;
 type DeliveryRow = typeof delivery.$inferSelect;
+type DeliveryAttemptRow = typeof deliveryAttempt.$inferSelect;
 
 const DELIVERY_CURSOR_SORT = "desc" as const;
 
@@ -66,6 +67,24 @@ const toEvent = (e: EventRow): WebhookModel.event => ({
   payload: e.payload,
   idempotencyKey: e.idempotencyKey,
   createdAt: e.createdAt.toISOString(),
+});
+
+const toDeliveryAttempt = (
+  row: DeliveryAttemptRow
+): WebhookModel.deliveryAttempt => ({
+  id: row.id,
+  deliveryId: row.deliveryId,
+  eventId: row.eventId,
+  endpointId: row.endpointId,
+  attemptNumber: row.attemptNumber,
+  outcome: row.outcome,
+  isFinal: row.isFinal,
+  httpStatus: row.httpStatus,
+  error: row.error,
+  durationMs: row.durationMs,
+  startedAt: row.startedAt.toISOString(),
+  finishedAt: row.finishedAt.toISOString(),
+  createdAt: row.createdAt.toISOString(),
 });
 
 type CreateEventParams = {
@@ -517,6 +536,80 @@ export abstract class WebhookService {
               createdAt: lastItem.delivery.createdAt,
               id: lastItem.delivery.id,
               sort: DELIVERY_CURSOR_SORT,
+              scopeHash,
+            })
+          : null,
+    };
+  }
+
+  static async getDeliveryAttempts(
+    organizationId: string,
+    deliveryId: string,
+    pagination: CursorPageInput = { limit: 20, cursor: null },
+    sortInput: "asc" | "desc" = "asc"
+  ): Promise<WebhookModel.deliveryAttemptList> {
+    const sort: CursorSort = sortInput === "desc" ? "desc" : "asc";
+
+    const scopeHash = buildCursorScopeHash({
+      resource: "webhook-delivery-attempts",
+      organizationId,
+      deliveryId,
+      sort,
+    });
+
+    const cursorPosition = decodeCursor(pagination.cursor, {
+      sort,
+      scopeHash,
+    });
+
+    const conditions = [
+      eq(deliveryAttempt.organizationId, organizationId),
+      eq(deliveryAttempt.deliveryId, deliveryId),
+    ];
+
+    if (cursorPosition) {
+      conditions.push(
+        buildCursorCondition(
+          deliveryAttempt.createdAt,
+          deliveryAttempt.id,
+          cursorPosition,
+          sort
+        )
+      );
+    }
+
+    const where = and(...conditions);
+    if (!where) {
+      throw new InternalServerError();
+    }
+
+    const createdSort =
+      sort === "asc"
+        ? asc(deliveryAttempt.createdAt)
+        : desc(deliveryAttempt.createdAt);
+    const idSort =
+      sort === "asc" ? asc(deliveryAttempt.id) : desc(deliveryAttempt.id);
+
+    const rows = await db
+      .select()
+      .from(deliveryAttempt)
+      .where(where)
+      .orderBy(createdSort, idSort)
+      .limit(pagination.limit + 1);
+
+    const { items, hasMore, lastItem } = sliceCursorPage(
+      rows,
+      pagination.limit
+    );
+
+    return {
+      attempts: items.map(toDeliveryAttempt),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor({
+              createdAt: lastItem.createdAt,
+              id: lastItem.id,
+              sort,
               scopeHash,
             })
           : null,
