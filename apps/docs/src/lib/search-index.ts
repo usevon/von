@@ -1,24 +1,16 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
+import { docsPageMeta } from "@/content/registry-data";
 import { contentPages, getLLMContent } from "@/lib/get-llm-text";
-import { navigation } from "@/lib/navigation";
 import type { SearchDocument } from "@/lib/search";
-
-export const revalidate = false;
-export const dynamic = "force-static";
 
 const SLASH_GLOBAL = /\//g;
 const contentDir = join(process.cwd(), "src", "content");
 
-const sectionBySlug = new Map<string, string>();
-for (const section of navigation) {
-  for (const item of section.items) {
-    if (item.external) {
-      continue;
-    }
-    sectionBySlug.set(item.href.slice(1), section.title);
-  }
-}
+const sectionBySlug = new Map<string, string>([
+  ["", "Start Here"],
+  ...docsPageMeta.map((page) => [page.slug, page.section] as const),
+]);
 
 const normalizeForSearch = (value: string) =>
   value
@@ -29,10 +21,10 @@ const normalizeForSearch = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-export async function GET() {
-  const docs = await Promise.all(
+export const buildSearchIndex = async (): Promise<SearchDocument[]> =>
+  await Promise.all(
     contentPages.map(async (page) => {
-      const href = `/${page.slug}`;
+      const href = page.slug === "" ? "/" : `/${page.slug}`;
       const section = sectionBySlug.get(page.slug) ?? "Docs";
       const content = normalizeForSearch(await getLLMContent(page));
       let updatedAt = 0;
@@ -54,10 +46,3 @@ export async function GET() {
       } satisfies SearchDocument;
     })
   );
-
-  return Response.json(docs, {
-    headers: {
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
-  });
-}

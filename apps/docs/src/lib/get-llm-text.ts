@@ -4,7 +4,7 @@ import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
-import { navigation } from "./navigation";
+import { docsPageMeta } from "@/content/registry-data";
 import { remarkStripJsx } from "./remark-strip-jsx";
 
 type PageInfo = {
@@ -21,21 +21,14 @@ const processor = unified()
   .use(remarkStripJsx)
   .use(remarkStringify);
 
-function buildContentPages(): PageInfo[] {
-  const pages: PageInfo[] = [];
-
-  for (const section of navigation) {
-    for (const item of section.items) {
-      if (item.external) { continue; }
-      const slug = item.href.slice(1);
-      pages.push({ slug, title: item.title, filePath: `${slug}.mdx` });
-    }
-  }
-
-  return pages;
-}
-
-export const contentPages = buildContentPages();
+export const contentPages: PageInfo[] = [
+  { slug: "", title: "Home", filePath: "index.mdx" },
+  ...docsPageMeta.map((page) => ({
+    slug: page.slug,
+    title: page.title,
+    filePath: page.filePath,
+  })),
+];
 
 const pagesBySlug = new Map(contentPages.map((p) => [p.slug, p]));
 

@@ -95,7 +95,7 @@ export const Search = ({ triggerClassName }: SearchProps = {}) => {
 
     const loadIndex = async () => {
       try {
-        const response = await fetch("/search-index.json", {
+        const response = await fetch("/search", {
           cache: "force-cache",
         });
         if (!response.ok) {
