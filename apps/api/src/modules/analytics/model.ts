@@ -79,7 +79,7 @@ export namespace AnalyticsModel {
       recoveredAfterRetryRate: t.Number(),
       averageAttemptsPerDelivery: t.Number(),
     }),
-    byAttemptNumber: t.Array(retriesByAttempt),
+    attempts: t.Array(retriesByAttempt),
   });
 
   export type retries = typeof retries.static;

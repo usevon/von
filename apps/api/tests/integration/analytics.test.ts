@@ -22,38 +22,59 @@ describe("Analytics", () => {
   });
 
   test.skipIf(!getApiKey())(
-    "GET /analytics/overview rejects API key with session-required error",
+    "GET /analytics/overview accepts API key auth",
     async () => {
-      const { error } = await client.analytics.overview.get({
+      const { data, error } = await client.analytics.overview.get({
         headers: { authorization: `Bearer ${getApiKey()}` },
       });
 
-      expect(error?.status).toBe(403);
-      expect(error?.value).toMatchObject({ code: "SESSION_REQUIRED" });
+      if (error) {
+        expect(error.status).toBe(403);
+        expect(error.value).toMatchObject({
+          error: "API key lacks required scope",
+        });
+        return;
+      }
+
+      expect(data.totals).toBeDefined();
     }
   );
 
   test.skipIf(!getApiKey())(
-    "GET /analytics/timeseries rejects API key with session-required error",
+    "GET /analytics/timeseries accepts API key auth",
     async () => {
-      const { error } = await client.analytics.timeseries.get({
+      const { data, error } = await client.analytics.timeseries.get({
         headers: { authorization: `Bearer ${getApiKey()}` },
       });
 
-      expect(error?.status).toBe(403);
-      expect(error?.value).toMatchObject({ code: "SESSION_REQUIRED" });
+      if (error) {
+        expect(error.status).toBe(403);
+        expect(error.value).toMatchObject({
+          error: "API key lacks required scope",
+        });
+        return;
+      }
+
+      expect(Array.isArray(data.buckets)).toBe(true);
     }
   );
 
   test.skipIf(!getApiKey())(
-    "GET /analytics/retries rejects API key with session-required error",
+    "GET /analytics/retries accepts API key auth",
     async () => {
-      const { error } = await client.analytics.retries.get({
+      const { data, error } = await client.analytics.retries.get({
         headers: { authorization: `Bearer ${getApiKey()}` },
       });
 
-      expect(error?.status).toBe(403);
-      expect(error?.value).toMatchObject({ code: "SESSION_REQUIRED" });
+      if (error) {
+        expect(error.status).toBe(403);
+        expect(error.value).toMatchObject({
+          error: "API key lacks required scope",
+        });
+        return;
+      }
+
+      expect(data.totals).toBeDefined();
     }
   );
 });

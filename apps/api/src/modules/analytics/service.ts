@@ -221,7 +221,7 @@ export abstract class AnalyticsService {
             : 0,
         averageAttemptsPerDelivery: roundValue(avgAttempts),
       },
-      byAttemptNumber: rows.map((row) => ({
+      attempts: rows.map((row) => ({
         attemptNumber: row.attemptNumber,
         total: row.total ?? 0,
         successes: row.successes ?? 0,
