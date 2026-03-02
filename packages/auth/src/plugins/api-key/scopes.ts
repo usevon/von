@@ -10,6 +10,7 @@ export const VALID_SCOPES = [
   "write:inbound",
   "read:versions",
   "write:versions",
+  "read:analytics",
   "read:tunnels",
   "write:tunnels",
 ] as const;

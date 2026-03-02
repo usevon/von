@@ -94,16 +94,18 @@ describe("VALID_SCOPES", () => {
   });
 
   test("includes all resource scopes", () => {
-    const resources = [
+    const readWriteResources = [
       "webhooks",
       "endpoints",
       "inbound",
       "versions",
       "tunnels",
-    ];
-    for (const resource of resources) {
+    ] as const;
+    for (const resource of readWriteResources) {
       expect(VALID_SCOPES).toContain(`read:${resource}`);
       expect(VALID_SCOPES).toContain(`write:${resource}`);
     }
+
+    expect(VALID_SCOPES).toContain("read:analytics");
   });
 });
