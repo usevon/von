@@ -121,7 +121,7 @@ In production, keys include an HMAC signature suffix. Von verifies this signatur
 
 ### Rate limiting
 
-All authenticated API requests are rate-limited to 200 requests per minute per IP address. Write operations are additionally subject to per-organization throughput limits based on your plan.
+All authenticated API requests are rate-limited to 200 requests per minute per IP address, and per-organization throughput limits currently apply to webhook send/replay and endpoint write routes.
 
 ### Usage tracking
 

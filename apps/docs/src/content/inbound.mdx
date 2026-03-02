@@ -35,6 +35,12 @@ https://api.usevon.com/in/{id}
   <Property name="forwardUrl" type="string" required>
     Where Von forwards received webhooks in your application.
   </Property>
+  <Property name="maxAttempts" type="number">
+    Retry attempts before marking a delivery failed. Defaults to `4` (min `1`, max `10`).
+  </Property>
+  <Property name="timeoutMs" type="number">
+    Per-attempt request timeout in milliseconds. Defaults to `30000` (min `1000`, max `60000`).
+  </Property>
   <Property name="name" type="string">
     A display label.
   </Property>
@@ -101,4 +107,3 @@ await von.inbound["in_xxx"].delete();
 ## Data retention
 
 Inbound deliveries are automatically cleaned up after 90 days by default. This is configurable via `INBOUND_DELIVERY_RETENTION_DAYS` when self-hosting.
-
