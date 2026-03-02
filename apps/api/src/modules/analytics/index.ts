@@ -17,12 +17,55 @@ export const analyticsRead = new Elysia({ prefix: "/analytics" })
       if (!scopes.includes("*")) {
         return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
       }
+
       return AnalyticsService.getOverview(organizationId, query);
     },
     {
       query: AnalyticsModel.query,
       response: {
         200: AnalyticsModel.overview,
+        403: ErrorResponse,
+      },
+    }
+  )
+  .get(
+    "/timeseries",
+    ({ organizationId, scopes, headers, query, status }) => {
+      if (headers.authorization?.startsWith("Bearer ")) {
+        return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
+      }
+
+      if (!scopes.includes("*")) {
+        return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
+      }
+
+      return AnalyticsService.getTimeseries(organizationId, query);
+    },
+    {
+      query: AnalyticsModel.timeseriesQuery,
+      response: {
+        200: AnalyticsModel.timeseries,
+        403: ErrorResponse,
+      },
+    }
+  )
+  .get(
+    "/retries",
+    ({ organizationId, scopes, headers, query, status }) => {
+      if (headers.authorization?.startsWith("Bearer ")) {
+        return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
+      }
+
+      if (!scopes.includes("*")) {
+        return status(403, { error: "Forbidden", code: "SESSION_REQUIRED" });
+      }
+
+      return AnalyticsService.getRetries(organizationId, query);
+    },
+    {
+      query: AnalyticsModel.query,
+      response: {
+        200: AnalyticsModel.retries,
         403: ErrorResponse,
       },
     }
