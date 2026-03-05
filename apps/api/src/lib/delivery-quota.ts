@@ -107,6 +107,7 @@ function checkQuotaThresholds(
         const [owner] = await db
           .select({
             email: schema.user.email,
+            name: schema.user.name,
             orgName: schema.organization.name,
           })
           .from(schema.member)
@@ -122,8 +123,8 @@ function checkQuotaThresholds(
 
         const html = await render(
           QuotaWarningEmail({
+            name: owner.name,
             organizationName: owner.orgName,
-            currentUsage,
             limit,
             percentUsed: Math.min(percentUsed, 100),
             dashboardUrl: process.env.DASHBOARD_URL ?? "http://localhost:3001",
@@ -133,7 +134,7 @@ function checkQuotaThresholds(
         const subject =
           threshold >= 100
             ? `${owner.orgName} has reached its delivery limit`
-            : `${owner.orgName} has used ${percentUsed}% of its delivery limit`;
+            : `${owner.orgName} is approaching its delivery limit`;
 
         await resendClient.sendEmail({
           to: owner.email,
@@ -175,8 +176,10 @@ export async function reserveMonthlyQuota(
   const allowed = result[0] === 1;
   const currentUsage = result[1];
 
-  // Check quota thresholds and send warnings (fire-and-forget)
-  checkQuotaThresholds(orgId, currentUsage, limits.monthlyDeliveries);
+  // Quota warnings are only relevant for Hobby (Metered bills overage)
+  if (!limits.hasOverage) {
+    checkQuotaThresholds(orgId, currentUsage, limits.monthlyDeliveries);
+  }
 
   if (!allowed) {
     throw new TooManyRequestsError();
