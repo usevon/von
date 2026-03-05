@@ -1,5 +1,10 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
-
+import {
+  EmailBody,
+  EmailButton,
+  EmailText,
+  EmailTimestamp,
+  EmailTitle,
+} from "./components/base.js";
 import { EmailLayout } from "./components/layout.js";
 
 type PasswordResetEmailProps = {
@@ -14,28 +19,23 @@ export const PasswordResetEmail = ({
   requestTime = "January 19, 2026 at 12:47 AM EST",
 }: PasswordResetEmailProps) => (
   <EmailLayout preview="Reset your Von password">
-    <Section className="px-10 py-10">
-      <Heading className="m-0 mb-4 font-semibold text-2xl text-foreground leading-8">
-        Reset your password
-      </Heading>
+    <EmailBody>
+      <EmailTitle>Reset your password</EmailTitle>
 
-      <Text className="m-0 mb-6 text-[15px] text-muted leading-7">
-        Von received a password reset request for{" "}
-        <strong className="text-foreground">{email}</strong> on {requestTime}.
-        This link expires in 1 hour.
-      </Text>
+      <EmailText>
+        Someone requested a password reset for{" "}
+        <strong className="text-foreground">{email}</strong> on Von, and you can
+        use the link below to set a new one before it expires in 1 hour.
+      </EmailText>
 
-      <Button
-        className="inline-block border border-primary bg-primary px-6 py-3 text-center font-medium text-[14px] text-primary-foreground no-underline"
-        href={resetLink}
-      >
-        Reset Password
-      </Button>
+      <EmailText>
+        If you did not request this, you can safely ignore this email.
+      </EmailText>
 
-      <Text className="m-0 mt-6 text-muted text-xs">
-        If you didn't request this, ignore this email.
-      </Text>
-    </Section>
+      <EmailTimestamp>Requested on {requestTime}</EmailTimestamp>
+
+      <EmailButton href={resetLink}>Reset Password</EmailButton>
+    </EmailBody>
   </EmailLayout>
 );
 

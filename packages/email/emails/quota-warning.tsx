@@ -1,72 +1,74 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
-
+import {
+  EmailBody,
+  EmailButton,
+  EmailText,
+  EmailTimestamp,
+  EmailTitle,
+} from "./components/base.js";
 import { EmailLayout } from "./components/layout.js";
 
 type QuotaWarningEmailProps = {
+  name?: string;
   organizationName?: string;
-  currentUsage?: number;
   limit?: number;
   percentUsed?: number;
+  alertedAt?: string;
   dashboardUrl?: string;
 };
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
 export const QuotaWarningEmail = ({
+  name = "Kyle",
   organizationName = "Acme Inc",
-  currentUsage = 20_000,
   limit = 25_000,
   percentUsed = 80,
+  alertedAt = "March 4, 2026 at 3:42 PM EST",
   dashboardUrl = "https://app.usevon.com",
 }: QuotaWarningEmailProps) => {
   const exceeded = percentUsed >= 100;
-  const barColor = exceeded ? "#ef4444" : "#f59e0b";
 
   return (
     <EmailLayout
       preview={
         exceeded
-          ? `${organizationName} reached its delivery limit`
-          : `${organizationName} used ${percentUsed}% of its delivery limit`
+          ? `${organizationName} has reached its delivery limit`
+          : `${organizationName} is approaching its delivery limit`
       }
     >
-      <Section className="px-10 py-10">
-        <Heading className="m-0 mb-4 font-semibold text-2xl text-foreground leading-8">
-          {exceeded ? "Delivery limit reached" : "Approaching delivery limit"}
-        </Heading>
-
-        <Text className="m-0 mb-6 text-[15px] text-muted leading-7">
+      <EmailBody>
+        <EmailTitle>
           {exceeded
-            ? `${organizationName} has used all ${fmt(limit)} monthly deliveries. New deliveries will be rejected until the limit resets.`
-            : `${organizationName} has used ${fmt(currentUsage)} of ${fmt(limit)} monthly deliveries (${percentUsed}%).`}
-        </Text>
+            ? `${organizationName} has reached its delivery limit`
+            : `${organizationName} is approaching its delivery limit`}
+        </EmailTitle>
 
-        {/* Progress bar */}
-        <div
-          style={{
-            backgroundColor: "#e4e4e7",
-            height: "6px",
-            width: "100%",
-            overflow: "hidden",
-            marginBottom: "24px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: barColor,
-              height: "6px",
-              width: `${Math.min(percentUsed, 100)}%`,
-            }}
-          />
-        </div>
+        <EmailText>
+          {exceeded ? (
+            <>
+              Hey {name}, the{" "}
+              <strong className="text-foreground">{organizationName}</strong>{" "}
+              team has reached its {fmt(limit)} monthly delivery limit on the
+              Hobby plan, and deliveries will be paused until the next billing
+              cycle.
+            </>
+          ) : (
+            <>
+              Hey {name}, the{" "}
+              <strong className="text-foreground">{organizationName}</strong>{" "}
+              team is nearing its {fmt(limit)} monthly delivery limit on the
+              Hobby plan, and once it's reached deliveries will pause until the
+              next billing cycle.
+            </>
+          )}
+        </EmailText>
 
-        <Button
-          className="inline-block border border-primary bg-primary px-6 py-3 text-center font-medium text-[14px] text-primary-foreground no-underline"
-          href={dashboardUrl}
-        >
-          View Usage
-        </Button>
-      </Section>
+        <EmailText>We suggest you consider upgrading to Metered.</EmailText>
+
+        <EmailButton href={dashboardUrl}>View Usage</EmailButton>
+
+        <EmailTimestamp>{alertedAt}</EmailTimestamp>
+      </EmailBody>
     </EmailLayout>
   );
 };

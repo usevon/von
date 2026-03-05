@@ -1,5 +1,10 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
-
+import {
+  EmailBody,
+  EmailButton,
+  EmailText,
+  EmailTimestamp,
+  EmailTitle,
+} from "./components/base.js";
 import { EmailLayout } from "./components/layout.js";
 
 type InvitationEmailProps = {
@@ -7,6 +12,7 @@ type InvitationEmailProps = {
   organizationName?: string;
   role?: string;
   inviteLink?: string;
+  invitedAt?: string;
 };
 
 export const InvitationEmail = ({
@@ -14,28 +20,25 @@ export const InvitationEmail = ({
   organizationName = "Acme Inc",
   role = "member",
   inviteLink = "https://app.usevon.com/organization/accept-invitation/xxx",
+  invitedAt = "March 4, 2026 at 3:42 PM EST",
 }: InvitationEmailProps) => (
   <EmailLayout
     preview={`${inviterName} invited you to join ${organizationName} on Von`}
   >
-    <Section className="px-10 py-10">
-      <Heading className="m-0 mb-4 font-semibold text-2xl text-foreground leading-8">
-        Join {organizationName}
-      </Heading>
+    <EmailBody>
+      <EmailTitle>Join {organizationName}</EmailTitle>
 
-      <Text className="m-0 mb-6 text-[15px] text-muted leading-7">
-        {inviterName} invited you to join{" "}
-        <strong className="text-foreground">{organizationName}</strong> as a{" "}
-        {role}. This invitation expires in 48 hours.
-      </Text>
+      <EmailText>
+        {inviterName} has invited you to join the{" "}
+        <strong className="text-foreground">{organizationName}</strong> team on
+        Von as a {role}, and you have 48 hours to accept before the invitation
+        expires.
+      </EmailText>
 
-      <Button
-        className="inline-block border border-primary bg-primary px-6 py-3 text-center font-medium text-[14px] text-primary-foreground no-underline"
-        href={inviteLink}
-      >
-        Accept Invitation
-      </Button>
-    </Section>
+      <EmailButton href={inviteLink}>Accept Invitation</EmailButton>
+
+      <EmailTimestamp>{invitedAt}</EmailTimestamp>
+    </EmailBody>
   </EmailLayout>
 );
 

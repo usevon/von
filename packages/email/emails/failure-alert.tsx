@@ -1,46 +1,42 @@
-import { Button, Heading, Link, Section, Text } from "@react-email/components";
-
+import {
+  EmailBody,
+  EmailButton,
+  EmailText,
+  EmailTimestamp,
+  EmailTitle,
+} from "./components/base.js";
 import { EmailLayout } from "./components/layout.js";
 
 type FailureAlertEmailProps = {
   endpointUrl?: string;
   failureCount?: number;
+  pausedAt?: string;
   dashboardUrl?: string;
 };
 
 export const FailureAlertEmail = ({
   endpointUrl = "https://api.example.com/webhooks",
   failureCount = 5,
+  pausedAt = "March 4, 2026 at 3:42 PM EST",
   dashboardUrl = "https://app.usevon.com",
 }: FailureAlertEmailProps) => (
   <EmailLayout
     preview={`Endpoint paused after ${failureCount} consecutive failures`}
   >
-    <Section className="px-10 py-10">
-      <Heading className="m-0 mb-4 font-semibold text-2xl text-foreground leading-8">
-        Endpoint paused
-      </Heading>
+    <EmailBody>
+      <EmailTitle>Endpoint paused</EmailTitle>
 
-      <Text className="m-0 mb-6 text-[15px] text-muted leading-7">
-        <strong className="text-foreground">{endpointUrl}</strong> failed{" "}
-        {failureCount} times in a row. Von paused the endpoint and will skip new
-        deliveries until the{" "}
-        <Link
-          className="text-foreground underline"
-          href="https://docs.usevon.com/retries-recovery#circuit-breaker"
-        >
-          circuit breaker
-        </Link>{" "}
-        recovers.
-      </Text>
+      <EmailText>
+        Von has paused{" "}
+        <strong className="text-foreground">{endpointUrl}</strong> after{" "}
+        {failureCount} consecutive delivery failures, and deliveries will resume
+        automatically once the endpoint starts responding.
+      </EmailText>
 
-      <Button
-        className="inline-block border border-primary bg-primary px-6 py-3 text-center font-medium text-[14px] text-primary-foreground no-underline"
-        href={dashboardUrl}
-      >
-        View Endpoint
-      </Button>
-    </Section>
+      <EmailTimestamp>Paused on {pausedAt}</EmailTimestamp>
+
+      <EmailButton href={dashboardUrl}>View Endpoint</EmailButton>
+    </EmailBody>
   </EmailLayout>
 );
 
