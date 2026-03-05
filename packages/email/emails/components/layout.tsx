@@ -59,115 +59,135 @@ export const Email = ({ preview, children }: EmailProps) => (
           <Hr className="m-0 border-border" />
 
           <Section className="px-10 py-4">
-            <Link href="https://usevon.com">
-              <Img
-                alt="Von"
-                className="mb-4"
-                height="18"
-                src={LOGO_URL}
-                width="22"
-              />
-            </Link>
             <table cellPadding={0} cellSpacing={0} width="100%">
               <tr>
-                <td
-                  style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="33%"
-                >
-                  <p
-                    style={{
-                      margin: "0 0 8px 0",
-                      fontSize: "10px",
-                      fontWeight: 500,
-                      color: "#71717a",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    Resources
-                  </p>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://usevon.com/contact"
-                  >
-                    Contact
-                  </Link>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://usevon.com/blog"
-                  >
-                    Blog
-                  </Link>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://usevon.com/pricing"
-                  >
-                    Pricing
+                <td style={{ verticalAlign: "top", paddingTop: "1px" }}>
+                  <Link href="https://usevon.com">
+                    <Img alt="Von" height="18" src={LOGO_URL} width="22" />
                   </Link>
                 </td>
-                <td
-                  style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="33%"
-                >
-                  <p
-                    style={{
-                      margin: "0 0 8px 0",
-                      fontSize: "10px",
-                      fontWeight: 500,
-                      color: "#71717a",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    Documentation
-                  </p>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://docs.usevon.com"
-                  >
-                    Home
-                  </Link>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://docs.usevon.com/getting-started"
-                  >
-                    Getting Started
-                  </Link>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://docs.usevon.com/api"
-                  >
-                    API Reference
-                  </Link>
-                </td>
-                <td
-                  style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="33%"
-                >
-                  <p
-                    style={{
-                      margin: "0 0 8px 0",
-                      fontSize: "10px",
-                      fontWeight: 500,
-                      color: "#71717a",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    Legal
-                  </p>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://usevon.com/privacy-policy"
-                  >
-                    Privacy Policy
-                  </Link>
-                  <Link
-                    className="block text-foreground text-xs leading-6 no-underline"
-                    href="https://usevon.com/terms-of-service"
-                  >
-                    Terms of Service
-                  </Link>
+                <td style={{ verticalAlign: "top", paddingLeft: "48px" }}>
+                  <table cellPadding={0} cellSpacing={0} width="100%">
+                    <tr>
+                      <td style={{ verticalAlign: "top" }}>
+                        <p
+                          style={{
+                            margin: "0 0 6px 0",
+                            fontSize: "10px",
+                            fontWeight: 500,
+                            color: "#71717a",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            lineHeight: "18px",
+                          }}
+                        >
+                          Resources
+                        </p>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/contact"
+                        >
+                          Contact
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/blog"
+                        >
+                          Blog
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/pricing"
+                        >
+                          Pricing
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/brand"
+                        >
+                          Brand
+                        </Link>
+                      </td>
+                      <td style={{ verticalAlign: "top", paddingLeft: "32px" }}>
+                        <p
+                          style={{
+                            margin: "0 0 6px 0",
+                            fontSize: "10px",
+                            fontWeight: 500,
+                            color: "#71717a",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            lineHeight: "18px",
+                          }}
+                        >
+                          Documentation
+                        </p>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://docs.usevon.com"
+                        >
+                          Home
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://docs.usevon.com/getting-started"
+                        >
+                          Getting Started
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://docs.usevon.com/guides"
+                        >
+                          Guides
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://docs.usevon.com/api"
+                        >
+                          API Reference
+                        </Link>
+                      </td>
+                      <td style={{ verticalAlign: "top", paddingLeft: "32px" }}>
+                        <p
+                          style={{
+                            margin: "0 0 6px 0",
+                            fontSize: "10px",
+                            fontWeight: 500,
+                            color: "#71717a",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            lineHeight: "18px",
+                          }}
+                        >
+                          Legal
+                        </p>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/privacy-policy"
+                        >
+                          Privacy Policy
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/terms-of-service"
+                        >
+                          Terms of Service
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/security"
+                        >
+                          Security
+                        </Link>
+                        <Link
+                          className="block text-foreground text-xs leading-6 no-underline"
+                          href="https://usevon.com/subprocessors"
+                        >
+                          Subprocessors
+                        </Link>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
             </table>
