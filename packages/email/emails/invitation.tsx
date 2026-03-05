@@ -1,11 +1,10 @@
 import {
-  EmailBody,
   EmailButton,
   EmailText,
   EmailTimestamp,
   EmailTitle,
 } from "./components/base.js";
-import { EmailLayout } from "./components/layout.js";
+import { Email } from "./components/layout.js";
 
 type InvitationEmailProps = {
   inviterName?: string;
@@ -22,24 +21,22 @@ export const InvitationEmail = ({
   inviteLink = "https://app.usevon.com/organization/accept-invitation/xxx",
   invitedAt = "March 4, 2026 at 3:42 PM EST",
 }: InvitationEmailProps) => (
-  <EmailLayout
+  <Email
     preview={`${inviterName} invited you to join ${organizationName} on Von`}
   >
-    <EmailBody>
-      <EmailTitle>Join {organizationName}</EmailTitle>
+    <EmailTitle>Join {organizationName}</EmailTitle>
 
-      <EmailText>
-        {inviterName} has invited you to join the{" "}
-        <strong className="text-foreground">{organizationName}</strong> team on
-        Von as a {role}, and you have 48 hours to accept before the invitation
-        expires.
-      </EmailText>
+    <EmailText>
+      {inviterName} has invited you to join the{" "}
+      <strong className="text-foreground">{organizationName}</strong> team on
+      Von as a {role}, and you have 48 hours to accept before the invitation
+      expires.
+    </EmailText>
 
-      <EmailButton href={inviteLink}>Accept Invitation</EmailButton>
+    <EmailTimestamp>Invited on {invitedAt}</EmailTimestamp>
 
-      <EmailTimestamp>{invitedAt}</EmailTimestamp>
-    </EmailBody>
-  </EmailLayout>
+    <EmailButton href={inviteLink}>Accept Invitation</EmailButton>
+  </Email>
 );
 
 export default InvitationEmail;

@@ -1,11 +1,10 @@
 import {
-  EmailBody,
   EmailButton,
   EmailText,
   EmailTimestamp,
   EmailTitle,
 } from "./components/base.js";
-import { EmailLayout } from "./components/layout.js";
+import { Email } from "./components/layout.js";
 
 type PlanChangedEmailProps = {
   name?: string;
@@ -24,27 +23,25 @@ export const PlanChangedEmail = ({
   changedAt = "March 4, 2026 at 3:42 PM EST",
   dashboardUrl = "https://app.usevon.com",
 }: PlanChangedEmailProps) => (
-  <EmailLayout
+  <Email
     preview={`${organizationName} has been ${upgraded ? "upgraded" : "downgraded"} to the ${planName} plan`}
   >
-    <EmailBody>
-      <EmailTitle>Plan {upgraded ? "upgraded" : "downgraded"}</EmailTitle>
+    <EmailTitle>Plan {upgraded ? "upgraded" : "downgraded"}</EmailTitle>
 
-      <EmailText>
-        Hey {name}, the{" "}
-        <strong className="text-foreground">{organizationName}</strong> team has
-        been {upgraded ? "upgraded" : "downgraded"} to the {planName} plan and
-        the changes are{" "}
-        {upgraded
-          ? "effective immediately."
-          : "effective at the end of your current billing cycle."}
-      </EmailText>
+    <EmailText>
+      Hey {name}, the{" "}
+      <strong className="text-foreground">{organizationName}</strong> team has
+      been {upgraded ? "upgraded" : "downgraded"} to the {planName} plan and the
+      changes are{" "}
+      {upgraded
+        ? "effective immediately."
+        : "effective at the end of your current billing cycle."}
+    </EmailText>
 
-      <EmailButton href={dashboardUrl}>View Team Billing</EmailButton>
+    <EmailTimestamp>Changed on {changedAt}</EmailTimestamp>
 
-      <EmailTimestamp>{changedAt}</EmailTimestamp>
-    </EmailBody>
-  </EmailLayout>
+    <EmailButton href={dashboardUrl}>View Team Billing</EmailButton>
+  </Email>
 );
 
 export default PlanChangedEmail;

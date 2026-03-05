@@ -1,11 +1,10 @@
 import {
-  EmailBody,
   EmailButton,
   EmailText,
   EmailTimestamp,
   EmailTitle,
 } from "./components/base.js";
-import { EmailLayout } from "./components/layout.js";
+import { Email } from "./components/layout.js";
 
 type FailureAlertEmailProps = {
   endpointUrl?: string;
@@ -20,24 +19,19 @@ export const FailureAlertEmail = ({
   pausedAt = "March 4, 2026 at 3:42 PM EST",
   dashboardUrl = "https://app.usevon.com",
 }: FailureAlertEmailProps) => (
-  <EmailLayout
-    preview={`Endpoint paused after ${failureCount} consecutive failures`}
-  >
-    <EmailBody>
-      <EmailTitle>Endpoint paused</EmailTitle>
+  <Email preview={`Endpoint paused after ${failureCount} consecutive failures`}>
+    <EmailTitle>Endpoint paused</EmailTitle>
 
-      <EmailText>
-        Von has paused{" "}
-        <strong className="text-foreground">{endpointUrl}</strong> after{" "}
-        {failureCount} consecutive delivery failures, and deliveries will resume
-        automatically once the endpoint starts responding.
-      </EmailText>
+    <EmailText>
+      Von has paused <strong className="text-foreground">{endpointUrl}</strong>{" "}
+      after {failureCount} consecutive failures, but deliveries will resume as
+      soon as the endpoint recovers.
+    </EmailText>
 
-      <EmailTimestamp>Paused on {pausedAt}</EmailTimestamp>
+    <EmailTimestamp>Paused on {pausedAt}</EmailTimestamp>
 
-      <EmailButton href={dashboardUrl}>View Endpoint</EmailButton>
-    </EmailBody>
-  </EmailLayout>
+    <EmailButton href={dashboardUrl}>View Endpoint</EmailButton>
+  </Email>
 );
 
 export default FailureAlertEmail;

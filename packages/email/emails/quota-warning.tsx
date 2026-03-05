@@ -1,11 +1,10 @@
 import {
-  EmailBody,
   EmailButton,
   EmailText,
   EmailTimestamp,
   EmailTitle,
 } from "./components/base.js";
-import { EmailLayout } from "./components/layout.js";
+import { Email } from "./components/layout.js";
 
 type QuotaWarningEmailProps = {
   name?: string;
@@ -29,47 +28,44 @@ export const QuotaWarningEmail = ({
   const exceeded = percentUsed >= 100;
 
   return (
-    <EmailLayout
+    <Email
       preview={
         exceeded
           ? `${organizationName} has reached its delivery limit`
           : `${organizationName} is approaching its delivery limit`
       }
     >
-      <EmailBody>
-        <EmailTitle>
-          {exceeded
-            ? `${organizationName} has reached its delivery limit`
-            : `${organizationName} is approaching its delivery limit`}
-        </EmailTitle>
+      <EmailTitle>
+        {exceeded
+          ? `${organizationName} has reached its delivery limit`
+          : `${organizationName} is approaching its delivery limit`}
+      </EmailTitle>
 
-        <EmailText>
-          {exceeded ? (
-            <>
-              Hey {name}, the{" "}
-              <strong className="text-foreground">{organizationName}</strong>{" "}
-              team has reached its {fmt(limit)} monthly delivery limit on the
-              Hobby plan, and deliveries will be paused until the next billing
-              cycle.
-            </>
-          ) : (
-            <>
-              Hey {name}, the{" "}
-              <strong className="text-foreground">{organizationName}</strong>{" "}
-              team is nearing its {fmt(limit)} monthly delivery limit on the
-              Hobby plan, and once it's reached deliveries will pause until the
-              next billing cycle.
-            </>
-          )}
-        </EmailText>
+      <EmailText>
+        {exceeded ? (
+          <>
+            Hey {name},{" "}
+            <strong className="text-foreground">{organizationName}</strong> has
+            reached its {fmt(limit)} monthly delivery limit on the Hobby plan,
+            and deliveries will be paused until the next billing cycle.
+          </>
+        ) : (
+          <>
+            Hey {name},{" "}
+            <strong className="text-foreground">{organizationName}</strong> is
+            at {percentUsed}% of its {fmt(limit)} monthly delivery limit on the
+            Hobby plan. Deliveries will pause automatically once the limit is
+            reached.
+          </>
+        )}
+      </EmailText>
 
-        <EmailText>We suggest you consider upgrading to Metered.</EmailText>
+      <EmailText>Upgrade to Metered to remove limits.</EmailText>
 
-        <EmailButton href={dashboardUrl}>View Usage</EmailButton>
+      <EmailTimestamp>Alerted on {alertedAt}</EmailTimestamp>
 
-        <EmailTimestamp>{alertedAt}</EmailTimestamp>
-      </EmailBody>
-    </EmailLayout>
+      <EmailButton href={dashboardUrl}>View Usage</EmailButton>
+    </Email>
   );
 };
 
