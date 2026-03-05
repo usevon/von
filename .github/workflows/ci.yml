@@ -43,6 +43,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       BETTER_AUTH_SECRET: ci-test-secret-that-is-at-least-32-chars!!
       BETTER_AUTH_URL: http://localhost:8080
+      API_KEY_SIGNING_SECRET: ci-test-signing-secret
       NODE_ENV: test
       NEXT_PUBLIC_API_URL: http://localhost:8080
       NEXT_TELEMETRY_DISABLED: 1

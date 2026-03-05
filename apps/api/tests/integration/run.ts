@@ -176,6 +176,7 @@ const createTemporaryResources =
           })
         );
         if (signUpResult.error || !signUpResult.data?.user?.id) {
+          console.error("[integration] sign-up failed:", signUpResult.error);
           return null;
         }
 
@@ -183,6 +184,7 @@ const createTemporaryResources =
           authClient.signIn.email({ email, password })
         );
         if (signInResult.error) {
+          console.error("[integration] sign-in failed:", signInResult.error);
           return null;
         }
 
@@ -195,6 +197,10 @@ const createTemporaryResources =
             })
         );
         if (organizationResult.error || !organizationResult.data?.id) {
+          console.error(
+            "[integration] org create failed:",
+            organizationResult.error
+          );
           return null;
         }
 
@@ -207,6 +213,10 @@ const createTemporaryResources =
           })
         );
         if (apiKeyResult.error || !apiKeyResult.data?.key) {
+          console.error(
+            "[integration] api key create failed:",
+            apiKeyResult.error
+          );
           return null;
         }
 
