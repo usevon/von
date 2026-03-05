@@ -1,4 +1,7 @@
 import { db } from "@usevon/db";
+import * as schema from "@usevon/db/schema";
+import { FailureAlertEmail, render } from "@usevon/email";
+import { getRedisClient } from "@usevon/queue";
 import {
   CIRCUIT_CONFIG,
   type CircuitState,
@@ -9,8 +12,72 @@ import {
 import type { Job } from "bullmq";
 import { eq } from "drizzle-orm";
 import type { PgColumn, PgTableWithColumns } from "drizzle-orm/pg-core";
+import { env } from "@/env";
 import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
+import { resendClient } from "@/lib/email";
 import { log } from "@/lib/logger";
+
+const CIRCUIT_ALERT_TTL = 60 * 60; // 1 hour dedup window
+
+/**
+ * Send a failure alert email to the org owner when a circuit breaker opens.
+ * Uses Redis SET NX to deduplicate so only one alert per endpoint per hour.
+ * Runs fire-and-forget.
+ */
+function sendCircuitBreakerAlert(
+  endpointId: string,
+  failureCount: number
+): void {
+  void (async () => {
+    try {
+      const redis = getRedisClient();
+      const alertKey = `org:circuit-alert:${endpointId}`;
+      const set = await redis.set(alertKey, "1", "EX", CIRCUIT_ALERT_TTL, "NX");
+      if (set !== "OK") return; // already alerted recently
+
+      // Look up endpoint URL, org name, and owner email
+      const [result] = await db
+        .select({
+          url: schema.endpoint.url,
+          orgName: schema.organization.name,
+          ownerEmail: schema.user.email,
+        })
+        .from(schema.endpoint)
+        .innerJoin(
+          schema.organization,
+          eq(schema.organization.id, schema.endpoint.organizationId)
+        )
+        .innerJoin(
+          schema.member,
+          eq(schema.member.organizationId, schema.endpoint.organizationId)
+        )
+        .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
+        .where(eq(schema.endpoint.id, endpointId))
+        .limit(1);
+
+      if (!result) return;
+
+      const html = await render(
+        FailureAlertEmail({
+          endpointUrl: result.url,
+          failureCount,
+          dashboardUrl: env.DASHBOARD_URL,
+        })
+      );
+
+      await resendClient.sendEmail({
+        to: result.ownerEmail,
+        subject: `Endpoint paused: ${result.url}`,
+        html,
+      });
+    } catch (err) {
+      log.error(
+        { err, endpointId },
+        "Failed to send circuit breaker alert email"
+      );
+    }
+  })();
+}
 
 type Executable = {
   execute: (params: Record<string, unknown>) => Promise<unknown[]>;
@@ -309,6 +376,9 @@ export async function processDelivery<TJob extends BaseJobData>(
         { endpointId: ep.id, failureCount: endpointResult.failureCount },
         "Circuit breaker opened"
       );
+
+      // Fire-and-forget: send failure alert email to org owner
+      sendCircuitBreakerAlert(ep.id, endpointResult.failureCount);
     }
 
     log.error(

@@ -12,12 +12,14 @@
   },
   "dependencies": {
     "@usevon/db": "workspace:*",
+    "@usevon/email": "workspace:*",
     "@usevon/queue": "workspace:*",
     "@usevon/utils": "workspace:*",
     "bullmq": "^5.67.3",
     "drizzle-orm": "^0.44.7",
     "ioredis": "^5.9.2",
     "postgres": "^3.4.7",
+    "resend": "^4.5.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {

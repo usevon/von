@@ -14,5 +14,8 @@ export const env = z
     EVENT_RETENTION_DAYS: z.coerce.number().min(1).default(90),
     DELIVERY_RETENTION_DAYS: z.coerce.number().min(1).default(90),
     INBOUND_DELIVERY_RETENTION_DAYS: z.coerce.number().min(1).default(90),
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().default("Von <noreply@usevon.com>"),
+    DASHBOARD_URL: z.string().default("http://localhost:3001"),
   })
   .parse(process.env);
