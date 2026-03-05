@@ -91,17 +91,22 @@ function checkQuotaThresholds(
   const percentUsed = Math.floor((currentUsage / limit) * 100);
 
   for (const threshold of QUOTA_THRESHOLDS) {
-    if (percentUsed < threshold) continue;
+    if (percentUsed < threshold) {
+      continue;
+    }
 
     const month = getMonthKey(orgId).split(":").pop();
     const alertKey = `org:quota-alert:${orgId}:${month}:${threshold}`;
 
     // Fire-and-forget -- errors are logged, never thrown
-    void (async () => {
+    (async () => {
       try {
         const redis = getRedisClient();
         const set = await redis.set(alertKey, "1", "EX", DELIVERY_TTL, "NX");
-        if (set !== "OK") return; // already sent this threshold
+        // already sent this threshold
+        if (set !== "OK") {
+          return;
+        }
 
         // Look up the org owner's email
         const [owner] = await db
@@ -119,7 +124,9 @@ function checkQuotaThresholds(
           .where(eq(schema.member.organizationId, orgId))
           .limit(1);
 
-        if (!owner) return;
+        if (!owner) {
+          return;
+        }
 
         const html = await render(
           QuotaWarningEmail({

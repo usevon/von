@@ -28,12 +28,15 @@ function sendCircuitBreakerAlert(
   endpointId: string,
   failureCount: number
 ): void {
-  void (async () => {
+  (async () => {
     try {
       const redis = getRedisClient();
       const alertKey = `org:circuit-alert:${endpointId}`;
       const set = await redis.set(alertKey, "1", "EX", CIRCUIT_ALERT_TTL, "NX");
-      if (set !== "OK") return; // already alerted recently
+      // already alerted recently
+      if (set !== "OK") {
+        return;
+      }
 
       // Look up endpoint URL, org name, and owner email
       const [result] = await db
@@ -55,7 +58,9 @@ function sendCircuitBreakerAlert(
         .where(eq(schema.endpoint.id, endpointId))
         .limit(1);
 
-      if (!result) return;
+      if (!result) {
+        return;
+      }
 
       const html = await render(
         FailureAlertEmail({
