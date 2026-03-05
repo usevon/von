@@ -1,5 +1,11 @@
+import { db, eq } from "@usevon/db";
+import * as schema from "@usevon/db/schema";
+import { QuotaWarningEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 import { TooManyRequestsError } from "@usevon/utils";
+
+import { log } from "@/lib/logger";
+import { resendClient } from "@/lib/resend";
 
 type PlanLimits = {
   monthlyDeliveries: number;
@@ -68,6 +74,82 @@ end
 return next_val
 `;
 
+const QUOTA_THRESHOLDS = [80, 90, 100] as const;
+
+/**
+ * Check whether usage has crossed a threshold and send a one-time warning
+ * email to the organization owner. Uses Redis SET NX for deduplication so
+ * each threshold fires at most once per billing month.
+ *
+ * Runs fire-and-forget to avoid blocking the delivery hot path.
+ */
+function checkQuotaThresholds(
+  orgId: string,
+  currentUsage: number,
+  limit: number
+): void {
+  const percentUsed = Math.floor((currentUsage / limit) * 100);
+
+  for (const threshold of QUOTA_THRESHOLDS) {
+    if (percentUsed < threshold) continue;
+
+    const month = getMonthKey(orgId).split(":").pop();
+    const alertKey = `org:quota-alert:${orgId}:${month}:${threshold}`;
+
+    // Fire-and-forget -- errors are logged, never thrown
+    void (async () => {
+      try {
+        const redis = getRedisClient();
+        const set = await redis.set(alertKey, "1", "EX", DELIVERY_TTL, "NX");
+        if (set !== "OK") return; // already sent this threshold
+
+        // Look up the org owner's email
+        const [owner] = await db
+          .select({
+            email: schema.user.email,
+            orgName: schema.organization.name,
+          })
+          .from(schema.member)
+          .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
+          .innerJoin(
+            schema.organization,
+            eq(schema.organization.id, schema.member.organizationId)
+          )
+          .where(eq(schema.member.organizationId, orgId))
+          .limit(1);
+
+        if (!owner) return;
+
+        const html = await render(
+          QuotaWarningEmail({
+            organizationName: owner.orgName,
+            currentUsage,
+            limit,
+            percentUsed: Math.min(percentUsed, 100),
+            dashboardUrl: process.env.DASHBOARD_URL ?? "http://localhost:3001",
+          })
+        );
+
+        const subject =
+          threshold >= 100
+            ? `${owner.orgName} has reached its delivery limit`
+            : `${owner.orgName} has used ${percentUsed}% of its delivery limit`;
+
+        await resendClient.sendEmail({
+          to: owner.email,
+          subject,
+          html,
+        });
+      } catch (err) {
+        log.error(
+          { err, orgId, threshold },
+          "Failed to send quota warning email"
+        );
+      }
+    })();
+  }
+}
+
 export async function reserveMonthlyQuota(
   orgId: string,
   plan: string,
@@ -92,6 +174,9 @@ export async function reserveMonthlyQuota(
 
   const allowed = result[0] === 1;
   const currentUsage = result[1];
+
+  // Check quota thresholds and send warnings (fire-and-forget)
+  checkQuotaThresholds(orgId, currentUsage, limits.monthlyDeliveries);
 
   if (!allowed) {
     throw new TooManyRequestsError();

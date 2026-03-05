@@ -8,10 +8,13 @@ import {
 } from "@usevon/auth";
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
+import { InvitationEmail, render, WelcomeEmail } from "@usevon/email";
 import { APIError } from "better-auth/api";
 import mailchecker from "mailchecker";
 import isEmail from "validator/es/lib/isEmail.js";
 import { env } from "@/env";
+import { log } from "@/lib/logger";
+import { resendClient } from "@/lib/resend";
 import type { SecondaryStorageAdapter } from "@/modules/auth/storage";
 
 type SessionInsert = typeof schema.session.$inferInsert;
@@ -47,6 +50,25 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
         },
       },
     },
+    sendInvitationEmail: async (data) => {
+      const dashboardUrl = env.DASHBOARD_URL ?? "http://localhost:3001";
+      const inviteLink = `${dashboardUrl}/organization/accept-invitation/${data.id}`;
+
+      const html = await render(
+        InvitationEmail({
+          inviterName: data.inviter.user.name,
+          organizationName: data.organization.name,
+          role: data.role,
+          inviteLink,
+        })
+      );
+
+      await resendClient.sendEmail({
+        to: data.email,
+        subject: `You've been invited to join ${data.organization.name}`,
+        html,
+      });
+    },
     organizationHooks: {
       ...organizationHooks,
       afterAddMember: async (
@@ -80,6 +102,26 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
 
 export const authDatabaseHooks = {
   user: {
+    create: {
+      after: async (user: { name: string; email: string }) => {
+        try {
+          const html = await render(
+            WelcomeEmail({
+              name: user.name,
+              dashboardUrl: env.DASHBOARD_URL ?? "http://localhost:3001",
+            })
+          );
+
+          await resendClient.sendEmail({
+            to: user.email,
+            subject: "Welcome to Von",
+            html,
+          });
+        } catch (err) {
+          log.error({ err, email: user.email }, "Failed to send welcome email");
+        }
+      },
+    },
     delete: {
       before: async (user: { id: string }) => {
         const memberships = await db
