@@ -1,18 +1,10 @@
-import { beforeAll, describe, expect, test } from "bun:test";
-import { treaty } from "@elysiajs/eden";
-import type { App } from "../setup";
+import { describe, expect, test } from "bun:test";
+import { client } from "../setup";
 
 const TEST_ID = "550e8400-e29b-41d4-a716-446655440000";
 const TEST_VERSION = "2024-06-01";
 
 describe("API auth guards", () => {
-  let client: ReturnType<typeof treaty<App>>;
-
-  beforeAll(async () => {
-    const setup = await import("../setup");
-    client = treaty(setup.app);
-  });
-
   const cases: [
     string,
     () => Promise<{ error?: { status?: number } | null }>,

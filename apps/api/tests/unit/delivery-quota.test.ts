@@ -49,6 +49,16 @@ const mockSubscriber = {
 mock.module("@usevon/queue", () => ({
   getRedisClient: () => mockRedis,
   createConnection: () => mockSubscriber,
+  checkRedisConnection: () => Promise.resolve({ ok: true }),
+  closeRedis: () => Promise.resolve(),
+  getWebhookDeliveryQueue: () => ({
+    addBulk: () => Promise.resolve([]),
+    add: () => Promise.resolve({}),
+  }),
+  getInboundForwardingQueue: () => ({
+    addBulk: () => Promise.resolve([]),
+    add: () => Promise.resolve({}),
+  }),
 }));
 
 const { getMonthKey, reserveMonthlyQuota, releaseMonthlyQuota, DELIVERY_TTL } =
