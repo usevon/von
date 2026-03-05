@@ -7,12 +7,16 @@ import {
   Img,
   Link,
   Preview,
+  pixelBasedPreset,
   Section,
   Tailwind,
+  type TailwindConfig,
+  Text,
 } from "@react-email/components";
 import type { ReactNode } from "react";
 
-const tailwindConfig = {
+const tailwindConfig: TailwindConfig = {
+  presets: [pixelBasedPreset],
   theme: {
     extend: {
       colors: {
@@ -21,10 +25,6 @@ const tailwindConfig = {
         foreground: "#18181b",
         muted: "#71717a",
         border: "#e4e4e7",
-        destructive: "#ef4444",
-        warning: "#f59e0b",
-        success: "#10b981",
-        info: "#3b82f6",
       },
     },
   },
@@ -33,39 +33,46 @@ const tailwindConfig = {
 const LOGO_URL =
   "https://3h7lcrx4kj.ufs.sh/f/JLhyRntM6ItLJRqZOEtM6ItLVOCJGSbUuAi3zXQKNo7kjfHD";
 
-type EmailLayoutProps = {
+type EmailProps = {
   preview: string;
   children: ReactNode;
 };
 
-export const EmailLayout = ({ preview, children }: EmailLayoutProps) => (
+export const Email = ({ preview, children }: EmailProps) => (
   <Html>
     <Head />
     <Preview>{preview}</Preview>
     <Tailwind config={tailwindConfig}>
       <Body className="bg-white font-sans">
         <Container className="mx-auto my-10 w-[600px] max-w-full border border-border">
-          <Section className="px-10 py-8">
-            <Img alt="Von" height="22" src={LOGO_URL} width="28" />
+          <Section className="px-10 py-10">
+            <Img
+              alt="Von"
+              className="mb-8"
+              height="22"
+              src={LOGO_URL}
+              width="28"
+            />
+            {children}
           </Section>
 
           <Hr className="m-0 border-border" />
 
-          {children}
-
-          <Hr className="m-0 border-border" />
-
-          <Section className="px-10 pt-8 pb-6">
+          <Section className="px-10 py-4">
+            <Link href="https://usevon.com">
+              <Img
+                alt="Von"
+                className="mb-4"
+                height="18"
+                src={LOGO_URL}
+                width="22"
+              />
+            </Link>
             <table cellPadding={0} cellSpacing={0} width="100%">
               <tr>
-                <td style={{ verticalAlign: "top" }} width="25%">
-                  <Link href="https://usevon.com">
-                    <Img alt="Von" height="18" src={LOGO_URL} width="22" />
-                  </Link>
-                </td>
                 <td
                   style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="25%"
+                  width="33%"
                 >
                   <p
                     style={{
@@ -100,7 +107,7 @@ export const EmailLayout = ({ preview, children }: EmailLayoutProps) => (
                 </td>
                 <td
                   style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="25%"
+                  width="33%"
                 >
                   <p
                     style={{
@@ -135,7 +142,7 @@ export const EmailLayout = ({ preview, children }: EmailLayoutProps) => (
                 </td>
                 <td
                   style={{ verticalAlign: "top", paddingTop: "2px" }}
-                  width="25%"
+                  width="33%"
                 >
                   <p
                     style={{
@@ -164,6 +171,17 @@ export const EmailLayout = ({ preview, children }: EmailLayoutProps) => (
                 </td>
               </tr>
             </table>
+            <Text className="m-0 mt-4 text-muted text-xs leading-5">
+              Please{" "}
+              <Link
+                className="text-muted underline"
+                href="https://usevon.com/contact"
+              >
+                contact us
+              </Link>{" "}
+              if you have any questions. If you reply to this email, we won't be
+              able to see it.
+            </Text>
           </Section>
         </Container>
       </Body>
