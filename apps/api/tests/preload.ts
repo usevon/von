@@ -25,10 +25,12 @@ if (envPath) {
 }
 
 process.env.NODE_ENV ??= "test";
+process.env.BETTER_AUTH_SECRET ??= "test-secret-minimum-32-characters-long!!";
+process.env.API_KEY_SIGNING_SECRET ??= "test-signing-secret";
 
-const isUnitTest = process.argv.some((a) => a.includes("unit"));
+const isIntegration = process.argv.some((a) => a.includes("integration"));
 
-if (isUnitTest) {
+if (!isIntegration) {
   const sets = new Map<string, Set<string>>();
   const strings = new Map<string, string>();
 
@@ -52,9 +54,13 @@ if (isUnitTest) {
     },
     srem: (k: string, v: string) => {
       const s = sets.get(k);
-      if (!s?.has(v)) return Promise.resolve(0);
+      if (!s?.has(v)) {
+        return Promise.resolve(0);
+      }
       s.delete(v);
-      if (s.size === 0) sets.delete(k);
+      if (s.size === 0) {
+        sets.delete(k);
+      }
       return Promise.resolve(1);
     },
     scard: (k: string) => Promise.resolve(sets.get(k)?.size ?? 0),
@@ -99,7 +105,7 @@ if (isUnitTest) {
     set: () => noopQuery,
     delete: () => noopQuery,
     prepare: () => noopPrepared,
-    then: (resolve: (v: unknown[]) => void) => resolve([]),
+    then: (cb: (v: unknown[]) => void) => cb([]),
     execute: () => Promise.resolve([]),
     query: {},
   });

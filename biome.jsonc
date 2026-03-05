@@ -28,5 +28,17 @@
         "noUndeclaredEnvVars": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/tests/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noThenProperty": "off"
+          }
+        }
+      }
+    }
+  ]
 }

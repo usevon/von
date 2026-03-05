@@ -1,7 +1,7 @@
 import { treaty } from "@elysiajs/eden";
 import { app } from "../src/app";
 
-export { app };
+export { app } from "../src/app";
 
 export type App = typeof app;
 
