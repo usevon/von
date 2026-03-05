@@ -1,3 +1,4 @@
+import { mock } from "bun:test";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -24,3 +25,108 @@ if (envPath) {
 }
 
 process.env.NODE_ENV ??= "test";
+
+const isUnitTest = process.argv.some((a) => a.includes("unit"));
+
+if (isUnitTest) {
+  const sets = new Map<string, Set<string>>();
+  const strings = new Map<string, string>();
+
+  const noopRedis = {
+    eval: () => Promise.resolve([1, 0]),
+    get: (k: string) => Promise.resolve(strings.get(k) ?? null),
+    set: (k: string, v: string) => {
+      strings.set(k, v);
+      return Promise.resolve("OK");
+    },
+    del: (k: string) => {
+      const had = strings.delete(k) || sets.delete(k);
+      return Promise.resolve(had ? 1 : 0);
+    },
+    sadd: (k: string, v: string) => {
+      const s = sets.get(k) ?? new Set<string>();
+      const added = s.has(v) ? 0 : 1;
+      s.add(v);
+      sets.set(k, s);
+      return Promise.resolve(added);
+    },
+    srem: (k: string, v: string) => {
+      const s = sets.get(k);
+      if (!s?.has(v)) return Promise.resolve(0);
+      s.delete(v);
+      if (s.size === 0) sets.delete(k);
+      return Promise.resolve(1);
+    },
+    scard: (k: string) => Promise.resolve(sets.get(k)?.size ?? 0),
+    expire: () => Promise.resolve(1),
+    publish: () => Promise.resolve(1),
+    subscribe: () => Promise.resolve(1),
+    on: () => noopRedis,
+    unsubscribe: () => Promise.resolve(1),
+    quit: () => Promise.resolve("OK"),
+  };
+
+  mock.module("@usevon/queue", () => ({
+    getRedisClient: () => noopRedis,
+    checkRedisConnection: () => Promise.resolve({ ok: true }),
+    closeRedis: () => Promise.resolve(),
+    createConnection: () => noopRedis,
+    getWebhookDeliveryQueue: () => ({
+      addBulk: () => Promise.resolve([]),
+      add: () => Promise.resolve({}),
+    }),
+    getInboundForwardingQueue: () => ({
+      addBulk: () => Promise.resolve([]),
+      add: () => Promise.resolve({}),
+    }),
+  }));
+
+  const noopPrepared = { execute: () => Promise.resolve([]) };
+  const noopQuery = Object.assign(() => noopQuery, {
+    select: () => noopQuery,
+    from: () => noopQuery,
+    where: () => noopQuery,
+    limit: () => noopQuery,
+    offset: () => noopQuery,
+    orderBy: () => noopQuery,
+    leftJoin: () => noopQuery,
+    innerJoin: () => noopQuery,
+    groupBy: () => noopQuery,
+    insert: () => noopQuery,
+    values: () => noopQuery,
+    returning: () => Promise.resolve([]),
+    update: () => noopQuery,
+    set: () => noopQuery,
+    delete: () => noopQuery,
+    prepare: () => noopPrepared,
+    then: (resolve: (v: unknown[]) => void) => resolve([]),
+    execute: () => Promise.resolve([]),
+    query: {},
+  });
+
+  const noopSql = Object.assign(() => "", { placeholder: () => "" });
+
+  mock.module("@usevon/db", () => ({
+    db: noopQuery,
+    checkDatabaseConnection: () => Promise.resolve({ ok: true }),
+    closeDatabase: () => Promise.resolve(),
+    eq: (...args: unknown[]) => args,
+    and: (...args: unknown[]) => args,
+    inArray: (...args: unknown[]) => args,
+    or: (...args: unknown[]) => args,
+    sql: noopSql,
+  }));
+
+  const noop = () => null;
+  mock.module("@usevon/email", () => ({
+    render: noop,
+    WelcomeEmail: noop,
+    InvitationEmail: noop,
+    PasswordResetEmail: noop,
+    QuotaWarningEmail: noop,
+    FailureAlertEmail: noop,
+    EmailChangedEmail: noop,
+    PlanChangedEmail: noop,
+    EndpointRecoveredEmail: noop,
+  }));
+}
