@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "email dev -p 3002"
+    "dev": "email dev -p 3003"
   },
   "dependencies": {
     "@react-email/components": "^1.0.8",
