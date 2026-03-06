@@ -39,7 +39,15 @@ const runRetentionCleanup = async () => {
       "Retention cleanup completed"
     );
   } catch (error) {
-    log.error({ error }, "Retention cleanup failed");
+    const cause =
+      error instanceof Error
+        ? (error as { cause?: { code?: string } }).cause
+        : undefined;
+    if (cause?.code === "42P01") {
+      log.warn("Retention cleanup skipped, tables do not exist yet");
+    } else {
+      log.error({ error }, "Retention cleanup failed");
+    }
   }
 };
 
