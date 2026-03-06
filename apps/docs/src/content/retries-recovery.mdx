@@ -51,7 +51,9 @@ Von protects unstable endpoints with a circuit breaker, stopping delivery tempor
 | Failure threshold | 5 consecutive failures |
 | Reset timeout | 5 minutes |
 
-Only consecutive failures count toward the threshold, and any successful delivery resets the failure counter to zero.
+Only consecutive failures count toward the threshold, and any successful delivery resets the failure counter to zero. When the circuit closes after a successful delivery, Von emails the organization owner to confirm deliveries have resumed.
+
+If an endpoint stays in a failure state for 5 consecutive days, Von disables it and sends a notification. Re-enable the endpoint and replay skipped deliveries once the issue is resolved.
 
 <Tip title="Replaying circuit-skipped deliveries">
   Deliveries skipped while the circuit is open are marked `circuit_open`, and after the endpoint recovers you can bulk replay them.
@@ -108,7 +110,7 @@ Von sends deliveries only to endpoints in `active` status, and switching to `pau
 | --- | --- |
 | `active` | Deliveries are sent normally |
 | `paused` | Deliveries in flight are marked `paused`, not attempted |
-| `disabled` | Deliveries in flight are marked `skipped`, not attempted |
+| `disabled` | Deliveries in flight are marked `skipped`, not attempted. Von can also set this automatically after 5 days of sustained delivery failures. |
 
 Pausing is useful during maintenance windows, since deliveries marked `paused` can be replayed once the endpoint is active again.
 

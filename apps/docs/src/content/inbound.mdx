@@ -48,7 +48,7 @@ https://api.usevon.com/in/{id}
     The third-party service (e.g. `stripe`, `github`, `shopify`). Used for labeling only.
   </Property>
   <Property name="status" type="string">
-    `active`, `paused`, or `disabled`. Defaults to `active`.
+    `active`, `paused`, or `disabled`. Defaults to `active`. Von automatically disables endpoints after 5 consecutive days of sustained forwarding failures.
   </Property>
 </Properties>
 
@@ -78,6 +78,8 @@ Inbound forwarding uses the same reliability features as outbound delivery:
 - Automatic retries with exponential backoff (default 4 attempts)
 - Circuit breaker that opens after 5 consecutive failures
 - Configurable `maxAttempts` and `timeoutMs` per endpoint
+
+Inbound forwarding endpoints share the same auto-disable rules as outbound endpoints and will be disabled after 5 days of sustained forwarding failures.
 
 ## Managing inbound endpoints
 

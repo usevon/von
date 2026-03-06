@@ -34,7 +34,7 @@ const { data: endpoint } = await von.endpoints.post({
     A display label.
   </Property>
   <Property name="status" type="string">
-    `active` delivers normally, `paused` queues deliveries with a paused status, `disabled` skips deliveries entirely.
+    `active` delivers normally, `paused` queues deliveries with a paused status, `disabled` skips deliveries entirely. Von automatically disables endpoints after 5 consecutive days of sustained delivery failures.
   </Property>
   <Property name="events" type="string[]">
     Event type patterns to subscribe to, where omitting or passing `null` receives all events and an empty array receives nothing.
