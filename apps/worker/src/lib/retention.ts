@@ -1,11 +1,10 @@
-import { db } from "@usevon/db";
+import { db, lt } from "@usevon/db";
 import {
   delivery,
   deliveryAttempt,
   event,
   inboundDelivery,
 } from "@usevon/db/schema";
-import { lt } from "drizzle-orm";
 import { env } from "@/env";
 import { log } from "@/lib/logger";
 

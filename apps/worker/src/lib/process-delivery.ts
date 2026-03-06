@@ -1,6 +1,10 @@
 import { db } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
-import { FailureAlertEmail, render } from "@usevon/email";
+import {
+  EndpointRecoveredEmail,
+  FailureAlertEmail,
+  render,
+} from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 import {
   CIRCUIT_CONFIG,
@@ -18,6 +22,7 @@ import { resendClient } from "@/lib/email";
 import { log } from "@/lib/logger";
 
 const CIRCUIT_ALERT_TTL = 60 * 60; // 1 hour dedup window
+const RECOVERY_ALERT_TTL = 60 * 60; // 1 hour dedup window
 
 /**
  * Send a failure alert email to the org owner when a circuit breaker opens.
@@ -80,6 +85,68 @@ function sendCircuitBreakerAlert(
         { err, endpointId },
         "Failed to send circuit breaker alert email"
       );
+    }
+  })();
+}
+
+function sendRecoveryAlert(endpointId: string): void {
+  (async () => {
+    try {
+      const redis = getRedisClient();
+      const alertKey = `org:circuit-recovered:${endpointId}`;
+      const set = await redis.set(
+        alertKey,
+        "1",
+        "EX",
+        RECOVERY_ALERT_TTL,
+        "NX"
+      );
+      if (set !== "OK") {
+        return;
+      }
+
+      const [result] = await db
+        .select({
+          url: schema.endpoint.url,
+          orgName: schema.organization.name,
+          ownerEmail: schema.user.email,
+        })
+        .from(schema.endpoint)
+        .innerJoin(
+          schema.organization,
+          eq(schema.organization.id, schema.endpoint.organizationId)
+        )
+        .innerJoin(
+          schema.member,
+          eq(schema.member.organizationId, schema.endpoint.organizationId)
+        )
+        .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
+        .where(eq(schema.endpoint.id, endpointId))
+        .limit(1);
+
+      if (!result) {
+        return;
+      }
+
+      const now = new Date();
+      const html = await render(
+        EndpointRecoveredEmail({
+          endpointUrl: result.url,
+          recoveredAt: now.toLocaleString("en-US", {
+            dateStyle: "long",
+            timeStyle: "short",
+          }),
+          dashboardUrl: env.DASHBOARD_URL,
+        })
+      );
+
+      await resendClient.sendEmail({
+        to: result.ownerEmail,
+        subject: `Endpoint recovered: ${result.url}`,
+        html,
+      });
+    } catch (err) {
+      log.error({ err, endpointId }, "Failed to send recovery alert email");
     }
   })();
 }
@@ -280,6 +347,10 @@ export async function processDelivery<TJob extends BaseJobData>(
 
     if (response.ok) {
       const attempts = deliveryRecord.attempts + 1;
+      const wasCircuitBroken =
+        circuitState.circuitState === "open" ||
+        circuitState.circuitState === "half_open";
+
       await db.transaction(async (tx) => {
         await tx
           .update(config.deliveryTable)
@@ -312,6 +383,14 @@ export async function processDelivery<TJob extends BaseJobData>(
           });
         }
       });
+
+      if (wasCircuitBroken) {
+        log.info(
+          { endpointId: ep.id },
+          "Circuit breaker closed, endpoint recovered"
+        );
+        sendRecoveryAlert(ep.id);
+      }
 
       log.info(
         { deliveryId, status: response.status },

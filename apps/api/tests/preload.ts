@@ -133,6 +133,7 @@ if (!isIntegration) {
     FailureAlertEmail: noop,
     EmailChangedEmail: noop,
     PlanChangedEmail: noop,
+    EndpointDisabledEmail: noop,
     EndpointRecoveredEmail: noop,
   }));
 }

@@ -1,5 +1,6 @@
 import { checkDatabaseConnection } from "@usevon/db";
 import { checkRedisConnection } from "@usevon/queue";
+import { startAutoDisable } from "@/lib/auto-disable";
 import { log } from "@/lib/logger";
 import { startRetentionCleanup } from "@/lib/retention";
 import { createInboundWorker } from "@/processors/inbound";
@@ -40,12 +41,14 @@ if (!db.ok) {
 const webhookWorker = createWebhookWorker();
 const inboundWorker = createInboundWorker();
 const stopRetentionCleanup = startRetentionCleanup();
+const stopAutoDisable = startAutoDisable();
 
 log.info("Von Worker started");
 
 const shutdown = async () => {
   log.info("Shutting down worker...");
   stopRetentionCleanup();
+  stopAutoDisable();
   await Promise.all([webhookWorker.close(), inboundWorker.close()]);
   process.exit(0);
 };
