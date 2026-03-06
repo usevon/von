@@ -24,6 +24,7 @@ bin/
 # OS
 .DS_Store
 Thumbs.db
+NUL
 
 # Docker
 docker/data/
