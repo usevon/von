@@ -13,7 +13,7 @@ type ResendVerificationProps = {
 
 export const ResendVerification = ({ email }: ResendVerificationProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldown, setCooldown] = useState(COOLDOWN_SECONDS);
 
   useEffect(() => {
     if (cooldown <= 0) return;
