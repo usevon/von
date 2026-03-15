@@ -4,7 +4,9 @@ import {
   ErrorResponse,
   IdParam,
   PaginationQuery,
+  ReadGuard,
   SuccessResponse,
+  WriteGuard,
 } from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
@@ -14,7 +16,7 @@ import { EndpointService } from "@/modules/endpoints/service";
 
 export const endpointsRead = new Elysia({ prefix: "/endpoints" })
   .use(vonAuth("read:endpoints"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -44,9 +46,7 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
 export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   .use(vonAuth("write:endpoints"))
   .use(orgThroughputLimit)
-  .guard({
-    response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse },
-  })
+  .guard({ response: WriteGuard })
   .post(
     "/",
     async ({ organizationId, body, status }) =>

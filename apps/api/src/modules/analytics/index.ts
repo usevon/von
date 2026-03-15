@@ -1,12 +1,12 @@
 import { Elysia } from "elysia";
-import { ErrorResponse } from "@/lib/models";
+import { ErrorResponse, ReadGuard } from "@/lib/models";
 import { AnalyticsModel } from "@/modules/analytics/model";
 import { AnalyticsService } from "@/modules/analytics/service";
 import { vonAuth } from "@/modules/auth";
 
 export const analyticsRead = new Elysia({ prefix: "/analytics" })
   .use(vonAuth("read:analytics"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/overview",
     ({ organizationId, query }) =>

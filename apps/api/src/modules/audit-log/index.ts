@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { ErrorResponse } from "@/lib/models";
+import { ErrorResponse, ReadGuard } from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
 import { AuditLogModel } from "@/modules/audit-log/model";
 import { AuditLogService } from "@/modules/audit-log/service";
@@ -7,7 +7,7 @@ import { vonAuth } from "@/modules/auth";
 
 export const auditLogRead = new Elysia({ prefix: "/audit-log" })
   .use(vonAuth("read:*"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/",
     ({ organizationId, scopes, headers, query, status }) => {

@@ -1,10 +1,12 @@
 import { Elysia, t } from "elysia";
 import { env } from "@/env";
+import { toStringHeaders } from "@/lib/headers";
 import { orNotFound } from "@/lib/http";
 import {
   ErrorResponse,
   IdParam,
   PaginationQuery,
+  ReadGuard,
   SuccessResponse,
 } from "@/lib/models";
 import { getOrgPlan } from "@/lib/org-plan";
@@ -17,7 +19,7 @@ import { InboundService } from "@/modules/inbound/service";
 
 export const inboundRead = new Elysia({ prefix: "/inbound" })
   .use(vonAuth("read:inbound"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -46,7 +48,7 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
 
 export const inboundWrite = new Elysia({ prefix: "/inbound" })
   .use(vonAuth("write:inbound"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
@@ -139,13 +141,6 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         return status(429, { error: "Too many requests" });
       }
 
-      const headerRecord: Record<string, string> = {};
-      for (const [key, value] of Object.entries(headers)) {
-        if (typeof value === "string") {
-          headerRecord[key] = value;
-        }
-      }
-
       return InboundService.receive({
         endpointId: params.id,
         organizationId: endpoint.organizationId,
@@ -159,7 +154,7 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
           maxAttempts: endpoint.maxAttempts,
         },
         payload: body,
-        headers: headerRecord,
+        headers: toStringHeaders(headers),
       });
     },
     {

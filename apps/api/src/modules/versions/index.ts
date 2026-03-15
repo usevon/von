@@ -1,6 +1,11 @@
 import { Elysia, t } from "elysia";
 import { orNotFound } from "@/lib/http";
-import { ErrorResponse, PaginationQuery, SuccessResponse } from "@/lib/models";
+import {
+  ErrorResponse,
+  PaginationQuery,
+  ReadGuard,
+  SuccessResponse,
+} from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
 import { vonAuth } from "@/modules/auth";
 import { VersionModel } from "@/modules/versions/model";
@@ -12,7 +17,7 @@ const VersionParam = t.Object({
 
 export const versionsRead = new Elysia({ prefix: "/versions" })
   .use(vonAuth("read:versions"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/",
     ({ organizationId, query }) =>
@@ -41,7 +46,7 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
 
 export const versionsWrite = new Elysia({ prefix: "/versions" })
   .use(vonAuth("write:versions"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .post(
     "/",
     async ({ organizationId, body, status }) =>

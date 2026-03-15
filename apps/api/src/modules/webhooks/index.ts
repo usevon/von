@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { ErrorResponse, IdParam } from "@/lib/models";
+import { ErrorResponse, IdParam, ReadGuard, WriteGuard } from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
 import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
@@ -9,9 +9,7 @@ import { WebhookService } from "@/modules/webhooks/service";
 export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(vonAuth("write:webhooks"))
   .use(orgThroughputLimit)
-  .guard({
-    response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse },
-  })
+  .guard({ response: WriteGuard })
   .post(
     "/",
     async ({ organizationId, plan, body, status }) =>
@@ -50,7 +48,7 @@ export const webhooks = new Elysia({ prefix: "/webhooks" })
 
 export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
   .use(vonAuth("read:webhooks"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get(
     "/events",
     ({ organizationId, query }) =>
@@ -125,9 +123,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
 export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
   .use(vonAuth("write:webhooks"))
   .use(orgThroughputLimit)
-  .guard({
-    response: { 401: ErrorResponse, 403: ErrorResponse, 429: ErrorResponse },
-  })
+  .guard({ response: WriteGuard })
   .post(
     "/events/:id/replay",
     async ({ organizationId, plan, params, body }) =>

@@ -4,7 +4,8 @@ import { generateTunnelId, generateTunnelSecret } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { Elysia } from "elysia";
 import { env } from "@/env";
-import { ErrorResponse } from "@/lib/models";
+import { toStringHeaders } from "@/lib/headers";
+import { ErrorResponse, ReadGuard } from "@/lib/models";
 import { decryptSecret, encryptSecret } from "@/lib/secret-cipher";
 import { validateSessionWithUser, vonAuth } from "@/modules/auth";
 import type { TunnelResponse } from "@/modules/tunnel/model";
@@ -46,7 +47,7 @@ const parseTunnelResponseMessage = (
 
 export const tunnelRegisterWrite = new Elysia()
   .use(vonAuth("write:tunnels"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .post(
     "/register",
     async ({ body, organizationId, userId, status }) => {
@@ -134,7 +135,7 @@ export const tunnelRegisterWrite = new Elysia()
 
 export const tunnelRegisterRead = new Elysia()
   .use(vonAuth("read:tunnels"))
-  .guard({ response: { 401: ErrorResponse, 403: ErrorResponse } })
+  .guard({ response: ReadGuard })
   .get("/tunnels", ({ organizationId }) => ({
     tunnels: TunnelService.getActiveTunnels(organizationId),
   }));
@@ -146,14 +147,7 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
       return status(401, { error: "Unauthorized" });
     }
 
-    const headerRecord: Record<string, string> = {};
-    for (const [key, value] of Object.entries(headers)) {
-      if (typeof value === "string") {
-        headerRecord[key] = value;
-      }
-    }
-
-    const session = await validateSessionWithUser(headerRecord);
+    const session = await validateSessionWithUser(toStringHeaders(headers));
     if (!session) {
       return status(401, { error: "Unauthorized" });
     }
@@ -161,12 +155,7 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
   async open(ws) {
     const tunnelId = ws.data.params.tunnelId;
 
-    const headers: Record<string, string> = {};
-    for (const [key, value] of Object.entries(ws.data.headers ?? {})) {
-      if (value) {
-        headers[key] = value;
-      }
-    }
+    const headers = toStringHeaders(ws.data.headers ?? {});
 
     // Re-validate to get organizationId (beforeHandle context doesn't persist)
     const session = await validateSessionWithUser(headers);
@@ -295,49 +284,35 @@ const parseTunnelParam = (
   };
 };
 
-export const tunnelProxy = new Elysia()
-  .all(
-    "/:tunnelIdWithSecret/*",
-    ({ params, request, set, status }) => {
-      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-      if (
-        !(
-          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
-        )
-      ) {
-        return status(401, { error: "Invalid tunnel" });
-      }
-      const path =
-        new URL(request.url).pathname.replace(
+const handleTunnelProxy =
+  (
+    hasWildcard: boolean
+  ): ((ctx: {
+    params: { tunnelIdWithSecret: string };
+    request: Request;
+    set: Parameters<typeof TunnelService.handleProxy>[2];
+    status: (code: number, body: unknown) => unknown;
+  }) => unknown) =>
+  ({ params, request, set, status }) => {
+    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+    if (
+      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
+    ) {
+      return status(401, { error: "Invalid tunnel" });
+    }
+    const path = hasWildcard
+      ? new URL(request.url).pathname.replace(
           `/${params.tunnelIdWithSecret}`,
           ""
-        ) || "/";
-      return TunnelService.handleProxy(
-        parsed.tunnelId,
-        request,
-        set as Parameters<typeof TunnelService.handleProxy>[2],
-        path
-      );
-    },
-    { parse: "none" }
-  )
-  .all(
-    "/:tunnelIdWithSecret",
-    ({ params, request, set, status }) => {
-      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-      if (
-        !(
-          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
-        )
-      ) {
-        return status(401, { error: "Invalid tunnel" });
-      }
-      return TunnelService.handleProxy(
-        parsed.tunnelId,
-        request,
-        set as Parameters<typeof TunnelService.handleProxy>[2],
-        "/"
-      );
-    },
-    { parse: "none" }
-  );
+        ) || "/"
+      : "/";
+    return TunnelService.handleProxy(parsed.tunnelId, request, set, path);
+  };
+
+export const tunnelProxy = new Elysia()
+  .all("/:tunnelIdWithSecret/*", handleTunnelProxy(true) as never, {
+    parse: "none",
+  })
+  .all("/:tunnelIdWithSecret", handleTunnelProxy(false) as never, {
+    parse: "none",
+  });
