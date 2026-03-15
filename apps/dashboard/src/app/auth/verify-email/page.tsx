@@ -16,7 +16,7 @@ export default async function VerifyEmailPage(props: VerifyEmailPageProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
+      <div className="flex flex-col gap-1">
         <h1 className="font-semibold text-2xl tracking-tight">
           Check your email
         </h1>

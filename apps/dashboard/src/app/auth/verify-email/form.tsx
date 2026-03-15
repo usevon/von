@@ -1,9 +1,11 @@
 "use client";
 
 import { Button, Spinner, toast } from "@usevon/ui";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { authClient } from "@/lib/auth/client";
+
+const COOLDOWN_SECONDS = 60;
 
 type ResendVerificationProps = {
   email?: string;
@@ -11,9 +13,17 @@ type ResendVerificationProps = {
 
 export const ResendVerification = ({ email }: ResendVerificationProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [hasSent, setHasSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-  const handleResend = async () => {
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleResend = useCallback(async () => {
     if (!email) {
       toast.error("No email provided", "Please sign up again");
       return;
@@ -27,19 +37,21 @@ export const ResendVerification = ({ email }: ResendVerificationProps) => {
         callbackURL: "/",
       });
 
-      setHasSent(true);
+      setCooldown(COOLDOWN_SECONDS);
       toast.success("Email sent", "Check your inbox for the verification link");
     } catch {
       toast.error("Failed to resend", "Please try again later");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [email]);
+
+  const isDisabled = isLoading || cooldown > 0;
 
   return (
     <Button
       className="w-full"
-      disabled={isLoading || hasSent}
+      disabled={isDisabled}
       onClick={handleResend}
       variant="outline"
     >
@@ -48,8 +60,8 @@ export const ResendVerification = ({ email }: ResendVerificationProps) => {
           <Spinner className="size-4" />
           Sending...
         </>
-      ) : hasSent ? (
-        "Verification email sent"
+      ) : cooldown > 0 ? (
+        `Resend in ${cooldown}s`
       ) : (
         "Resend verification email"
       )}
