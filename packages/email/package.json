@@ -8,6 +8,11 @@
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
+    "./client": {
+      "default": "./dist/src/client.js",
+      "import": "./dist/src/client.js",
+      "types": "./dist/src/client.d.ts"
+    },
     "./templates/*": {
       "default": "./dist/emails/*.js",
       "import": "./dist/emails/*.js",
@@ -21,7 +26,8 @@
   "dependencies": {
     "@react-email/components": "^1.0.8",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "resend": "^6.9.3"
   },
   "devDependencies": {
     "@react-email/preview-server": "^5.2.9",

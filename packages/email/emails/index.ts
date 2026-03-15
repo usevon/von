@@ -1,4 +1,5 @@
 export { EmailChangedEmail } from "./email-changed.js";
+export { VerificationEmail } from "./email-verification.js";
 export { EndpointDisabledEmail } from "./endpoint-disabled.js";
 export { EndpointRecoveredEmail } from "./endpoint-recovered.js";
 export { FailureAlertEmail } from "./failure-alert.js";

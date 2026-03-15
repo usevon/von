@@ -27,7 +27,7 @@ export const EmailButton = ({
 );
 
 export const EmailTimestamp = ({ children }: { children: ReactNode }) => (
-  <table cellPadding={0} cellSpacing={0} className="mt-4 mb-6">
+  <table cellPadding={0} cellSpacing={0} className="m-0 mb-6">
     <tr>
       <td className="border-border border-l-2 pl-3 text-[13px] text-muted leading-5">
         {children}
