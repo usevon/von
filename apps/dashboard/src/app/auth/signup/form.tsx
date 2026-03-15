@@ -1,18 +1,47 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { Form, toast } from "@usevon/ui";
-import { useRouter } from "next/navigation";
+import { Button, Form, Spinner, toast } from "@usevon/ui";
+import { useCallback, useEffect, useState } from "react";
 
 import { SubmitButton, TextField, validators } from "@/components/form";
-import { signUp } from "@/lib/auth/client";
+import { authClient, signUp } from "@/lib/auth/client";
+
+const COOLDOWN_SECONDS = 60;
 
 type SignupFormProps = {
   redirectTo?: string;
 };
 
 export const SignupForm = (props: SignupFormProps) => {
-  const router = useRouter();
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleResend = useCallback(async () => {
+    if (!verifyEmail) return;
+    setIsResending(true);
+    try {
+      await authClient.sendVerificationEmail({
+        email: verifyEmail,
+        callbackURL: window.location.origin,
+      });
+      setCooldown(COOLDOWN_SECONDS);
+      toast.success("Email sent", "Check your inbox for the verification link");
+    } catch {
+      toast.error("Failed to resend", "Please try again later");
+    } finally {
+      setIsResending(false);
+    }
+  }, [verifyEmail]);
 
   const form = useForm({
     defaultValues: {
@@ -42,14 +71,45 @@ export const SignupForm = (props: SignupFormProps) => {
           "Account created",
           "Check your email for a verification link"
         );
-        router.push(
-          `/auth/verify-email?email=${encodeURIComponent(value.email)}`
-        );
+        setVerifyEmail(value.email);
+        setCooldown(COOLDOWN_SECONDS);
       } catch {
         toast.error("Something went wrong", "Please try again later");
       }
     },
   });
+
+  if (verifyEmail) {
+    const isDisabled = isResending || cooldown > 0;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <p className="font-semibold text-sm">Check your email</p>
+          <p className="text-muted-foreground text-sm">
+            We sent a verification link to{" "}
+            <strong className="text-foreground">{verifyEmail}</strong>
+          </p>
+        </div>
+        <Button
+          className="w-full"
+          disabled={isDisabled}
+          onClick={handleResend}
+          variant="outline"
+        >
+          {isResending ? (
+            <>
+              <Spinner className="size-4" />
+              Sending...
+            </>
+          ) : cooldown > 0 ? (
+            `Resend in ${cooldown}s`
+          ) : (
+            "Resend verification email"
+          )}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Form
