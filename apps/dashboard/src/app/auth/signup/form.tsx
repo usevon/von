@@ -28,6 +28,7 @@ export const SignupForm = (props: SignupFormProps) => {
               name: value.name,
               email: value.email,
               password: value.password,
+              callbackURL: window.location.origin,
             }),
           { loading: "Creating account..." }
         );

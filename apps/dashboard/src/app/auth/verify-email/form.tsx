@@ -34,7 +34,7 @@ export const ResendVerification = ({ email }: ResendVerificationProps) => {
     try {
       await authClient.sendVerificationEmail({
         email,
-        callbackURL: "/",
+        callbackURL: window.location.origin,
       });
 
       setCooldown(COOLDOWN_SECONDS);
