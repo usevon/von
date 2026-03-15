@@ -1,6 +1,6 @@
 import { betterAuth, drizzleAdapter } from "@usevon/auth";
 import { db } from "@usevon/db";
-import { PasswordResetEmail, render } from "@usevon/email";
+import { PasswordResetEmail, render, VerificationEmail } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 
 import { env } from "@/env";
