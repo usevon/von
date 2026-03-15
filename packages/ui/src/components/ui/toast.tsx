@@ -7,6 +7,7 @@ import {
   InfoIcon,
   WarningCircleIcon,
   WarningIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -132,36 +133,44 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
               swipeDirection={swipeDirectionValue}
               toast={toastEntry}
             >
-              <Toast.Content className="pointer-events-auto flex items-center justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
-                <div className="flex gap-2">
-                  {Icon ? (
-                    <div
-                      className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-                      data-slot="toast-icon"
-                    >
-                      <Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-col gap-0.5">
-                    <Toast.Title
-                      className="font-medium"
-                      data-slot="toast-title"
-                    />
-                    <Toast.Description
-                      className="text-muted-foreground"
-                      data-slot="toast-description"
-                    />
-                  </div>
-                </div>
-                {toastEntry.actionProps ? (
-                  <Toast.Action
-                    className={buttonVariants({ size: "xs" })}
-                    data-slot="toast-action"
+              <Toast.Content className="pointer-events-auto flex items-start gap-2.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
+                {Icon ? (
+                  <div
+                    className="mt-0.5 [&>svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+                    data-slot="toast-icon"
                   >
-                    {toastEntry.actionProps.children}
-                  </Toast.Action>
+                    <Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
+                  </div>
                 ) : null}
+
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <Toast.Title
+                    className="font-medium leading-snug"
+                    data-slot="toast-title"
+                  />
+                  <Toast.Description
+                    className="text-[13px] text-muted-foreground leading-snug"
+                    data-slot="toast-description"
+                  />
+                  {toastEntry.actionProps ? (
+                    <Toast.Action
+                      className={cn(
+                        buttonVariants({ size: "xs" }),
+                        "mt-1.5 self-start"
+                      )}
+                      data-slot="toast-action"
+                    >
+                      {toastEntry.actionProps.children}
+                    </Toast.Action>
+                  ) : null}
+                </div>
+
+                <Toast.Close
+                  className="-mt-0.5 -mr-1 shrink-0 cursor-pointer rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground"
+                  data-slot="toast-close"
+                >
+                  <XIcon className="size-3.5" />
+                </Toast.Close>
               </Toast.Content>
             </Toast.Root>
           );
@@ -330,8 +339,8 @@ async function toastTimed<T>(
 ): Promise<{
   data: T;
   duration: number;
-  showSuccess: (title: string) => void;
-  showError: (title: string) => void;
+  showSuccess: (title: string, description?: string) => void;
+  showError: (title: string, description?: string) => void;
 }> {
   const startTime = performance.now();
 
@@ -342,32 +351,39 @@ async function toastTimed<T>(
   const data = await fn();
   const duration = Math.round(performance.now() - startTime);
   const isDev = process.env.NODE_ENV === "development";
+  const devSuffix = isDev ? ` (${duration}ms)` : "";
 
   return {
     data,
     duration,
-    showSuccess: (title: string) => {
-      const message = isDev ? `${title} (${duration}ms)` : title;
+    showSuccess: (title: string, description?: string) => {
+      const desc = description
+        ? `${description}${devSuffix}`
+        : devSuffix.trim() || undefined;
       if (toastId) {
         toastManager.update(toastId, {
-          title: message,
+          title,
+          description: desc,
           type: "success",
           timeout: 4000,
         });
       } else {
-        toastManager.add({ title: message, type: "success" });
+        toastManager.add({ title, description: desc, type: "success" });
       }
     },
-    showError: (title: string) => {
-      const message = isDev ? `${title} (${duration}ms)` : title;
+    showError: (title: string, description?: string) => {
+      const desc = description
+        ? `${description}${devSuffix}`
+        : devSuffix.trim() || undefined;
       if (toastId) {
         toastManager.update(toastId, {
-          title: message,
+          title,
+          description: desc,
           type: "error",
           timeout: 4000,
         });
       } else {
-        toastManager.add({ title: message, type: "error" });
+        toastManager.add({ title, description: desc, type: "error" });
       }
     },
   };
