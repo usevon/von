@@ -33,6 +33,14 @@
     "./logger": {
       "types": "./dist/logger.d.mts",
       "default": "./dist/logger.mjs"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.mts",
+      "default": "./dist/constants.mjs"
+    },
+    "./async": {
+      "types": "./dist/async.d.mts",
+      "default": "./dist/async.mjs"
     }
   },
   "scripts": {

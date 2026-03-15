@@ -1,3 +1,4 @@
+export { withTimeout } from "@/async";
 export {
   CIRCUIT_CONFIG,
   type CircuitBreakerState,
@@ -7,6 +8,11 @@ export {
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "@/circuit-breaker";
+export {
+  DEFAULT_MAX_ATTEMPTS,
+  DEFAULT_TIMEOUT_MS,
+  MS_PER_DAY,
+} from "@/constants";
 export {
   buildSignatureHeader,
   hashSha256,

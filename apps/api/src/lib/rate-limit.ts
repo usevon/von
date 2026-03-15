@@ -1,5 +1,5 @@
 import { getRedisClient } from "@usevon/queue";
-import { TooManyRequestsError } from "@usevon/utils";
+import { TooManyRequestsError, withTimeout } from "@usevon/utils";
 import { Elysia } from "elysia";
 
 const redis = getRedisClient();
@@ -39,26 +39,6 @@ if current == 1 then
 end
 return current
 `;
-
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  timeoutMs: number
-): Promise<T> =>
-  await new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error("Rate limiter timed out"));
-    }, timeoutMs);
-
-    promise
-      .then((value) => {
-        clearTimeout(timeout);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-  });
 
 const createRateLimiter = (options: RateLimitOptions) => {
   const {

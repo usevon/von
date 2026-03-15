@@ -20,6 +20,18 @@ export const SuccessResponse = t.Object({
   success: t.Boolean(),
 });
 
+/** Guard response presets for auth-protected routes. */
+export const ReadGuard = {
+  401: ErrorResponse,
+  403: ErrorResponse,
+} as const;
+
+export const WriteGuard = {
+  401: ErrorResponse,
+  403: ErrorResponse,
+  429: ErrorResponse,
+} as const;
+
 export type CursorPaginationQueryType = typeof CursorPaginationQuery.static;
 export type PaginationQueryType = CursorPaginationQueryType;
 export type IdParamType = typeof IdParam.static;

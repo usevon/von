@@ -54,20 +54,10 @@ export namespace EndpointModel {
 
   export type endpoint = typeof endpoint.static;
 
-  export const endpointWithSecret = t.Object({
-    id: t.String({ format: "uuid" }),
-    url: t.String(),
-    description: t.Union([t.String(), t.Null()]),
-    secret: t.String(),
-    status: t.String(),
-    version: t.Union([t.String(), t.Null()]),
-    maxAttempts: t.Number(),
-    timeoutMs: t.Number(),
-    events: t.Union([t.Array(t.String()), t.Null()]),
-    lastSuccessAt: t.Union([t.String(), t.Null()]),
-    createdAt: t.String(),
-    updatedAt: t.String(),
-  });
+  export const endpointWithSecret = t.Intersect([
+    endpoint,
+    t.Object({ secret: t.String() }),
+  ]);
 
   export type endpointWithSecret = typeof endpointWithSecret.static;
 

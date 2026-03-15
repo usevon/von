@@ -1,5 +1,5 @@
 import { createConnection, getRedisClient } from "@usevon/queue";
-import { timingSafeEqual } from "@usevon/utils";
+import { timingSafeEqual, withTimeout } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { env } from "@/env";
 import type {
@@ -28,26 +28,6 @@ const relayPending = new Map<
 
 const redis = getRedisClient();
 const subscriber = createConnection();
-
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  timeoutMs: number
-): Promise<T> =>
-  await new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error("Redis operation timed out"));
-    }, timeoutMs);
-
-    promise
-      .then((value) => {
-        clearTimeout(timeout);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-  });
 
 const bestEffortRedis = async <T>(
   operation: Promise<T>,

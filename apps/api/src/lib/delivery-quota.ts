@@ -134,7 +134,7 @@ function checkQuotaThresholds(
             organizationName: owner.orgName,
             limit,
             percentUsed: Math.min(percentUsed, 100),
-            dashboardUrl: process.env.DASHBOARD_URL ?? "http://localhost:3001",
+            dashboardUrl: env.DASHBOARD_URL ?? "http://localhost:3001",
           })
         );
 

@@ -5,12 +5,11 @@ import {
   event,
   inboundDelivery,
 } from "@usevon/db/schema";
+import { MS_PER_DAY } from "@usevon/utils";
 import { env } from "@/env";
 import { log } from "@/lib/logger";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-const getCutoff = (days: number) => new Date(Date.now() - days * DAY_MS);
+const getCutoff = (days: number) => new Date(Date.now() - days * MS_PER_DAY);
 
 const runRetentionCleanup = async () => {
   const deliveryCutoff = getCutoff(env.DELIVERY_RETENTION_DAYS);

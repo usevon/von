@@ -34,22 +34,6 @@ type DeliveryAttemptRow = typeof deliveryAttempt.$inferSelect;
 
 const DELIVERY_CURSOR_SORT = "desc" as const;
 
-const parseOptionalDate = (
-  value: string | undefined,
-  fieldName: "from" | "to"
-): Date | null => {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestError(`Invalid ${fieldName} date`);
-  }
-
-  return date;
-};
-
 const toDelivery = (row: DeliveryRow): WebhookDelivery => ({
   id: row.id,
   eventId: row.eventId,
@@ -359,10 +343,7 @@ export abstract class WebhookService {
     const sort: CursorSort = filters?.sort === "asc" ? "asc" : "desc";
     const from = parseOptionalDate(filters?.from, "from");
     const to = parseOptionalDate(filters?.to, "to");
-
-    if (from && to && from > to) {
-      throw new BadRequestError("from must be before or equal to to");
-    }
+    validateDateRange(from, to);
 
     const normalizedEventTypes = filters?.eventTypes?.length
       ? [...filters.eventTypes].sort()
@@ -461,10 +442,7 @@ export abstract class WebhookService {
   ): Promise<WebhookModel.deliveryList> {
     const from = parseOptionalDate(filters?.from, "from");
     const to = parseOptionalDate(filters?.to, "to");
-
-    if (from && to && from > to) {
-      throw new BadRequestError("from must be before or equal to to");
-    }
+    validateDateRange(from, to);
 
     const scopeHash = buildCursorScopeHash({
       resource: "webhook-deliveries",

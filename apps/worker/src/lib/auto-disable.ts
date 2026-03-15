@@ -1,12 +1,11 @@
 import { and, db, eq, gt, lt } from "@usevon/db";
 import { endpoint, inboundEndpoint, member, user } from "@usevon/db/schema";
 import { EndpointDisabledEmail, render } from "@usevon/email";
+import { MS_PER_DAY } from "@usevon/utils";
 import type { PgTableWithColumns } from "drizzle-orm/pg-core";
 import { env } from "@/env";
 import { resendClient } from "@/lib/email";
 import { log } from "@/lib/logger";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function sendDisabledAlert(
   endpointUrl: string,
@@ -54,8 +53,10 @@ async function disableStaleEndpoints(
   table: PgTableWithColumns<any>,
   urlColumn: string
 ): Promise<number> {
-  const cutoff = new Date(Date.now() - env.AUTO_DISABLE_AFTER_DAYS * DAY_MS);
-  const recentFailureCutoff = new Date(Date.now() - DAY_MS);
+  const cutoff = new Date(
+    Date.now() - env.AUTO_DISABLE_AFTER_DAYS * MS_PER_DAY
+  );
+  const recentFailureCutoff = new Date(Date.now() - MS_PER_DAY);
 
   const stale = await db
     .update(table)

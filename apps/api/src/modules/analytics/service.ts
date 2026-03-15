@@ -1,20 +1,7 @@
 import { db } from "@usevon/db";
 import { delivery, deliveryAttempt, event } from "@usevon/db/schema";
-import { BadRequestError } from "@usevon/utils";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import type { AnalyticsModel } from "@/modules/analytics/model";
-
-const parseDate = (value: string | undefined, fieldName: "from" | "to") => {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestError(`Invalid ${fieldName} date`);
-  }
-  return date;
-};
 
 const roundRate = (value: number) => Number((value * 100).toFixed(2));
 const roundValue = (value: number, precision = 2) =>
@@ -38,20 +25,14 @@ const getBucketExpression = (interval: TimeseriesInterval) => {
   return sql<Date>`date_trunc('hour', ${delivery.createdAt})`;
 };
 
-const validateRange = (from: Date | null, to: Date | null) => {
-  if (from && to && from > to) {
-    throw new BadRequestError("from must be before or equal to to");
-  }
-};
-
 export abstract class AnalyticsService {
   static async getOverview(
     organizationId: string,
     query: AnalyticsModel.query
   ): Promise<AnalyticsModel.overview> {
-    const from = parseDate(query.from, "from");
-    const to = parseDate(query.to, "to");
-    validateRange(from, to);
+    const from = parseOptionalDate(query.from, "from");
+    const to = parseOptionalDate(query.to, "to");
+    validateDateRange(from, to);
 
     const conditions = [eq(event.organizationId, organizationId)];
     if (from) {
@@ -118,9 +99,9 @@ export abstract class AnalyticsService {
     organizationId: string,
     query: AnalyticsModel.timeseriesQuery
   ): Promise<AnalyticsModel.timeseries> {
-    const from = parseDate(query.from, "from");
-    const to = parseDate(query.to, "to");
-    validateRange(from, to);
+    const from = parseOptionalDate(query.from, "from");
+    const to = parseOptionalDate(query.to, "to");
+    validateDateRange(from, to);
 
     const interval: TimeseriesInterval = query.interval ?? "1h";
 
@@ -164,9 +145,9 @@ export abstract class AnalyticsService {
     organizationId: string,
     query: AnalyticsModel.query
   ): Promise<AnalyticsModel.retries> {
-    const from = parseDate(query.from, "from");
-    const to = parseDate(query.to, "to");
-    validateRange(from, to);
+    const from = parseOptionalDate(query.from, "from");
+    const to = parseOptionalDate(query.to, "to");
+    validateDateRange(from, to);
 
     const deliveryWhere = and(
       eq(event.organizationId, organizationId),
