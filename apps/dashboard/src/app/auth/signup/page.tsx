@@ -1,7 +1,4 @@
-import { Separator } from "@usevon/ui";
-import Link from "next/link";
 import { SignupForm } from "@/app/auth/signup/form";
-import { OAuthButtons } from "@/components/auth/oauth";
 
 export const metadata = {
   title: "Sign up - Von",
@@ -11,10 +8,6 @@ type SignupPageProps = {
   searchParams: Promise<{ redirect?: string }>;
 };
 
-/**
- * Validates and sanitizes a redirect URL to prevent open redirect attacks.
- * Only allows internal paths (starting with / but not //).
- */
 export function getSafeRedirect(url: string | undefined): string {
   if (!url) {
     return "/";
@@ -29,33 +22,5 @@ export default async function SignupPage(props: SignupPageProps) {
   const searchParams = await props.searchParams;
   const redirectTo = getSafeRedirect(searchParams.redirect);
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-semibold text-2xl tracking-tight">
-          Create an account
-        </h1>
-        <p className="text-muted-foreground text-sm">Get started with Von</p>
-      </div>
-      <OAuthButtons mode="signup" redirectTo={redirectTo} />
-      <div className="flex items-center gap-2">
-        <Separator className="flex-1" />
-        <span className="text-muted-foreground text-xs">or</span>
-        <Separator className="flex-1" />
-      </div>
-      <SignupForm redirectTo={redirectTo} />
-      <p className="text-muted-foreground text-sm">
-        Already have an account?{" "}
-        <Link
-          className="text-foreground underline"
-          href={{
-            pathname: "/auth/login",
-            query: redirectTo !== "/" ? { redirect: redirectTo } : undefined,
-          }}
-        >
-          Sign in
-        </Link>
-      </p>
-    </div>
-  );
+  return <SignupForm redirectTo={redirectTo} />;
 }
