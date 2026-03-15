@@ -23,7 +23,12 @@ export const LoginForm = (props: LoginFormProps) => {
     onSubmit: async ({ value }) => {
       try {
         const { data, showSuccess, showError } = await toast.timed(
-          () => signIn.email({ email: value.email, password: value.password }),
+          () =>
+            signIn.email({
+              email: value.email,
+              password: value.password,
+              callbackURL: window.location.origin,
+            }),
           { loading: "Signing in..." }
         );
 
