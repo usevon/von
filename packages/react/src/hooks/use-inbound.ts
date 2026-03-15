@@ -1,6 +1,5 @@
+import type { InboundEndpoint } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
-
-type InboundEndpoint = import("@usevon/types").InboundEndpoint;
 
 type InboundResponse = {
   endpoints: InboundEndpoint[];

@@ -1,6 +1,5 @@
+import type { WebhookEvent } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
-
-type WebhookEvent = import("@usevon/types").WebhookEvent;
 
 type WebhooksResponse = { events: WebhookEvent[]; nextCursor: string | null };
 

@@ -1,6 +1,5 @@
+import type { Endpoint } from "@usevon/types";
 import { createResource } from "@/hooks/use-resource";
-
-type Endpoint = import("@usevon/types").Endpoint;
 
 type EndpointsResponse = { endpoints: Endpoint[]; nextCursor: string | null };
 
