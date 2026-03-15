@@ -4,6 +4,7 @@ import {
   bearer,
   deviceAuthorization,
   emailHarmony,
+  haveIBeenPwned,
   organization,
 } from "@usevon/auth";
 import { db, eq } from "@usevon/db";
@@ -22,6 +23,10 @@ type SessionInsert = typeof schema.session.$inferInsert;
 const { plugin: auditLogPlugin, apiKeyHooks, organizationHooks } = auditLog();
 
 export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
+  haveIBeenPwned({
+    customPasswordCompromisedMessage:
+      "This password has appeared in a data breach, please choose a different one.",
+  }),
   emailHarmony({
     validator: (email) => {
       if (!isEmail(email)) {

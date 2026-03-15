@@ -15,6 +15,7 @@ export { toNextJsHandler } from "better-auth/next-js";
 export {
   bearer,
   deviceAuthorization,
+  haveIBeenPwned,
   organization,
 } from "better-auth/plugins";
 export { emailHarmony } from "better-auth-harmony";

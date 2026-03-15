@@ -123,10 +123,9 @@ export function verifyApiKey({
           });
         }
 
-        return ctx.json({
-          valid: false,
-          error: { message: ERROR_CODES.INVALID_API_KEY, code: "INVALID_KEY" },
-          key: null,
+        ctx.context.logger.error("API key verification failed:", error);
+        throw new APIError("INTERNAL_SERVER_ERROR", {
+          message: "Internal server error",
         });
       }
     }
