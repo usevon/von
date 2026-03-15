@@ -24,13 +24,16 @@ export const ForgotPasswordForm = () => {
         );
 
         if (data.error) {
-          showError(data.error.message || "Failed to send reset link");
+          showError("Request failed", data.error.message);
           return;
         }
 
-        showSuccess("If an account exists, you'll receive a reset link");
+        showSuccess(
+          "Check your email",
+          "If an account exists, you'll receive a reset link"
+        );
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong", "Please try again later");
       }
     },
   });

@@ -28,12 +28,20 @@ export const DeleteAccount = () => {
     const { error } = await deleteUser();
 
     if (error) {
-      toastManager.add({ title: "Failed to delete account", type: "error" });
+      toastManager.add({
+        title: "Delete failed",
+        description: "Could not delete your account",
+        type: "error",
+      });
       setIsLoading(false);
       return;
     }
 
-    toastManager.add({ title: "Account deleted", type: "success" });
+    toastManager.add({
+      title: "Account deleted",
+      description: "Your account has been permanently removed",
+      type: "success",
+    });
     router.push("/auth/login");
   };
 

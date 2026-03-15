@@ -28,14 +28,24 @@ export const LoginForm = (props: LoginFormProps) => {
         );
 
         if (data.error) {
-          showError(data.error.message || "Invalid credentials");
+          if (data.error.code === "EMAIL_NOT_VERIFIED") {
+            showError(
+              "Email not verified",
+              "Check your inbox for a verification link"
+            );
+            router.push(
+              `/auth/verify-email?email=${encodeURIComponent(value.email)}`
+            );
+            return;
+          }
+          showError("Sign in failed", data.error.message);
           return;
         }
 
-        showSuccess("Welcome back!");
+        showSuccess("Welcome back");
         router.push(props.redirectTo || "/");
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong", "Please try again later");
       }
     },
   });

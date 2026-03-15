@@ -51,7 +51,7 @@ export const OAuthButtons = ({ redirectTo, mode }: OAuthButtonsProps) => {
           toast.success(successMessage);
         },
         onError: (ctx) => {
-          toast.error(ctx.error.message || "Failed to sign in with Google");
+          toast.error("Google sign in failed", ctx.error.message);
           setLoadingProvider(null);
         },
       }
@@ -70,7 +70,7 @@ export const OAuthButtons = ({ redirectTo, mode }: OAuthButtonsProps) => {
           toast.success(successMessage);
         },
         onError: (ctx) => {
-          toast.error(ctx.error.message || "Failed to sign in with GitHub");
+          toast.error("GitHub sign in failed", ctx.error.message);
           setLoadingProvider(null);
         },
       }

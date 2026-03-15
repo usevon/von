@@ -33,14 +33,19 @@ export const SignupForm = (props: SignupFormProps) => {
         );
 
         if (data.error) {
-          showError(data.error.message || "Failed to create account");
+          showError("Account creation failed", data.error.message);
           return;
         }
 
-        showSuccess("Account created!");
-        router.push(props.redirectTo || "/");
+        showSuccess(
+          "Account created",
+          "Check your email for a verification link"
+        );
+        router.push(
+          `/auth/verify-email?email=${encodeURIComponent(value.email)}`
+        );
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong", "Please try again later");
       }
     },
   });

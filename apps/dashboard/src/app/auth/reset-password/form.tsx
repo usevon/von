@@ -21,7 +21,10 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
     onSubmit: async ({ value }) => {
       try {
         if (!props.token) {
-          toast.error("Invalid or expired reset link");
+          toast.error(
+            "Invalid link",
+            "This reset link is invalid or has expired"
+          );
           return;
         }
 
@@ -35,14 +38,17 @@ export const ResetPasswordForm = (props: ResetPasswordFormProps) => {
         );
 
         if (data.error) {
-          showError(data.error.message || "Invalid or expired reset link");
+          showError("Password reset failed", data.error.message);
           return;
         }
 
-        showSuccess("Password reset successfully!");
+        showSuccess(
+          "Password updated",
+          "You can now sign in with your new password"
+        );
         router.push("/auth/login");
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong", "Please try again later");
       }
     },
   });

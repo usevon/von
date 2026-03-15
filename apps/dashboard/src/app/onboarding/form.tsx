@@ -31,14 +31,14 @@ export const OnboardingForm = () => {
         );
 
         if (data.error) {
-          showError(data.error.message || "Failed to create team");
+          showError("Team creation failed", data.error.message);
           return;
         }
 
-        showSuccess("Team created!");
+        showSuccess("Team created", "Redirecting to your dashboard");
         router.push(`/${slug}`);
       } catch {
-        toast.error("Something went wrong");
+        toast.error("Something went wrong", "Please try again later");
       }
     },
   });

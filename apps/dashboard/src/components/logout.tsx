@@ -26,7 +26,11 @@ export const Logout = (props: LogoutProps) => {
     const { error } = await signOut();
 
     if (error) {
-      toastManager.add({ title: "Failed to sign out", type: "error" });
+      toastManager.add({
+        title: "Sign out failed",
+        description: "Please try again",
+        type: "error",
+      });
       setIsLoading(false);
       return;
     }
