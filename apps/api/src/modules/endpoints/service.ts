@@ -11,6 +11,8 @@ import type {
   UpdateEndpoint,
 } from "@usevon/types";
 import {
+  DEFAULT_MAX_ATTEMPTS,
+  DEFAULT_TIMEOUT_MS,
   generateSecret,
   InternalServerError,
   NotFoundError,

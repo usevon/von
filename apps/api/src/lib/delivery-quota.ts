@@ -4,6 +4,7 @@ import { QuotaWarningEmail, render } from "@usevon/email";
 import { getRedisClient } from "@usevon/queue";
 import { TooManyRequestsError } from "@usevon/utils";
 
+import { env } from "@/env";
 import { log } from "@/lib/logger";
 import { resendClient } from "@/lib/resend";
 

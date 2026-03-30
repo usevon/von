@@ -10,6 +10,7 @@ import {
 } from "@usevon/utils";
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { env } from "@/env";
+import { parseOptionalDate, validateDateRange } from "@/lib/date-utils";
 import {
   releaseMonthlyQuota,
   reserveMonthlyQuota,
@@ -691,7 +692,8 @@ export abstract class WebhookService {
       })
       .from(delivery)
       .innerJoin(event, eq(delivery.eventId, event.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .limit(1000);
 
     if (failedDeliveries.length === 0) {
       return { replayed: 0 };

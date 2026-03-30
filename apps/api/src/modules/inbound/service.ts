@@ -7,7 +7,12 @@ import type {
   InboundEndpoint,
   UpdateInboundEndpoint,
 } from "@usevon/types";
-import { generateSecret, InternalServerError } from "@usevon/utils";
+import {
+  DEFAULT_MAX_ATTEMPTS,
+  DEFAULT_TIMEOUT_MS,
+  generateSecret,
+  InternalServerError,
+} from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
 import { withReservedMonthlyQuota } from "@/lib/delivery-quota";
 import { enqueueInboundForwardingJob } from "@/lib/inbound-dispatch";
