@@ -16,6 +16,7 @@ import {
   reserveMonthlyQuota,
   withReservedMonthlyQuota,
 } from "@/lib/delivery-quota";
+import { bufferEvents } from "@/lib/event-buffer";
 import {
   buildCursorCondition,
   buildCursorScopeHash,
@@ -266,12 +267,54 @@ export abstract class WebhookService {
       allDeliveries.length
     );
 
+    // Fast path: no idempotency keys — buffer in Redis, flush async
+    if (idempotencyKeys.length === 0) {
+      try {
+        await bufferEvents({
+          events: newEvents.map((e) => ({
+            id: e.id,
+            organizationId: params.organizationId,
+            eventType: e.eventType,
+            payload: e.payload,
+            idempotencyKey: e.idempotencyKey,
+            createdAt: nowIso,
+          })),
+          deliveries: allDeliveries.map((d) => ({
+            id: d.id as string,
+            eventId: d.eventId as string,
+            endpointId: d.endpointId as string,
+            status: d.status as string,
+            attempts: d.attempts as number,
+            createdAt: nowIso,
+          })),
+          jobs: allJobs,
+        });
+      } catch (error) {
+        await releaseMonthlyQuota(
+          params.organizationId,
+          allDeliveries.length
+        );
+        throw error;
+      }
+
+      for (const e of newEvents) {
+        results.push({
+          id: e.id,
+          eventType: e.eventType,
+          payload: e.payload,
+          idempotencyKey: e.idempotencyKey,
+          createdAt: nowIso,
+        });
+      }
+      return { created: newEvents.length, events: results };
+    }
+
+    // Slow path: idempotency keys present — write to DB synchronously
     let reservedDeliveries = allDeliveries.length;
     let insertedIds = new Set<string>();
 
     try {
       insertedIds = await db.transaction(async (tx) => {
-        // Skip WAL disk flush for event writes — safe because callers can retry
         await tx.execute(sql`SET LOCAL synchronous_commit = off`);
 
         const inserted = await tx
@@ -306,7 +349,6 @@ export abstract class WebhookService {
       ).length;
       const overReserved = reservedDeliveries - insertedDeliveryCount;
 
-      // Parallelize quota release and job enqueue
       const jobsToEnqueue = allJobs.filter((j) =>
         insertedIds.has(j.data.eventId)
       );

@@ -17,6 +17,9 @@ const SESSION_COOKIE_RE = /von\.session_token=([^;]+)/;
 import { db, eq } from "@usevon/db";
 import { organization, user } from "@usevon/db/schema";
 import { app } from "../src/app";
+import { startEventBufferFlusher } from "../src/lib/event-buffer";
+
+const stopFlusher = startEventBufferFlusher();
 
 const API_URL = "http://localhost:8080";
 
@@ -358,6 +361,10 @@ async function run() {
   for (const stat of results) {
     printStats(stat);
   }
+
+  // Wait for buffer to flush before cleanup
+  await new Promise((r) => setTimeout(r, 200));
+  stopFlusher();
 
   console.log("\nCleaning up...");
   await cleanup(orgId, userId);
