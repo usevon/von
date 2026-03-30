@@ -3,7 +3,10 @@
 import Link from "next/link";
 
 import { CalculatorDialog } from "@/app/pricing/_components/calculator-panel";
-import { useCalculatorState } from "@/app/pricing/_components/use-calculator-state";
+import {
+  type CalculatorState,
+  useCalculatorState,
+} from "@/app/pricing/_components/use-calculator-state";
 import { INCLUDED_TEAM_MEMBERS } from "@/lib/calculator";
 import { urls } from "@/lib/urls";
 
@@ -27,8 +30,15 @@ const hobbyPlan: Plan = {
   highlighted: false,
 };
 
-export function PlanCards({ comparePath }: { comparePath?: string }) {
-  const calc = useCalculatorState();
+export function PlanCards({
+  comparePath,
+  calc: externalCalc,
+}: {
+  comparePath?: string;
+  calc?: CalculatorState;
+}) {
+  const internalCalc = useCalculatorState();
+  const calc = externalCalc ?? internalCalc;
 
   const activeMembers = calc.teamMembersEnabled
     ? calc.teamMembers

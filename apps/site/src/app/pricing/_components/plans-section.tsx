@@ -10,7 +10,10 @@ import {
   INCLUDED_TEAM_MEMBERS,
   RATE_TIERS,
 } from "@/lib/calculator";
-import { useCalculatorState } from "./use-calculator-state";
+import {
+  type CalculatorState,
+  useCalculatorState,
+} from "./use-calculator-state";
 
 type ComparisonValue = boolean | string;
 
@@ -201,7 +204,7 @@ export function PlansSection() {
   return (
     <>
       <div className="mt-4">
-        <PlanCards />
+        <PlanCards calc={calc} />
       </div>
       <ComparisonTable groups={comparisonGroups} />
     </>
