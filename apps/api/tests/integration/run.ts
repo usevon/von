@@ -180,6 +180,11 @@ const createTemporaryResources =
           return null;
         }
 
+        await db
+          .update(user)
+          .set({ emailVerified: true })
+          .where(eq(user.id, signUpResult.data.user.id));
+
         const signInResult = await runAuthStep("Temporary user sign in", () =>
           authClient.signIn.email({ email, password })
         );
