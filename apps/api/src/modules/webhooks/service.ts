@@ -271,6 +271,9 @@ export abstract class WebhookService {
 
     try {
       insertedIds = await db.transaction(async (tx) => {
+        // Skip WAL disk flush for event writes — safe because callers can retry
+        await tx.execute(sql`SET LOCAL synchronous_commit = off`);
+
         const inserted = await tx
           .insert(event)
           .values(
@@ -302,15 +305,17 @@ export abstract class WebhookService {
         insertedIds.has(d.eventId)
       ).length;
       const overReserved = reservedDeliveries - insertedDeliveryCount;
-      if (overReserved > 0) {
-        await releaseMonthlyQuota(params.organizationId, overReserved);
-        reservedDeliveries = insertedDeliveryCount;
-      }
 
+      // Parallelize quota release and job enqueue
       const jobsToEnqueue = allJobs.filter((j) =>
         insertedIds.has(j.data.eventId)
       );
-      await enqueueWebhookDispatchJobs(jobsToEnqueue);
+      await Promise.all([
+        overReserved > 0
+          ? releaseMonthlyQuota(params.organizationId, overReserved)
+          : undefined,
+        enqueueWebhookDispatchJobs(jobsToEnqueue),
+      ]);
       reservedDeliveries = 0;
     } catch (error) {
       if (reservedDeliveries > 0) {

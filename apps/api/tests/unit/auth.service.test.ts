@@ -12,10 +12,12 @@ const createTrackingRedis = (): {
 
   return {
     redis: {
-      set: (key, value) => {
-        setCalls.push([key, value]);
+      get: () => Promise.resolve(null),
+      set: (...args: [string, string, ...unknown[]]) => {
+        setCalls.push([args[0], args[1]]);
         return Promise.resolve("OK");
       },
+      del: () => Promise.resolve(1),
       sadd: (key, value) => {
         saddCalls.push([key, value]);
         return Promise.resolve(1);
@@ -63,9 +65,10 @@ describe("auth service", () => {
     });
 
     expect(getSessionCalls).toBe(0);
-    expect(setCalls.length).toBe(1);
-    expect(setCalls[0]?.[0]).toBe("api:lastUsed:key_123");
-    expect(Number(setCalls[0]?.[1] ?? "0")).toBeGreaterThan(0);
+    expect(setCalls.length).toBeGreaterThanOrEqual(1);
+    const lastUsedCall = setCalls.find(([k]) => k.startsWith("api:lastUsed:"));
+    expect(lastUsedCall?.[0]).toBe("api:lastUsed:key_123");
+    expect(Number(lastUsedCall?.[1] ?? "0")).toBeGreaterThan(0);
     expect(saddCalls).toEqual([["api:lastUsed:dirty", "key_123"]]);
   });
 

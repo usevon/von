@@ -1,4 +1,5 @@
 import { parseScopes } from "@usevon/auth";
+import { hashSha256 } from "@usevon/utils";
 import type {
   AuthApi,
   AuthHeaders,
@@ -6,6 +7,56 @@ import type {
   ResolvedAuth,
   SessionContext,
 } from "@/modules/auth/model";
+
+const KEY_CACHE_TTL = 60;
+
+async function resolveApiKey(
+  auth: AuthApi,
+  redis: RedisTracking,
+  rawKey: string
+): Promise<ResolvedAuth | null> {
+  const keyHash = hashSha256(rawKey).slice(0, 32);
+  const cacheKey = `auth:key:${keyHash}`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    try {
+      const resolved = JSON.parse(cached) as ResolvedAuth;
+      return resolved;
+    } catch {
+      await redis.del(cacheKey);
+    }
+  }
+
+  const result = await auth.api.verifyApiKey({ body: { key: rawKey } });
+
+  if (!(result.valid && result.key?.organizationId)) {
+    return null;
+  }
+
+  const keyId = result.key.id;
+  const now = Math.floor(Date.now() / 1000);
+  redis.set(`api:lastUsed:${keyId}`, String(now)).catch(() => undefined);
+  redis.sadd("api:lastUsed:dirty", keyId).catch(() => undefined);
+
+  const resolved: ResolvedAuth = {
+    organizationId: result.key.organizationId,
+    userId: result.key.userId ?? "",
+    scopes: parseScopes(
+      ((result.key as Record<string, unknown>).scopes as
+        | string
+        | string[]
+        | null
+        | undefined) ?? null
+    ),
+  };
+
+  redis
+    .set(cacheKey, JSON.stringify(resolved), "EX", KEY_CACHE_TTL)
+    .catch(() => undefined);
+
+  return resolved;
+}
 
 export async function resolveAuth(
   auth: AuthApi,
@@ -16,28 +67,13 @@ export async function resolveAuth(
 
   if (authHeader?.startsWith("Bearer ")) {
     try {
-      const rawKey = authHeader.slice(7);
-      const result = await auth.api.verifyApiKey({
-        body: { key: rawKey },
-      });
-
-      if (result.valid && result.key?.organizationId) {
-        const keyId = result.key.id;
-        const now = Math.floor(Date.now() / 1000);
-        redis.set(`api:lastUsed:${keyId}`, String(now)).catch(() => undefined);
-        redis.sadd("api:lastUsed:dirty", keyId).catch(() => undefined);
-
-        return {
-          organizationId: result.key.organizationId,
-          userId: result.key.userId ?? "",
-          scopes: parseScopes(
-            ((result.key as Record<string, unknown>).scopes as
-              | string
-              | string[]
-              | null
-              | undefined) ?? null
-          ),
-        };
+      const resolved = await resolveApiKey(
+        auth,
+        redis,
+        authHeader.slice(7)
+      );
+      if (resolved) {
+        return resolved;
       }
     } catch {
       // Invalid key — fall through to session check

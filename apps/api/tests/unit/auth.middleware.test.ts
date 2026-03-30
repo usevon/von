@@ -5,7 +5,9 @@ import { createVonAuth } from "../../src/modules/auth/middleware";
 import type { AuthApi, RedisTracking } from "../../src/modules/auth/model";
 
 const noopRedis: RedisTracking = {
+  get: async () => null,
   set: async () => "OK",
+  del: async () => 1,
   sadd: async () => 1,
 };
 

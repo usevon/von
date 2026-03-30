@@ -41,6 +41,8 @@ export type AuthApi = {
 };
 
 export type RedisTracking = {
-  set: (key: string, value: string) => Promise<unknown>;
+  get: (key: string) => Promise<string | null>;
+  set: (...args: [string, string, ...unknown[]]) => Promise<unknown>;
+  del: (key: string) => Promise<unknown>;
   sadd: (key: string, value: string) => Promise<unknown>;
 };
