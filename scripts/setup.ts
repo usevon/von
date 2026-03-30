@@ -153,14 +153,28 @@ function createEnvFiles(secrets: { authSecret: string }) {
   }
 }
 
-function pushDatabase() {
-  step("Pushing database schema");
+function migrateDatabase() {
+  step("Running database migrations");
 
   try {
-    execSync("bun run --cwd apps/api db:push", { stdio: "pipe", cwd: ROOT });
-    ok("Database schema pushed");
+    execSync("bun run --cwd apps/api db:migrate", {
+      stdio: "pipe",
+      cwd: ROOT,
+    });
+    ok("Database migrations applied");
   } catch {
-    warn("db:push failed — you may need to run it manually later");
+    warn(
+      "db:migrate failed — falling back to db:push for fresh environments"
+    );
+    try {
+      execSync("bun run --cwd apps/api db:push", {
+        stdio: "pipe",
+        cwd: ROOT,
+      });
+      ok("Database schema pushed");
+    } catch {
+      warn("db:push also failed — run manually: bun run db:migrate");
+    }
   }
 }
 
@@ -180,7 +194,7 @@ async function main() {
   await waitForHealthy();
   const secrets = generateSecrets();
   createEnvFiles(secrets);
-  pushDatabase();
+  migrateDatabase();
   printNextSteps();
 }
 
