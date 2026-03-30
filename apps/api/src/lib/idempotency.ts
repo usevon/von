@@ -10,6 +10,16 @@ type CachedResponse = {
   body: unknown;
 };
 
+export const buildRequestFingerprint = async (
+  request: Request
+): Promise<string> => {
+  const url = new URL(request.url);
+  const bodyText = await request.clone().text();
+  return hashSha256(
+    `${request.method}:${url.pathname}${url.search}:${hashSha256(bodyText)}`
+  );
+};
+
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
     .resolve({ as: "scoped" }, async ({ request, set }) => {
@@ -27,11 +37,7 @@ export const idempotency = () =>
         return {};
       }
 
-      const url = new URL(request.url);
-      const bodyText = await request.clone().text();
-      const fingerprint = hashSha256(
-        `${request.method}:${url.pathname}${url.search}:${hashSha256(bodyText)}`
-      );
+      const fingerprint = await buildRequestFingerprint(request);
       const authScope = hashSha256(authHeader).slice(0, 16);
       const cacheKey = `idempotency:${authScope}:${idempotencyKey}:${fingerprint.slice(0, 32)}`;
       const cached = await cacheGet<CachedResponse>(cacheKey);

@@ -77,6 +77,10 @@ if (!isIntegration) {
     checkRedisConnection: () => Promise.resolve({ ok: true }),
     closeRedis: () => Promise.resolve(),
     createConnection: () => noopRedis,
+    setnx: () => Promise.resolve(true),
+    cacheGet: () => Promise.resolve(null),
+    cacheSet: () => Promise.resolve(),
+    cacheDel: () => Promise.resolve(),
     getWebhookDeliveryQueue: () => ({
       addBulk: () => Promise.resolve([]),
       add: () => Promise.resolve({}),
@@ -129,6 +133,7 @@ if (!isIntegration) {
     WelcomeEmail: noop,
     InvitationEmail: noop,
     PasswordResetEmail: noop,
+    VerificationEmail: noop,
     QuotaWarningEmail: noop,
     FailureAlertEmail: noop,
     EmailChangedEmail: noop,
