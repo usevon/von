@@ -1,38 +1,15 @@
-import { db, lt, sql } from "@usevon/db";
+import { db, lt } from "@usevon/db";
 import {
   delivery,
   deliveryAttempt,
   event,
   inboundDelivery,
 } from "@usevon/db/schema";
-import type { PgTable } from "drizzle-orm/pg-core";
 import { MS_PER_DAY } from "@usevon/utils";
 import { env } from "@/env";
 import { log } from "@/lib/logger";
 
-const BATCH_SIZE = 5000;
-
 const getCutoff = (days: number) => new Date(Date.now() - days * MS_PER_DAY);
-
-async function batchDelete(
-  table: PgTable & { createdAt: any },
-  cutoff: Date
-): Promise<number> {
-  let totalDeleted = 0;
-  let deleted: number;
-  do {
-    const result = await db.execute<{ count: string }>(
-      sql`DELETE FROM ${table} WHERE ctid IN (
-        SELECT ctid FROM ${table}
-        WHERE ${table.createdAt} < ${cutoff}
-        LIMIT ${BATCH_SIZE}
-      )`
-    );
-    deleted = result.length;
-    totalDeleted += deleted;
-  } while (deleted >= BATCH_SIZE);
-  return totalDeleted;
-}
 
 const runRetentionCleanup = async () => {
   const deliveryCutoff = getCutoff(env.DELIVERY_RETENTION_DAYS);
@@ -41,10 +18,14 @@ const runRetentionCleanup = async () => {
 
   try {
     await Promise.all([
-      batchDelete(inboundDelivery, inboundDeliveryCutoff),
-      batchDelete(deliveryAttempt, deliveryCutoff),
-      batchDelete(delivery, deliveryCutoff),
-      batchDelete(event, eventCutoff),
+      db
+        .delete(inboundDelivery)
+        .where(lt(inboundDelivery.createdAt, inboundDeliveryCutoff)),
+      db
+        .delete(deliveryAttempt)
+        .where(lt(deliveryAttempt.createdAt, deliveryCutoff)),
+      db.delete(delivery).where(lt(delivery.createdAt, deliveryCutoff)),
+      db.delete(event).where(lt(event.createdAt, eventCutoff)),
     ]);
 
     log.debug(
