@@ -41,6 +41,10 @@ if (!isIntegration) {
       strings.set(k, v);
       return Promise.resolve("OK");
     },
+    setex: (k: string, _ttl: number, v: string) => {
+      strings.set(k, v);
+      return Promise.resolve("OK");
+    },
     del: (k: string) => {
       const had = strings.delete(k) || sets.delete(k);
       return Promise.resolve(had ? 1 : 0);
@@ -63,9 +67,15 @@ if (!isIntegration) {
       }
       return Promise.resolve(1);
     },
+    smembers: (k: string) =>
+      Promise.resolve([...(sets.get(k) ?? new Set<string>())]),
     scard: (k: string) => Promise.resolve(sets.get(k)?.size ?? 0),
     expire: () => Promise.resolve(1),
     publish: () => Promise.resolve(1),
+    pipeline: () => ({
+      get: () => undefined,
+      exec: () => Promise.resolve([]),
+    }),
     subscribe: () => Promise.resolve(1),
     on: () => noopRedis,
     unsubscribe: () => Promise.resolve(1),

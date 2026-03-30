@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { client } from "../setup";
 
 const hasAuthSecret = Boolean(process.env.BETTER_AUTH_SECRET);
 
 describe.skipIf(!hasAuthSecret)("auth smoke", () => {
   test("returns 401 for protected route without credentials", async () => {
-    const { client } = await import("../setup");
-
     const { error } = await client.webhooks.events.get();
 
     expect(error).toBeDefined();
