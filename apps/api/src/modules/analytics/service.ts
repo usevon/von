@@ -44,20 +44,6 @@ export abstract class AnalyticsService {
     }
 
     const where = and(...conditions);
-    const [deliveryTotals] = await db
-      .select({
-        deliveries: sql<number>`count(*)::int`,
-        delivered: sql<number>`sum(case when ${delivery.status} = 'delivered' then 1 else 0 end)::int`,
-        failed: sql<number>`sum(case when ${delivery.status} = 'failed' then 1 else 0 end)::int`,
-        pending: sql<number>`sum(case when ${delivery.status} = 'pending' then 1 else 0 end)::int`,
-        paused: sql<number>`sum(case when ${delivery.status} = 'paused' then 1 else 0 end)::int`,
-        skipped: sql<number>`sum(case when ${delivery.status} = 'skipped' then 1 else 0 end)::int`,
-        circuitOpen: sql<number>`sum(case when ${delivery.status} = 'circuit_open' then 1 else 0 end)::int`,
-        retries: sql<number>`sum(case when ${delivery.attempts} > 1 then 1 else 0 end)::int`,
-      })
-      .from(delivery)
-      .innerJoin(event, eq(delivery.eventId, event.id))
-      .where(where);
 
     const eventConditions = [eq(event.organizationId, organizationId)];
     if (from) {
@@ -67,10 +53,26 @@ export abstract class AnalyticsService {
       eventConditions.push(lte(event.createdAt, to));
     }
 
-    const [eventTotals] = await db
-      .select({ events: sql<number>`count(*)::int` })
-      .from(event)
-      .where(and(...eventConditions));
+    const [[deliveryTotals], [eventTotals]] = await Promise.all([
+      db
+        .select({
+          deliveries: sql<number>`count(*)::int`,
+          delivered: sql<number>`sum(case when ${delivery.status} = 'delivered' then 1 else 0 end)::int`,
+          failed: sql<number>`sum(case when ${delivery.status} = 'failed' then 1 else 0 end)::int`,
+          pending: sql<number>`sum(case when ${delivery.status} = 'pending' then 1 else 0 end)::int`,
+          paused: sql<number>`sum(case when ${delivery.status} = 'paused' then 1 else 0 end)::int`,
+          skipped: sql<number>`sum(case when ${delivery.status} = 'skipped' then 1 else 0 end)::int`,
+          circuitOpen: sql<number>`sum(case when ${delivery.status} = 'circuit_open' then 1 else 0 end)::int`,
+          retries: sql<number>`sum(case when ${delivery.attempts} > 1 then 1 else 0 end)::int`,
+        })
+        .from(delivery)
+        .innerJoin(event, eq(delivery.eventId, event.id))
+        .where(where),
+      db
+        .select({ events: sql<number>`count(*)::int` })
+        .from(event)
+        .where(and(...eventConditions)),
+    ]);
 
     const deliveries = deliveryTotals?.deliveries ?? 0;
     const delivered = deliveryTotals?.delivered ?? 0;
@@ -165,30 +167,31 @@ export abstract class AnalyticsService {
       to ? lte(deliveryAttempt.createdAt, to) : undefined
     );
 
-    const [totals] = await db
-      .select({
-        deliveries: sql<number>`count(*)::int`,
-        deliveriesWithRetry: sql<number>`sum(case when ${delivery.attempts} > 1 then 1 else 0 end)::int`,
-        recoveredAfterRetry: sql<number>`sum(case when ${delivery.status} = 'delivered' and ${delivery.attempts} > 1 then 1 else 0 end)::int`,
-        exhaustedRetries: sql<number>`sum(case when ${delivery.status} = 'failed' and ${delivery.attempts} > 1 then 1 else 0 end)::int`,
-        firstAttemptSuccesses: sql<number>`sum(case when ${delivery.status} = 'delivered' and ${delivery.attempts} = 1 then 1 else 0 end)::int`,
-        avgAttempts: sql<number>`coalesce(avg(${delivery.attempts})::float, 0)`,
-      })
-      .from(delivery)
-      .innerJoin(event, eq(delivery.eventId, event.id))
-      .where(deliveryWhere);
-
-    const rows = await db
-      .select({
-        attemptNumber: deliveryAttempt.attemptNumber,
-        total: sql<number>`count(*)::int`,
-        successes: sql<number>`sum(case when ${deliveryAttempt.outcome} = 'success' then 1 else 0 end)::int`,
-        failures: sql<number>`sum(case when ${deliveryAttempt.outcome} = 'failure' then 1 else 0 end)::int`,
-      })
-      .from(deliveryAttempt)
-      .where(attemptWhere)
-      .groupBy(deliveryAttempt.attemptNumber)
-      .orderBy(deliveryAttempt.attemptNumber);
+    const [[totals], rows] = await Promise.all([
+      db
+        .select({
+          deliveries: sql<number>`count(*)::int`,
+          deliveriesWithRetry: sql<number>`sum(case when ${delivery.attempts} > 1 then 1 else 0 end)::int`,
+          recoveredAfterRetry: sql<number>`sum(case when ${delivery.status} = 'delivered' and ${delivery.attempts} > 1 then 1 else 0 end)::int`,
+          exhaustedRetries: sql<number>`sum(case when ${delivery.status} = 'failed' and ${delivery.attempts} > 1 then 1 else 0 end)::int`,
+          firstAttemptSuccesses: sql<number>`sum(case when ${delivery.status} = 'delivered' and ${delivery.attempts} = 1 then 1 else 0 end)::int`,
+          avgAttempts: sql<number>`coalesce(avg(${delivery.attempts})::float, 0)`,
+        })
+        .from(delivery)
+        .innerJoin(event, eq(delivery.eventId, event.id))
+        .where(deliveryWhere),
+      db
+        .select({
+          attemptNumber: deliveryAttempt.attemptNumber,
+          total: sql<number>`count(*)::int`,
+          successes: sql<number>`sum(case when ${deliveryAttempt.outcome} = 'success' then 1 else 0 end)::int`,
+          failures: sql<number>`sum(case when ${deliveryAttempt.outcome} = 'failure' then 1 else 0 end)::int`,
+        })
+        .from(deliveryAttempt)
+        .where(attemptWhere)
+        .groupBy(deliveryAttempt.attemptNumber)
+        .orderBy(deliveryAttempt.attemptNumber),
+    ]);
 
     const deliveries = totals?.deliveries ?? 0;
     const firstAttemptSuccesses = totals?.firstAttemptSuccesses ?? 0;
