@@ -12,6 +12,8 @@ import {
   createAuthClient,
   organizationClient,
 } from "@usevon/auth/client";
+
+const SESSION_COOKIE_RE = /von\.session_token=([^;]+)/;
 import { db, eq } from "@usevon/db";
 import { organization, user } from "@usevon/db/schema";
 import { app } from "../src/app";
@@ -38,7 +40,7 @@ function computeStats(name: string, durations: number[]): Stats {
     count: sorted.length,
     totalMs: Math.round(total * 100) / 100,
     minMs: Math.round(sorted[0] * 100) / 100,
-    maxMs: Math.round(sorted[sorted.length - 1] * 100) / 100,
+    maxMs: Math.round(sorted.at(-1) * 100) / 100,
     p50Ms:
       Math.round(sorted[Math.floor(sorted.length * 0.5)] * 100) / 100,
     p95Ms:
@@ -131,7 +133,7 @@ async function setupTestResources(): Promise<{
         const response = await app.handle(new Request(url, { ...init, headers }));
         const setCookie = response.headers.get("set-cookie");
         if (setCookie) {
-          const match = setCookie.match(/von\.session_token=([^;]+)/);
+          const match = setCookie.match(SESSION_COOKIE_RE);
           if (match?.[1]) {
             cookieJar.set("cookie", `von.session_token=${match[1]}`);
           }
@@ -192,10 +194,14 @@ async function setupTestResources(): Promise<{
 async function cleanup(orgId: string, userId: string) {
   try {
     await db.delete(organization).where(eq(organization.id, orgId));
-  } catch {}
+  } catch {
+    // best effort
+  }
   try {
     await db.delete(user).where(eq(user.id, userId));
-  } catch {}
+  } catch {
+    // best effort
+  }
 }
 
 // --- Benchmarks ---
@@ -347,7 +353,7 @@ async function run() {
       `${"p99".padStart(10)}    | ` +
       `${"Throughput".padStart(10)}`
   );
-  console.log("  " + "-".repeat(110));
+  console.log(`  ${"-".repeat(110)}`);
 
   for (const stat of results) {
     printStats(stat);

@@ -132,7 +132,10 @@ export abstract class AnalyticsService {
     return {
       interval,
       buckets: rows.map((row) => ({
-        ts: row.bucket.toISOString(),
+        ts:
+          row.bucket instanceof Date
+            ? row.bucket.toISOString()
+            : new Date(row.bucket).toISOString(),
         deliveries: row.deliveries ?? 0,
         delivered: row.delivered ?? 0,
         failed: row.failed ?? 0,

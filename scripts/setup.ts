@@ -110,13 +110,18 @@ function generateSecrets() {
   step("Generating secrets");
 
   const authSecret = randomBytes(32).toString("base64url");
+  const apiKeySigningSecret = randomBytes(32).toString("base64url");
 
   ok("BETTER_AUTH_SECRET generated");
+  ok("API_KEY_SIGNING_SECRET generated");
 
-  return { authSecret };
+  return { authSecret, apiKeySigningSecret };
 }
 
-function createEnvFiles(secrets: { authSecret: string }) {
+function createEnvFiles(secrets: {
+  authSecret: string;
+  apiKeySigningSecret: string;
+}) {
   step("Creating .env files");
 
   const apps = [
@@ -124,6 +129,7 @@ function createEnvFiles(secrets: { authSecret: string }) {
       name: "api",
       replacements: {
         "BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long": `BETTER_AUTH_SECRET=${secrets.authSecret}`,
+        "# API_KEY_SIGNING_SECRET=your-api-key-signing-secret": `API_KEY_SIGNING_SECRET=${secrets.apiKeySigningSecret}`,
       },
     },
     { name: "dashboard" },
