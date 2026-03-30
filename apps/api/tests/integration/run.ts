@@ -6,7 +6,9 @@ import {
 import { db, eq } from "@usevon/db";
 import { organization, user } from "@usevon/db/schema";
 import { secrets } from "bun";
-import { app, client } from "../setup";
+import { app, client, startEventBufferFlusher } from "../setup";
+
+startEventBufferFlusher();
 
 type AutoProvisionedResources = {
   key: string;
