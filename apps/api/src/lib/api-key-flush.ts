@@ -12,19 +12,35 @@ async function flushLastUsed() {
 
   await redis.del("api:lastUsed:dirty");
 
+  const pipeline = redis.pipeline();
   for (const keyId of dirtyIds) {
-    const ts = await redis.get(`api:lastUsed:${keyId}`);
-    if (!ts) {
-      continue;
-    }
-    try {
-      await db
-        .update(apikey)
-        .set({ lastUsedAt: new Date(Number(ts) * 1000) })
-        .where(eq(apikey.id, keyId));
-    } catch (err) {
-      log.error({ err }, `Failed to flush lastUsedAt for key ${keyId}`);
-    }
+    pipeline.get(`api:lastUsed:${keyId}`);
+  }
+  const results = await pipeline.exec();
+
+  const updates: { id: string; lastUsedAt: Date }[] = [];
+  for (let i = 0; i < dirtyIds.length; i++) {
+    const ts = results?.[i]?.[1] as string | null;
+    if (!ts) continue;
+    updates.push({
+      id: dirtyIds[i],
+      lastUsedAt: new Date(Number(ts) * 1000),
+    });
+  }
+
+  if (updates.length === 0) return;
+
+  try {
+    await db.transaction(async (tx) => {
+      for (const { id, lastUsedAt } of updates) {
+        await tx
+          .update(apikey)
+          .set({ lastUsedAt })
+          .where(eq(apikey.id, id));
+      }
+    });
+  } catch (err) {
+    log.error({ err }, "Failed to flush lastUsedAt batch");
   }
 }
 

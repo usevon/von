@@ -66,7 +66,7 @@ export const tunnelRegisterWrite = new Elysia()
 
       // New tunnel - check limit
       const countResult = await db
-        .select({ count: sql<number>`count(*)` })
+        .select({ count: sql<number>`count(*)::int` })
         .from(tunnel)
         .where(eq(tunnel.organizationId, organizationId));
       if ((countResult[0]?.count ?? 0) >= env.MAX_TUNNELS_PER_ORG) {
