@@ -1,5 +1,5 @@
 import { createConnection, getRedisClient } from "@usevon/queue";
-import { timingSafeEqual, withTimeout } from "@usevon/utils";
+import { withTimeout } from "@usevon/utils";
 import { createLogger } from "@usevon/utils/logger";
 import { env } from "@/env";
 import type {
@@ -175,26 +175,6 @@ export abstract class TunnelService {
       }
     }
     return active;
-  }
-
-  static validateSecret(tunnelId: string, secret: string): boolean {
-    const connection = tunnels.get(tunnelId);
-    // Always perform timing-safe comparison to prevent timing attacks that reveal tunnel existence
-    const secretToCompare = connection?.secret ?? "0".repeat(32);
-    const isValid = timingSafeEqual(secretToCompare, secret);
-    return connection ? isValid : false;
-  }
-
-  static updateSecret(tunnelId: string, newSecret: string): boolean {
-    const connection = tunnels.get(tunnelId);
-    if (connection) {
-      connection.secret = newSecret;
-      connection.send(
-        JSON.stringify({ type: "secret_rotated", secret: newSecret })
-      );
-      return true;
-    }
-    return false;
   }
 
   static forwardRequestLocal(

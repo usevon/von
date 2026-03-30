@@ -15,7 +15,6 @@ function createMockConnection(
     headers: {},
     organizationId: "org-1",
     userId: "user-1",
-    secret: "test-secret-32-chars-long-enough",
     ...overrides,
   };
 }
@@ -88,70 +87,6 @@ describe("TunnelService", () => {
     test("returns empty array when no tunnels exist for org", () => {
       const active = TunnelService.getActiveTunnels("org-none");
       expect(active).toEqual([]);
-    });
-  });
-
-  describe("validateSecret", () => {
-    test("returns true for matching secret", async () => {
-      await TunnelService.setTunnel(
-        "t-1",
-        createMockConnection({ secret: "my-secret-value-32-chars-long!!" })
-      );
-
-      expect(
-        TunnelService.validateSecret("t-1", "my-secret-value-32-chars-long!!")
-      ).toBe(true);
-    });
-
-    test("returns false for non-matching secret", async () => {
-      await TunnelService.setTunnel(
-        "t-1",
-        createMockConnection({ secret: "my-secret-value-32-chars-long!!" })
-      );
-
-      expect(
-        TunnelService.validateSecret("t-1", "wrong-secret-value-32-chars!!!!")
-      ).toBe(false);
-    });
-
-    test("returns false for nonexistent tunnel (timing-safe)", () => {
-      expect(
-        TunnelService.validateSecret(
-          "nonexistent",
-          "any-secret-value-32-chars-long!!"
-        )
-      ).toBe(false);
-    });
-  });
-
-  describe("updateSecret", () => {
-    test("updates secret and notifies the client", async () => {
-      const sent: string[] = [];
-      const conn = createMockConnection({
-        secret: "old-secret",
-        send: (data: string) => sent.push(data),
-      });
-      await TunnelService.setTunnel("t-1", conn);
-
-      const result = TunnelService.updateSecret("t-1", "new-secret");
-      expect(result).toBe(true);
-
-      // Verify the connection's secret was updated
-      expect(TunnelService.getTunnel("t-1")?.secret).toBe("new-secret");
-
-      // Verify notification was sent
-      expect(sent).toHaveLength(1);
-      const [firstMessage] = sent;
-      if (!firstMessage) {
-        throw new Error("Missing secret rotation message");
-      }
-      const msg = JSON.parse(firstMessage);
-      expect(msg.type).toBe("secret_rotated");
-      expect(msg.secret).toBe("new-secret");
-    });
-
-    test("returns false for nonexistent tunnel", () => {
-      expect(TunnelService.updateSecret("nonexistent", "new")).toBe(false);
     });
   });
 

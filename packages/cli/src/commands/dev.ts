@@ -99,15 +99,10 @@ const connectTunnels = (
       onMaxRetries: (port) => {
         reject(new Error(`${port} max reconnection attempts reached`));
       },
-      onSecretRotated: (port, newSecret) => {
-        const tunnelId = portToTunnelId.get(port);
-        if (tunnelId) {
-          const newUrl = `${apiBaseUrl}/${tunnelId}-${newSecret}`;
-          console.log();
-          console.log(pc.yellow(`  Secret rotated for port ${port}`));
-          console.log(pc.cyan(`  New URL: ${newUrl}`));
-          console.log();
-        }
+      onSecretRotated: (port) => {
+        console.log();
+        console.log(pc.yellow(`  Secret rotated for port ${port}`));
+        console.log();
       },
     });
 

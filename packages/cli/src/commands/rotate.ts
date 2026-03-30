@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/config";
 import { formatError, generateTunnelId, validatePort } from "@/lib/helpers";
 
 export const rotate = new Command("rotate")
-  .description("Rotate tunnel secret to invalidate the current URL")
+  .description("Rotate tunnel authentication secret")
   .option("-p, --port <port>", "Port of the tunnel to rotate")
   .action(async (options) => {
     const { token, config } = requireAuth();
@@ -39,16 +39,15 @@ export const rotate = new Command("rotate")
       }
 
       const tunnelId = generateTunnelId(organizationId, session.user.id, port);
-      const { secret } = await rotateTunnel(token, tunnelId);
+      await rotateTunnel(token, tunnelId);
 
       s.stop("Secret rotated");
 
-      const tunnelUrl = `${config.apiUrl}/t/${tunnelId}-${secret}`;
       note(
-        `${pc.dim("Port:")}   ${pc.magenta(port.toString())}\n${pc.dim("URL:")}    ${pc.cyan(tunnelUrl)}`,
-        "New Tunnel URL"
+        `${pc.dim("Port:")}   ${pc.magenta(port.toString())}\n${pc.dim("Tunnel:")} ${pc.cyan(tunnelId)}`,
+        "Secret Rotated"
       );
-      log.success("Old URLs will no longer work");
+      log.success("Tunnel authentication secret has been rotated");
     } catch (err) {
       s.stop("");
       log.error(`Failed to rotate tunnel: ${formatError(err)}`);

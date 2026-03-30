@@ -120,8 +120,10 @@ export const tunnelRegisterWrite = new Elysia()
         .set({ secret: encryptSecret(secret) })
         .where(eq(tunnel.id, params.tunnelId));
 
-      // Update in-memory connection if active
-      TunnelService.updateSecret(params.tunnelId, secret);
+      // Notify connected CLI client if active
+      TunnelService.getTunnel(params.tunnelId)?.send(
+        JSON.stringify({ type: "secret_rotated", secret })
+      );
 
       return { secret };
     },
@@ -201,7 +203,6 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
         | undefined,
       organizationId,
       userId,
-      secret: decryptSecret(tunnelRecord.secret),
     };
 
     // Periodic session validation + Redis TTL refresh
@@ -271,52 +272,26 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
   },
 });
 
-const parseTunnelParam = (
-  param: string
-): { tunnelId: string; secret: string } | null => {
-  const lastDash = param.lastIndexOf("-");
-  if (lastDash === -1) {
-    return null;
-  }
-  return {
-    tunnelId: param.slice(0, lastDash),
-    secret: param.slice(lastDash + 1),
-  };
-};
-
 export const tunnelProxy = new Elysia()
   .all(
-    "/:tunnelIdWithSecret/*",
+    "/:tunnelId/*",
     ({ params, request, set, status }) => {
-      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-      if (
-        !(
-          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
-        )
-      ) {
-        return status(401, { error: "Invalid tunnel" });
+      if (!TunnelService.hasTunnel(params.tunnelId)) {
+        return status(404, { error: "Tunnel not found" });
       }
       const path =
-        new URL(request.url).pathname.replace(
-          `/${params.tunnelIdWithSecret}`,
-          ""
-        ) || "/";
-      return TunnelService.handleProxy(parsed.tunnelId, request, set, path);
+        new URL(request.url).pathname.replace(`/${params.tunnelId}`, "") || "/";
+      return TunnelService.handleProxy(params.tunnelId, request, set, path);
     },
     { parse: "none" }
   )
   .all(
-    "/:tunnelIdWithSecret",
+    "/:tunnelId",
     ({ params, request, set, status }) => {
-      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-      if (
-        !(
-          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
-        )
-      ) {
-        return status(401, { error: "Invalid tunnel" });
+      if (!TunnelService.hasTunnel(params.tunnelId)) {
+        return status(404, { error: "Tunnel not found" });
       }
-      return TunnelService.handleProxy(parsed.tunnelId, request, set, "/");
+      return TunnelService.handleProxy(params.tunnelId, request, set, "/");
     },
     { parse: "none" }
   );

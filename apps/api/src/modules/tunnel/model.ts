@@ -35,7 +35,6 @@ export type TunnelConnection = {
   validationInterval?: ReturnType<typeof setInterval>;
   organizationId: string;
   userId: string;
-  secret: string;
 };
 
 export type TunnelRelayRequest = {

@@ -112,23 +112,22 @@ describe.skipIf(!getApiKey())("Tunnel", () => {
   });
 
   describe("Proxy", () => {
-    test("returns 401 for invalid tunnel secret", async () => {
-      const { error } = await client.t["fake-id-wrong-secret"].get();
+    test("returns 404 for nonexistent tunnel", async () => {
+      const { error } = await client.t["nonexistent-tunnel-id"].get();
 
       expect(error).toBeDefined();
-      expect(error?.status).toBe(401);
+      expect(error?.status).toBe(404);
     });
 
-    test("returns 401 when no WebSocket tunnel connection exists", async () => {
-      if (!(tunnelId && tunnelSecret)) {
+    test("returns 404 when no WebSocket tunnel connection exists", async () => {
+      if (!tunnelId) {
         return;
       }
 
-      const { error } = await client.t[`${tunnelId}-${tunnelSecret}`].get();
+      const { error } = await client.t[tunnelId].get();
 
-      // Tunnel secrets are only valid for active in-memory WebSocket connections
       expect(error).toBeDefined();
-      expect(error?.status).toBe(401);
+      expect(error?.status).toBe(404);
     });
   });
 });
