@@ -2,6 +2,16 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { TunnelConnection } from "../../src/modules/tunnel/model";
 import { TunnelService } from "../../src/modules/tunnel/service";
 
+type MockProxySet = {
+  status: number | string | undefined;
+  headers: Record<string, string>;
+};
+
+const createMockProxySet = (): MockProxySet => ({
+  status: undefined,
+  headers: {},
+});
+
 function createMockConnection(
   overrides: Partial<TunnelConnection> = {}
 ): TunnelConnection {
@@ -180,10 +190,7 @@ describe("TunnelService", () => {
     test("returns 413 when content-length exceeds 1MB", async () => {
       await TunnelService.setTunnel("t-1", createMockConnection());
 
-      const set = {
-        status: undefined as number | string | undefined,
-        headers: {} as Record<string, string>,
-      };
+      const set = createMockProxySet();
       const request = new Request("http://localhost/t/t-1-secret/test", {
         method: "POST",
         headers: { "content-length": "2000000" },
@@ -201,10 +208,7 @@ describe("TunnelService", () => {
     });
 
     test("returns 502 when tunnel is not connected", async () => {
-      const set = {
-        status: undefined as number | string | undefined,
-        headers: {} as Record<string, string>,
-      };
+      const set = createMockProxySet();
       const request = new Request("http://localhost/t/fake-secret/test", {
         method: "GET",
       });
@@ -223,10 +227,7 @@ describe("TunnelService", () => {
       const conn = createMockConnection();
       await TunnelService.setTunnel("t-1", conn);
 
-      const set = {
-        status: undefined as number | string | undefined,
-        headers: {} as Record<string, string>,
-      };
+      const set = createMockProxySet();
       const request = new Request("http://localhost/t/t-1-secret/api/data", {
         method: "GET",
       });
@@ -259,10 +260,7 @@ describe("TunnelService", () => {
       const conn = createMockConnection();
       await TunnelService.setTunnel("t-1", conn);
 
-      const set = {
-        status: undefined as number | string | undefined,
-        headers: {} as Record<string, string>,
-      };
+      const set = createMockProxySet();
       const request = new Request("http://localhost/test", { method: "GET" });
 
       const proxyPromise = TunnelService.handleProxy(
