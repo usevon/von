@@ -8,6 +8,7 @@ export type {
 export type {
   CreateInboundEndpoint,
   InboundDelivery,
+  InboundDeliveryStatus,
   InboundEndpoint,
   UpdateInboundEndpoint,
 } from "./inbound";
@@ -16,7 +17,9 @@ export type {
   WebhookVersion,
 } from "./versions";
 export type {
+  DeliveryAttemptOutcome,
   DeliveryResponse,
+  DeliveryStatus,
   SendBatch,
   SendEvent,
   WebhookDelivery,

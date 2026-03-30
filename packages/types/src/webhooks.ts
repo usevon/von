@@ -4,6 +4,16 @@ export type DeliveryResponse = {
   error?: string;
 } | null;
 
+export type DeliveryStatus =
+  | "pending"
+  | "delivered"
+  | "failed"
+  | "paused"
+  | "skipped"
+  | "circuit_open";
+
+export type DeliveryAttemptOutcome = "success" | "failure" | "timeout";
+
 export type WebhookEvent = {
   id: string;
   eventType: string;
@@ -16,7 +26,7 @@ export type WebhookDelivery = {
   id: string;
   eventId: string;
   endpointId: string;
-  status: string;
+  status: DeliveryStatus;
   attempts: number;
   lastAttemptAt: string | null;
   response: DeliveryResponse;
@@ -29,7 +39,7 @@ export type WebhookDeliveryAttempt = {
   eventId: string;
   endpointId: string;
   attemptNumber: number;
-  outcome: string;
+  outcome: DeliveryAttemptOutcome;
   isFinal: boolean;
   httpStatus: number | null;
   error: string | null;

@@ -33,11 +33,13 @@ export type UpdateInboundEndpoint = {
   status?: EndpointStatus;
 };
 
+export type InboundDeliveryStatus = "pending" | "forwarded" | "failed";
+
 export type InboundDelivery = {
   id: string;
   payload: unknown;
   headers: Record<string, string> | null;
-  status: string;
+  status: InboundDeliveryStatus;
   forwardedAt: string | null;
   response: DeliveryResponse;
   createdAt: string;
