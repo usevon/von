@@ -98,6 +98,9 @@ describe.skipIf(!apiKey)("Webhooks", () => {
       throw created.error;
     }
 
+    // Wait for event buffer to flush to Postgres
+    await new Promise((r) => setTimeout(r, 100));
+
     const deliveries = await client.webhooks
       .events({ id: created.data.id })
       .deliveries.get({
@@ -149,6 +152,9 @@ describe.skipIf(!apiKey)("Webhooks", () => {
     if (created.error) {
       throw created.error;
     }
+
+    // Wait for event buffer to flush to Postgres
+    await new Promise((r) => setTimeout(r, 100));
 
     const deliveries = await client.webhooks
       .events({ id: created.data.id })
