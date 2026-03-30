@@ -6,7 +6,7 @@ import { log } from "@/lib/logger";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { WebhookDispatchJob } from "@/lib/webhook-dispatch";
 
-const STREAM_KEY = "von:event-buffer";
+export const STREAM_KEY = "von:event-buffer";
 const GROUP_NAME = "flusher";
 const CONSUMER_NAME = `flusher-${crypto.randomUUID().slice(0, 8)}`;
 const FLUSH_INTERVAL_MS = 10;

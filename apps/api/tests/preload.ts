@@ -95,6 +95,8 @@ if (!isIntegration) {
     closeRedis: () => Promise.resolve(),
     createConnection: () => noopRedis,
     setnx: () => Promise.resolve(true),
+    reserveAndBuffer: () =>
+      Promise.resolve({ allowed: true, currentUsage: 1, streamId: "0-0" }),
     cacheGet: () => Promise.resolve(null),
     cacheSet: () => Promise.resolve(),
     cacheDel: () => Promise.resolve(),

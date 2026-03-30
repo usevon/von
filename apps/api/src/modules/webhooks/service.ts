@@ -7,16 +7,21 @@ import {
   InternalServerError,
   matchesEventType,
   NotFoundError,
+  TooManyRequestsError,
 } from "@usevon/utils";
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { env } from "@/env";
 import { parseOptionalDate, validateDateRange } from "@/lib/date-utils";
 import {
+  DELIVERY_TTL,
+  getMonthKey,
+  getPlanLimits as getQuotaLimits,
   releaseMonthlyQuota,
   reserveMonthlyQuota,
   withReservedMonthlyQuota,
 } from "@/lib/delivery-quota";
-import { bufferEvents } from "@/lib/event-buffer";
+import { STREAM_KEY } from "@/lib/event-buffer";
+import { reserveAndBuffer } from "@usevon/queue";
 import {
   buildCursorCondition,
   buildCursorScopeHash,
@@ -262,43 +267,47 @@ export abstract class WebhookService {
       now,
     });
 
-    await reserveMonthlyQuota(
-      params.organizationId,
-      params.plan,
-      allDeliveries.length
-    );
-
-    // Fast path: no idempotency keys — buffer in Redis, flush async
+    // Fast path: no idempotency keys — quota + buffer in single Redis round trip
     if (idempotencyKeys.length === 0) {
-      try {
-        await bufferEvents(
-          {
-            events: newEvents.map((e) => ({
-              id: e.id,
-              organizationId: params.organizationId,
-              eventType: e.eventType,
-              payload: e.payload,
-              idempotencyKey: e.idempotencyKey,
-              createdAt: nowIso,
-            })),
-            deliveries: allDeliveries.map((d) => ({
-              id: d.id as string,
-              organizationId: d.organizationId as string,
-              eventId: d.eventId as string,
-              endpointId: d.endpointId as string,
-              status: d.status as string,
-              attempts: d.attempts as number,
-              createdAt: nowIso,
-            })),
-          },
-          allJobs
-        );
-      } catch (error) {
-        await releaseMonthlyQuota(
-          params.organizationId,
-          allDeliveries.length
-        );
-        throw error;
+      const quotaLimits = getQuotaLimits(params.plan);
+
+      const payload = JSON.stringify({
+        events: newEvents.map((e) => ({
+          id: e.id,
+          organizationId: params.organizationId,
+          eventType: e.eventType,
+          payload: e.payload,
+          idempotencyKey: e.idempotencyKey,
+          createdAt: nowIso,
+        })),
+        deliveries: allDeliveries.map((d) => ({
+          id: d.id as string,
+          organizationId: d.organizationId as string,
+          eventId: d.eventId as string,
+          endpointId: d.endpointId as string,
+          status: d.status as string,
+          attempts: d.attempts as number,
+          createdAt: nowIso,
+        })),
+      });
+
+      const result = await reserveAndBuffer({
+        quotaKey: getMonthKey(params.organizationId),
+        streamKey: STREAM_KEY,
+        limit: quotaLimits.monthlyDeliveries,
+        requested: allDeliveries.length,
+        ttl: DELIVERY_TTL,
+        hasOverage: quotaLimits.hasOverage,
+        payload,
+      });
+
+      if (!result.allowed) {
+        throw new TooManyRequestsError();
+      }
+
+      // Enqueue jobs in parallel (don't wait for DB persistence)
+      if (allJobs.length > 0) {
+        enqueueWebhookDispatchJobs(allJobs).catch(() => undefined);
       }
 
       for (const e of newEvents) {
@@ -314,6 +323,11 @@ export abstract class WebhookService {
     }
 
     // Slow path: idempotency keys present — write to DB synchronously
+    await reserveMonthlyQuota(
+      params.organizationId,
+      params.plan,
+      allDeliveries.length
+    );
     let reservedDeliveries = allDeliveries.length;
     let insertedIds = new Set<string>();
 

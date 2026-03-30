@@ -14,7 +14,7 @@ type PlanLimits = {
 };
 
 // TODO: metered plan limits will come from the org's subscription record
-function getPlanLimits(plan: string): PlanLimits {
+export function getPlanLimits(plan: string): PlanLimits {
   if (plan === "hobby") {
     return { monthlyDeliveries: 25_000, hasOverage: false };
   }
