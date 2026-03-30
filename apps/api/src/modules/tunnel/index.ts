@@ -284,35 +284,39 @@ const parseTunnelParam = (
   };
 };
 
-const handleTunnelProxy =
-  (
-    hasWildcard: boolean
-  ): ((ctx: {
-    params: { tunnelIdWithSecret: string };
-    request: Request;
-    set: Parameters<typeof TunnelService.handleProxy>[2];
-    status: (code: number, body: unknown) => unknown;
-  }) => unknown) =>
-  ({ params, request, set, status }) => {
-    const parsed = parseTunnelParam(params.tunnelIdWithSecret);
-    if (
-      !(parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret))
-    ) {
-      return status(401, { error: "Invalid tunnel" });
-    }
-    const path = hasWildcard
-      ? new URL(request.url).pathname.replace(
+export const tunnelProxy = new Elysia()
+  .all(
+    "/:tunnelIdWithSecret/*",
+    ({ params, request, set, status }) => {
+      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+      if (
+        !(
+          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+        )
+      ) {
+        return status(401, { error: "Invalid tunnel" });
+      }
+      const path =
+        new URL(request.url).pathname.replace(
           `/${params.tunnelIdWithSecret}`,
           ""
-        ) || "/"
-      : "/";
-    return TunnelService.handleProxy(parsed.tunnelId, request, set, path);
-  };
-
-export const tunnelProxy = new Elysia()
-  .all("/:tunnelIdWithSecret/*", handleTunnelProxy(true) as never, {
-    parse: "none",
-  })
-  .all("/:tunnelIdWithSecret", handleTunnelProxy(false) as never, {
-    parse: "none",
-  });
+        ) || "/";
+      return TunnelService.handleProxy(parsed.tunnelId, request, set, path);
+    },
+    { parse: "none" }
+  )
+  .all(
+    "/:tunnelIdWithSecret",
+    ({ params, request, set, status }) => {
+      const parsed = parseTunnelParam(params.tunnelIdWithSecret);
+      if (
+        !(
+          parsed && TunnelService.validateSecret(parsed.tunnelId, parsed.secret)
+        )
+      ) {
+        return status(401, { error: "Invalid tunnel" });
+      }
+      return TunnelService.handleProxy(parsed.tunnelId, request, set, "/");
+    },
+    { parse: "none" }
+  );
