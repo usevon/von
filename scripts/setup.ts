@@ -61,6 +61,14 @@ function checkPrerequisites() {
 
 function startDocker() {
   step("Starting Docker containers");
+  try {
+    execSync("docker compose -f docker-compose.dev.yml down -v", {
+      stdio: "pipe",
+      cwd: ROOT,
+    });
+  } catch {
+    // No existing containers to remove
+  }
   execSync("docker compose -f docker-compose.dev.yml up -d", {
     stdio: "inherit",
     cwd: ROOT,
