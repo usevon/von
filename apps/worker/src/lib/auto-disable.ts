@@ -2,7 +2,6 @@ import { and, db, eq, gt, lt } from "@usevon/db";
 import { endpoint, inboundEndpoint, member, user } from "@usevon/db/schema";
 import { EndpointDisabledEmail, render } from "@usevon/email";
 import { MS_PER_DAY } from "@usevon/utils";
-import type { PgTableWithColumns } from "drizzle-orm/pg-core";
 import { env } from "@/env";
 import { resendClient } from "@/lib/email";
 import { log } from "@/lib/logger";
@@ -48,67 +47,74 @@ async function sendDisabledAlert(
   }
 }
 
-async function disableStaleEndpoints(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTableWithColumns requires generic parameter
-  table: PgTableWithColumns<any>,
-  urlColumn: string
-): Promise<number> {
-  const cutoff = new Date(
-    Date.now() - env.AUTO_DISABLE_AFTER_DAYS * MS_PER_DAY
-  );
-  const recentFailureCutoff = new Date(Date.now() - MS_PER_DAY);
-
-  const stale = await db
-    .update(table)
-    .set({ status: "disabled", updatedAt: new Date() })
-    .where(
-      and(
-        eq(table.status, "active"),
-        eq(table.circuitState, "open"),
-        lt(table.circuitOpenedAt, cutoff),
-        gt(table.lastFailureAt, recentFailureCutoff)
-      )
-    )
-    .returning({
-      id: table.id,
-      url: table[urlColumn],
-      organizationId: table.organizationId,
-    });
-
-  for (const row of stale) {
+async function alertStaleRows(
+  rows: { id: string; url: string; organizationId: string }[]
+) {
+  for (const row of rows) {
     log.warn(
       { endpointId: row.id, url: row.url },
       "Endpoint auto-disabled after sustained failures"
     );
     await sendDisabledAlert(row.url, row.organizationId);
   }
-
-  return stale.length;
 }
 
 const runAutoDisable = async () => {
+  const cutoff = new Date(
+    Date.now() - env.AUTO_DISABLE_AFTER_DAYS * MS_PER_DAY
+  );
+  const recentFailureCutoff = new Date(Date.now() - MS_PER_DAY);
+  const now = new Date();
+
   try {
-    const [outbound, inbound] = await Promise.all([
-      disableStaleEndpoints(endpoint, "url"),
-      disableStaleEndpoints(inboundEndpoint, "forwardUrl"),
+    const [outboundStale, inboundStale] = await Promise.all([
+      db
+        .update(endpoint)
+        .set({ status: "disabled", updatedAt: now })
+        .where(
+          and(
+            eq(endpoint.status, "active"),
+            eq(endpoint.circuitState, "open"),
+            lt(endpoint.circuitOpenedAt, cutoff),
+            gt(endpoint.lastFailureAt, recentFailureCutoff)
+          )
+        )
+        .returning({
+          id: endpoint.id,
+          url: endpoint.url,
+          organizationId: endpoint.organizationId,
+        }),
+      db
+        .update(inboundEndpoint)
+        .set({ status: "disabled", updatedAt: now })
+        .where(
+          and(
+            eq(inboundEndpoint.status, "active"),
+            eq(inboundEndpoint.circuitState, "open"),
+            lt(inboundEndpoint.circuitOpenedAt, cutoff),
+            gt(inboundEndpoint.lastFailureAt, recentFailureCutoff)
+          )
+        )
+        .returning({
+          id: inboundEndpoint.id,
+          url: inboundEndpoint.forwardUrl,
+          organizationId: inboundEndpoint.organizationId,
+        }),
     ]);
 
-    if (outbound > 0 || inbound > 0) {
+    await Promise.all([
+      alertStaleRows(outboundStale),
+      alertStaleRows(inboundStale),
+    ]);
+
+    if (outboundStale.length > 0 || inboundStale.length > 0) {
       log.info(
-        { outbound, inbound },
+        { outbound: outboundStale.length, inbound: inboundStale.length },
         "Auto-disable scan completed, endpoints disabled"
       );
     }
   } catch (error) {
-    const cause =
-      error instanceof Error
-        ? (error as { cause?: { code?: string } }).cause
-        : undefined;
-    if (cause?.code === "42P01" || cause?.code === "42703") {
-      log.warn("Auto-disable scan skipped, schema not fully migrated yet");
-    } else {
-      log.error({ error }, "Auto-disable scan failed");
-    }
+    log.error({ error }, "Auto-disable scan failed");
   }
 };
 
