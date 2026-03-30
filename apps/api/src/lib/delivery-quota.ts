@@ -26,7 +26,7 @@ export const DELIVERY_TTL = 45 * 86_400; // 45 days
 export function getMonthKey(orgId: string): string {
   const now = new Date();
   const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  return `org:deliveries:${orgId}:${month}`;
+  return `{${orgId}}:deliveries:${month}`;
 }
 
 const RESERVE_QUOTA_SCRIPT = `

@@ -93,7 +93,7 @@ describe("getMonthKey", () => {
     const key = getMonthKey("org-123");
     const now = new Date();
     const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-    expect(key).toBe(`org:deliveries:org-123:${expectedMonth}`);
+    expect(key).toBe(`{org-123}:deliveries:${expectedMonth}`);
   });
 });
 
@@ -123,7 +123,7 @@ describe("reserveMonthlyQuota", () => {
 
     const now = new Date();
     const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-    const expectedKey = `org:deliveries:org-1:${expectedMonth}`;
+    const expectedKey = `{org-1}:deliveries:${expectedMonth}`;
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
@@ -207,7 +207,7 @@ describe("releaseMonthlyQuota", () => {
 
     const now = new Date();
     const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-    const expectedKey = `org:deliveries:org-1:${expectedMonth}`;
+    const expectedKey = `{org-1}:deliveries:${expectedMonth}`;
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),

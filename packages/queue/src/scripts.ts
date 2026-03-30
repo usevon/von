@@ -2,16 +2,18 @@ import { getRedisClient } from "@/connection";
 
 /**
  * Combined quota reservation + stream buffer write in a single Redis round trip.
+ * Uses only the quota key as KEYS[1] for Redis Cluster slot routing.
+ * The stream key is passed as ARGV so it doesn't affect routing.
  * Returns [allowed (0/1), currentUsage, streamId].
  */
 const RESERVE_AND_BUFFER_SCRIPT = `
 local quota_key = KEYS[1]
-local stream_key = KEYS[2]
 local limit = tonumber(ARGV[1])
 local requested = tonumber(ARGV[2])
 local ttl = tonumber(ARGV[3])
 local has_overage = tonumber(ARGV[4])
-local payload = ARGV[5]
+local stream_key = ARGV[5]
+local payload = ARGV[6]
 
 local current = tonumber(redis.call('GET', quota_key) or '0')
 
@@ -44,13 +46,13 @@ export async function reserveAndBuffer(params: {
 }): Promise<ReserveAndBufferResult> {
   const result = (await getRedisClient().eval(
     RESERVE_AND_BUFFER_SCRIPT,
-    2,
+    1,
     params.quotaKey,
-    params.streamKey,
     String(params.limit),
     String(params.requested),
     String(params.ttl),
     params.hasOverage ? "1" : "0",
+    params.streamKey,
     params.payload
   )) as [number, number, string];
 
