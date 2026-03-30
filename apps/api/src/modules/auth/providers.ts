@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { log } from "@/lib/logger";
 
 type SocialProvider = {
   clientId: string;
@@ -26,8 +27,8 @@ export const buildSocialProviders = ():
 
   if (Object.keys(providers).length === 0) {
     if (env.NODE_ENV === "development") {
-      console.log(
-        "[Auth] No OAuth providers configured — social login disabled in development"
+      log.debug(
+        "No OAuth providers configured — social login disabled in development"
       );
     }
     return;

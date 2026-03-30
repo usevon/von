@@ -1,4 +1,5 @@
 import { SignupForm } from "@/app/auth/signup/form";
+import { getSafeRedirect } from "@/lib/redirect";
 
 export const metadata = {
   title: "Sign up - Von",
@@ -7,16 +8,6 @@ export const metadata = {
 type SignupPageProps = {
   searchParams: Promise<{ redirect?: string }>;
 };
-
-export function getSafeRedirect(url: string | undefined): string {
-  if (!url) {
-    return "/";
-  }
-  if (url.startsWith("/") && !url.startsWith("//")) {
-    return url;
-  }
-  return "/";
-}
 
 export default async function SignupPage(props: SignupPageProps) {
   const searchParams = await props.searchParams;

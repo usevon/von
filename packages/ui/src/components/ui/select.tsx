@@ -10,16 +10,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-type SelectItem = {
-  label: string;
-  value: string | null;
-};
-
-type SelectProps = SelectPrimitive.Root.Props & {
-  items?: SelectItem[];
-};
-
-function Select({ items, ...props }: SelectProps) {
+function Select(props: SelectPrimitive.Root.Props) {
   return <SelectPrimitive.Root {...props} />;
 }
 
