@@ -1,15 +1,14 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { Button, Form, Separator, Spinner, toast } from "@usevon/ui";
+import { Form, Separator, toast } from "@usevon/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { EmailVerification } from "@/components/auth/email-verification";
 import { OAuthButtons } from "@/components/auth/oauth";
 import { SubmitButton, TextField, validators } from "@/components/form";
-import { authClient, signIn } from "@/lib/auth/client";
-
-const COOLDOWN_SECONDS = 60;
+import { signIn } from "@/lib/auth/client";
 
 type LoginFormProps = {
   redirectTo?: string;
@@ -18,33 +17,6 @@ type LoginFormProps = {
 export const LoginForm = (props: LoginFormProps) => {
   const router = useRouter();
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const [isResending, setIsResending] = useState(false);
-
-  useEffect(() => {
-    if (cooldown <= 0) { return; }
-    const timer = setInterval(() => {
-      setCooldown((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
-
-  const handleResend = useCallback(async () => {
-    if (!verifyEmail) { return; }
-    setIsResending(true);
-    try {
-      await authClient.sendVerificationEmail({
-        email: verifyEmail,
-        callbackURL: window.location.origin,
-      });
-      setCooldown(COOLDOWN_SECONDS);
-      toast.success("Email sent", "Check your inbox for the verification link");
-    } catch {
-      toast.error("Failed to resend", "Please try again later");
-    } finally {
-      setIsResending(false);
-    }
-  }, [verifyEmail]);
 
   const form = useForm({
     defaultValues: {
@@ -70,7 +42,6 @@ export const LoginForm = (props: LoginFormProps) => {
               "Check your inbox for a verification link"
             );
             setVerifyEmail(value.email);
-            setCooldown(COOLDOWN_SECONDS);
             return;
           }
           showError("Sign in failed", data.error.message);
@@ -86,47 +57,14 @@ export const LoginForm = (props: LoginFormProps) => {
   });
 
   if (verifyEmail) {
-    const isDisabled = isResending || cooldown > 0;
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-semibold text-2xl tracking-tight">
-            Email not verified
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Check your inbox for a verification link sent to{" "}
-            <strong className="text-foreground">{verifyEmail}</strong>
-          </p>
-        </div>
-        <Button
-          className="w-full"
-          disabled={isDisabled}
-          onClick={handleResend}
-          variant="outline"
-        >
-          {(() => {
-            if (isResending) {
-              return (
-                <>
-                  <Spinner className="size-4" />
-                  Sending...
-                </>
-              );
-            }
-            if (cooldown > 0) {
-              return `Resend in ${cooldown}s`;
-            }
-            return "Resend verification email";
-          })()}
-        </Button>
-        <Button
-          className="w-full"
-          onClick={() => setVerifyEmail(null)}
-          variant="ghost"
-        >
-          Back to sign in
-        </Button>
-      </div>
+      <EmailVerification
+        backLabel="Back to sign in"
+        description="Check your inbox for a verification link sent to"
+        email={verifyEmail}
+        onBack={() => setVerifyEmail(null)}
+        title="Email not verified"
+      />
     );
   }
 

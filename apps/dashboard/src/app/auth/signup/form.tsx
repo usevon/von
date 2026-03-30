@@ -1,14 +1,13 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { Button, Form, Separator, Spinner, toast } from "@usevon/ui";
+import { Form, Separator, toast } from "@usevon/ui";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { EmailVerification } from "@/components/auth/email-verification";
 import { OAuthButtons } from "@/components/auth/oauth";
 import { SubmitButton, TextField, validators } from "@/components/form";
-import { authClient, signUp } from "@/lib/auth/client";
-
-const COOLDOWN_SECONDS = 60;
+import { signUp } from "@/lib/auth/client";
 
 type SignupFormProps = {
   redirectTo?: string;
@@ -16,33 +15,6 @@ type SignupFormProps = {
 
 export const SignupForm = (props: SignupFormProps) => {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const [isResending, setIsResending] = useState(false);
-
-  useEffect(() => {
-    if (cooldown <= 0) { return; }
-    const timer = setInterval(() => {
-      setCooldown((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
-
-  const handleResend = useCallback(async () => {
-    if (!verifyEmail) { return; }
-    setIsResending(true);
-    try {
-      await authClient.sendVerificationEmail({
-        email: verifyEmail,
-        callbackURL: window.location.origin,
-      });
-      setCooldown(COOLDOWN_SECONDS);
-      toast.success("Email sent", "Check your inbox for the verification link");
-    } catch {
-      toast.error("Failed to resend", "Please try again later");
-    } finally {
-      setIsResending(false);
-    }
-  }, [verifyEmail]);
 
   const form = useForm({
     defaultValues: {
@@ -76,7 +48,6 @@ export const SignupForm = (props: SignupFormProps) => {
           "Check your email for a verification link"
         );
         setVerifyEmail(value.email);
-        setCooldown(COOLDOWN_SECONDS);
       } catch {
         toast.error("Something went wrong", "Please try again later");
       }
@@ -84,46 +55,20 @@ export const SignupForm = (props: SignupFormProps) => {
   });
 
   if (verifyEmail) {
-    const isDisabled = isResending || cooldown > 0;
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-semibold text-2xl tracking-tight">
-            Check your email
-          </h1>
+      <EmailVerification
+        description="We sent a verification link to"
+        email={verifyEmail}
+        footer={
           <p className="text-muted-foreground text-sm">
-            We sent a verification link to{" "}
-            <strong className="text-foreground">{verifyEmail}</strong>
+            Already verified?{" "}
+            <Link className="text-foreground underline" href="/auth/login">
+              Sign in
+            </Link>
           </p>
-        </div>
-        <Button
-          className="w-full"
-          disabled={isDisabled}
-          onClick={handleResend}
-          variant="outline"
-        >
-          {(() => {
-            if (isResending) {
-              return (
-                <>
-                  <Spinner className="size-4" />
-                  Sending...
-                </>
-              );
-            }
-            if (cooldown > 0) {
-              return `Resend in ${cooldown}s`;
-            }
-            return "Resend verification email";
-          })()}
-        </Button>
-        <p className="text-muted-foreground text-sm">
-          Already verified?{" "}
-          <Link className="text-foreground underline" href="/auth/login">
-            Sign in
-          </Link>
-        </p>
-      </div>
+        }
+        title="Check your email"
+      />
     );
   }
 
