@@ -16,10 +16,13 @@ export type WebhookDeliveryJob = {
   eventType: string;
   endpoint: DeliveryEndpoint;
   organizationId: string;
+  plan: string;
 };
 
 export type InboundForwardingJob = {
   deliveryId: string;
+  organizationId: string;
+  plan: string;
   endpoint: {
     id: string;
     forwardUrl: string;
