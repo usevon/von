@@ -4,12 +4,13 @@ import { getRedisClient } from "@usevon/queue";
 import { sql } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
+import type { WebhookDispatchJob } from "@/lib/webhook-dispatch";
 
 const STREAM_KEY = "von:event-buffer";
-const FLUSH_INTERVAL_MS = 50;
-const FLUSH_BATCH_SIZE = 200;
+const FLUSH_INTERVAL_MS = 10;
+const FLUSH_BATCH_SIZE = 500;
 
-type BufferedEntry = {
+type BufferedPersistence = {
   events: Array<{
     id: string;
     organizationId: string;
@@ -26,23 +27,30 @@ type BufferedEntry = {
     attempts: number;
     createdAt: string;
   }>;
-  jobs: Array<{
-    name: string;
-    data: Record<string, unknown>;
-  }>;
 };
 
-export async function bufferEvents(entry: BufferedEntry): Promise<void> {
+/**
+ * Buffer event and delivery rows in Redis for async DB persistence,
+ * and immediately enqueue delivery jobs so the worker starts right away.
+ */
+export async function bufferEvents(
+  persistence: BufferedPersistence,
+  jobs: WebhookDispatchJob[]
+): Promise<void> {
   const redis = getRedisClient();
-  await redis.xadd(
-    STREAM_KEY,
-    "MAXLEN",
-    "~",
-    "10000",
-    "*",
-    "data",
-    JSON.stringify(entry)
-  );
+
+  await Promise.all([
+    redis.xadd(
+      STREAM_KEY,
+      "MAXLEN",
+      "~",
+      "10000",
+      "*",
+      "data",
+      JSON.stringify(persistence)
+    ),
+    jobs.length > 0 ? enqueueWebhookDispatchJobs(jobs) : undefined,
+  ]);
 }
 
 async function flushBuffer(): Promise<number> {
@@ -60,18 +68,16 @@ async function flushBuffer(): Promise<number> {
     return 0;
   }
 
-  const allEvents: BufferedEntry["events"] = [];
-  const allDeliveries: BufferedEntry["deliveries"] = [];
-  const allJobs: BufferedEntry["jobs"] = [];
+  const allEvents: BufferedPersistence["events"] = [];
+  const allDeliveries: BufferedPersistence["deliveries"] = [];
   const streamIds: string[] = [];
 
   for (const [id, fields] of entries) {
     streamIds.push(id);
     try {
-      const data = JSON.parse(fields[1]) as BufferedEntry;
+      const data = JSON.parse(fields[1]) as BufferedPersistence;
       allEvents.push(...data.events);
       allDeliveries.push(...data.deliveries);
-      allJobs.push(...data.jobs);
     } catch {
       log.error({ streamId: id }, "Failed to parse buffered event entry");
     }
@@ -82,18 +88,21 @@ async function flushBuffer(): Promise<number> {
       await db.transaction(async (tx) => {
         await tx.execute(sql`SET LOCAL synchronous_commit = off`);
 
-        await tx.insert(event).values(
-          allEvents.map((e) => ({
-            id: e.id,
-            organizationId: e.organizationId,
-            eventType: e.eventType,
-            payload: e.payload,
-            idempotencyKey: e.idempotencyKey,
-            createdAt: new Date(e.createdAt),
-          }))
-        ).onConflictDoNothing({
-          target: [event.organizationId, event.idempotencyKey],
-        });
+        await tx
+          .insert(event)
+          .values(
+            allEvents.map((e) => ({
+              id: e.id,
+              organizationId: e.organizationId,
+              eventType: e.eventType,
+              payload: e.payload,
+              idempotencyKey: e.idempotencyKey,
+              createdAt: new Date(e.createdAt),
+            }))
+          )
+          .onConflictDoNothing({
+            target: [event.organizationId, event.idempotencyKey],
+          });
 
         if (allDeliveries.length > 0) {
           await tx.insert(delivery).values(
@@ -108,14 +117,11 @@ async function flushBuffer(): Promise<number> {
           );
         }
       });
-
-      if (allJobs.length > 0) {
-        await enqueueWebhookDispatchJobs(
-          allJobs as Array<{ name: string; data: Record<string, unknown> }>
-        );
-      }
     } catch (err) {
-      log.error({ err, eventCount: allEvents.length }, "Event buffer flush failed");
+      log.error(
+        { err, eventCount: allEvents.length },
+        "Event buffer flush failed"
+      );
     }
   }
 

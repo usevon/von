@@ -270,25 +270,27 @@ export abstract class WebhookService {
     // Fast path: no idempotency keys — buffer in Redis, flush async
     if (idempotencyKeys.length === 0) {
       try {
-        await bufferEvents({
-          events: newEvents.map((e) => ({
-            id: e.id,
-            organizationId: params.organizationId,
-            eventType: e.eventType,
-            payload: e.payload,
-            idempotencyKey: e.idempotencyKey,
-            createdAt: nowIso,
-          })),
-          deliveries: allDeliveries.map((d) => ({
-            id: d.id as string,
-            eventId: d.eventId as string,
-            endpointId: d.endpointId as string,
-            status: d.status as string,
-            attempts: d.attempts as number,
-            createdAt: nowIso,
-          })),
-          jobs: allJobs,
-        });
+        await bufferEvents(
+          {
+            events: newEvents.map((e) => ({
+              id: e.id,
+              organizationId: params.organizationId,
+              eventType: e.eventType,
+              payload: e.payload,
+              idempotencyKey: e.idempotencyKey,
+              createdAt: nowIso,
+            })),
+            deliveries: allDeliveries.map((d) => ({
+              id: d.id as string,
+              eventId: d.eventId as string,
+              endpointId: d.endpointId as string,
+              status: d.status as string,
+              attempts: d.attempts as number,
+              createdAt: nowIso,
+            })),
+          },
+          allJobs
+        );
       } catch (error) {
         await releaseMonthlyQuota(
           params.organizationId,
