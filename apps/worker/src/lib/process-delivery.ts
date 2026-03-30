@@ -5,7 +5,7 @@ import {
   FailureAlertEmail,
   render,
 } from "@usevon/email";
-import { getRedisClient } from "@usevon/queue";
+import { setnx } from "@usevon/queue";
 import {
   CIRCUIT_CONFIG,
   type CircuitState,
@@ -15,57 +15,45 @@ import {
 } from "@usevon/utils";
 import type { Job } from "bullmq";
 import { eq } from "drizzle-orm";
-import type { PgColumn, PgTableWithColumns } from "drizzle-orm/pg-core";
 import { env } from "@/env";
 import { circuitFailureSet, circuitSuccessSet } from "@/lib/circuit";
 import { resendClient } from "@/lib/email";
 import { log } from "@/lib/logger";
 
-const CIRCUIT_ALERT_TTL = 60 * 60; // 1 hour dedup window
-const RECOVERY_ALERT_TTL = 60 * 60; // 1 hour dedup window
+const ALERT_TTL = 60 * 60; // 1 hour dedup window
 
-/**
- * Send a failure alert email to the org owner when a circuit breaker opens.
- * Uses Redis SET NX to deduplicate so only one alert per endpoint per hour.
- * Runs fire-and-forget.
- */
+function lookupEndpointOwner(endpointId: string) {
+  return db
+    .select({
+      url: schema.endpoint.url,
+      orgName: schema.organization.name,
+      ownerEmail: schema.user.email,
+    })
+    .from(schema.endpoint)
+    .innerJoin(
+      schema.organization,
+      eq(schema.organization.id, schema.endpoint.organizationId)
+    )
+    .innerJoin(
+      schema.member,
+      eq(schema.member.organizationId, schema.endpoint.organizationId)
+    )
+    .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
+    .where(eq(schema.endpoint.id, endpointId))
+    .limit(1);
+}
+
 function sendCircuitBreakerAlert(
   endpointId: string,
   failureCount: number
 ): void {
   (async () => {
     try {
-      const redis = getRedisClient();
-      const alertKey = `org:circuit-alert:${endpointId}`;
-      const set = await redis.set(alertKey, "1", "EX", CIRCUIT_ALERT_TTL, "NX");
-      // already alerted recently
-      if (set !== "OK") {
-        return;
-      }
+      const isFirst = await setnx(`org:circuit-alert:${endpointId}`, ALERT_TTL);
+      if (!isFirst) return;
 
-      // Look up endpoint URL, org name, and owner email
-      const [result] = await db
-        .select({
-          url: schema.endpoint.url,
-          orgName: schema.organization.name,
-          ownerEmail: schema.user.email,
-        })
-        .from(schema.endpoint)
-        .innerJoin(
-          schema.organization,
-          eq(schema.organization.id, schema.endpoint.organizationId)
-        )
-        .innerJoin(
-          schema.member,
-          eq(schema.member.organizationId, schema.endpoint.organizationId)
-        )
-        .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
-        .where(eq(schema.endpoint.id, endpointId))
-        .limit(1);
-
-      if (!result) {
-        return;
-      }
+      const [result] = await lookupEndpointOwner(endpointId);
+      if (!result) return;
 
       const html = await render(
         FailureAlertEmail({
@@ -92,47 +80,16 @@ function sendCircuitBreakerAlert(
 function sendRecoveryAlert(endpointId: string): void {
   (async () => {
     try {
-      const redis = getRedisClient();
-      const alertKey = `org:circuit-recovered:${endpointId}`;
-      const set = await redis.set(
-        alertKey,
-        "1",
-        "EX",
-        RECOVERY_ALERT_TTL,
-        "NX"
-      );
-      if (set !== "OK") {
-        return;
-      }
+      const isFirst = await setnx(`org:circuit-recovered:${endpointId}`, ALERT_TTL);
+      if (!isFirst) return;
 
-      const [result] = await db
-        .select({
-          url: schema.endpoint.url,
-          orgName: schema.organization.name,
-          ownerEmail: schema.user.email,
-        })
-        .from(schema.endpoint)
-        .innerJoin(
-          schema.organization,
-          eq(schema.organization.id, schema.endpoint.organizationId)
-        )
-        .innerJoin(
-          schema.member,
-          eq(schema.member.organizationId, schema.endpoint.organizationId)
-        )
-        .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
-        .where(eq(schema.endpoint.id, endpointId))
-        .limit(1);
+      const [result] = await lookupEndpointOwner(endpointId);
+      if (!result) return;
 
-      if (!result) {
-        return;
-      }
-
-      const now = new Date();
       const html = await render(
         EndpointRecoveredEmail({
           endpointUrl: result.url,
-          recoveredAt: now.toLocaleString("en-US", {
+          recoveredAt: new Date().toLocaleString("en-US", {
             dateStyle: "long",
             timeStyle: "short",
           }),
@@ -151,29 +108,12 @@ function sendRecoveryAlert(endpointId: string): void {
   })();
 }
 
-type Executable = {
-  execute: (params: Record<string, unknown>) => Promise<unknown[]>;
-};
-
-type EndpointState = {
-  status: string;
-  circuitState: string;
-  circuitOpenedAt: Date | null;
-  failureCount: number;
-};
-
-type DeliveryState = {
-  status: string;
-  attempts: number;
-};
-
+type EndpointState = Pick<
+  typeof schema.endpoint.$inferSelect,
+  "status" | "circuitState" | "circuitOpenedAt" | "failureCount"
+>;
+type DeliveryState = Pick<typeof schema.delivery.$inferSelect, "status" | "attempts">;
 type AttemptWriterTx = Pick<typeof db, "insert" | "update">;
-
-type CircuitColumns = {
-  failureCount: PgColumn;
-  circuitState: PgColumn;
-  circuitOpenedAt: PgColumn;
-};
 
 type BaseJobData = {
   deliveryId: string;
@@ -189,12 +129,10 @@ type BaseJobData = {
 
 export type DeliveryConfig<TJob extends BaseJobData = BaseJobData> = {
   label: string;
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTableWithColumns requires generic parameter
-  deliveryTable: PgTableWithColumns<any>;
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle PgTableWithColumns requires generic parameter
-  endpointTable: PgTableWithColumns<any> & CircuitColumns;
-  getDeliveryStmt: Executable;
-  getEndpointStmt: Executable;
+  deliveryTable: typeof schema.delivery | typeof schema.inboundDelivery;
+  endpointTable: typeof schema.endpoint | typeof schema.inboundEndpoint;
+  getDeliveryStmt: { execute: (params: Record<string, unknown>) => Promise<DeliveryState[]> };
+  getEndpointStmt: { execute: (params: Record<string, unknown>) => Promise<EndpointState[]> };
   completedStatus: string;
   buildStatusSet: (status: string) => Record<string, unknown>;
   buildSuccessSet: (params: {
@@ -239,10 +177,8 @@ export async function processDelivery<TJob extends BaseJobData>(
   const { deliveryId, endpoint: ep } = job.data;
 
   const [[deliveryRecord], [endpointState]] = await Promise.all([
-    config.getDeliveryStmt.execute({ id: deliveryId }) as Promise<
-      DeliveryState[]
-    >,
-    config.getEndpointStmt.execute({ id: ep.id }) as Promise<EndpointState[]>,
+    config.getDeliveryStmt.execute({ id: deliveryId }),
+    config.getEndpointStmt.execute({ id: ep.id }),
   ]);
 
   if (!deliveryRecord) {
@@ -432,10 +368,7 @@ export async function processDelivery<TJob extends BaseJobData>(
           failureCount: config.endpointTable.failureCount,
           circuitState: config.endpointTable.circuitState,
         });
-      endpointResult = result[0] as {
-        failureCount: number;
-        circuitState: string;
-      };
+      endpointResult = result[0];
 
       if (config.recordAttempt) {
         await config.recordAttempt({

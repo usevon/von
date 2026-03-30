@@ -1,6 +1,6 @@
 import { db } from "@usevon/db";
 import { webhookVersion } from "@usevon/db/schema";
-import { getRedisClient } from "@usevon/queue";
+import { cacheDel } from "@usevon/queue";
 import type { TransformMappings, WebhookVersion } from "@usevon/types";
 import { InternalServerError, type Transforms } from "@usevon/utils";
 import { and, desc, eq } from "drizzle-orm";
@@ -28,7 +28,6 @@ type UpdateVersionParams = Pick<VersionFields, "transforms"> & {
   version: string;
 };
 
-const redis = getRedisClient();
 const VERSION_CURSOR_SORT = "desc" as const;
 
 export abstract class VersionService {
@@ -136,7 +135,7 @@ export abstract class VersionService {
     if (!result[0]) {
       throw new InternalServerError();
     }
-    await redis.del(`version:${params.organizationId}:${params.version}`);
+    await cacheDel(`version:${params.organizationId}:${params.version}`);
     return toResponse(result[0]);
   }
 
@@ -155,7 +154,7 @@ export abstract class VersionService {
       .returning({ id: webhookVersion.id });
 
     if (result.length > 0) {
-      await redis.del(`version:${organizationId}:${version}`);
+      await cacheDel(`version:${organizationId}:${version}`);
     }
     return result.length > 0;
   }

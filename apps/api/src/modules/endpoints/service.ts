@@ -1,8 +1,10 @@
 import { db } from "@usevon/db";
 import { delivery, endpoint, event } from "@usevon/db/schema";
 import {
+  cacheDel,
+  cacheGet,
+  cacheSet,
   type DeliveryEndpoint,
-  getRedisClient,
   type WebhookDeliveryJob,
 } from "@usevon/queue";
 import type {
@@ -29,7 +31,6 @@ import { assertSafeWebhookUrl } from "@/lib/url-safety";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
-const redis = getRedisClient();
 const CACHE_TTL = 300;
 const ENDPOINT_CURSOR_SORT = "desc" as const;
 
@@ -117,7 +118,7 @@ export abstract class EndpointService {
       throw new InternalServerError();
     }
     if (params.status !== "disabled") {
-      await redis.del(`endpoints:${params.organizationId}`);
+      await cacheDel(`endpoints:${params.organizationId}`);
     }
     return toResponseWithSecret(result[0]);
   }
@@ -208,7 +209,7 @@ export abstract class EndpointService {
       throw new InternalServerError();
     }
     if (existing[0].status === "active" || params.status !== undefined) {
-      await redis.del(`endpoints:${params.organizationId}`);
+      await cacheDel(`endpoints:${params.organizationId}`);
     }
     return toResponse(result[0]);
   }
@@ -228,7 +229,7 @@ export abstract class EndpointService {
       .returning({ id: endpoint.id });
 
     if (result.length > 0) {
-      await redis.del(`endpoints:${organizationId}`);
+      await cacheDel(`endpoints:${organizationId}`);
     }
     return result.length > 0;
   }
@@ -238,15 +239,9 @@ export abstract class EndpointService {
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
     if (!filterIds?.length) {
-      const cacheKey = `endpoints:${organizationId}`;
-      const cached = await redis.get(cacheKey);
+      const cached = await cacheGet<DeliveryEndpoint[]>(`endpoints:${organizationId}`);
       if (cached) {
-        try {
-          const parsed = JSON.parse(cached) as DeliveryEndpoint[];
-          return parsed.map((row) => withDecryptedSecretFields(row));
-        } catch {
-          await redis.del(cacheKey);
-        }
+        return cached.map((row) => withDecryptedSecretFields(row));
       }
     }
 
@@ -273,11 +268,7 @@ export abstract class EndpointService {
       .where(and(...conditions));
 
     if (!filterIds?.length) {
-      await redis.setex(
-        `endpoints:${organizationId}`,
-        CACHE_TTL,
-        JSON.stringify(result)
-      );
+      await cacheSet(`endpoints:${organizationId}`, result, CACHE_TTL);
     }
 
     return result.map((row) => withDecryptedSecretFields(row));
@@ -395,7 +386,7 @@ export abstract class EndpointService {
       })
       .where(eq(endpoint.id, endpointId));
 
-    await redis.del(`endpoints:${organizationId}`);
+    await cacheDel(`endpoints:${organizationId}`);
 
     return { secret: newSecret, previousSecret };
   }
@@ -422,7 +413,7 @@ export abstract class EndpointService {
       throw new NotFoundError();
     }
 
-    await redis.del(`endpoints:${organizationId}`);
+    await cacheDel(`endpoints:${organizationId}`);
     return true;
   }
 }

@@ -5,7 +5,7 @@ import {
   endpoint,
   webhookVersion,
 } from "@usevon/db/schema";
-import { getRedisClient, type WebhookDeliveryJob } from "@usevon/queue";
+import { cacheGet, cacheSet, type WebhookDeliveryJob } from "@usevon/queue";
 import {
   applyTransforms,
   buildSignatureHeader,
@@ -47,23 +47,15 @@ const getVersionStmt = db
   .limit(1)
   .prepare("worker_get_version");
 
-const redis = getRedisClient();
-const VERSION_CACHE_TTL = 60; // seconds
+const VERSION_CACHE_TTL = 60;
 
 const getVersionTransforms = async (
   version: string,
   organizationId: string
 ): Promise<Transforms | null> => {
-  const cacheKey = `version:${organizationId}:${version}`;
-  const cached = await redis.get(cacheKey);
-
-  if (cached) {
-    try {
-      return JSON.parse(cached) as Transforms;
-    } catch {
-      await redis.del(cacheKey);
-    }
-  }
+  const key = `version:${organizationId}:${version}`;
+  const cached = await cacheGet<Transforms>(key);
+  if (cached) return cached;
 
   const [result] = await getVersionStmt.execute({
     version,
@@ -72,7 +64,7 @@ const getVersionTransforms = async (
   const transforms = (result?.transforms as Transforms) ?? null;
 
   if (transforms) {
-    await redis.setex(cacheKey, VERSION_CACHE_TTL, JSON.stringify(transforms));
+    await cacheSet(key, transforms, VERSION_CACHE_TTL);
   }
 
   return transforms;

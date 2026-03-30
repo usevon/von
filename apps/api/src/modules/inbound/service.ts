@@ -1,6 +1,6 @@
 import { db } from "@usevon/db";
 import { inboundDelivery, inboundEndpoint } from "@usevon/db/schema";
-import { getRedisClient } from "@usevon/queue";
+import { cacheDel, cacheGet, cacheSet } from "@usevon/queue";
 import type {
   CreateInboundEndpoint,
   EndpointStatus,
@@ -25,8 +25,7 @@ import {
 import { assertSafeWebhookUrl } from "@/lib/url-safety";
 import type { InboundModel } from "@/modules/inbound/model";
 
-const redis = getRedisClient();
-const CACHE_TTL = 300; // 5 minutes
+const CACHE_TTL = 300;
 const INBOUND_CURSOR_SORT = "desc" as const;
 
 type InboundEndpointRow = typeof inboundEndpoint.$inferSelect;
@@ -157,15 +156,10 @@ export abstract class InboundService {
   static async getByPublicId(
     endpointId: string
   ): Promise<InboundEndpointRow | null> {
-    const cacheKey = `inbound:${endpointId}`;
-    const cached = await redis.get(cacheKey);
+    const key = `inbound:${endpointId}`;
+    const cached = await cacheGet<InboundEndpointRow>(key);
     if (cached) {
-      try {
-        const parsed = JSON.parse(cached) as InboundEndpointRow;
-        return withDecryptedSecretFields(parsed);
-      } catch {
-        await redis.del(cacheKey);
-      }
+      return withDecryptedSecretFields(cached);
     }
 
     const result = await db
@@ -175,7 +169,7 @@ export abstract class InboundService {
       .limit(1);
 
     if (result[0]) {
-      await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result[0]));
+      await cacheSet(key, result[0], CACHE_TTL);
     }
 
     return result[0] ? withDecryptedSecretFields(result[0]) : null;
@@ -228,7 +222,7 @@ export abstract class InboundService {
     if (!result[0]) {
       throw new InternalServerError();
     }
-    await redis.del(`inbound:${params.endpointId}`);
+    await cacheDel(`inbound:${params.endpointId}`);
     return toResponse(result[0]);
   }
 
@@ -247,7 +241,7 @@ export abstract class InboundService {
       .returning({ id: inboundEndpoint.id });
 
     if (result.length > 0) {
-      await redis.del(`inbound:${endpointId}`);
+      await cacheDel(`inbound:${endpointId}`);
     }
     return result.length > 0;
   }

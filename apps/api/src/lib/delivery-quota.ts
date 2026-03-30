@@ -1,7 +1,7 @@
 import { db, eq } from "@usevon/db";
 import * as schema from "@usevon/db/schema";
 import { QuotaWarningEmail, render } from "@usevon/email";
-import { getRedisClient } from "@usevon/queue";
+import { getRedisClient, setnx } from "@usevon/queue";
 import { TooManyRequestsError } from "@usevon/utils";
 
 import { env } from "@/env";
@@ -102,12 +102,8 @@ function checkQuotaThresholds(
     // Fire-and-forget -- errors are logged, never thrown
     (async () => {
       try {
-        const redis = getRedisClient();
-        const set = await redis.set(alertKey, "1", "EX", DELIVERY_TTL, "NX");
-        // already sent this threshold
-        if (set !== "OK") {
-          return;
-        }
+        const isFirst = await setnx(alertKey, DELIVERY_TTL);
+        if (!isFirst) return;
 
         // Look up the org owner's email
         const [owner] = await db

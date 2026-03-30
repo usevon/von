@@ -1,9 +1,8 @@
-import { getRedisClient } from "@usevon/queue";
+import { cacheDel, cacheGet, cacheSet } from "@usevon/queue";
 import { hashSha256 } from "@usevon/utils";
 import { Elysia } from "elysia";
 
-const redis = getRedisClient();
-const IDEMPOTENCY_TTL = 60 * 5; // 5 minutes
+const IDEMPOTENCY_TTL = 300;
 
 type CachedResponse = {
   status: number;
@@ -43,16 +42,11 @@ export const idempotency = () =>
       const authScope = hashSha256(authHeader).slice(0, 16);
       const fingerprint = await buildRequestFingerprint(request);
       const cacheKey = `idempotency:${authScope}:${idempotencyKey}:${fingerprint.slice(0, 32)}`;
-      const cached = await redis.get(cacheKey);
+      const cached = await cacheGet<CachedResponse>(cacheKey);
 
       if (cached) {
-        try {
-          const response: CachedResponse = JSON.parse(cached);
-          set.status = response.status;
-          return { idempotencyCached: true, cachedResponse: response.body };
-        } catch {
-          await redis.del(cacheKey);
-        }
+        set.status = cached.status;
+        return { idempotencyCached: true, cachedResponse: cached.body };
       }
 
       return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
@@ -72,15 +66,9 @@ export const idempotency = () =>
           return;
         }
 
-        const toCache: CachedResponse = {
+        await cacheSet(idempotencyCacheKey, {
           status: (set.status as number) || 200,
           body: response,
-        };
-
-        await redis.setex(
-          idempotencyCacheKey,
-          IDEMPOTENCY_TTL,
-          JSON.stringify(toCache)
-        );
+        } satisfies CachedResponse, IDEMPOTENCY_TTL);
       }
     );
