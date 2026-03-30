@@ -6,6 +6,7 @@ export {
   getRedisClient,
 } from "@/connection";
 export { getInboundForwardingQueue, getWebhookDeliveryQueue } from "@/queues";
+export { cacheDel, cacheGet, cacheSet, setnx } from "@/redis";
 export type {
   DeliveryEndpoint,
   InboundForwardingJob,
