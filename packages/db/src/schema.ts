@@ -34,6 +34,7 @@ export const session = pgTable(
     token: text("token").notNull().unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
+      .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
     ipAddress: text("ip_address"),
@@ -180,7 +181,7 @@ export const apikey = pgTable(
     }),
     environment: text("environment").notNull(),
     scopes: jsonb("scopes").$type<string[]>(),
-    enabled: boolean("enabled").default(true),
+    enabled: boolean("enabled").default(true).notNull(),
     expiresAt: timestamp("expires_at"),
     lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -445,7 +446,7 @@ export const webhookVersion = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     version: text("version").notNull(),
-    transforms: jsonb("transforms").notNull(),
+    transforms: jsonb("transforms").$type<Record<string, unknown>>().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -478,7 +479,7 @@ export const auditLog = pgTable(
     resourceType: text("resource_type").notNull(),
     resourceId: text("resource_id").notNull(),
     resourceName: text("resource_name"),
-    metadata: jsonb("metadata"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -632,6 +633,24 @@ export const inboundDeliveryRelations = relations(
     }),
   })
 );
+
+export const tunnelRelations = relations(tunnel, ({ one }) => ({
+  organization: one(organization, {
+    fields: [tunnel.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [tunnel.userId],
+    references: [user.id],
+  }),
+}));
+
+export const deviceCodeRelations = relations(deviceCode, ({ one }) => ({
+  user: one(user, {
+    fields: [deviceCode.userId],
+    references: [user.id],
+  }),
+}));
 
 export const webhookVersionRelations = relations(webhookVersion, ({ one }) => ({
   organization: one(organization, {
