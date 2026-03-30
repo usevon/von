@@ -1,31 +1,19 @@
-import { cacheDel, cacheGet, cacheSet } from "@usevon/queue";
+import { cacheGet, cacheSet } from "@usevon/queue";
 import { hashSha256 } from "@usevon/utils";
 import { Elysia } from "elysia";
 
 const IDEMPOTENCY_TTL = 300;
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH"]);
 
 type CachedResponse = {
   status: number;
   body: unknown;
 };
 
-export const buildRequestFingerprint = async (
-  request: Request
-): Promise<string> => {
-  const url = new URL(request.url);
-  const body = await request.clone().text();
-  const bodyHash = hashSha256(body);
-  return hashSha256(
-    `${request.method}:${url.pathname}${url.search}:${bodyHash}`
-  );
-};
-
 export const idempotency = () =>
   new Elysia({ name: "idempotency" })
-    .resolve({ as: "global" }, async ({ request, set }) => {
-      const method = request.method;
-
-      if (!["POST", "PUT", "PATCH"].includes(method)) {
+    .resolve({ as: "scoped" }, async ({ request, set }) => {
+      if (!MUTATING_METHODS.has(request.method)) {
         return {};
       }
 
@@ -39,8 +27,12 @@ export const idempotency = () =>
         return {};
       }
 
+      const url = new URL(request.url);
+      const bodyText = await request.clone().text();
+      const fingerprint = hashSha256(
+        `${request.method}:${url.pathname}${url.search}:${hashSha256(bodyText)}`
+      );
       const authScope = hashSha256(authHeader).slice(0, 16);
-      const fingerprint = await buildRequestFingerprint(request);
       const cacheKey = `idempotency:${authScope}:${idempotencyKey}:${fingerprint.slice(0, 32)}`;
       const cached = await cacheGet<CachedResponse>(cacheKey);
 
@@ -52,7 +44,7 @@ export const idempotency = () =>
       return { idempotencyCacheKey: cacheKey, idempotencyCached: false };
     })
     .onBeforeHandle(
-      { as: "global" },
+      { as: "scoped" },
       ({ idempotencyCached, cachedResponse }) => {
         if (idempotencyCached) {
           return cachedResponse;
@@ -60,7 +52,7 @@ export const idempotency = () =>
       }
     )
     .onAfterHandle(
-      { as: "global" },
+      { as: "scoped" },
       async ({ idempotencyCacheKey, response, set }) => {
         if (!idempotencyCacheKey) {
           return;

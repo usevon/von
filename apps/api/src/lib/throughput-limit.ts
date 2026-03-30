@@ -75,27 +75,33 @@ export async function checkThroughputLimit(
 
 export const orgThroughputLimit = new Elysia({
   name: "org-throughput-limit",
-}).resolve({ as: "scoped" }, async ({ set, status, ...ctx }) => {
-  const organizationId =
-    "organizationId" in ctx ? (ctx.organizationId as string) : undefined;
-  if (!organizationId) {
-    return { plan: "hobby" };
-  }
-  const plan = await getOrgPlan(organizationId);
-  const limits = getPlanLimits(plan);
-  const { allowed, remaining } = await checkThroughputLimit(
+}).resolve(
+  { as: "scoped" },
+  async ({
+    set,
+    status,
     organizationId,
-    plan,
-    1
-  );
+  }: {
+    set: { headers: Record<string, string> };
+    status: (code: number, body: unknown) => unknown;
+    organizationId: string;
+  }) => {
+    const plan = await getOrgPlan(organizationId);
+    const limits = getPlanLimits(plan);
+    const { allowed, remaining } = await checkThroughputLimit(
+      organizationId,
+      plan,
+      1
+    );
 
-  set.headers["X-RateLimit-Limit"] = String(limits.burstPerSecond);
-  set.headers["X-RateLimit-Remaining"] = String(remaining);
+    set.headers["X-RateLimit-Limit"] = String(limits.burstPerSecond);
+    set.headers["X-RateLimit-Remaining"] = String(remaining);
 
-  if (!allowed) {
-    set.headers["Retry-After"] = "1";
-    return status(429, { error: "Too many requests" });
+    if (!allowed) {
+      set.headers["Retry-After"] = "1";
+      return status(429, { error: "Too many requests" });
+    }
+
+    return { plan };
   }
-
-  return { plan };
-});
+);
