@@ -1,14 +1,14 @@
 import { Elysia } from "elysia";
 import { ErrorResponse, IdParam, ReadGuard, WriteGuard } from "@/lib/models";
+import { resolveOrgPlan } from "@/lib/org-plan";
 import { toCursorPageInput } from "@/lib/pagination";
-import { orgThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
 import { WebhookModel } from "@/modules/webhooks/model";
 import { WebhookService } from "@/modules/webhooks/service";
 
 export const webhooks = new Elysia({ prefix: "/webhooks" })
   .use(vonAuth("write:webhooks"))
-  .use(orgThroughputLimit)
+  .use(resolveOrgPlan)
   .guard({ response: WriteGuard })
   .post(
     "/",
@@ -122,7 +122,7 @@ export const webhookEventsRead = new Elysia({ prefix: "/webhooks" })
 
 export const webhookEventsWrite = new Elysia({ prefix: "/webhooks" })
   .use(vonAuth("write:webhooks"))
-  .use(orgThroughputLimit)
+  .use(resolveOrgPlan)
   .guard({ response: WriteGuard })
   .post(
     "/events/:id/replay",

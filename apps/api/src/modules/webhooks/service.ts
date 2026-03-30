@@ -105,11 +105,12 @@ type BuildDeliveriesParams = {
   allEndpoints: DeliveryEndpoint[];
   endpointsById: Map<string, DeliveryEndpoint>;
   organizationId: string;
+  plan: string;
   now: Date;
 };
 
 const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
-  const { newEvents, allEndpoints, endpointsById, organizationId, now } =
+  const { newEvents, allEndpoints, endpointsById, organizationId, plan, now } =
     params;
   const allDeliveries: (typeof delivery.$inferInsert)[] = [];
   const allJobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
@@ -143,6 +144,7 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
           eventType: evt.eventType,
           endpoint: ep,
           organizationId,
+          plan,
         },
       });
     }
@@ -254,6 +256,7 @@ export abstract class WebhookService {
       allEndpoints,
       endpointsById,
       organizationId: params.organizationId,
+      plan: params.plan,
       now,
     });
 
@@ -652,6 +655,7 @@ export abstract class WebhookService {
               eventType: eventRecord.eventType,
               endpoint: ep,
               organizationId,
+              plan,
             },
           });
         }
@@ -734,6 +738,7 @@ export abstract class WebhookService {
           eventType: failed.eventType,
           endpoint: ep,
           organizationId,
+          plan,
         },
       });
     }

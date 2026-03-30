@@ -346,6 +346,7 @@ export abstract class EndpointService {
               eventType: type,
               endpoint: deliveryEndpoint,
               organizationId: params.organizationId,
+              plan: params.plan,
             } satisfies WebhookDeliveryJob,
           },
         ]);

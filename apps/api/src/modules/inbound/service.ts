@@ -278,6 +278,7 @@ export abstract class InboundService {
 
         await enqueueInboundForwardingJob({
           deliveryId,
+          organizationId: params.organizationId,
           endpoint: params.endpoint,
           payload: JSON.stringify(params.payload),
           headers: JSON.stringify(params.headers),

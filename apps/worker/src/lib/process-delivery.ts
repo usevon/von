@@ -5,7 +5,7 @@ import {
   FailureAlertEmail,
   render,
 } from "@usevon/email";
-import { setnx } from "@usevon/queue";
+import { checkThroughputLimit, setnx } from "@usevon/queue";
 import {
   CIRCUIT_CONFIG,
   type CircuitState,
@@ -117,6 +117,8 @@ type AttemptWriterTx = Pick<typeof db, "insert" | "update">;
 
 type BaseJobData = {
   deliveryId: string;
+  organizationId: string;
+  plan: string;
   payload: string;
   endpoint: {
     id: string;
@@ -240,6 +242,16 @@ export async function processDelivery<TJob extends BaseJobData>(
       .update(config.endpointTable)
       .set({ circuitState: "half_open", updatedAt: new Date() })
       .where(eq(config.endpointTable.id, ep.id));
+  }
+
+  const { allowed } = await checkThroughputLimit(
+    job.data.organizationId,
+    job.data.plan,
+    1
+  );
+  if (!allowed) {
+    await job.moveToDelayed(Date.now() + 1000, job.token);
+    return;
   }
 
   let finalPayload = job.data.payload;

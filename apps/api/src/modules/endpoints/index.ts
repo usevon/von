@@ -9,7 +9,7 @@ import {
   WriteGuard,
 } from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
-import { orgThroughputLimit } from "@/lib/throughput-limit";
+import { resolveOrgPlan } from "@/lib/org-plan";
 import { vonAuth } from "@/modules/auth";
 import { EndpointModel } from "@/modules/endpoints/model";
 import { EndpointService } from "@/modules/endpoints/service";
@@ -45,7 +45,7 @@ export const endpointsRead = new Elysia({ prefix: "/endpoints" })
 
 export const endpointsWrite = new Elysia({ prefix: "/endpoints" })
   .use(vonAuth("write:endpoints"))
-  .use(orgThroughputLimit)
+  .use(resolveOrgPlan)
   .guard({ response: WriteGuard })
   .post(
     "/",

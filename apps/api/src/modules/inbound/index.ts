@@ -13,7 +13,6 @@ import {
 import { getOrgPlan } from "@/lib/org-plan";
 import { toCursorPageInput } from "@/lib/pagination";
 import { rateLimit } from "@/lib/rate-limit";
-import { checkThroughputLimit } from "@/lib/throughput-limit";
 import { vonAuth } from "@/modules/auth";
 import { InboundModel } from "@/modules/inbound/model";
 import { InboundService } from "@/modules/inbound/service";
@@ -133,14 +132,6 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
       }
 
       const plan = await getOrgPlan(endpoint.organizationId);
-      const { allowed } = await checkThroughputLimit(
-        endpoint.organizationId,
-        plan,
-        1
-      );
-      if (!allowed) {
-        return status(429, { error: "Too many requests" });
-      }
 
       return InboundService.receive({
         endpointId: params.id,
@@ -166,7 +157,6 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
         403: ErrorResponse,
         404: ErrorResponse,
         413: ErrorResponse,
-        429: ErrorResponse,
       },
     }
   );
