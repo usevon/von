@@ -1,26 +1,19 @@
-"use client";
-
-import { AnimatePresence, motion } from "motion/react";
-import { usePathname } from "next/navigation";
+import { AnimatedContent } from "@/components/docs/animated-content";
 import { PageActions } from "@/components/docs/page-actions";
 import { TableOfContents } from "@/components/docs/toc";
 import { Sidebar } from "@/components/sidebar";
 
-const transition = {
-  duration: 0.2,
-  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+type DocsSlugLayoutProps = {
+  children: React.ReactNode;
+  params: Promise<{ slug?: string[] }>;
 };
 
-export default function DocsSlugLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const isHome = pathname === "/";
+export default async function DocsSlugLayout(props: DocsSlugLayoutProps) {
+  const { slug } = await props.params;
+  const isHome = !slug || slug.length === 0;
 
   if (isHome) {
-    return <>{children}</>;
+    return <>{props.children}</>;
   }
 
   return (
@@ -29,17 +22,7 @@ export default function DocsSlugLayout({
       <div className="min-w-0 flex-1">
         <div className="flex gap-12 px-8 pt-6 pb-10 sm:px-12">
           <div className="min-w-0 max-w-4xl flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                initial={{ opacity: 0, y: 4 }}
-                key={pathname}
-                transition={transition}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            <AnimatedContent>{props.children}</AnimatedContent>
           </div>
           <aside className="sticky top-20 hidden h-fit w-48 shrink-0 xl:block">
             <TableOfContents />
