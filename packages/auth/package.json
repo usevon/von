@@ -21,7 +21,7 @@
     "@usevon/utils": "workspace:*",
     "better-auth": "^1.5.6",
     "better-auth-harmony": "^1.2.5",
-    "drizzle-orm": "^0.44.7",
+    "drizzle-orm": "^0.45.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
