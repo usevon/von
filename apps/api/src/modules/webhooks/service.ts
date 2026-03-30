@@ -130,6 +130,7 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
       const deliveryId = crypto.randomUUID();
       allDeliveries.push({
         id: deliveryId,
+        organizationId,
         eventId: evt.id,
         endpointId: ep.id,
         status: "pending",
@@ -689,6 +690,7 @@ export abstract class WebhookService {
           const deliveryId = crypto.randomUUID();
           deliveryRecords.push({
             id: deliveryId,
+            organizationId,
             eventId: eventRecord.id,
             endpointId: ep.id,
             status: "pending",
@@ -772,6 +774,7 @@ export abstract class WebhookService {
       const deliveryId = crypto.randomUUID();
       deliveryRecords.push({
         id: deliveryId,
+        organizationId,
         eventId: failed.eventId,
         endpointId: failed.endpointId,
         status: "pending",

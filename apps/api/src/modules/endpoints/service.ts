@@ -327,6 +327,7 @@ export abstract class EndpointService {
 
         await db.insert(delivery).values({
           id: deliveryId,
+          organizationId: params.organizationId,
           eventId,
           endpointId: params.endpointId,
           status: "pending",

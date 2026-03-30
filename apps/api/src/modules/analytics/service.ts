@@ -35,15 +35,13 @@ export abstract class AnalyticsService {
     const to = parseOptionalDate(query.to, "to");
     validateDateRange(from, to);
 
-    const conditions = [eq(event.organizationId, organizationId)];
+    const deliveryConditions = [eq(delivery.organizationId, organizationId)];
     if (from) {
-      conditions.push(gte(delivery.createdAt, from));
+      deliveryConditions.push(gte(delivery.createdAt, from));
     }
     if (to) {
-      conditions.push(lte(delivery.createdAt, to));
+      deliveryConditions.push(lte(delivery.createdAt, to));
     }
-
-    const where = and(...conditions);
 
     const eventConditions = [eq(event.organizationId, organizationId)];
     if (from) {
@@ -66,8 +64,7 @@ export abstract class AnalyticsService {
           retries: sql<number>`sum(case when ${delivery.attempts} > 1 then 1 else 0 end)::int`,
         })
         .from(delivery)
-        .innerJoin(event, eq(delivery.eventId, event.id))
-        .where(where),
+        .where(and(...deliveryConditions)),
       db
         .select({ events: sql<number>`count(*)::int` })
         .from(event)
@@ -109,7 +106,7 @@ export abstract class AnalyticsService {
     const interval: TimeseriesInterval = query.interval ?? "1h";
 
     const where = and(
-      eq(event.organizationId, organizationId),
+      eq(delivery.organizationId, organizationId),
       from ? gte(delivery.createdAt, from) : undefined,
       to ? lte(delivery.createdAt, to) : undefined
     );
@@ -126,7 +123,6 @@ export abstract class AnalyticsService {
         circuitOpen: sql<number>`sum(case when ${delivery.status} = 'circuit_open' then 1 else 0 end)::int`,
       })
       .from(delivery)
-      .innerJoin(event, eq(delivery.eventId, event.id))
       .where(where)
       .groupBy(bucketTs)
       .orderBy(bucketTs);
@@ -156,7 +152,7 @@ export abstract class AnalyticsService {
     validateDateRange(from, to);
 
     const deliveryWhere = and(
-      eq(event.organizationId, organizationId),
+      eq(delivery.organizationId, organizationId),
       from ? gte(delivery.createdAt, from) : undefined,
       to ? lte(delivery.createdAt, to) : undefined
     );
@@ -178,7 +174,6 @@ export abstract class AnalyticsService {
           avgAttempts: sql<number>`coalesce(avg(${delivery.attempts})::float, 0)`,
         })
         .from(delivery)
-        .innerJoin(event, eq(delivery.eventId, event.id))
         .where(deliveryWhere),
       db
         .select({

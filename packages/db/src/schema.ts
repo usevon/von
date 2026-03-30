@@ -270,6 +270,9 @@ export const delivery = pgTable(
   "delivery",
   {
     id: uuid("id").primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     eventId: uuid("event_id")
       .notNull()
       .references(() => event.id, { onDelete: "cascade" }),
@@ -283,6 +286,16 @@ export const delivery = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
+    index("delivery_org_created_id_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id
+    ),
+    index("delivery_org_status_created_idx").on(
+      table.organizationId,
+      table.status,
+      table.createdAt
+    ),
     index("delivery_event_id_idx").on(table.eventId),
     index("delivery_endpoint_status_idx").on(table.endpointId, table.status),
     index("delivery_event_created_id_idx").on(
@@ -580,6 +593,10 @@ export const eventRelations = relations(event, ({ one, many }) => ({
 }));
 
 export const deliveryRelations = relations(delivery, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [delivery.organizationId],
+    references: [organization.id],
+  }),
   event: one(event, {
     fields: [delivery.eventId],
     references: [event.id],

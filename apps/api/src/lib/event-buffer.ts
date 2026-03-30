@@ -21,6 +21,7 @@ type BufferedPersistence = {
   }>;
   deliveries: Array<{
     id: string;
+    organizationId: string;
     eventId: string;
     endpointId: string;
     status: string;
@@ -108,6 +109,7 @@ async function flushBuffer(): Promise<number> {
           await tx.insert(delivery).values(
             allDeliveries.map((d) => ({
               id: d.id,
+              organizationId: d.organizationId,
               eventId: d.eventId,
               endpointId: d.endpointId,
               status: d.status,
