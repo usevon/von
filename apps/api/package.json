@@ -17,6 +17,7 @@
     "test": "bun test tests/unit",
     "test:unit": "bun test tests/unit",
     "test:integration:auto": "bun run tests/integration/run.ts",
+    "bench": "bun run benchmarks/api.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
