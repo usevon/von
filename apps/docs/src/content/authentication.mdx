@@ -108,7 +108,7 @@ There is no atomic rotation endpoint, so keep a short overlap window during rota
 | --- | --- |
 | Storage | Keys are hashed with SHA-256; only the `start` prefix is stored in plaintext for identification. |
 | Integrity verification | Production keys include an HMAC suffix, and invalid signatures are rejected before database lookup. |
-| Rate limiting | Authenticated routes are IP rate-limited, and throughput limits apply to webhook sends/replays and endpoint writes. |
+| Rate limiting | Authenticated routes are IP rate-limited. Delivery throughput is enforced at the worker level per organization plan. |
 | Usage tracking | `lastUsedAt` updates are buffered in Redis and flushed to the database every 5 minutes. |
 
 ## Scopes in practice

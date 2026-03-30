@@ -15,7 +15,7 @@ Von uses multiple limit layers to protect reliability.
 | --- | --- | --- |
 | Auth request limit | API routes behind authentication | 200 requests/minute per IP |
 | Public inbound limit | Provider traffic to `POST /in/:id` | 100 requests/minute per IP |
-| Org throughput limit | Webhook sends/replays, endpoint writes, and inbound forwards per organization | Token bucket by plan profile |
+| Org throughput limit | Webhook delivery processing per organization | Token bucket by plan profile |
 
 Authenticated-route limit coverage:
 
@@ -33,26 +33,22 @@ Authenticated-route limit coverage:
 
 Cloud pricing starts Metered throughput at 25/sec and allows higher throughput via add-ons.
 
-Current API throughput profiles are:
+Current delivery throughput profiles are:
 
 | Profile | Refill rate | Burst |
 | --- | --- | --- |
-| `hobby` | 25 requests/second | 35 |
-| temporary non-`hobby` fallback | 100 requests/second | 140 |
+| `hobby` | 25 deliveries/second | 35 |
+| temporary non-`hobby` fallback | 100 deliveries/second | 140 |
 
-Throughput checks currently apply to:
+Throughput is enforced at the delivery worker level, not at API ingestion. When you send a webhook or receive an inbound event, the API always accepts the request and creates the event and deliveries. The worker then processes deliveries at the configured rate for your organization's plan. If delivery throughput is exceeded, jobs are delayed briefly and retried rather than rejected.
 
-| Route group | Operations |
-| --- | --- |
-| `/webhooks` | `POST /`, `POST /batch`, `POST /events/:id/replay`, `POST /events/replay` |
-| `/endpoints` | All write routes |
-| `/in` | `POST /:id` |
+This means your API calls will never receive a `429` for throughput. Events are always persisted and deliveries are always queued.
 
 ## 429 response headers
 
-When a limiter rejects a request, expect `429 Too Many Requests`.
+When the IP-based request limit rejects a request, expect `429 Too Many Requests`.
 
-For the request-per-minute limit, responses include:
+Responses include:
 
 | Header | Meaning |
 | --- | --- |
@@ -60,8 +56,6 @@ For the request-per-minute limit, responses include:
 | `X-RateLimit-Remaining` | Remaining requests in current window |
 | `X-RateLimit-Reset` | Unix timestamp when the window resets |
 | `Retry-After` | Seconds to wait before retrying |
-
-For org throughput routes using middleware, responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After: 1`.
 
 ## Handling 429 correctly
 
