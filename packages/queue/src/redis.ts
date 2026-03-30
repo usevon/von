@@ -19,7 +19,7 @@ export async function setnx(
  */
 export async function cacheGet<T>(key: string): Promise<T | null> {
   const raw = await redis().get(key);
-  if (!raw) return null;
+  if (!raw) { return null; }
   try {
     return JSON.parse(raw) as T;
   } catch {

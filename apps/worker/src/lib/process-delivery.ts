@@ -50,10 +50,10 @@ function sendCircuitBreakerAlert(
   (async () => {
     try {
       const isFirst = await setnx(`org:circuit-alert:${endpointId}`, ALERT_TTL);
-      if (!isFirst) return;
+      if (!isFirst) { return; }
 
       const [result] = await lookupEndpointOwner(endpointId);
-      if (!result) return;
+      if (!result) { return; }
 
       const html = await render(
         FailureAlertEmail({
@@ -81,10 +81,10 @@ function sendRecoveryAlert(endpointId: string): void {
   (async () => {
     try {
       const isFirst = await setnx(`org:circuit-recovered:${endpointId}`, ALERT_TTL);
-      if (!isFirst) return;
+      if (!isFirst) { return; }
 
       const [result] = await lookupEndpointOwner(endpointId);
-      if (!result) return;
+      if (!result) { return; }
 
       const html = await render(
         EndpointRecoveredEmail({

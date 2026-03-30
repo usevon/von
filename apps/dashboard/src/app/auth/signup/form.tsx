@@ -20,7 +20,7 @@ export const SignupForm = (props: SignupFormProps) => {
   const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
-    if (cooldown <= 0) return;
+    if (cooldown <= 0) { return; }
     const timer = setInterval(() => {
       setCooldown((prev) => prev - 1);
     }, 1000);
@@ -28,7 +28,7 @@ export const SignupForm = (props: SignupFormProps) => {
   }, [cooldown]);
 
   const handleResend = useCallback(async () => {
-    if (!verifyEmail) return;
+    if (!verifyEmail) { return; }
     setIsResending(true);
     try {
       await authClient.sendVerificationEmail({
@@ -102,16 +102,20 @@ export const SignupForm = (props: SignupFormProps) => {
           onClick={handleResend}
           variant="outline"
         >
-          {isResending ? (
-            <>
-              <Spinner className="size-4" />
-              Sending...
-            </>
-          ) : cooldown > 0 ? (
-            `Resend in ${cooldown}s`
-          ) : (
-            "Resend verification email"
-          )}
+          {(() => {
+            if (isResending) {
+              return (
+                <>
+                  <Spinner className="size-4" />
+                  Sending...
+                </>
+              );
+            }
+            if (cooldown > 0) {
+              return `Resend in ${cooldown}s`;
+            }
+            return "Resend verification email";
+          })()}
         </Button>
         <p className="text-muted-foreground text-sm">
           Already verified?{" "}

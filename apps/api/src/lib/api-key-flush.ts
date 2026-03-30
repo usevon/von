@@ -21,14 +21,14 @@ async function flushLastUsed() {
   const updates: { id: string; lastUsedAt: Date }[] = [];
   for (let i = 0; i < dirtyIds.length; i++) {
     const ts = results?.[i]?.[1] as string | null;
-    if (!ts) continue;
+    if (!ts) { continue; }
     updates.push({
       id: dirtyIds[i],
       lastUsedAt: new Date(Number(ts) * 1000),
     });
   }
 
-  if (updates.length === 0) return;
+  if (updates.length === 0) { return; }
 
   try {
     await db.transaction(async (tx) => {

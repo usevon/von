@@ -55,7 +55,7 @@ const getVersionTransforms = async (
 ): Promise<Transforms | null> => {
   const key = `version:${organizationId}:${version}`;
   const cached = await cacheGet<Transforms>(key);
-  if (cached) return cached;
+  if (cached) { return cached; }
 
   const [result] = await getVersionStmt.execute({
     version,

@@ -13,7 +13,7 @@ export const dev = new Command("dev")
   .option("-p, --port <port...>", "Local port(s) to forward to (max 3)")
   .option("-v, --verbose", "Show detailed request/response info")
   .action(async (options) => {
-    const { token, config } = requireAuth();
+    const { token } = requireAuth();
 
     if (!options.port || options.port.length === 0) {
       log.error("Port is required. Usage: von dev -p <port>");
@@ -62,12 +62,7 @@ export const dev = new Command("dev")
       }
       console.log(pc.dim("│\n│  Press Ctrl+C to stop\n"));
 
-      await connectTunnels(
-        token,
-        tunnels,
-        options.verbose ?? false,
-        config.apiUrl
-      );
+      await connectTunnels(token, tunnels, options.verbose ?? false);
     } catch (err) {
       s.stop("");
       log.error(`Failed to start tunnel: ${formatError(err)}`);
@@ -77,15 +72,11 @@ export const dev = new Command("dev")
 const connectTunnels = (
   token: string,
   tunnels: TunnelInfo[],
-  verbose: boolean,
-  apiBaseUrl: string
+  verbose: boolean
 ): Promise<void> => {
   return new Promise((_, reject) => {
     let isShuttingDown = false;
     let configWatcher: FSWatcher | null = null;
-
-    // Map port to tunnelId for secret rotation
-    const portToTunnelId = new Map(tunnels.map((t) => [t.port, t.tunnelId]));
 
     const manager = new TunnelManager(token, {
       verbose,

@@ -103,7 +103,7 @@ function checkQuotaThresholds(
     (async () => {
       try {
         const isFirst = await setnx(alertKey, DELIVERY_TTL);
-        if (!isFirst) return;
+        if (!isFirst) { return; }
 
         // Look up the org owner's email
         const [owner] = await db

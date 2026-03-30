@@ -11,7 +11,6 @@ import {
   RATE_TIERS,
 } from "@/lib/calculator";
 import {
-  type CalculatorState,
   useCalculatorState,
 } from "./use-calculator-state";
 

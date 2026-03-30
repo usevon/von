@@ -112,7 +112,7 @@ export const Wallpaper = (props: WallpaperProps) => {
     let isVisible = true;
 
     const render = () => {
-      if (!isVisible) return;
+      if (!isVisible) { return; }
 
       const stops = stopsRef.current;
       const shift = hueShift.get();
