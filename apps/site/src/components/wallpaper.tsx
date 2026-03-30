@@ -109,8 +109,11 @@ export const Wallpaper = (props: WallpaperProps) => {
     observer.observe(document.documentElement, { attributes: true });
 
     let animationFrame: number;
+    let isVisible = true;
 
     const render = () => {
+      if (!isVisible) return;
+
       const stops = stopsRef.current;
       const shift = hueShift.get();
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -143,11 +146,26 @@ export const Wallpaper = (props: WallpaperProps) => {
       animationFrame = requestAnimationFrame(render);
     };
 
+    // Pause rendering when the canvas is off-screen
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible) {
+          animationFrame = requestAnimationFrame(render);
+        } else {
+          cancelAnimationFrame(animationFrame);
+        }
+      },
+      { threshold: 0 },
+    );
+    visibilityObserver.observe(canvas);
+
     render();
 
     return () => {
       window.removeEventListener("resize", updateCanvasSize);
       observer.disconnect();
+      visibilityObserver.disconnect();
       cancelAnimationFrame(animationFrame);
     };
   }, [hueShift, refreshStops]);
