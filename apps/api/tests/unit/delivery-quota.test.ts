@@ -36,7 +36,18 @@ const mockRedis = {
   expire: mock(() => Promise.resolve(1)),
   scard: mock((key: string) => Promise.resolve(setStore.get(key)?.size ?? 0)),
   get: mock((key: string) => Promise.resolve(stringStore.get(key) ?? null)),
+  setex: mock((key: string, _ttl: number, value: string) => {
+    stringStore.set(key, value);
+    return Promise.resolve("OK");
+  }),
+  smembers: mock((key: string) =>
+    Promise.resolve([...(setStore.get(key) ?? new Set<string>())])
+  ),
   publish: mock(() => Promise.resolve(1)),
+  pipeline: mock(() => ({
+    get: () => undefined,
+    exec: () => Promise.resolve([]),
+  })),
 };
 
 const mockSubscriber = {
@@ -51,6 +62,15 @@ mock.module("@usevon/queue", () => ({
   createConnection: () => mockSubscriber,
   checkRedisConnection: () => Promise.resolve({ ok: true }),
   closeRedis: () => Promise.resolve(),
+  setnx: () => Promise.resolve(true),
+  cacheGet: () => Promise.resolve(null),
+  cacheSet: () => Promise.resolve(),
+  cacheDel: () => Promise.resolve(),
+  checkThroughputLimit: () => Promise.resolve({ allowed: true, remaining: 24 }),
+  getPlanLimits: (plan: string) =>
+    plan === "hobby"
+      ? { ratePerSecond: 25, burstPerSecond: 35 }
+      : { ratePerSecond: 100, burstPerSecond: 140 },
   getWebhookDeliveryQueue: () => ({
     addBulk: () => Promise.resolve([]),
     add: () => Promise.resolve({}),
