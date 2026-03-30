@@ -283,6 +283,7 @@ export abstract class WebhookService {
             })),
             deliveries: allDeliveries.map((d) => ({
               id: d.id as string,
+              organizationId: d.organizationId as string,
               eventId: d.eventId as string,
               endpointId: d.endpointId as string,
               status: d.status as string,
