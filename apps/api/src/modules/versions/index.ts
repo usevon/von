@@ -5,6 +5,7 @@ import {
   PaginationQuery,
   ReadGuard,
   SuccessResponse,
+  WriteGuard,
 } from "@/lib/models";
 import { toCursorPageInput } from "@/lib/pagination";
 import { vonAuth } from "@/modules/auth";
@@ -46,7 +47,7 @@ export const versionsRead = new Elysia({ prefix: "/versions" })
 
 export const versionsWrite = new Elysia({ prefix: "/versions" })
   .use(vonAuth("write:versions"))
-  .guard({ response: ReadGuard })
+  .guard({ response: WriteGuard })
   .post(
     "/",
     async ({ organizationId, body, status }) =>

@@ -8,6 +8,7 @@ import {
   PaginationQuery,
   ReadGuard,
   SuccessResponse,
+  WriteGuard,
 } from "@/lib/models";
 import { getOrgPlan } from "@/lib/org-plan";
 import { toCursorPageInput } from "@/lib/pagination";
@@ -48,7 +49,7 @@ export const inboundRead = new Elysia({ prefix: "/inbound" })
 
 export const inboundWrite = new Elysia({ prefix: "/inbound" })
   .use(vonAuth("write:inbound"))
-  .guard({ response: ReadGuard })
+  .guard({ response: WriteGuard })
   .post(
     "/",
     async ({ organizationId, body, status }) =>
