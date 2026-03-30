@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import { env } from "@/env";
 import { csrfProtection } from "@/lib/csrf";
 import { apiBase, baseElysiaOptions } from "@/lib/elysia-base";
+import { getCorsOrigins } from "@/lib/origins";
 import { idempotency } from "@/lib/idempotency";
 import { log } from "@/lib/logger";
 import { requestGuards } from "@/lib/request-guards";
@@ -23,16 +24,6 @@ import {
   webhookEventsWrite,
   webhooks,
 } from "@/modules/webhooks";
-
-const getCorsOrigins = () => {
-  if (env.CORS_ORIGINS) {
-    return env.CORS_ORIGINS.split(",").map((o) => o.trim());
-  }
-  if (env.NODE_ENV === "production") {
-    throw new Error("CORS_ORIGINS required in production");
-  }
-  return [env.DASHBOARD_URL ?? "http://localhost:3001"];
-};
 
 const corsMiddleware = cors({ origin: getCorsOrigins(), credentials: true });
 

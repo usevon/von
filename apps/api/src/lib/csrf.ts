@@ -1,47 +1,25 @@
 import { Elysia } from "elysia";
-import { env } from "@/env";
+import { getAllowedOriginSet } from "@/lib/origins";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
-const normalizeOrigin = (value: string): string | null => {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-};
-
-const getAllowedOrigins = (): Set<string> => {
-  const origins = new Set<string>();
-
-  if (env.CORS_ORIGINS) {
-    for (const origin of env.CORS_ORIGINS.split(",")) {
-      const normalized = normalizeOrigin(origin.trim());
-      if (normalized) {
-        origins.add(normalized);
-      }
-    }
-  }
-
-  const dashboardOrigin = normalizeOrigin(
-    env.DASHBOARD_URL ?? "http://localhost:3001"
-  );
-  if (dashboardOrigin) {
-    origins.add(dashboardOrigin);
-  }
-
-  return origins;
-};
 
 const getRequestOrigin = (request: Request): string | null => {
   const origin = request.headers.get("origin");
   if (origin) {
-    return normalizeOrigin(origin);
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return null;
+    }
   }
 
   const referer = request.headers.get("referer");
   if (referer) {
-    return normalizeOrigin(referer);
+    try {
+      return new URL(referer).origin;
+    } catch {
+      return null;
+    }
   }
 
   return null;
@@ -53,7 +31,7 @@ const hasBearerAuth = (request: Request): boolean =>
 const hasSessionCookie = (request: Request): boolean =>
   Boolean(request.headers.get("cookie")?.trim());
 
-const allowedOrigins = getAllowedOrigins();
+const allowedOrigins = getAllowedOriginSet();
 
 export const csrfProtection = () =>
   new Elysia({ name: "csrf-protection" }).onBeforeHandle(
