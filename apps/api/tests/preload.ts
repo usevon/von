@@ -81,6 +81,11 @@ if (!isIntegration) {
     cacheGet: () => Promise.resolve(null),
     cacheSet: () => Promise.resolve(),
     cacheDel: () => Promise.resolve(),
+    checkThroughputLimit: () => Promise.resolve({ allowed: true, remaining: 24 }),
+    getPlanLimits: (plan: string) =>
+      plan === "hobby"
+        ? { ratePerSecond: 25, burstPerSecond: 35 }
+        : { ratePerSecond: 100, burstPerSecond: 140 },
     getWebhookDeliveryQueue: () => ({
       addBulk: () => Promise.resolve([]),
       add: () => Promise.resolve({}),

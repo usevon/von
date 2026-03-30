@@ -61,8 +61,12 @@ mock.module("@usevon/queue", () => ({
   }),
 }));
 
-const { getMonthKey, reserveMonthlyQuota, releaseMonthlyQuota, DELIVERY_TTL } =
-  await import("@/lib/delivery-quota");
+import {
+  getMonthKey,
+  reserveMonthlyQuota,
+  releaseMonthlyQuota,
+  DELIVERY_TTL,
+} from "@/lib/delivery-quota";
 
 describe("getMonthKey", () => {
   test("returns correct format", () => {

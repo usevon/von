@@ -5,8 +5,10 @@ const nxKeys = new Set<string>();
 
 const mockRedis = {
   get: (key: string) => Promise.resolve(store.get(key) ?? null),
-  set: (key: string, value: string, _ex: string, _ttl: number, nx: string) => {
-    if (nx === "NX" && nxKeys.has(key)) {
+  set: (...args: [string, string, ...unknown[]]) => {
+    const [key, value] = args;
+    const nx = args.find((a) => a === "NX");
+    if (nx && nxKeys.has(key)) {
       return Promise.resolve(null);
     }
     store.set(key, value);
@@ -27,9 +29,7 @@ mock.module("@/connection", () => ({
   getRedisClient: () => mockRedis,
 }));
 
-const { setnx, cacheGet, cacheSet, cacheDel } = await import(
-  "../src/redis"
-);
+import { setnx, cacheGet, cacheSet, cacheDel } from "../src/redis";
 
 afterEach(() => {
   store.clear();
