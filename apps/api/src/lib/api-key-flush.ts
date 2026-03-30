@@ -5,12 +5,10 @@ import { log } from "@/lib/logger";
 
 async function flushLastUsed() {
   const redis = getRedisClient();
-  const dirtyIds = await redis.smembers("api:lastUsed:dirty");
-  if (dirtyIds.length === 0) {
+  const dirtyIds = await redis.spop("api:lastUsed:dirty", 100);
+  if (!dirtyIds || dirtyIds.length === 0) {
     return;
   }
-
-  await redis.del("api:lastUsed:dirty");
 
   const pipeline = redis.pipeline();
   for (const keyId of dirtyIds) {

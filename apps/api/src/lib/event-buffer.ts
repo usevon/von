@@ -7,6 +7,8 @@ import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { WebhookDispatchJob } from "@/lib/webhook-dispatch";
 
 const STREAM_KEY = "von:event-buffer";
+const GROUP_NAME = "flusher";
+const CONSUMER_NAME = `flusher-${crypto.randomUUID().slice(0, 8)}`;
 const FLUSH_INTERVAL_MS = 10;
 const FLUSH_BATCH_SIZE = 500;
 
@@ -54,17 +56,35 @@ export async function bufferEvents(
   ]);
 }
 
+async function ensureGroup(): Promise<void> {
+  try {
+    await getRedisClient().xgroup(
+      "CREATE",
+      STREAM_KEY,
+      GROUP_NAME,
+      "0",
+      "MKSTREAM"
+    );
+  } catch {
+    // group already exists
+  }
+}
+
 async function flushBuffer(): Promise<number> {
   const redis = getRedisClient();
 
-  const entries = await redis.xrange(
-    STREAM_KEY,
-    "-",
-    "+",
+  const results = await redis.xreadgroup(
+    "GROUP",
+    GROUP_NAME,
+    CONSUMER_NAME,
     "COUNT",
-    String(FLUSH_BATCH_SIZE)
+    String(FLUSH_BATCH_SIZE),
+    "STREAMS",
+    STREAM_KEY,
+    ">"
   );
 
+  const entries = results?.[0]?.[1];
   if (!entries || entries.length === 0) {
     return 0;
   }
@@ -128,6 +148,7 @@ async function flushBuffer(): Promise<number> {
   }
 
   if (streamIds.length > 0) {
+    await redis.xack(STREAM_KEY, GROUP_NAME, ...streamIds);
     await redis.xdel(STREAM_KEY, ...streamIds);
   }
 
@@ -140,6 +161,8 @@ export function startEventBufferFlusher(): () => void {
   if (flushTimer) {
     return () => undefined;
   }
+
+  ensureGroup().catch(() => undefined);
 
   flushTimer = setInterval(async () => {
     try {
