@@ -22,9 +22,7 @@ const socialProviders = buildSocialProviders();
 
 const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
-  // TODO: Migrate to secrets array for zero-downtime rotation:
-  // secrets: [{ version: 1, value: env.BETTER_AUTH_SECRET }]
-  secret: env.BETTER_AUTH_SECRET,
+  secrets: [{ version: 1, value: env.BETTER_AUTH_SECRET }],
   baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
   trustedOrigins: [env.DASHBOARD_URL ?? "http://localhost:3001"],
   secondaryStorage,
