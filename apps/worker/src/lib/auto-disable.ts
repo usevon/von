@@ -104,8 +104,8 @@ const runAutoDisable = async () => {
       error instanceof Error
         ? (error as { cause?: { code?: string } }).cause
         : undefined;
-    if (cause?.code === "42P01") {
-      log.warn("Auto-disable scan skipped, tables do not exist yet");
+    if (cause?.code === "42P01" || cause?.code === "42703") {
+      log.warn("Auto-disable scan skipped, schema not fully migrated yet");
     } else {
       log.error({ error }, "Auto-disable scan failed");
     }
