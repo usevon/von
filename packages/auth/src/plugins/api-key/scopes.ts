@@ -17,17 +17,25 @@ export const VALID_SCOPES = [
 
 export type Scope = (typeof VALID_SCOPES)[number];
 
-export function parseScopes(raw: string | string[] | null): string[] {
+export function parseScopes(raw: string | string[] | null): Scope[] {
   if (!raw) {
     return ["*"];
   }
   if (Array.isArray(raw)) {
-    return raw;
+    return raw.filter((s): s is Scope =>
+      (VALID_SCOPES as readonly string[]).includes(s)
+    );
   }
   try {
-    return JSON.parse(raw);
+    const parsed: string[] = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((s): s is Scope =>
+      (VALID_SCOPES as readonly string[]).includes(s)
+    );
   } catch {
-    return ["*"];
+    return [];
   }
 }
 

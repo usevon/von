@@ -8,10 +8,13 @@ function hmacSign(data: string, secret: string): string {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    nodeTimingSafeEqual(bufA, bufA);
     return false;
   }
-  return nodeTimingSafeEqual(Buffer.from(a), Buffer.from(b));
+  return nodeTimingSafeEqual(bufA, bufB);
 }
 
 export class WebhookVerificationError extends Error {

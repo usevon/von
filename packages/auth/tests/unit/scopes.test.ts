@@ -14,8 +14,8 @@ describe("parseScopes", () => {
     expect(parseScopes("")).toEqual(["*"]);
   });
 
-  test("returns ['*'] for invalid JSON", () => {
-    expect(parseScopes("not-json")).toEqual(["*"]);
+  test("returns [] for invalid JSON (security: deny by default)", () => {
+    expect(parseScopes("not-json")).toEqual([]);
   });
 
   test("parses valid JSON array", () => {
