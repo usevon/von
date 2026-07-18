@@ -1,6 +1,6 @@
 # @usevon/sdk
 
-TypeScript SDK for Von webhooks infrastructure. Built on Eden Treaty for end-to-end type safety.
+TypeScript SDK for Von webhooks infrastructure. Zero dependencies, hand written types, works in Node, Bun, and browsers.
 
 ## Installation
 
@@ -32,7 +32,7 @@ if (error) {
 console.log(data.id) // evt_xxx
 ```
 
-`send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw type-safe surface (`von.webhooks.post`, `von.endpoints`, and friends) stays available for everything else.
+`send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw request surface (`von.webhooks` and `von.endpoints`) stays available for everything else.
 
 ## Limits and billing
 
@@ -74,7 +74,7 @@ if (error) {
 
 ```typescript
 // Send a single webhook
-const { data, error } = await von.webhooks.post({
+const { data, error } = await von.webhooks.send({
   eventType: 'user.created',
   payload: { userId: '123' },
   // optional - sends to specific endpoints
@@ -82,7 +82,7 @@ const { data, error } = await von.webhooks.post({
 })
 
 // Send multiple webhooks
-const { data: batch } = await von.webhooks.batch.post({
+const { data: batch } = await von.webhooks.sendBatch({
   events: [
     { eventType: 'order.created', payload: { orderId: '1' } },
     { eventType: 'order.created', payload: { orderId: '2' } },
@@ -90,99 +90,52 @@ const { data: batch } = await von.webhooks.batch.post({
 })
 
 // List webhook events
-const { data: eventsPage1 } = await von.webhooks.get({ query: { limit: 10 } })
-const { data: eventsPage2 } = await von.webhooks.get({
-  query: { limit: 10, cursor: eventsPage1.nextCursor ?? undefined },
+const { data: page1 } = await von.webhooks.list({ limit: 10 })
+const { data: page2 } = await von.webhooks.list({
+  limit: 10,
+  cursor: page1?.nextCursor ?? undefined,
 })
 
 // Get a specific event
-const { data: event } = await von.webhooks['evt_xxx'].get()
+const { data: event } = await von.webhooks.get('evt_xxx')
 ```
 
 ## Endpoints
 
 ```typescript
-// Create an endpoint
-const { data: endpoint } = await von.endpoints.post({
+// Create an endpoint, this is the only response that carries the plaintext secret
+const { data: endpoint } = await von.endpoints.create({
   url: 'https://myapp.com/webhooks',
   description: 'Production webhook endpoint',
-  retryCount: 5,
+  maxAttempts: 5,
   timeoutMs: 30000,
   events: ['order.*', 'payment.failed'], // optional - filter by event type
 })
+console.log(endpoint?.secret)
 
 // List endpoints
-const { data } = await von.endpoints.get()
+const { data } = await von.endpoints.list({ limit: 20 })
 
 // Get an endpoint
-const { data: endpoint } = await von.endpoints['ep_xxx'].get()
+const { data: one } = await von.endpoints.get('ep_xxx')
 
 // Update an endpoint
-const { data: updated } = await von.endpoints['ep_xxx'].patch({
-  enabled: false,
+const { data: updated } = await von.endpoints.update('ep_xxx', {
+  status: 'paused',
 })
 
 // Delete an endpoint
-await von.endpoints['ep_xxx'].delete()
-```
+await von.endpoints.delete('ep_xxx')
 
-## Inbound
+// Rotate the signing secret, the previous one stays valid until cleared
+const { data: rotated } = await von.endpoints.rotateSecret('ep_xxx')
+await von.endpoints.clearPreviousSecret('ep_xxx')
 
-Receive webhooks from third-party services (Stripe, GitHub, etc.) through Von.
-
-```typescript
-// Create an inbound endpoint
-const { data: inbound } = await von.inbound.post({
-  name: 'Stripe Webhooks',
-  provider: 'stripe',
-  forwardUrl: 'https://myapp.com/stripe',
+// Send a test delivery
+const { data: test } = await von.endpoints.test('ep_xxx', {
+  eventType: 'test.ping',
+  payload: { hello: 'world' },
 })
-
-// List inbound endpoints
-const { data } = await von.inbound.get()
-
-// Get an inbound endpoint
-const { data: inbound } = await von.inbound['in_xxx'].get()
-
-// Update an inbound endpoint
-const { data: updated } = await von.inbound['in_xxx'].patch({
-  enabled: false,
-})
-
-// Delete an inbound endpoint
-await von.inbound['in_xxx'].delete()
-```
-
-## Versions
-
-Manage webhook payload versioning with field transforms.
-
-```typescript
-// Create a version
-const { data: version } = await von.versions.post({
-  version: '2024-06-01',
-  transforms: {
-    'product.updated': {
-      rename: { features: 'items' },
-      remove: ['internalField'],
-      defaults: { legacyField: null },
-    },
-  },
-})
-
-// List versions
-const { data } = await von.versions.get()
-
-// Get a version
-const { data: version } = await von.versions['2024-06-01'].get()
-
-// Update a version
-const { data: updated } = await von.versions['2024-06-01'].patch({
-  transforms: { 'product.updated': { rename: { features: 'newItems' } } },
-})
-
-// Delete a version
-await von.versions['2024-06-01'].delete()
 ```
 
 ## Webhook Verification
@@ -214,7 +167,7 @@ app.post('/webhooks', async (req) => {
 All methods return `{ data, error, status, response }` instead of throwing exceptions.
 
 ```typescript
-const { data, error, status } = await von.endpoints['invalid-id'].get()
+const { data, error, status } = await von.endpoints.get('invalid-id')
 
 if (error) {
   console.error(error.message)  // Error message from server

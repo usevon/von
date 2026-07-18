@@ -31,8 +31,8 @@ describe("Von Client", () => {
     const von = new Von();
     expect(von.webhooks).toBeDefined();
     expect(von.endpoints).toBeDefined();
-    expect(von.inbound).toBeDefined();
-    expect(von.versions).toBeDefined();
+    expect(typeof von.webhooks.send).toBe("function");
+    expect(typeof von.endpoints.create).toBe("function");
   });
 
   test("send generates an idempotency key by default", async () => {
@@ -49,7 +49,11 @@ describe("Von Client", () => {
   test("send respects an explicit idempotency key", async () => {
     const bodies = captureFetch();
     const von = new Von({ apiKey: "von_test" });
-    await von.send("order.created", { orderId: 1 }, { idempotencyKey: "my-key" });
+    await von.send(
+      "order.created",
+      { orderId: 1 },
+      { idempotencyKey: "my-key" }
+    );
 
     const body = bodies[0] as Record<string, unknown>;
     expect(body.idempotencyKey).toBe("my-key");
@@ -144,7 +148,7 @@ describe("Von Client", () => {
     const von = new Von({ apiKey: "von_test" });
     const huge = { data: "x".repeat(MAX_PAYLOAD_BYTES + 1) };
 
-    expect(von.send("order.created", huge)).rejects.toThrow(
+    await expect(von.send("order.created", huge)).rejects.toThrow(
       PayloadTooLargeError
     );
   });
@@ -159,10 +163,14 @@ describe("Von Client", () => {
 
   test("limitKindOf separates rate limits from quota", () => {
     expect(
-      limitKindOf({ value: { error: { message: "rate limit exceeded for org" } } })
+      limitKindOf({
+        value: { error: { message: "rate limit exceeded for org" } },
+      })
     ).toBe("rate");
     expect(
-      limitKindOf({ value: { error: { message: "monthly delivery quota exceeded" } } })
+      limitKindOf({
+        value: { error: { message: "monthly delivery quota exceeded" } },
+      })
     ).toBe("quota");
     expect(limitKindOf({ value: { error: { message: "boom" } } })).toBe(
       "unknown"

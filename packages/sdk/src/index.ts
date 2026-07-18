@@ -1,6 +1,9 @@
-import { treaty } from "@elysiajs/eden";
-import type { App } from "@usevon/api";
+import { HttpClient } from "@/http";
+import { EndpointsResource, WebhooksResource } from "@/resources";
 
+export type { RequestOptions, VonApiError, VonResult } from "@/http";
+export { EndpointsResource, WebhooksResource } from "@/resources";
+export type * from "@/types";
 export { verifyWebhook, WebhookVerificationError } from "@/verify";
 
 export type VonConfig = {
@@ -66,7 +69,9 @@ export class PayloadTooLargeError extends Error {
   readonly limit = MAX_PAYLOAD_BYTES;
 
   constructor(bytes: number) {
-    super(`Payload is ${bytes} bytes, over the ${MAX_PAYLOAD_BYTES} byte limit`);
+    super(
+      `Payload is ${bytes} bytes, over the ${MAX_PAYLOAD_BYTES} byte limit`
+    );
     this.name = "PayloadTooLargeError";
     this.bytes = bytes;
   }
@@ -84,7 +89,7 @@ const assertWithinLimit = (payload: unknown) => {
 type ApiResult = { error: unknown; status: number };
 
 /**
- * Von SDK client using Eden Treaty for type-safe API calls.
+ * Von SDK client.
  *
  * @example
  * ```ts
@@ -95,20 +100,18 @@ type ApiResult = { error: unknown; status: number };
  * // Send an event, durable, exactly-once, and retried on transient failures
  * await von.send("order.created", { orderId: 123 });
  *
- * // Create endpoint
- * const { data, error } = await von.endpoints.post({
+ * // Create an endpoint
+ * const { data, error } = await von.endpoints.create({
  *   url: "https://example.com/webhook",
  * });
  *
- * // Raw type-safe API surface stays available
- * await von.webhooks.post({ eventType: "order.created", payload: {} });
+ * // The raw request surface stays available
+ * await von.webhooks.send({ eventType: "order.created", payload: {} });
  * ```
  */
 export class Von {
-  readonly endpoints;
-  readonly webhooks;
-  readonly inbound;
-  readonly versions;
+  readonly endpoints: EndpointsResource;
+  readonly webhooks: WebhooksResource;
   private readonly autoIdempotency: boolean;
   private readonly retries: number;
   private readonly retryDelayMs: number;
@@ -122,14 +125,10 @@ export class Von {
       config?.apiKey ??
       (typeof process !== "undefined" ? process.env.VON_API_KEY : undefined);
 
-    const client = treaty<App>(baseUrl, {
-      headers: apiKey ? { authorization: `Bearer ${apiKey}` } : {},
-    });
+    const http = new HttpClient(baseUrl, apiKey);
 
-    this.endpoints = client.endpoints;
-    this.webhooks = client.webhooks;
-    this.inbound = client.inbound;
-    this.versions = client.versions;
+    this.endpoints = new EndpointsResource(http);
+    this.webhooks = new WebhooksResource(http);
     this.autoIdempotency = config?.autoIdempotency ?? true;
     this.retries = config?.retries ?? 2;
     this.retryDelayMs = config?.retryDelayMs ?? 250;
@@ -141,9 +140,9 @@ export class Von {
     const idempotencyKey =
       options?.idempotencyKey ??
       (this.autoIdempotency ? crypto.randomUUID() : undefined);
-    return this.withRetries(
+    return await this.withRetries(
       () =>
-        this.webhooks.post({
+        this.webhooks.send({
           eventType,
           payload,
           ...(idempotencyKey ? { idempotencyKey } : {}),
@@ -169,8 +168,8 @@ export class Von {
       };
     });
     const everyEventHasKey = prepared.every((e) => "idempotencyKey" in e);
-    return this.withRetries(
-      () => this.webhooks.batch.post({ events: prepared }),
+    return await this.withRetries(
+      () => this.webhooks.sendBatch({ events: prepared }),
       everyEventHasKey
     );
   }

@@ -34,14 +34,9 @@
     "dev": "tsdown && tsdown --watch --no-clean",
     "test": "bun test"
   },
-  "dependencies": {
-    "@elysiajs/eden": "^1.4.8",
-    "elysia": "^1.4.25"
-  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^20",
-    "@usevon/api": "workspace:*",
     "@usevon/typescript-config": "workspace:*",
     "tsdown": "^0.20.3"
   },
