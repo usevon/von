@@ -162,7 +162,7 @@ async function flushBuffer(): Promise<number> {
       await db.transaction(async (tx) => {
         await tx.execute(sql`SET LOCAL synchronous_commit = off`);
 
-        await tx
+        const inserted = await tx
           .insert(event)
           .values(
             allEvents.map((e) => ({
@@ -176,11 +176,19 @@ async function flushBuffer(): Promise<number> {
           )
           .onConflictDoNothing({
             target: [event.organizationId, event.idempotencyKey],
-          });
+          })
+          .returning({ id: event.id });
 
-        if (allDeliveries.length > 0) {
+        // A retried event is deduped by its idempotency key, so its deliveries
+        // would reference a row that was never inserted and break the batch.
+        const insertedIds = new Set(inserted.map((row) => row.id));
+        const deliveriesToInsert = allDeliveries.filter((d) =>
+          insertedIds.has(d.eventId)
+        );
+
+        if (deliveriesToInsert.length > 0) {
           await tx.insert(delivery).values(
-            allDeliveries.map((d) => ({
+            deliveriesToInsert.map((d) => ({
               id: d.id,
               organizationId: d.organizationId,
               eventId: d.eventId,
@@ -206,7 +214,9 @@ async function flushBuffer(): Promise<number> {
     await enqueueWebhookDispatchJobs(allJobs);
   }
 
-  if (streamIds.length > 0) {
+  // Entries stay pending when persistence failed so a later read can retry them
+  // rather than acknowledging events that were never written.
+  if (streamIds.length > 0 && (persisted || allEvents.length === 0)) {
     await redis.xack(STREAM_KEY, GROUP_NAME, ...streamIds);
     await redis.xdel(STREAM_KEY, ...streamIds);
   }
