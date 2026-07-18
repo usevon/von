@@ -4,7 +4,19 @@ import {
   organizationClient,
 } from "@usevon/auth/client";
 import { db, eq } from "@usevon/db";
-import { organization, user } from "@usevon/db/schema";
+import {
+  account,
+  apikey,
+  delivery,
+  deliveryAttempt,
+  endpoint,
+  event,
+  member,
+  organization,
+  session,
+  user,
+} from "@usevon/db/schema";
+import { inArray, like } from "drizzle-orm";
 import { app } from "../src/app";
 import { startEventBufferFlusher } from "../src/lib/event-buffer";
 import { bench, benchConcurrent, printResults, printSummary } from "./utils";
@@ -13,6 +25,59 @@ const API_URL = "http://localhost:8080";
 const SESSION_COOKIE_RE = /von\.session_token=([^;]+)/;
 
 const stopFlusher = startEventBufferFlusher();
+
+const wipeOrgData = async (orgId: string) => {
+  await db
+    .delete(deliveryAttempt)
+    .where(eq(deliveryAttempt.organizationId, orgId));
+  await db.delete(delivery).where(eq(delivery.organizationId, orgId));
+  await db.delete(event).where(eq(event.organizationId, orgId));
+  await db.delete(endpoint).where(eq(endpoint.organizationId, orgId));
+  await db.delete(member).where(eq(member.organizationId, orgId));
+  await db.delete(organization).where(eq(organization.id, orgId));
+};
+
+const wipeUserData = async (userId: string) => {
+  await db.delete(apikey).where(eq(apikey.userId, userId));
+  await db.delete(session).where(eq(session.userId, userId));
+  await db.delete(account).where(eq(account.userId, userId));
+  await db.delete(user).where(eq(user.id, userId));
+};
+
+// Clears residue from earlier runs including ones that were killed before their own cleanup ran.
+const wipeStaleBenchData = async () => {
+  const staleUsers = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(like(user.email, "bench-%@bench.test"));
+  if (staleUsers.length === 0) {
+    return;
+  }
+  const ids = staleUsers.map((u) => u.id);
+  const orgs = await db
+    .select({ orgId: member.organizationId })
+    .from(member)
+    .where(inArray(member.userId, ids));
+  for (const o of orgs) {
+    await wipeOrgData(o.orgId);
+  }
+  for (const id of ids) {
+    await wipeUserData(id);
+  }
+};
+
+let activeBench: { orgId: string; userId: string } | null = null;
+
+process.on("SIGINT", async () => {
+  const active = activeBench;
+  activeBench = null;
+  if (active) {
+    console.log("\nInterrupted, cleaning up bench data");
+    await wipeOrgData(active.orgId).catch(() => undefined);
+    await wipeUserData(active.userId).catch(() => undefined);
+  }
+  process.exit(130);
+});
 
 async function setup() {
   const cookieJar = new Headers();
@@ -92,7 +157,9 @@ async function setup() {
 async function run() {
   console.log("\n  Von API Benchmark\n");
 
+  await wipeStaleBenchData();
   const { apiKey, orgId, userId } = await setup();
+  activeBench = { orgId, userId };
   const headers = {
     authorization: `Bearer ${apiKey}`,
     "content-type": "application/json",
@@ -149,6 +216,22 @@ async function run() {
     all.push(r);
   }
   printResults("Endpoints", all.slice(-3));
+
+  // Delete all but one endpoint so webhook numbers measure one delivery per event instead of fanning out to every endpoint the create bench left behind.
+  for (;;) {
+    const res = await request("GET", "/endpoints?limit=50");
+    if (res.status !== 200) {
+      break;
+    }
+    const page = (await res.json()) as { endpoints: Array<{ id: string }> };
+    const extras = page.endpoints.filter((e) => e.id !== endpointId);
+    if (extras.length === 0) {
+      break;
+    }
+    for (const e of extras) {
+      await request("DELETE", `/endpoints/${e.id}`);
+    }
+  }
 
   r = await bench("POST /webhooks (single)", () =>
     request("POST", "/webhooks", {
@@ -208,20 +291,19 @@ async function run() {
 
   await new Promise((resolve) => setTimeout(resolve, 200));
   stopFlusher();
-  try {
-    await db.delete(organization).where(eq(organization.id, orgId));
-  } catch {
-    // best effort
-  }
-  try {
-    await db.delete(user).where(eq(user.id, userId));
-  } catch {
-    // best effort
-  }
+  activeBench = null;
+  await wipeOrgData(orgId).catch(() => undefined);
+  await wipeUserData(userId).catch(() => undefined);
   process.exit(0);
 }
 
-run().catch((err) => {
+run().catch(async (err) => {
   console.error("Benchmark failed:", err);
+  const active = activeBench;
+  activeBench = null;
+  if (active) {
+    await wipeOrgData(active.orgId).catch(() => undefined);
+    await wipeUserData(active.userId).catch(() => undefined);
+  }
   process.exit(1);
 });
