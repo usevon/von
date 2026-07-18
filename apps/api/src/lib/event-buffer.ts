@@ -1,16 +1,20 @@
 import { db } from "@usevon/db";
 import { delivery, event } from "@usevon/db/schema";
 import { getRedisClient } from "@usevon/queue";
+import { DEFAULT_MAX_ATTEMPTS } from "@usevon/utils";
 import { sql } from "drizzle-orm";
 import { log } from "@/lib/logger";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
 import type { WebhookDispatchJob } from "@/lib/webhook-dispatch";
+import { EndpointService } from "@/modules/endpoints/service";
 
 export const STREAM_KEY = "von:event-buffer";
 const GROUP_NAME = "flusher";
 const CONSUMER_NAME = `flusher-${crypto.randomUUID().slice(0, 8)}`;
 const FLUSH_INTERVAL_MS = 10;
 const FLUSH_BATCH_SIZE = 500;
+
+let lastBacklogWarnAt = 0;
 
 type BufferedPersistence = {
   events: Array<{
@@ -30,6 +34,7 @@ type BufferedPersistence = {
     attempts: number;
     createdAt: string;
   }>;
+  plan?: string;
 };
 
 /**
@@ -47,13 +52,67 @@ export async function bufferEvents(
       STREAM_KEY,
       "MAXLEN",
       "~",
-      "10000",
+      "100000",
       "*",
       "data",
       JSON.stringify(persistence)
     ),
     jobs.length > 0 ? enqueueWebhookDispatchJobs(jobs) : undefined,
   ]);
+}
+
+// Jobs are derived here instead of riding the stream so entries stay small under endpoint fanout.
+async function buildDispatchJobs(
+  events: BufferedPersistence["events"],
+  deliveries: BufferedPersistence["deliveries"],
+  planByDeliveryId: Map<string, string>
+): Promise<WebhookDispatchJob[]> {
+  if (deliveries.length === 0) {
+    return [];
+  }
+
+  const eventsById = new Map(events.map((e) => [e.id, e]));
+  const maxAttemptsByOrgEndpoint = new Map<string, number>();
+  const orgIds = new Set(deliveries.map((d) => d.organizationId));
+  for (const orgId of orgIds) {
+    try {
+      const endpoints =
+        await EndpointService.getEnabledEndpointsForDelivery(orgId);
+      for (const ep of endpoints) {
+        maxAttemptsByOrgEndpoint.set(`${orgId}:${ep.id}`, ep.maxAttempts);
+      }
+    } catch (err) {
+      log.error({ err, orgId }, "Failed to load endpoints for dispatch jobs");
+    }
+  }
+
+  const jobs: WebhookDispatchJob[] = [];
+  for (const d of deliveries) {
+    const evt = eventsById.get(d.eventId);
+    if (!evt) {
+      log.error(
+        { deliveryId: d.id, eventId: d.eventId },
+        "Buffered delivery missing its event"
+      );
+      continue;
+    }
+    jobs.push({
+      name: "webhook-delivery",
+      data: {
+        deliveryId: d.id,
+        eventId: d.eventId,
+        payload: JSON.stringify(evt.payload),
+        eventType: evt.eventType,
+        endpointId: d.endpointId,
+        maxAttempts:
+          maxAttemptsByOrgEndpoint.get(`${d.organizationId}:${d.endpointId}`) ??
+          DEFAULT_MAX_ATTEMPTS,
+        organizationId: d.organizationId,
+        plan: planByDeliveryId.get(d.id) ?? "hobby",
+      },
+    });
+  }
+  return jobs;
 }
 
 async function ensureGroup(): Promise<void> {
@@ -89,8 +148,16 @@ async function flushBuffer(): Promise<number> {
     return 0;
   }
 
+  // Full batches mean ingest is outrunning the flusher and the stream cap could start dropping acknowledged events.
+  if (entries.length >= FLUSH_BATCH_SIZE && Date.now() - lastBacklogWarnAt > 5000) {
+    lastBacklogWarnAt = Date.now();
+    const backlog = await redis.xlen(STREAM_KEY);
+    log.warn({ backlog }, "Event buffer flusher is reading full batches");
+  }
+
   const allEvents: BufferedPersistence["events"] = [];
   const allDeliveries: BufferedPersistence["deliveries"] = [];
+  const planByDeliveryId = new Map<string, string>();
   const streamIds: string[] = [];
 
   for (const [id, fields] of entries) {
@@ -99,11 +166,21 @@ async function flushBuffer(): Promise<number> {
       const data = JSON.parse(fields[1]) as BufferedPersistence;
       allEvents.push(...data.events);
       allDeliveries.push(...data.deliveries);
+      for (const d of data.deliveries) {
+        planByDeliveryId.set(d.id, data.plan ?? "hobby");
+      }
     } catch {
       log.error({ streamId: id }, "Failed to parse buffered event entry");
     }
   }
 
+  const allJobs = await buildDispatchJobs(
+    allEvents,
+    allDeliveries,
+    planByDeliveryId
+  );
+
+  let persisted = false;
   if (allEvents.length > 0) {
     try {
       await db.transaction(async (tx) => {
@@ -139,12 +216,18 @@ async function flushBuffer(): Promise<number> {
           );
         }
       });
+      persisted = true;
     } catch (err) {
       log.error(
         { err, eventCount: allEvents.length },
         "Event buffer flush failed"
       );
     }
+  }
+
+  // Enqueue after the rows exist so a dispatch failure can mark them failed instead of racing the insert.
+  if (persisted && allJobs.length > 0) {
+    await enqueueWebhookDispatchJobs(allJobs);
   }
 
   if (streamIds.length > 0) {
@@ -156,6 +239,7 @@ async function flushBuffer(): Promise<number> {
 }
 
 let flushTimer: ReturnType<typeof setInterval> | null = null;
+let flushInFlight = false;
 
 export function startEventBufferFlusher(): () => void {
   if (flushTimer) {
@@ -164,11 +248,18 @@ export function startEventBufferFlusher(): () => void {
 
   ensureGroup().catch(() => undefined);
 
+  // Skip the tick while a flush is still running so slow flushes cannot stack.
   flushTimer = setInterval(async () => {
+    if (flushInFlight) {
+      return;
+    }
+    flushInFlight = true;
     try {
       await flushBuffer();
     } catch (err) {
       log.error({ err }, "Event buffer flush tick failed");
+    } finally {
+      flushInFlight = false;
     }
   }, FLUSH_INTERVAL_MS);
 

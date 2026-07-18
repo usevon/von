@@ -268,7 +268,7 @@ export abstract class WebhookService {
       now,
     });
 
-    // Fast path: no idempotency keys — quota + buffer in single Redis round trip
+    // Events without idempotency keys are acknowledged after the Redis buffer write and persisted by the flusher, callers who need durable ingestion opt in via idempotencyKey.
     if (idempotencyKeys.length === 0) {
       const quotaLimits = getQuotaLimits(params.plan);
 
@@ -290,6 +290,7 @@ export abstract class WebhookService {
           attempts: d.attempts as number,
           createdAt: nowIso,
         })),
+        plan: params.plan,
       });
 
       const result = await reserveAndBuffer({
@@ -304,11 +305,6 @@ export abstract class WebhookService {
 
       if (!result.allowed) {
         throw new TooManyRequestsError();
-      }
-
-      // Enqueue jobs in parallel (don't wait for DB persistence)
-      if (allJobs.length > 0) {
-        enqueueWebhookDispatchJobs(allJobs).catch(() => undefined);
       }
 
       for (const e of newEvents) {

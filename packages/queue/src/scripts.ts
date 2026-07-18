@@ -24,7 +24,7 @@ end
 local new_val = redis.call('INCRBY', quota_key, requested)
 redis.call('EXPIRE', quota_key, ttl)
 
-local stream_id = redis.call('XADD', stream_key, 'MAXLEN', '~', '10000', '*', 'data', payload)
+local stream_id = redis.call('XADD', stream_key, 'MAXLEN', '~', '100000', '*', 'data', payload)
 
 return {1, new_val, stream_id}
 `;
