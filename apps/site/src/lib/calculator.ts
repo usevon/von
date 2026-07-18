@@ -1,4 +1,24 @@
+// Prices and included volumes come from autumn.config.ts so billing and the site
+// can never disagree, everything else here is presentation.
+import type { Plan } from "atmn";
+import {
+  free as autumnFree,
+  growth as autumnGrowth,
+  scale as autumnScale,
+  starter as autumnStarter,
+} from "../../autumn.config";
+
 export type PlanId = "free" | "starter" | "growth" | "scale" | "enterprise";
+
+const amountOf = (plan: Plan): number => plan.price?.amount ?? 0;
+
+const includedOf = (plan: Plan): number => {
+  const included = plan.items?.find((i) => typeof i.included === "number");
+  return typeof included?.included === "number" ? included.included : 0;
+};
+
+const overageOf = (plan: Plan): number | null =>
+  plan.items?.find((i) => i.price !== undefined)?.price?.amount ?? null;
 
 export type PricingPlan = {
   id: PlanId;
@@ -20,18 +40,29 @@ export const OVERAGE_BLOCK = 10_000;
 
 export const PAYLOAD_BLOCK_KB = 64;
 
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+});
+
+const count = new Intl.NumberFormat("en-US");
+
+const overageLabel = (rate: number | null) =>
+  rate === null ? "Hard cap" : `${money.format(rate)} per 10k`;
+
 export const PLANS: PricingPlan[] = [
   {
     id: "free",
     name: "Free",
     description: "Everything you need to start shipping webhooks.",
-    price: 0,
+    price: amountOf(autumnFree),
     priceLabel: "$0",
     periodLabel: "/month",
-    messages: 50_000,
-    messagesLabel: "50,000",
-    overageRate: null,
-    overageLabel: "Hard cap",
+    messages: includedOf(autumnFree),
+    messagesLabel: count.format(includedOf(autumnFree)),
+    overageRate: overageOf(autumnFree),
+    overageLabel: overageLabel(overageOf(autumnFree)),
     throughputLabel: "100/sec",
     retentionLabel: "3 days",
     supportLabel: "Discord",
@@ -40,13 +71,13 @@ export const PLANS: PricingPlan[] = [
     id: "starter",
     name: "Starter",
     description: "For your first production workloads.",
-    price: 29,
-    priceLabel: "$29",
+    price: amountOf(autumnStarter),
+    priceLabel: `$${amountOf(autumnStarter)}`,
     periodLabel: "/month",
-    messages: 250_000,
-    messagesLabel: "250,000",
-    overageRate: 1.0,
-    overageLabel: "$1.00 per 10k",
+    messages: includedOf(autumnStarter),
+    messagesLabel: count.format(includedOf(autumnStarter)),
+    overageRate: overageOf(autumnStarter),
+    overageLabel: overageLabel(overageOf(autumnStarter)),
     throughputLabel: "500/sec",
     retentionLabel: "7 days",
     supportLabel: "Email",
@@ -55,13 +86,13 @@ export const PLANS: PricingPlan[] = [
     id: "growth",
     name: "Growth",
     description: "For teams shipping at real volume.",
-    price: 99,
-    priceLabel: "$99",
+    price: amountOf(autumnGrowth),
+    priceLabel: `$${amountOf(autumnGrowth)}`,
     periodLabel: "/month",
-    messages: 1_000_000,
-    messagesLabel: "1,000,000",
-    overageRate: 0.5,
-    overageLabel: "$0.50 per 10k",
+    messages: includedOf(autumnGrowth),
+    messagesLabel: count.format(includedOf(autumnGrowth)),
+    overageRate: overageOf(autumnGrowth),
+    overageLabel: overageLabel(overageOf(autumnGrowth)),
     throughputLabel: "2,000/sec",
     retentionLabel: "14 days",
     supportLabel: "Priority email",
@@ -70,13 +101,13 @@ export const PLANS: PricingPlan[] = [
     id: "scale",
     name: "Scale",
     description: "For high volume, latency sensitive delivery.",
-    price: 499,
-    priceLabel: "$499",
+    price: amountOf(autumnScale),
+    priceLabel: `$${amountOf(autumnScale)}`,
     periodLabel: "/month",
-    messages: 10_000_000,
-    messagesLabel: "10,000,000",
-    overageRate: 0.2,
-    overageLabel: "$0.20 per 10k",
+    messages: includedOf(autumnScale),
+    messagesLabel: count.format(includedOf(autumnScale)),
+    overageRate: overageOf(autumnScale),
+    overageLabel: overageLabel(overageOf(autumnScale)),
     throughputLabel: "10,000/sec",
     retentionLabel: "30 days",
     supportLabel: "Priority email",

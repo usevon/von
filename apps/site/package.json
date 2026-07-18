@@ -18,12 +18,13 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "babel-plugin-react-compiler": "^1.0.0",
     "@tailwindcss/postcss": "^4.1.10",
     "@types/node": "^20",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@usevon/typescript-config": "workspace:*",
+    "atmn": "^1.1.15",
+    "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.1.17"
   }
 }

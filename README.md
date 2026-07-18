@@ -47,7 +47,7 @@ Von charges for the two things that actually cost money to run, and nothing else
 | Free | $0 | 50,000 | none, hard cap | 100/s | 3 days |
 | Starter | $29 | 250,000 | $1.00 per 10k | 500/s | 7 days |
 | Growth | $99 | 1,000,000 | $0.50 per 10k | 2,000/s | 14 days |
-| Scale | $499 | 10,000,000 | $0.20 per 10k | 10,000/s | 30 days |
+| Scale | $499 | 10,000,000 | $0.25 per 10k | 10,000/s | 30 days |
 | Enterprise | Custom | Custom | Custom | Custom | Custom |
 
 Every paid plan includes unlimited team members, transformations, replay, and all integrations. Self-hosting is free and unlimited under AGPL-3.0.
