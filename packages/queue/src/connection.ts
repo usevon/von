@@ -51,7 +51,6 @@ export function getRedisClient(options: ConnectionOptions = {}): IORedis {
       maxRetriesPerRequest: options.maxRetriesPerRequest ?? null,
       enableReadyCheck: true,
       lazyConnect: false,
-      // Coalesces same-tick commands into one round trip on this shared connection.
       enableAutoPipelining: true,
     });
     sharedClient.on("error", () => {

@@ -45,10 +45,8 @@ end
 return current
 `;
 
-// defineCommand runs EVALSHA so the script body is not re-sent on every call.
-// Defined lazily because test mocks may not implement defineCommand.
 const ensureRateLimitScript = () => {
-  if (!redis.rateLimitIncr && typeof redis.defineCommand === "function") {
+  if (!redis.rateLimitIncr) {
     redis.defineCommand("rateLimitIncr", {
       numberOfKeys: 1,
       lua: RATE_LIMIT_SCRIPT,
@@ -56,7 +54,6 @@ const ensureRateLimitScript = () => {
   }
 };
 
-// Exported as a bare handler so callers can attach it directly to their own plugin instance, a nested Elysia scoped hook only propagates one level and silently never runs on routes two levels up.
 export const createRateLimitGuard = (options: RateLimitOptions) => {
   const {
     windowMs,
@@ -78,16 +75,11 @@ export const createRateLimitGuard = (options: RateLimitOptions) => {
       let current: number;
       try {
         ensureRateLimitScript();
-        const incr = redis.rateLimitIncr
-          ? redis.rateLimitIncr(key, windowSeconds)
-          : (redis.eval(
-              RATE_LIMIT_SCRIPT,
-              1,
-              key,
-              windowSeconds
-            ) as Promise<number>);
         current = (await withTimeout(
-          incr,
+          (redis.rateLimitIncr as NonNullable<typeof redis.rateLimitIncr>)(
+            key,
+            windowSeconds
+          ),
           RATE_LIMIT_REDIS_TIMEOUT_MS
         )) as number;
       } catch {

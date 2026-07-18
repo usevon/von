@@ -36,6 +36,9 @@ if (!isIntegration) {
 
   const noopRedis = {
     eval: () => Promise.resolve([1, 0]),
+    defineCommand(name: string, _opts: unknown) {
+      (this as Record<string, unknown>)[name] = () => Promise.resolve(1);
+    },
     get: (k: string) => Promise.resolve(strings.get(k) ?? null),
     set: (k: string, v: string) => {
       strings.set(k, v);

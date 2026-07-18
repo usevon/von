@@ -115,6 +115,44 @@ type BuildDeliveriesParams = {
   now: Date;
 };
 
+type DeliveryPairParams = {
+  eventId: string;
+  eventType: string;
+  payloadStr: string;
+  ep: DeliveryEndpoint;
+  organizationId: string;
+  plan: string;
+  now: Date;
+};
+
+const buildDeliveryPair = (params: DeliveryPairParams) => {
+  const deliveryId = crypto.randomUUID();
+  return {
+    record: {
+      id: deliveryId,
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      endpointId: params.ep.id,
+      status: "pending",
+      attempts: 0,
+      createdAt: params.now,
+    } satisfies typeof delivery.$inferInsert,
+    job: {
+      name: "webhook-delivery",
+      data: {
+        deliveryId,
+        eventId: params.eventId,
+        payload: params.payloadStr,
+        eventType: params.eventType,
+        endpointId: params.ep.id,
+        maxAttempts: params.ep.maxAttempts,
+        organizationId: params.organizationId,
+        plan: params.plan,
+      },
+    },
+  };
+};
+
 const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
   const { newEvents, allEndpoints, endpointsById, organizationId, plan, now } =
     params;
@@ -132,34 +170,148 @@ const buildDeliveriesAndJobs = (params: BuildDeliveriesParams) => {
 
     const payloadStr = JSON.stringify(evt.payload);
     for (const ep of targets) {
-      const deliveryId = crypto.randomUUID();
-      allDeliveries.push({
-        id: deliveryId,
-        organizationId,
+      const { record, job } = buildDeliveryPair({
         eventId: evt.id,
-        endpointId: ep.id,
-        status: "pending",
-        attempts: 0,
-        createdAt: now,
+        eventType: evt.eventType,
+        payloadStr,
+        ep,
+        organizationId,
+        plan,
+        now,
       });
-      allJobs.push({
-        name: "webhook-delivery",
-        data: {
-          deliveryId,
-          eventId: evt.id,
-          payload: payloadStr,
-          eventType: evt.eventType,
-          endpointId: ep.id,
-          maxAttempts: ep.maxAttempts,
-          organizationId,
-          plan,
-        },
-      });
+      allDeliveries.push(record);
+      allJobs.push(job);
     }
   }
 
   return { allDeliveries, allJobs };
 };
+
+type IngestContext = {
+  organizationId: string;
+  plan: string;
+  now: Date;
+  nowIso: string;
+  newEvents: NewEvent[];
+  allDeliveries: (typeof delivery.$inferInsert)[];
+  allJobs: Array<{ name: string; data: WebhookDeliveryJob }>;
+};
+
+const toCreatedEvent = (e: NewEvent, nowIso: string): WebhookModel.event => ({
+  id: e.id,
+  eventType: e.eventType,
+  payload: e.payload,
+  idempotencyKey: e.idempotencyKey,
+  createdAt: nowIso,
+});
+
+async function ingestBuffered(ctx: IngestContext): Promise<WebhookModel.event[]> {
+  const quotaLimits = getQuotaLimits(ctx.plan);
+
+  const payload = JSON.stringify({
+    events: ctx.newEvents.map((e) => ({
+      id: e.id,
+      organizationId: ctx.organizationId,
+      eventType: e.eventType,
+      payload: e.payload,
+      idempotencyKey: e.idempotencyKey,
+      createdAt: ctx.nowIso,
+    })),
+    deliveries: ctx.allDeliveries.map((d) => ({
+      id: d.id as string,
+      organizationId: d.organizationId as string,
+      eventId: d.eventId as string,
+      endpointId: d.endpointId as string,
+      status: d.status as string,
+      attempts: d.attempts as number,
+      createdAt: ctx.nowIso,
+    })),
+    plan: ctx.plan,
+  });
+
+  const result = await reserveAndBuffer({
+    quotaKey: getMonthKey(ctx.organizationId),
+    streamKey: STREAM_KEY,
+    limit: quotaLimits.monthlyDeliveries,
+    requested: ctx.allDeliveries.length,
+    ttl: DELIVERY_TTL,
+    hasOverage: quotaLimits.hasOverage,
+    payload,
+  });
+
+  if (!result.allowed) {
+    throw new TooManyRequestsError();
+  }
+
+  return ctx.newEvents.map((e) => toCreatedEvent(e, ctx.nowIso));
+}
+
+async function ingestDurable(ctx: IngestContext): Promise<WebhookModel.event[]> {
+  await reserveMonthlyQuota(
+    ctx.organizationId,
+    ctx.plan,
+    ctx.allDeliveries.length
+  );
+  let reservedDeliveries = ctx.allDeliveries.length;
+  let insertedIds = new Set<string>();
+
+  try {
+    insertedIds = await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL synchronous_commit = off`);
+
+      const inserted = await tx
+        .insert(event)
+        .values(
+          ctx.newEvents.map((e) => ({
+            id: e.id,
+            organizationId: ctx.organizationId,
+            eventType: e.eventType,
+            payload: e.payload,
+            idempotencyKey: e.idempotencyKey,
+            createdAt: ctx.now,
+          }))
+        )
+        .onConflictDoNothing({
+          target: [event.organizationId, event.idempotencyKey],
+        })
+        .returning({ id: event.id });
+
+      const insertedIdSet = new Set(inserted.map((e) => e.id));
+      const deliveriesToInsert = ctx.allDeliveries.filter((d) =>
+        insertedIdSet.has(d.eventId)
+      );
+      if (deliveriesToInsert.length > 0) {
+        await tx.insert(delivery).values(deliveriesToInsert);
+      }
+      return insertedIdSet;
+    });
+
+    const insertedDeliveryCount = ctx.allDeliveries.filter((d) =>
+      insertedIds.has(d.eventId)
+    ).length;
+    const overReserved = reservedDeliveries - insertedDeliveryCount;
+
+    const jobsToEnqueue = ctx.allJobs.filter((j) =>
+      insertedIds.has(j.data.eventId)
+    );
+    await Promise.all([
+      overReserved > 0
+        ? releaseMonthlyQuota(ctx.organizationId, overReserved)
+        : undefined,
+      enqueueWebhookDispatchJobs(jobsToEnqueue),
+    ]);
+    reservedDeliveries = 0;
+  } catch (error) {
+    if (reservedDeliveries > 0) {
+      await releaseMonthlyQuota(ctx.organizationId, reservedDeliveries);
+    }
+    throw error;
+  }
+
+  return ctx.newEvents
+    .filter((e) => insertedIds.has(e.id))
+    .map((e) => toCreatedEvent(e, ctx.nowIso));
+}
 
 export abstract class WebhookService {
   private static getEventStmt = db
@@ -268,132 +420,23 @@ export abstract class WebhookService {
       now,
     });
 
-    // Events without idempotency keys are acknowledged after the Redis buffer write and persisted by the flusher, callers who need durable ingestion opt in via idempotencyKey.
-    if (idempotencyKeys.length === 0) {
-      const quotaLimits = getQuotaLimits(params.plan);
+    const ctx: IngestContext = {
+      organizationId: params.organizationId,
+      plan: params.plan,
+      now,
+      nowIso,
+      newEvents,
+      allDeliveries,
+      allJobs,
+    };
 
-      const payload = JSON.stringify({
-        events: newEvents.map((e) => ({
-          id: e.id,
-          organizationId: params.organizationId,
-          eventType: e.eventType,
-          payload: e.payload,
-          idempotencyKey: e.idempotencyKey,
-          createdAt: nowIso,
-        })),
-        deliveries: allDeliveries.map((d) => ({
-          id: d.id as string,
-          organizationId: d.organizationId as string,
-          eventId: d.eventId as string,
-          endpointId: d.endpointId as string,
-          status: d.status as string,
-          attempts: d.attempts as number,
-          createdAt: nowIso,
-        })),
-        plan: params.plan,
-      });
+    const created =
+      idempotencyKeys.length === 0
+        ? await ingestBuffered(ctx)
+        : await ingestDurable(ctx);
 
-      const result = await reserveAndBuffer({
-        quotaKey: getMonthKey(params.organizationId),
-        streamKey: STREAM_KEY,
-        limit: quotaLimits.monthlyDeliveries,
-        requested: allDeliveries.length,
-        ttl: DELIVERY_TTL,
-        hasOverage: quotaLimits.hasOverage,
-        payload,
-      });
-
-      if (!result.allowed) {
-        throw new TooManyRequestsError();
-      }
-
-      for (const e of newEvents) {
-        results.push({
-          id: e.id,
-          eventType: e.eventType,
-          payload: e.payload,
-          idempotencyKey: e.idempotencyKey,
-          createdAt: nowIso,
-        });
-      }
-      return { created: newEvents.length, events: results };
-    }
-
-    // Slow path: idempotency keys present — write to DB synchronously
-    await reserveMonthlyQuota(
-      params.organizationId,
-      params.plan,
-      allDeliveries.length
-    );
-    let reservedDeliveries = allDeliveries.length;
-    let insertedIds = new Set<string>();
-
-    try {
-      insertedIds = await db.transaction(async (tx) => {
-        await tx.execute(sql`SET LOCAL synchronous_commit = off`);
-
-        const inserted = await tx
-          .insert(event)
-          .values(
-            newEvents.map((e) => ({
-              id: e.id,
-              organizationId: params.organizationId,
-              eventType: e.eventType,
-              payload: e.payload,
-              idempotencyKey: e.idempotencyKey,
-              createdAt: now,
-            }))
-          )
-          .onConflictDoNothing({
-            target: [event.organizationId, event.idempotencyKey],
-          })
-          .returning({ id: event.id });
-
-        const insertedIdSet = new Set(inserted.map((e) => e.id));
-        const deliveriesToInsert = allDeliveries.filter((d) =>
-          insertedIdSet.has(d.eventId)
-        );
-        if (deliveriesToInsert.length > 0) {
-          await tx.insert(delivery).values(deliveriesToInsert);
-        }
-        return insertedIdSet;
-      });
-
-      const insertedDeliveryCount = allDeliveries.filter((d) =>
-        insertedIds.has(d.eventId)
-      ).length;
-      const overReserved = reservedDeliveries - insertedDeliveryCount;
-
-      const jobsToEnqueue = allJobs.filter((j) =>
-        insertedIds.has(j.data.eventId)
-      );
-      await Promise.all([
-        overReserved > 0
-          ? releaseMonthlyQuota(params.organizationId, overReserved)
-          : undefined,
-        enqueueWebhookDispatchJobs(jobsToEnqueue),
-      ]);
-      reservedDeliveries = 0;
-    } catch (error) {
-      if (reservedDeliveries > 0) {
-        await releaseMonthlyQuota(params.organizationId, reservedDeliveries);
-      }
-      throw error;
-    }
-
-    for (const e of newEvents) {
-      if (insertedIds.has(e.id)) {
-        results.push({
-          id: e.id,
-          eventType: e.eventType,
-          payload: e.payload,
-          idempotencyKey: e.idempotencyKey,
-          createdAt: nowIso,
-        });
-      }
-    }
-
-    return { created: insertedIds.size, events: results };
+    results.push(...created);
+    return { created: created.length, events: results };
   }
 
   static async getEvents(
@@ -699,29 +742,17 @@ export abstract class WebhookService {
         const jobs: Array<{ name: string; data: WebhookDeliveryJob }> = [];
 
         for (const ep of targets) {
-          const deliveryId = crypto.randomUUID();
-          deliveryRecords.push({
-            id: deliveryId,
-            organizationId,
+          const { record, job } = buildDeliveryPair({
             eventId: eventRecord.id,
-            endpointId: ep.id,
-            status: "pending",
-            attempts: 0,
-            createdAt: now,
+            eventType: eventRecord.eventType,
+            payloadStr,
+            ep,
+            organizationId,
+            plan,
+            now,
           });
-          jobs.push({
-            name: "webhook-delivery",
-            data: {
-              deliveryId,
-              eventId: eventRecord.id,
-              payload: payloadStr,
-              eventType: eventRecord.eventType,
-              endpointId: ep.id,
-              maxAttempts: ep.maxAttempts,
-              organizationId,
-              plan,
-            },
-          });
+          deliveryRecords.push(record);
+          jobs.push(job);
         }
 
         await db.insert(delivery).values(deliveryRecords);
@@ -784,29 +815,17 @@ export abstract class WebhookService {
         continue;
       }
 
-      const deliveryId = crypto.randomUUID();
-      deliveryRecords.push({
-        id: deliveryId,
-        organizationId,
+      const { record, job } = buildDeliveryPair({
         eventId: failed.eventId,
-        endpointId: failed.endpointId,
-        status: "pending",
-        attempts: 0,
-        createdAt: now,
+        eventType: failed.eventType,
+        payloadStr: JSON.stringify(failed.payload),
+        ep,
+        organizationId,
+        plan,
+        now,
       });
-      jobs.push({
-        name: "webhook-delivery",
-        data: {
-          deliveryId,
-          eventId: failed.eventId,
-          payload: JSON.stringify(failed.payload),
-          eventType: failed.eventType,
-          endpointId: ep.id,
-          maxAttempts: ep.maxAttempts,
-          organizationId,
-          plan,
-        },
-      });
+      deliveryRecords.push(record);
+      jobs.push(job);
     }
 
     if (deliveryRecords.length > 0) {

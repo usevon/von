@@ -37,30 +37,6 @@ type BufferedPersistence = {
   plan?: string;
 };
 
-/**
- * Buffer event and delivery rows in Redis for async DB persistence,
- * and immediately enqueue delivery jobs so the worker starts right away.
- */
-export async function bufferEvents(
-  persistence: BufferedPersistence,
-  jobs: WebhookDispatchJob[]
-): Promise<void> {
-  const redis = getRedisClient();
-
-  await Promise.all([
-    redis.xadd(
-      STREAM_KEY,
-      "MAXLEN",
-      "~",
-      "100000",
-      "*",
-      "data",
-      JSON.stringify(persistence)
-    ),
-    jobs.length > 0 ? enqueueWebhookDispatchJobs(jobs) : undefined,
-  ]);
-}
-
 // Jobs are derived here instead of riding the stream so entries stay small under endpoint fanout.
 async function buildDispatchJobs(
   events: BufferedPersistence["events"],

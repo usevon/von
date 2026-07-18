@@ -4,7 +4,6 @@ import { env } from "@/env";
 import { csrfProtection } from "@/lib/csrf";
 import { apiBase, baseElysiaOptions } from "@/lib/elysia-base";
 import { getCorsOrigins } from "@/lib/origins";
-import { idempotency } from "@/lib/idempotency";
 import { log } from "@/lib/logger";
 import { requestGuards } from "@/lib/request-guards";
 import { analyticsRead } from "@/modules/analytics";
@@ -53,7 +52,6 @@ export const app = new Elysia({
     })
   )
   .use(requestGuards())
-  .use(idempotency())
   .use(corsMiddleware)
   .use(csrfProtection())
   .mount(auth.handler)

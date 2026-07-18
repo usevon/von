@@ -47,7 +47,6 @@ type ReserveClient = ReturnType<typeof getRedisClient> & {
   ) => Promise<[number, number, string]>;
 };
 
-// defineCommand runs EVALSHA so the script body is not re-sent on every call.
 function getReserveClient(): ReserveClient {
   const redis = getRedisClient() as ReserveClient;
   if (!redis.reserveAndBufferScript) {
