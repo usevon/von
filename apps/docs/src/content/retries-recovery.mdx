@@ -23,7 +23,7 @@ When a delivery fails (non-2xx response or timeout), Von retries it with exponen
 Each endpoint can configure its own `maxAttempts` (1 to 10, default 4) and `timeoutMs` (1 to 60 seconds, default 30 seconds).
 
 ```typescript
-const { data: endpoint } = await von.endpoints.post({
+const { data: endpoint } = await von.endpoints.create({
   url: "https://your-app.com/webhooks",
   maxAttempts: 8,
   timeoutMs: 15000,
@@ -65,21 +65,18 @@ If an endpoint stays in a failure state for 5 consecutive days, Von disables it 
 
 Re-deliver one event to all its endpoints, or target specific ones:
 
-```typescript
-await von.webhooks.events["evt_xxx"].replay.post({
-  endpointIds: ["ep_abc"],
-});
+```text
+POST /webhooks/events/evt_xxx/replay
+{ "endpointIds": ["ep_abc"] }
 ```
 
 ### Bulk replay
 
 Re-deliver all failed deliveries since a given date:
 
-```typescript
-await von.webhooks.events.replay.post({
-  since: "2025-01-15T00:00:00Z",
-  status: "failed",
-});
+```text
+POST /webhooks/events/replay
+{ "since": "2025-01-15T00:00:00Z", "status": "failed" }
 ```
 
 You can filter by `status` and `endpointId` to narrow the scope.
@@ -88,10 +85,8 @@ You can filter by `status` and `endpointId` to narrow the scope.
 
 Use delivery attempt history when you need the full timeline for one delivery:
 
-```typescript
-const { data } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
-  query: { sort: "asc" },
-});
+```text
+GET /webhooks/deliveries/dlv_xxx/attempts?sort=asc
 ```
 
 Use analytics when you need trend-level retry metrics across the organization:

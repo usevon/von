@@ -18,7 +18,7 @@ Webhook versions define transforms that modify payloads before delivery. Each en
 Versions are identified by a string (typically a date like `2025-01-15`). Each version contains transform mappings keyed by event type.
 
 ```typescript
-await von.versions.post({
+await von.versions.create({
   version: "2025-01-15",
   transforms: {
     "order.created": {
@@ -92,7 +92,7 @@ The delivered payload becomes:
 Set the `version` field when creating or updating an endpoint:
 
 ```typescript
-await von.endpoints.post({
+await von.endpoints.create({
   url: "https://partner-app.com/webhooks",
   version: "2025-01-15",
 });
@@ -103,7 +103,7 @@ When Von delivers to this endpoint, it looks up the version's transforms for the
 ## Updating a version
 
 ```typescript
-await von.versions["2025-01-15"].patch({
+await von.versions.update("2025-01-15", {
   transforms: {
     "order.created": {
       rename: { "line_items": "items" },
@@ -117,15 +117,13 @@ await von.versions["2025-01-15"].patch({
 ## Listing versions
 
 ```typescript
-const { data } = await von.versions.get({
-  query: { limit: 20 },
-});
+const { data } = await von.versions.list({ limit: 20 });
 ```
 
-## Getting a version by id
+## Getting a version
 
 ```typescript
-const { data: version } = await von.versions["2025-01-15"].get();
+const { data: version } = await von.versions.get("2025-01-15");
 ```
 
 <Tip title="Cache delay after updates">

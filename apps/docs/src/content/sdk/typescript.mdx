@@ -50,25 +50,25 @@ Both are optional, and the SDK falls back to environment variables:
 ## Endpoints
 
 ```typescript
-const { data } = await von.endpoints.post({
+const { data } = await von.endpoints.create({
   url: "https://your-app.com/webhooks",
   events: ["order.*"],
   maxAttempts: 6,
 });
 
-const { data: list } = await von.endpoints.get();
+const { data: list } = await von.endpoints.list();
 
-const { data: ep } = await von.endpoints["ep_xxx"].get();
+const { data: ep } = await von.endpoints.get("ep_xxx");
 
-await von.endpoints["ep_xxx"].patch({ status: "paused" });
+await von.endpoints.update("ep_xxx", { status: "paused" });
 
-await von.endpoints["ep_xxx"].delete();
+await von.endpoints.delete("ep_xxx");
 ```
 
 ### Test delivery
 
 ```typescript
-await von.endpoints["ep_xxx"].test.post({
+await von.endpoints.test("ep_xxx", {
   eventType: "von.test",
   payload: { message: "ping" },
 });
@@ -77,9 +77,9 @@ await von.endpoints["ep_xxx"].test.post({
 ### Secret rotation
 
 ```typescript
-const { data } = await von.endpoints["ep_xxx"].rotate.post();
+const { data } = await von.endpoints.rotateSecret("ep_xxx");
 
-await von.endpoints["ep_xxx"]["previous-secret"].delete();
+await von.endpoints.clearPreviousSecret("ep_xxx");
 ```
 
 ## Webhooks
@@ -87,7 +87,7 @@ await von.endpoints["ep_xxx"]["previous-secret"].delete();
 ### Send an event
 
 ```typescript
-const { data: event } = await von.webhooks.post({
+const { data: event } = await von.webhooks.send({
   eventType: "order.created",
   payload: { orderId: "123" },
   idempotencyKey: "order-123-v1",
@@ -98,7 +98,7 @@ const { data: event } = await von.webhooks.post({
 ### Batch send
 
 ```typescript
-const { data } = await von.webhooks.batch.post({
+const { data } = await von.webhooks.sendBatch({
   events: [
     { eventType: "order.created", payload: { orderId: "1" } },
     { eventType: "order.created", payload: { orderId: "2" } },
@@ -109,54 +109,54 @@ const { data } = await von.webhooks.batch.post({
 ### Query events
 
 ```typescript
-const { data } = await von.webhooks.events.get({
-  query: {
-    eventTypes: ["order.*"],
-    sort: "desc",
-    limit: 50,
-  },
+const { data } = await von.webhooks.list({
+  eventTypes: ["order.*"],
+  sort: "desc",
+  limit: 50,
 });
 ```
 
-### View deliveries
+### Get an event
 
 ```typescript
-const { data } = await von.webhooks.events["evt_xxx"].deliveries.get({
-  query: { status: "failed" },
-});
+const { data: event } = await von.webhooks.get("evt_xxx");
 ```
 
-### Replay
+### Deliveries and replay
 
-```typescript
-await von.webhooks.events["evt_xxx"].replay.post();
+Deliveries, attempt history, and replay are available over HTTP and do not yet have SDK methods:
 
-await von.webhooks.events.replay.post({
-  since: "2025-01-01T00:00:00Z",
-  status: "failed",
-});
+```text
+GET  /webhooks/events/:id/deliveries
+GET  /webhooks/deliveries/:id/attempts
+POST /webhooks/events/:id/replay
+POST /webhooks/events/replay
 ```
 
 ## Inbound
 
 ```typescript
-const { data } = await von.inbound.post({
+const { data } = await von.inbound.create({
   name: "Stripe",
   provider: "stripe",
   forwardUrl: "https://your-app.com/stripe",
 });
 
-const { data: list } = await von.inbound.get();
+const { data: list } = await von.inbound.list();
 
-await von.inbound["in_xxx"].patch({ status: "paused" });
+const { data: one } = await von.inbound.get("in_xxx");
 
-await von.inbound["in_xxx"].delete();
+await von.inbound.update("in_xxx", { status: "paused" });
+
+await von.inbound.delete("in_xxx");
 ```
 
 ## Versions
 
+Versions are keyed by their version string rather than an id.
+
 ```typescript
-await von.versions.post({
+await von.versions.create({
   version: "2025-01-15",
   transforms: {
     "order.created": {
@@ -166,13 +166,15 @@ await von.versions.post({
   },
 });
 
-const { data: list } = await von.versions.get();
+const { data: list } = await von.versions.list();
 
-await von.versions["2025-01-15"].patch({
+const { data: version } = await von.versions.get("2025-01-15");
+
+await von.versions.update("2025-01-15", {
   transforms: { "order.created": { remove: ["debug"] } },
 });
 
-await von.versions["2025-01-15"].delete();
+await von.versions.delete("2025-01-15");
 ```
 
 ## Webhook verification
@@ -192,7 +194,7 @@ See [Verifying Signatures](/verification) for the full guide.
 Every method returns `{ data, error, status }`. The SDK never throws on HTTP errors:
 
 ```typescript
-const { data, error, status } = await von.endpoints["invalid"].get();
+const { data, error, status } = await von.endpoints.get("invalid");
 
 if (error) {
   console.error(status, error);

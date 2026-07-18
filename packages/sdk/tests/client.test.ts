@@ -11,6 +11,24 @@ const realFetch = globalThis.fetch;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+type CapturedRequest = { url: string; method: string; body: unknown };
+
+const captureRequests = () => {
+  const requests: CapturedRequest[] = [];
+  globalThis.fetch = ((input: unknown, init?: RequestInit) => {
+    requests.push({
+      url: String(input),
+      method: String(init?.method),
+      body:
+        init?.body === undefined ? undefined : JSON.parse(String(init.body)),
+    });
+    return Promise.resolve(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    );
+  }) as typeof fetch;
+  return requests;
+};
+
 const captureFetch = () => {
   const bodies: unknown[] = [];
   globalThis.fetch = ((_input: unknown, init?: RequestInit) => {
@@ -192,5 +210,219 @@ describe("Von Client", () => {
     expect(body.events[0]?.idempotencyKey).not.toBe(
       body.events[1]?.idempotencyKey
     );
+  });
+});
+
+describe("WebhooksResource deliveries and replay", () => {
+  test("listDeliveries targets the event deliveries path", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.listDeliveries("evt_xxx", {
+      status: "failed",
+      endpointId: "ep_xxx",
+      limit: 50,
+    });
+
+    expect(requests[0]?.method).toBe("GET");
+    expect(requests[0]?.url).toBe(
+      "https://api.test/webhooks/events/evt_xxx/deliveries?status=failed&endpointId=ep_xxx&limit=50"
+    );
+  });
+
+  test("listAttempts targets the delivery attempts path", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.listAttempts("dlv_xxx", { sort: "desc", limit: 10 });
+
+    expect(requests[0]?.method).toBe("GET");
+    expect(requests[0]?.url).toBe(
+      "https://api.test/webhooks/deliveries/dlv_xxx/attempts?sort=desc&limit=10"
+    );
+  });
+
+  test("encodes ids in the delivery paths", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.listDeliveries("evt/xxx");
+    await von.webhooks.listAttempts("dlv/xxx");
+
+    expect(requests[0]?.url).toBe(
+      "https://api.test/webhooks/events/evt%2Fxxx/deliveries"
+    );
+    expect(requests[1]?.url).toBe(
+      "https://api.test/webhooks/deliveries/dlv%2Fxxx/attempts"
+    );
+  });
+
+  test("replay posts an empty body by default", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.replay("evt_xxx");
+
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe(
+      "https://api.test/webhooks/events/evt_xxx/replay"
+    );
+    expect(requests[0]?.body).toEqual({});
+  });
+
+  test("replay forwards endpoint ids", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.replay("evt_xxx", { endpointIds: ["ep_a", "ep_b"] });
+
+    expect(requests[0]?.body).toEqual({ endpointIds: ["ep_a", "ep_b"] });
+  });
+
+  test("replayBulk posts to the bulk replay path", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.webhooks.replayBulk({
+      since: "2025-01-01T00:00:00Z",
+      status: "failed",
+    });
+
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api.test/webhooks/events/replay");
+    expect(requests[0]?.body).toEqual({
+      since: "2025-01-01T00:00:00Z",
+      status: "failed",
+    });
+  });
+
+  test("returns the error branch when the event is missing", async () => {
+    globalThis.fetch = (() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "Event not found" }), {
+          status: 404,
+        })
+      )) as typeof fetch;
+
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    const { data, error, status } = await von.webhooks.replay("nope");
+
+    expect(data).toBeNull();
+    expect(status).toBe(404);
+    expect(error?.message).toBe("Event not found");
+  });
+});
+
+describe("InboundResource", () => {
+  test("is constructed on the client", () => {
+    const von = new Von();
+    expect(von.inbound).toBeDefined();
+    expect(typeof von.inbound.create).toBe("function");
+  });
+
+  test("create posts to /inbound", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.inbound.create({
+      forwardUrl: "https://app.test/webhooks/stripe",
+      provider: "stripe",
+    });
+
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api.test/inbound");
+    expect(requests[0]?.body).toEqual({
+      forwardUrl: "https://app.test/webhooks/stripe",
+      provider: "stripe",
+    });
+  });
+
+  test("list passes pagination as query params", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.inbound.list({ limit: 20, cursor: "abc" });
+
+    expect(requests[0]?.method).toBe("GET");
+    expect(requests[0]?.url).toBe(
+      "https://api.test/inbound?limit=20&cursor=abc"
+    );
+  });
+
+  test("get, update, and delete target the endpoint path", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.inbound.get("in_xxx");
+    await von.inbound.update("in_xxx", { status: "paused" });
+    await von.inbound.delete("in_xxx");
+
+    expect(requests.map((r) => r.method)).toEqual(["GET", "PATCH", "DELETE"]);
+    for (const request of requests) {
+      expect(request.url).toBe("https://api.test/inbound/in_xxx");
+    }
+    expect(requests[1]?.body).toEqual({ status: "paused" });
+  });
+
+  test("encodes the endpoint id in the path", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.inbound.get("in/xxx");
+
+    expect(requests[0]?.url).toBe("https://api.test/inbound/in%2Fxxx");
+  });
+});
+
+describe("VersionsResource", () => {
+  test("is constructed on the client", () => {
+    const von = new Von();
+    expect(von.versions).toBeDefined();
+    expect(typeof von.versions.create).toBe("function");
+  });
+
+  test("create posts to /versions", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.versions.create({
+      version: "2025-01-15",
+      transforms: { "order.created": { remove: ["internal_notes"] } },
+    });
+
+    expect(requests[0]?.method).toBe("POST");
+    expect(requests[0]?.url).toBe("https://api.test/versions");
+    expect(requests[0]?.body).toEqual({
+      version: "2025-01-15",
+      transforms: { "order.created": { remove: ["internal_notes"] } },
+    });
+  });
+
+  test("list passes pagination as query params", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.versions.list({ limit: 5 });
+
+    expect(requests[0]?.method).toBe("GET");
+    expect(requests[0]?.url).toBe("https://api.test/versions?limit=5");
+  });
+
+  test("get, update, and delete are keyed by version string", async () => {
+    const requests = captureRequests();
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    await von.versions.get("2025-01-15");
+    await von.versions.update("2025-01-15", { transforms: {} });
+    await von.versions.delete("2025-01-15");
+
+    expect(requests.map((r) => r.method)).toEqual(["GET", "PATCH", "DELETE"]);
+    for (const request of requests) {
+      expect(request.url).toBe("https://api.test/versions/2025-01-15");
+    }
+    expect(requests[1]?.body).toEqual({ transforms: {} });
+  });
+
+  test("returns the error branch on a 404", async () => {
+    globalThis.fetch = (() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "Version not found" }), {
+          status: 404,
+        })
+      )) as typeof fetch;
+
+    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
+    const { data, error, status } = await von.versions.get("nope");
+
+    expect(data).toBeNull();
+    expect(status).toBe(404);
+    expect(error?.message).toBe("Version not found");
   });
 });

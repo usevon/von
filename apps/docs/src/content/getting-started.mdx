@@ -60,7 +60,7 @@ const von = new Von({
     The destination URL where Von delivers webhooks.
 
 ```typescript
-const { data: endpoint } = await von.endpoints.post({
+const { data: endpoint } = await von.endpoints.create({
   url: "https://your-app.com/webhooks",
   description: "Production webhook endpoint",
 });
@@ -69,7 +69,7 @@ const { data: endpoint } = await von.endpoints.post({
 
   <TimelineItem title="Send a webhook">
 ```typescript
-const { data: event } = await von.webhooks.post({
+const { data: event } = await von.webhooks.send({
   eventType: "user.created",
   payload: {
     userId: "user_123",

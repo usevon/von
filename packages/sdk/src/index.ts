@@ -1,8 +1,18 @@
 import { HttpClient } from "@/http";
-import { EndpointsResource, WebhooksResource } from "@/resources";
+import {
+  EndpointsResource,
+  InboundResource,
+  VersionsResource,
+  WebhooksResource,
+} from "@/resources";
 
 export type { RequestOptions, VonApiError, VonResult } from "@/http";
-export { EndpointsResource, WebhooksResource } from "@/resources";
+export {
+  EndpointsResource,
+  InboundResource,
+  VersionsResource,
+  WebhooksResource,
+} from "@/resources";
 export type * from "@/types";
 export { verifyWebhook, WebhookVerificationError } from "@/verify";
 
@@ -112,6 +122,8 @@ type ApiResult = { error: unknown; status: number };
 export class Von {
   readonly endpoints: EndpointsResource;
   readonly webhooks: WebhooksResource;
+  readonly inbound: InboundResource;
+  readonly versions: VersionsResource;
   private readonly autoIdempotency: boolean;
   private readonly retries: number;
   private readonly retryDelayMs: number;
@@ -129,6 +141,8 @@ export class Von {
 
     this.endpoints = new EndpointsResource(http);
     this.webhooks = new WebhooksResource(http);
+    this.inbound = new InboundResource(http);
+    this.versions = new VersionsResource(http);
     this.autoIdempotency = config?.autoIdempotency ?? true;
     this.retries = config?.retries ?? 2;
     this.retryDelayMs = config?.retryDelayMs ?? 250;

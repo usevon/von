@@ -2,10 +2,22 @@ import type { HttpClient, VonResult } from "@/http";
 import type {
   BatchResult,
   CreateEndpointBody,
+  CreateInboundEndpointBody,
+  CreateVersionBody,
+  DeliveryAttemptList,
+  DeliveryAttemptQuery,
+  DeliveryList,
+  DeliveryQuery,
   Endpoint,
   EndpointList,
   EndpointWithSecret,
+  InboundEndpoint,
+  InboundEndpointList,
   PaginationQuery,
+  ReplayBulkBody,
+  ReplayBulkResult,
+  ReplayEventBody,
+  ReplayResult,
   RotateSecretResponse,
   SendBatchBody,
   SendEventBody,
@@ -13,9 +25,13 @@ import type {
   TestEndpointBody,
   TestEndpointResponse,
   UpdateEndpointBody,
+  UpdateInboundEndpointBody,
+  UpdateVersionBody,
   WebhookEvent,
   WebhookEventList,
   WebhookEventQuery,
+  WebhookVersion,
+  WebhookVersionList,
 } from "@/types";
 
 export class WebhooksResource {
@@ -45,6 +61,47 @@ export class WebhooksResource {
     return this.http.request({
       method: "GET",
       path: `/webhooks/events/${encodeURIComponent(id)}`,
+    });
+  }
+
+  listDeliveries(
+    eventId: string,
+    query?: DeliveryQuery
+  ): Promise<VonResult<DeliveryList>> {
+    return this.http.request({
+      method: "GET",
+      path: `/webhooks/events/${encodeURIComponent(eventId)}/deliveries`,
+      query,
+    });
+  }
+
+  listAttempts(
+    deliveryId: string,
+    query?: DeliveryAttemptQuery
+  ): Promise<VonResult<DeliveryAttemptList>> {
+    return this.http.request({
+      method: "GET",
+      path: `/webhooks/deliveries/${encodeURIComponent(deliveryId)}/attempts`,
+      query,
+    });
+  }
+
+  replay(
+    eventId: string,
+    body?: ReplayEventBody
+  ): Promise<VonResult<ReplayResult>> {
+    return this.http.request({
+      method: "POST",
+      path: `/webhooks/events/${encodeURIComponent(eventId)}/replay`,
+      body: body ?? {},
+    });
+  }
+
+  replayBulk(body: ReplayBulkBody): Promise<VonResult<ReplayBulkResult>> {
+    return this.http.request({
+      method: "POST",
+      path: "/webhooks/events/replay",
+      body,
     });
   }
 }
@@ -103,5 +160,79 @@ export class EndpointsResource {
 
   private path(id: string): string {
     return `/endpoints/${encodeURIComponent(id)}`;
+  }
+}
+
+export class InboundResource {
+  private readonly http: HttpClient;
+
+  constructor(http: HttpClient) {
+    this.http = http;
+  }
+
+  create(body: CreateInboundEndpointBody): Promise<VonResult<InboundEndpoint>> {
+    return this.http.request({ method: "POST", path: "/inbound", body });
+  }
+
+  list(query?: PaginationQuery): Promise<VonResult<InboundEndpointList>> {
+    return this.http.request({ method: "GET", path: "/inbound", query });
+  }
+
+  get(id: string): Promise<VonResult<InboundEndpoint>> {
+    return this.http.request({ method: "GET", path: this.path(id) });
+  }
+
+  update(
+    id: string,
+    body: UpdateInboundEndpointBody
+  ): Promise<VonResult<InboundEndpoint>> {
+    return this.http.request({ method: "PATCH", path: this.path(id), body });
+  }
+
+  delete(id: string): Promise<VonResult<SuccessResponse>> {
+    return this.http.request({ method: "DELETE", path: this.path(id) });
+  }
+
+  private path(id: string): string {
+    return `/inbound/${encodeURIComponent(id)}`;
+  }
+}
+
+export class VersionsResource {
+  private readonly http: HttpClient;
+
+  constructor(http: HttpClient) {
+    this.http = http;
+  }
+
+  create(body: CreateVersionBody): Promise<VonResult<WebhookVersion>> {
+    return this.http.request({ method: "POST", path: "/versions", body });
+  }
+
+  list(query?: PaginationQuery): Promise<VonResult<WebhookVersionList>> {
+    return this.http.request({ method: "GET", path: "/versions", query });
+  }
+
+  get(version: string): Promise<VonResult<WebhookVersion>> {
+    return this.http.request({ method: "GET", path: this.path(version) });
+  }
+
+  update(
+    version: string,
+    body: UpdateVersionBody
+  ): Promise<VonResult<WebhookVersion>> {
+    return this.http.request({
+      method: "PATCH",
+      path: this.path(version),
+      body,
+    });
+  }
+
+  delete(version: string): Promise<VonResult<SuccessResponse>> {
+    return this.http.request({ method: "DELETE", path: this.path(version) });
+  }
+
+  private path(version: string): string {
+    return `/versions/${encodeURIComponent(version)}`;
   }
 }

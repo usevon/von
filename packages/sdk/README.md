@@ -32,7 +32,7 @@ if (error) {
 console.log(data.id) // evt_xxx
 ```
 
-`send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw request surface (`von.webhooks` and `von.endpoints`) stays available for everything else.
+`send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw request surface (`von.webhooks`, `von.endpoints`, `von.inbound`, and `von.versions`) stays available for everything else.
 
 ## Limits and billing
 
@@ -100,6 +100,41 @@ const { data: page2 } = await von.webhooks.list({
 const { data: event } = await von.webhooks.get('evt_xxx')
 ```
 
+### Deliveries and attempts
+
+Each event fans out to one delivery per matching endpoint, and each delivery accumulates an attempt row per try.
+
+```typescript
+// List deliveries for an event, filterable by status and endpoint
+const { data: deliveries } = await von.webhooks.listDeliveries('evt_xxx', {
+  status: 'failed',
+  limit: 20,
+})
+
+// Walk the attempt history of a single delivery, oldest first by default
+const { data: attempts } = await von.webhooks.listAttempts('dlv_xxx', {
+  sort: 'asc',
+})
+```
+
+Both paginate with the same `limit` and `cursor` shape as the other list methods.
+
+### Replay
+
+```typescript
+// Replay one event, optionally to a subset of endpoints
+const { data: replayed } = await von.webhooks.replay('evt_xxx', {
+  endpointIds: ['ep_xxx'],
+})
+console.log(replayed?.replayed, replayed?.deliveryIds)
+
+// Replay everything since a timestamp, for recovering from an outage
+const { data: bulk } = await von.webhooks.replayBulk({
+  since: '2025-01-01T00:00:00Z',
+  status: 'failed',
+})
+```
+
 ## Endpoints
 
 ```typescript
@@ -137,6 +172,75 @@ const { data: test } = await von.endpoints.test('ep_xxx', {
   payload: { hello: 'world' },
 })
 ```
+
+## Inbound
+
+Inbound endpoints receive webhooks from third parties like Stripe or GitHub at a stable Von URL, then forward them to your app with the same queueing, retries, and circuit breaker as outbound delivery. Providers post to `https://api.usevon.com/in/{id}`.
+
+```typescript
+// Create an inbound endpoint, the response carries the id and the signing secret
+const { data: inbound } = await von.inbound.create({
+  name: 'Stripe Webhooks',
+  provider: 'stripe',
+  forwardUrl: 'https://myapp.com/webhooks/stripe',
+  maxAttempts: 4,
+  timeoutMs: 30000,
+})
+console.log(inbound?.id, inbound?.secret)
+
+// List inbound endpoints
+const { data } = await von.inbound.list({ limit: 20 })
+
+// Get an inbound endpoint
+const { data: one } = await von.inbound.get('in_xxx')
+
+// Update an inbound endpoint
+const { data: updated } = await von.inbound.update('in_xxx', {
+  forwardUrl: 'https://new-app.com/webhooks/stripe',
+  status: 'paused',
+})
+
+// Delete an inbound endpoint
+await von.inbound.delete('in_xxx')
+```
+
+Forwarded requests are signed with the inbound endpoint secret, so `verifyWebhook` verifies them the same way it verifies outbound webhooks.
+
+## Versions
+
+Versions let payload schemas evolve without breaking existing consumers. A version is identified by a string, usually a date, and holds transform mappings keyed by event type. Pin an endpoint to a version with the `version` field and Von applies that version's transforms before signing and delivering.
+
+```typescript
+// Create a version
+const { data: version } = await von.versions.create({
+  version: '2025-01-15',
+  transforms: {
+    'order.created': {
+      rename: { line_items: 'items' },
+      remove: ['internal_notes'],
+      defaults: { api_version: '2025-01-15' },
+    },
+  },
+})
+
+// List versions
+const { data } = await von.versions.list({ limit: 20 })
+
+// Get a version, versions are keyed by their version string rather than an id
+const { data: one } = await von.versions.get('2025-01-15')
+
+// Update a version, transforms are replaced wholesale
+const { data: updated } = await von.versions.update('2025-01-15', {
+  transforms: {
+    'order.created': { remove: ['internal_notes', 'debug_info'] },
+  },
+})
+
+// Delete a version
+await von.versions.delete('2025-01-15')
+```
+
+Transforms are cached for 60 seconds, so allow up to a minute for an update to reach new deliveries.
 
 ## Webhook Verification
 

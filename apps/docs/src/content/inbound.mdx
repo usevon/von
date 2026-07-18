@@ -18,7 +18,7 @@ The provider URL stays stable even if infrastructure changes, with retry handlin
 ## Creating an inbound endpoint
 
 ```typescript
-const { data: inbound } = await von.inbound.post({
+const { data: inbound } = await von.inbound.create({
   name: "Stripe Webhooks",
   provider: "stripe",
   forwardUrl: "https://your-app.com/webhooks/stripe",
@@ -86,21 +86,19 @@ Inbound forwarding endpoints share the same auto-disable rules as outbound endpo
 ### Listing
 
 ```typescript
-const { data } = await von.inbound.get({
-  query: { limit: 20 },
-});
+const { data } = await von.inbound.list({ limit: 20 });
 ```
 
 ### Getting one endpoint
 
 ```typescript
-const { data } = await von.inbound["in_xxx"].get();
+const { data } = await von.inbound.get("in_xxx");
 ```
 
 ### Updating
 
 ```typescript
-await von.inbound["in_xxx"].patch({
+await von.inbound.update("in_xxx", {
   forwardUrl: "https://new-app.com/webhooks/stripe",
   status: "paused",
 });
@@ -109,7 +107,7 @@ await von.inbound["in_xxx"].patch({
 ### Deleting
 
 ```typescript
-await von.inbound["in_xxx"].delete();
+await von.inbound.delete("in_xxx");
 ```
 
 ## Data retention

@@ -14,7 +14,7 @@ Send webhook events to your endpoints and track every delivery attempt.
 When you send an event, Von creates a delivery for every active endpoint that matches the event type.
 
 ```typescript
-const { data: event } = await von.webhooks.post({
+const { data: event } = await von.webhooks.send({
   eventType: "order.created",
   payload: {
     orderId: "order_123",
@@ -29,7 +29,7 @@ const { data: event } = await von.webhooks.post({
 Von delivers to all matching active endpoints by default. Pass `endpointIds` to target specific ones:
 
 ```typescript
-const { data: event } = await von.webhooks.post({
+const { data: event } = await von.webhooks.send({
   eventType: "order.created",
   payload: { orderId: "order_123" },
   endpointIds: ["ep_abc", "ep_def"],
@@ -41,7 +41,7 @@ const { data: event } = await von.webhooks.post({
 Send up to 100 events in a single request:
 
 ```typescript
-const { data } = await von.webhooks.batch.post({
+const { data } = await von.webhooks.sendBatch({
   events: [
     { eventType: "order.created", payload: { orderId: "1" } },
     { eventType: "order.created", payload: { orderId: "2" } },
@@ -59,7 +59,7 @@ The response includes the count of `created` events and the full `events` array.
 Pass `idempotencyKey` to avoid creating duplicate events. If an event with that key already exists in your organization, Von returns it without creating new deliveries.
 
 ```typescript
-const { data: event } = await von.webhooks.post({
+const { data: event } = await von.webhooks.send({
   eventType: "order.created",
   payload: { orderId: "order_123" },
   idempotencyKey: "order-123-created",
@@ -92,22 +92,20 @@ Each delivery tracks its state through the lifecycle:
 List events with filtering and cursor-based pagination:
 
 ```typescript
-const { data } = await von.webhooks.events.get({
-  query: {
-    eventTypes: ["order.*"],
-    from: "2025-01-01T00:00:00Z",
-    to: "2025-02-01T00:00:00Z",
-    sort: "desc",
-    limit: 50,
-  },
+const { data } = await von.webhooks.list({
+  eventTypes: ["order.*"],
+  from: "2025-01-01T00:00:00Z",
+  to: "2025-02-01T00:00:00Z",
+  sort: "desc",
+  limit: 50,
 });
 ```
 
 Page through results using the cursor:
 
 ```typescript
-const { data: nextPage } = await von.webhooks.events.get({
-  query: { cursor: data.nextCursor },
+const { data: nextPage } = await von.webhooks.list({
+  cursor: data.nextCursor ?? undefined,
 });
 ```
 
@@ -116,21 +114,15 @@ const { data: nextPage } = await von.webhooks.events.get({
 Use `GET /webhooks/events/:id` when you already have an event id and need the canonical event payload.
 
 ```typescript
-const { data: event } = await von.webhooks.events["evt_xxx"].get();
+const { data: event } = await von.webhooks.get("evt_xxx");
 ```
 
 ## Viewing deliveries
 
-Get all deliveries for a specific event:
+Get all deliveries for a specific event. This route has no SDK method yet, so call it over HTTP:
 
-```typescript
-const { data } = await von.webhooks.events["evt_xxx"].deliveries.get({
-  query: {
-    status: "failed",
-    endpointId: "ep_xxx",
-    limit: 50,
-  },
-});
+```text
+GET /webhooks/events/evt_xxx/deliveries?status=failed&endpointId=ep_xxx&limit=50
 ```
 
 Each delivery includes the attempt count, last attempt timestamp, and response details including HTTP status, duration, and any error message.
@@ -139,13 +131,8 @@ Each delivery includes the attempt count, last attempt timestamp, and response d
 
 Get the full attempt timeline for one delivery:
 
-```typescript
-const { data } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
-  query: {
-    sort: "asc",
-    limit: 20,
-  },
-});
+```text
+GET /webhooks/deliveries/dlv_xxx/attempts?sort=asc&limit=20
 ```
 
 Each attempt includes:
@@ -160,10 +147,8 @@ Each attempt includes:
 
 Attempt history uses cursor pagination for consistency with other list endpoints:
 
-```typescript
-const { data: next } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
-  query: { cursor: data.nextCursor },
-});
+```text
+GET /webhooks/deliveries/dlv_xxx/attempts?cursor=<nextCursor>
 ```
 
 ## Replaying events
@@ -172,22 +157,18 @@ const { data: next } = await von.webhooks.deliveries["dlv_xxx"].attempts.get({
 
 Re-deliver an event to all its endpoints, or target specific ones:
 
-```typescript
-await von.webhooks.events["evt_xxx"].replay.post({
-  endpointIds: ["ep_abc"],
-});
+```text
+POST /webhooks/events/evt_xxx/replay
+{ "endpointIds": ["ep_abc"] }
 ```
 
 ### Bulk replay
 
 Re-deliver all failed deliveries since a given date:
 
-```typescript
-await von.webhooks.events.replay.post({
-  since: "2025-01-01T00:00:00Z",
-  status: "failed",
-  endpointId: "ep_xxx",
-});
+```text
+POST /webhooks/events/replay
+{ "since": "2025-01-01T00:00:00Z", "status": "failed", "endpointId": "ep_xxx" }
 ```
 
 Both `status` and `endpointId` are optional filters.

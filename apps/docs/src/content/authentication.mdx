@@ -122,19 +122,25 @@ Assign the narrowest scope set that covers what the key needs.
 | Endpoint admin | `["read:endpoints", "write:endpoints"]` | No access to events or deliveries |
 | CI smoke tests | `["read:webhooks", "read:endpoints"]` | Pair with a short `expiresIn` |
 
+Keys are not created through the Von SDK. Issuing a key requires a signed-in user session, and the SDK authenticates with a key rather than a session, so a key can never mint another key.
+
+Create them from the [dashboard](https://app.usevon.com/settings/api-keys), or programmatically with the auth client while a user session is active:
+
 ```typescript
-const senderKey = await von.apiKeys.create({
+const senderKey = await authClient.apiKey.create({
   name: "webhook-sender-prod",
   environment: "prod",
   scopes: ["write:webhooks"],
 });
 
-const readKey = await von.apiKeys.create({
+const readKey = await authClient.apiKey.create({
   name: "observability-pipeline",
   environment: "prod",
   scopes: ["read:*"],
 });
 ```
+
+The response carries the full key exactly once, in the `key` field. Store it immediately and pass it to the SDK as `apiKey`.
 
 ## Security operations
 

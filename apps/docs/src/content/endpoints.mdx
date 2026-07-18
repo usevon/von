@@ -14,7 +14,7 @@ Endpoints are the destination URLs where Von delivers your webhook events.
 Register a URL to receive webhooks, each endpoint gets a unique signing secret on creation.
 
 ```typescript
-const { data: endpoint } = await von.endpoints.post({
+const { data: endpoint } = await von.endpoints.create({
   url: "https://your-app.com/webhooks",
   description: "Production webhook receiver",
 });
@@ -62,7 +62,7 @@ Endpoints subscribe to specific event types using pattern matching.
 | `*` | All events |
 
 ```typescript
-const { data: endpoint } = await von.endpoints.post({
+const { data: endpoint } = await von.endpoints.create({
   url: "https://your-app.com/webhooks",
   events: ["order.*", "invoice.paid"],
 });
@@ -71,7 +71,7 @@ const { data: endpoint } = await von.endpoints.post({
 ## Updating an endpoint
 
 ```typescript
-await von.endpoints["ep_xxx"].patch({
+await von.endpoints.update("ep_xxx", {
   description: "Updated description",
   events: ["order.*"],
   maxAttempts: 6,
@@ -85,7 +85,7 @@ All fields are optional and only the fields you include are updated.
 Send a test webhook to the endpoint and review the resulting event and delivery in the dashboard.
 
 ```typescript
-const { data } = await von.endpoints["ep_xxx"].test.post({
+const { data } = await von.endpoints.test("ep_xxx", {
   eventType: "von.test",
   payload: { message: "Hello from Von" },
 });
@@ -96,13 +96,13 @@ const { data } = await von.endpoints["ep_xxx"].test.post({
 Rotate an endpoint's signing secret without downtime. During the rotation window, Von includes both the current and previous signatures so your consumer can verify with either key.
 
 ```typescript
-const { data } = await von.endpoints["ep_xxx"].rotate.post();
+const { data } = await von.endpoints.rotateSecret("ep_xxx");
 ```
 
 The response includes the new `secret` and `previousSecret`, so once your consumer is updated to the new secret, clear the old one:
 
 ```typescript
-await von.endpoints["ep_xxx"]["previous-secret"].delete();
+await von.endpoints.clearPreviousSecret("ep_xxx");
 ```
 
 During rotation the `X-Von-Signature` header contains two signatures:
@@ -114,7 +114,7 @@ t=1700000000,v1=<current_secret_hmac>,v2=<previous_secret_hmac>
 ## Deleting an endpoint
 
 ```typescript
-await von.endpoints["ep_xxx"].delete();
+await von.endpoints.delete("ep_xxx");
 ```
 
 Deleting an endpoint removes all associated delivery records.
