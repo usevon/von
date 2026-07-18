@@ -94,7 +94,7 @@ export const organization = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     logo: text("logo"),
-    plan: text("plan").default("hobby").notNull(),
+    plan: text("plan").default("free").notNull(),
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
   },

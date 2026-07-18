@@ -4,10 +4,11 @@ import {
   organizationClient,
 } from "@usevon/auth/client";
 
-import { env } from "@/env";
-
 export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_API_URL,
+  baseURL:
+    typeof window === "undefined"
+      ? (process.env.BETTER_AUTH_URL ?? "http://localhost:3001")
+      : window.location.origin,
   plugins: [organizationClient(), deviceAuthorizationClient()],
 });
 
