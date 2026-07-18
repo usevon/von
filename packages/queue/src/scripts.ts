@@ -35,6 +35,30 @@ export type ReserveAndBufferResult = {
   streamId: string;
 };
 
+type ReserveClient = ReturnType<typeof getRedisClient> & {
+  reserveAndBufferScript?: (
+    quotaKey: string,
+    limit: string,
+    requested: string,
+    ttl: string,
+    hasOverage: string,
+    streamKey: string,
+    payload: string
+  ) => Promise<[number, number, string]>;
+};
+
+// defineCommand runs EVALSHA so the script body is not re-sent on every call.
+function getReserveClient(): ReserveClient {
+  const redis = getRedisClient() as ReserveClient;
+  if (!redis.reserveAndBufferScript) {
+    redis.defineCommand("reserveAndBufferScript", {
+      numberOfKeys: 1,
+      lua: RESERVE_AND_BUFFER_SCRIPT,
+    });
+  }
+  return redis;
+}
+
 export async function reserveAndBuffer(params: {
   quotaKey: string;
   streamKey: string;
@@ -44,9 +68,11 @@ export async function reserveAndBuffer(params: {
   hasOverage: boolean;
   payload: string;
 }): Promise<ReserveAndBufferResult> {
-  const result = (await getRedisClient().eval(
-    RESERVE_AND_BUFFER_SCRIPT,
-    1,
+  const redis = getReserveClient();
+  if (!redis.reserveAndBufferScript) {
+    throw new Error("reserveAndBuffer script not defined");
+  }
+  const result = await redis.reserveAndBufferScript(
     params.quotaKey,
     String(params.limit),
     String(params.requested),
@@ -54,7 +80,7 @@ export async function reserveAndBuffer(params: {
     params.hasOverage ? "1" : "0",
     params.streamKey,
     params.payload
-  )) as [number, number, string];
+  );
 
   return {
     allowed: result[0] === 1,

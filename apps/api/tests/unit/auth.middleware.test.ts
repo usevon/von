@@ -67,7 +67,7 @@ describe("auth middleware", () => {
     const client = buildClient(auth, "read:webhooks");
     const { error } = await client.protected.get({
       headers: {
-        authorization: "Bearer von_dev_key",
+        authorization: "Bearer von_dev_key_1",
       },
     });
 
@@ -96,7 +96,7 @@ describe("auth middleware", () => {
     const client = buildClient(auth, "read:webhooks");
     const { data, error } = await client.protected.get({
       headers: {
-        authorization: "Bearer von_dev_key",
+        authorization: "Bearer von_dev_key_2",
       },
     });
 

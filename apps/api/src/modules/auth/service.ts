@@ -1,5 +1,6 @@
 import { parseScopes } from "@usevon/auth";
 import { hashSha256 } from "@usevon/utils";
+import { MemoCache } from "@/lib/memo-cache";
 import type {
   AuthApi,
   AuthHeaders,
@@ -10,6 +11,9 @@ import type {
 
 const KEY_CACHE_TTL = 60;
 
+// Key revocation lags up to this TTL per process, matching the staleness already accepted by the Redis layer.
+const localKeyCache = new MemoCache<ResolvedAuth>(10_000);
+
 async function resolveApiKey(
   auth: AuthApi,
   redis: RedisTracking,
@@ -18,10 +22,16 @@ async function resolveApiKey(
   const keyHash = hashSha256(rawKey).slice(0, 32);
   const cacheKey = `auth:key:${keyHash}`;
 
+  const local = localKeyCache.get(cacheKey);
+  if (local) {
+    return local;
+  }
+
   const cached = await redis.get(cacheKey);
   if (cached) {
     try {
       const resolved = JSON.parse(cached) as ResolvedAuth;
+      localKeyCache.set(cacheKey, resolved);
       return resolved;
     } catch {
       await redis.del(cacheKey);
@@ -51,6 +61,7 @@ async function resolveApiKey(
     ),
   };
 
+  localKeyCache.set(cacheKey, resolved);
   redis
     .set(cacheKey, JSON.stringify(resolved), "EX", KEY_CACHE_TTL)
     .catch(() => undefined);

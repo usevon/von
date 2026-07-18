@@ -2,8 +2,13 @@ import { getRedisClient } from "@usevon/queue";
 import { TooManyRequestsError, withTimeout } from "@usevon/utils";
 import { Elysia } from "elysia";
 
-const redis = getRedisClient();
 const RATE_LIMIT_REDIS_TIMEOUT_MS = 100;
+
+type RateLimitClient = ReturnType<typeof getRedisClient> & {
+  rateLimitIncr?: (key: string, windowSeconds: number) => Promise<number>;
+};
+
+const redis = getRedisClient() as RateLimitClient;
 
 type RateLimitContext = {
   request: Request;
@@ -40,6 +45,17 @@ end
 return current
 `;
 
+// defineCommand runs EVALSHA so the script body is not re-sent on every call.
+// Defined lazily because test mocks may not implement defineCommand.
+const ensureRateLimitScript = () => {
+  if (!redis.rateLimitIncr && typeof redis.defineCommand === "function") {
+    redis.defineCommand("rateLimitIncr", {
+      numberOfKeys: 1,
+      lua: RATE_LIMIT_SCRIPT,
+    });
+  }
+};
+
 const createRateLimiter = (options: RateLimitOptions) => {
   const {
     windowMs,
@@ -62,13 +78,17 @@ const createRateLimiter = (options: RateLimitOptions) => {
 
       let current: number;
       try {
+        ensureRateLimitScript();
+        const incr = redis.rateLimitIncr
+          ? redis.rateLimitIncr(key, windowSeconds)
+          : (redis.eval(
+              RATE_LIMIT_SCRIPT,
+              1,
+              key,
+              windowSeconds
+            ) as Promise<number>);
         current = (await withTimeout(
-          redis.eval(
-            RATE_LIMIT_SCRIPT,
-            1,
-            key,
-            windowSeconds
-          ) as Promise<number>,
+          incr,
           RATE_LIMIT_REDIS_TIMEOUT_MS
         )) as number;
       } catch {

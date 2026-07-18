@@ -33,6 +33,13 @@ export {
   generateTunnelId,
   generateTunnelSecret,
 } from "@/ids";
+export { MemoCache } from "@/memo-cache";
+export {
+  decryptOptionalSecret,
+  decryptSecret,
+  encryptSecret,
+  withDecryptedSecretFields,
+} from "@/secret-cipher";
 export {
   applyTransforms,
   type TransformMappings,
