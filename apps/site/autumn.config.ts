@@ -34,7 +34,12 @@ export const starter = plan({
     }),
     item({
       featureId: messages.id,
-      price: { amount: 1.0, billingUnits: 10_000, billingMethod: "usage_based" },
+      price: {
+        amount: 1.0,
+        billingUnits: 10_000,
+        billingMethod: "usage_based",
+        interval: "month",
+      },
     }),
   ],
 });
@@ -51,7 +56,12 @@ export const growth = plan({
     }),
     item({
       featureId: messages.id,
-      price: { amount: 0.5, billingUnits: 10_000, billingMethod: "usage_based" },
+      price: {
+        amount: 0.5,
+        billingUnits: 10_000,
+        billingMethod: "usage_based",
+        interval: "month",
+      },
     }),
   ],
 });
@@ -68,7 +78,12 @@ export const scale = plan({
     }),
     item({
       featureId: messages.id,
-      price: { amount: 0.25, billingUnits: 10_000, billingMethod: "usage_based" },
+      price: {
+        amount: 0.25,
+        billingUnits: 10_000,
+        billingMethod: "usage_based",
+        interval: "month",
+      },
     }),
   ],
 });
