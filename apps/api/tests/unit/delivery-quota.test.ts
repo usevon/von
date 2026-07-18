@@ -129,23 +129,23 @@ describe("reserveMonthlyQuota", () => {
       expect.any(String),
       1,
       expectedKey,
-      "25000", // hobby monthlyDeliveries
+      "50000", // hobby monthlyDeliveries
       "5",
       String(DELIVERY_TTL),
       "0" // hobby hasOverage = false
     );
   });
 
-  test("calls redis.eval with hasOverage=1 for metered plan", async () => {
+  test("calls redis.eval with hasOverage=1 for starter plan", async () => {
     mockRedis.eval.mockResolvedValue([1, 500]);
 
-    await reserveMonthlyQuota("org-1", "metered", 10);
+    await reserveMonthlyQuota("org-1", "starter", 10);
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,
       expect.any(String),
-      "25000",
+      "250000",
       "10",
       String(DELIVERY_TTL),
       "1"
@@ -160,7 +160,7 @@ describe("reserveMonthlyQuota", () => {
   });
 
   test("throws TooManyRequestsError with correct message when quota exceeded", async () => {
-    mockRedis.eval.mockResolvedValue([0, 25_000]);
+    mockRedis.eval.mockResolvedValue([0, 50_000]);
 
     await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
       TooManyRequestsError
@@ -170,7 +170,33 @@ describe("reserveMonthlyQuota", () => {
     );
   });
 
-  test("unknown plan falls through to metered defaults", async () => {
+  test("growth and scale get their own included volume", async () => {
+    mockRedis.eval.mockResolvedValue([1, 100]);
+
+    await reserveMonthlyQuota("org-1", "growth", 1);
+    expect(mockRedis.eval).toHaveBeenLastCalledWith(
+      expect.any(String),
+      1,
+      expect.any(String),
+      "1000000",
+      "1",
+      String(DELIVERY_TTL),
+      "1"
+    );
+
+    await reserveMonthlyQuota("org-1", "scale", 1);
+    expect(mockRedis.eval).toHaveBeenLastCalledWith(
+      expect.any(String),
+      1,
+      expect.any(String),
+      "10000000",
+      "1",
+      String(DELIVERY_TTL),
+      "1"
+    );
+  });
+
+  test("unknown plan falls through to starter defaults", async () => {
     mockRedis.eval.mockResolvedValue([1, 100]);
 
     await reserveMonthlyQuota("org-1", "unknown-plan", 1);
@@ -179,10 +205,10 @@ describe("reserveMonthlyQuota", () => {
       expect.any(String),
       1,
       expect.any(String),
-      "25000",
+      "250000",
       "1",
       String(DELIVERY_TTL),
-      "1" // non-hobby plans have hasOverage = true
+      "1" // paid plans have hasOverage = true
     );
   });
 });

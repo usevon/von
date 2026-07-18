@@ -27,7 +27,7 @@ export function LogoLink() {
   const handleCopyPng = () => {
     const svg = new Blob(
       [LOGO_SVG.replace('fill="currentColor"', 'fill="#000000"')],
-      { type: "image/svg+xml" },
+      { type: "image/svg+xml" }
     );
     const url = URL.createObjectURL(svg);
     const img = document.createElement("img");
@@ -58,10 +58,7 @@ export function LogoLink() {
     <ContextMenu>
       <ContextMenuTrigger
         render={
-          <Link
-            className="flex h-7 w-20 items-center no-underline"
-            href="/"
-          >
+          <Link className="flex h-7 w-20 items-center no-underline" href="/">
             <Image
               alt="Von"
               className="h-7 w-auto dark:hidden"

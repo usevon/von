@@ -4,15 +4,7 @@ import { CheckIcon, MinusIcon, QuestionMarkIcon } from "@phosphor-icons/react";
 import { Popover, PopoverPopup, PopoverTrigger } from "@usevon/ui";
 
 import { PlanCards } from "@/components/plan-cards";
-import {
-  fmt,
-  fmtCurrency,
-  INCLUDED_TEAM_MEMBERS,
-  RATE_TIERS,
-} from "@/lib/calculator";
-import {
-  useCalculatorState,
-} from "./use-calculator-state";
+import { PLANS, type PricingPlan } from "@/lib/calculator";
 
 type ComparisonValue = boolean | string;
 
@@ -21,191 +13,153 @@ type ComparisonGroup = {
   features: {
     name: string;
     description: string;
-    hobby: ComparisonValue;
-    payg: ComparisonValue;
+    valueFor: (plan: PricingPlan) => ComparisonValue;
   }[];
 };
 
-function renderValue(v: ComparisonValue) {
-  if (v === true) {
+const comparisonGroups: ComparisonGroup[] = [
+  {
+    category: "Usage",
+    features: [
+      {
+        name: "Messages",
+        description: "Messages included each month before any overage.",
+        valueFor: (plan) => plan.messagesLabel,
+      },
+      {
+        name: "Overage",
+        description:
+          "Price for messages beyond the included amount. Free has a hard cap instead.",
+        valueFor: (plan) => plan.overageLabel,
+      },
+      {
+        name: "Throughput",
+        description: "Sustained messages delivered per second.",
+        valueFor: (plan) => plan.throughputLabel,
+      },
+      {
+        name: "Retention",
+        description: "How far back you can inspect delivery history.",
+        valueFor: (plan) => plan.retentionLabel,
+      },
+    ],
+  },
+  {
+    category: "Platform",
+    features: [
+      {
+        name: "Team members",
+        description: "Users with access to your workspace.",
+        valueFor: (plan) => (plan.id === "free" ? "1" : "Unlimited"),
+      },
+      {
+        name: "Dev tunnels",
+        description:
+          "Run local tunnels to receive webhooks during development.",
+        valueFor: (plan) => (plan.id === "free" ? "up to 3" : "Unlimited"),
+      },
+      {
+        name: "Free retries",
+        description: "Retried deliveries are never counted against your usage.",
+        valueFor: () => true,
+      },
+      {
+        name: "Support",
+        description: "How you reach us when something goes wrong.",
+        valueFor: (plan) => plan.supportLabel,
+      },
+    ],
+  },
+];
+
+const renderValue = (value: ComparisonValue) => {
+  if (value === true) {
     return (
       <CheckIcon className="mx-auto size-4 text-foreground" weight="bold" />
     );
   }
-  if (v === false) {
+  if (value === false) {
     return <MinusIcon className="mx-auto size-4 text-muted-foreground/30" />;
   }
-  return v;
-}
+  return value;
+};
 
-function ComparisonTooltip({
-  name,
-  description,
-}: {
+type ComparisonTooltipProps = {
   name: string;
   description: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      {name}
-      <Popover>
-        <PopoverTrigger
-          className="inline-flex size-4 cursor-help items-center justify-center border border-border text-muted-foreground/60 outline-none transition-colors hover:text-muted-foreground"
-          delay={200}
-          openOnHover
-        >
-          <QuestionMarkIcon size={8} weight="bold" />
-        </PopoverTrigger>
-        <PopoverPopup className="max-w-56" sideOffset={8} tooltipStyle>
-          {description}
-        </PopoverPopup>
-      </Popover>
-    </span>
-  );
-}
+};
 
-function ComparisonTable({ groups }: { groups: ComparisonGroup[] }) {
-  return (
-    <section className="mt-8 border-border border-b max-sm:hidden">
-      <div className="sticky top-16 z-10 -mb-px grid h-[53px] grid-cols-3 border-border border-y bg-background/80 backdrop-blur-lg">
-        <div />
-        <div className="flex items-center border-border border-l px-8">
-          <span className="font-semibold text-sm">Hobby</span>
-        </div>
-        <div className="flex items-center border-border border-l px-8">
-          <span className="font-semibold text-sm">Metered</span>
-        </div>
-      </div>
-      {groups.map((group) => (
-        <div key={group.category}>
-          <div className="border-border border-t bg-accent/30 px-8 py-4">
-            <span className="font-medium text-sm">{group.category}</span>
-          </div>
-          {group.features.map((feature) => (
-            <div
-              className="grid grid-cols-3 border-border/50 border-t text-sm"
-              key={feature.name}
-            >
-              <div className="flex items-center px-8 py-4 text-muted-foreground">
-                <ComparisonTooltip
-                  description={feature.description}
-                  name={feature.name}
-                />
-              </div>
-              <div className="flex items-center justify-center border-border/50 border-l px-4 py-4 text-center text-muted-foreground">
-                {renderValue(feature.hobby)}
-              </div>
-              <div className="flex items-center justify-center border-border/50 border-l px-4 py-4 text-center text-muted-foreground">
-                {renderValue(feature.payg)}
-              </div>
-            </div>
-          ))}
+const ComparisonTooltip = (props: ComparisonTooltipProps) => (
+  <span className="inline-flex items-center gap-2">
+    {props.name}
+    <Popover>
+      <PopoverTrigger
+        className="inline-flex size-4 cursor-help items-center justify-center border border-border text-muted-foreground/60 outline-none transition-colors hover:text-muted-foreground"
+        delay={200}
+        openOnHover
+      >
+        <QuestionMarkIcon size={8} weight="bold" />
+      </PopoverTrigger>
+      <PopoverPopup className="max-w-56" sideOffset={8} tooltipStyle>
+        {props.description}
+      </PopoverPopup>
+    </Popover>
+  </span>
+);
+
+const GRID = "grid grid-cols-[1.4fr_repeat(5,1fr)]";
+
+const ComparisonTable = () => (
+  <section className="mt-16 border-border border-b max-lg:hidden">
+    <div
+      className={`${GRID} sticky top-16 z-10 -mb-px h-[53px] border-border border-y bg-background/80 backdrop-blur-lg`}
+    >
+      <div />
+      {PLANS.map((plan) => (
+        <div
+          className="flex items-center border-border border-l px-6"
+          key={plan.id}
+        >
+          <span className="font-semibold text-sm">{plan.name}</span>
         </div>
       ))}
-    </section>
-  );
-}
-
-export function PlansSection() {
-  const calc = useCalculatorState();
-
-  const activeMembers = calc.teamMembersEnabled
-    ? calc.teamMembers
-    : INCLUDED_TEAM_MEMBERS;
-
-  const comparisonGroups: ComparisonGroup[] = [
-    {
-      category: "Usage",
-      features: [
-        {
-          name: "Webhooks/month",
-          description: "Total webhook deliveries included each month.",
-          hobby: "25,000",
-          payg: fmt.format(calc.monthlyWebhooks),
-        },
-        {
-          name: "Additional webhooks",
-          description:
-            "Graduated per-10k rate for usage beyond the included amount.",
-          hobby: false,
-          payg: `from ${fmtCurrency.format(RATE_TIERS[0].rate)} per 10k`,
-        },
-        {
-          name: "Throughput",
-          description:
-            "Sustained webhooks delivered per second under normal load.",
-          hobby: "25/sec",
-          payg: calc.throughputEnabled
-            ? `${calc.throughputPerSecond}/sec`
-            : "25/sec",
-        },
-        {
-          name: "Burst capacity",
-          description:
-            "Short-term headroom above base throughput (1.4x) to absorb spikes.",
-          hobby: `${Math.floor(25 * 1.4)}/sec`,
-          payg: `${calc.burstCapacity}/sec`,
-        },
-      ],
-    },
-    {
-      category: "Infrastructure",
-      features: [
-        {
-          name: "Retention",
-          description: "How far back you can inspect delivery history.",
-          hobby: "3 days",
-          payg: calc.retentionEnabled ? `${calc.retentionDays} days` : "7 days",
-        },
-        {
-          name: "Team members",
-          description:
-            "Users with access to your workspace. Each member can run up to 3 dev tunnels.",
-          hobby: "1",
-          payg: `${activeMembers}`,
-        },
-        {
-          name: "Dev tunnels",
-          description:
-            "Run local tunnels to receive webhooks during development. Up to 3 per member.",
-          hobby: "up to 3",
-          payg: `up to ${activeMembers * 3}`,
-        },
-        {
-          name: "Custom domains",
-          description: "Use your own domain for webhook endpoints.",
-          hobby: false,
-          payg: calc.customDomainsEnabled
-            ? `${fmtCurrency.format(5)}/mo`
-            : `+${fmtCurrency.format(5)}/mo`,
-        },
-      ],
-    },
-    {
-      category: "Billing",
-      features: [
-        {
-          name: "Base price",
-          description: "Minimum monthly charge.",
-          hobby: "$0",
-          payg: `${fmtCurrency.format(5)}/mo`,
-        },
-        {
-          name: "Estimated total",
-          description: "Based on current calculator settings.",
-          hobby: "$0",
-          payg: fmtCurrency.format(calc.billedTotal),
-        },
-      ],
-    },
-  ];
-
-  return (
-    <>
-      <div className="mt-4">
-        <PlanCards calc={calc} />
+    </div>
+    {comparisonGroups.map((group) => (
+      <div key={group.category}>
+        <div className="border-border border-t bg-accent/30 px-8 py-4">
+          <span className="font-medium text-sm">{group.category}</span>
+        </div>
+        {group.features.map((feature) => (
+          <div
+            className={`${GRID} border-border/50 border-t text-sm`}
+            key={feature.name}
+          >
+            <div className="flex items-center px-8 py-4 text-muted-foreground">
+              <ComparisonTooltip
+                description={feature.description}
+                name={feature.name}
+              />
+            </div>
+            {PLANS.map((plan) => (
+              <div
+                className="flex items-center justify-center border-border/50 border-l px-4 py-4 text-center text-muted-foreground"
+                key={plan.id}
+              >
+                {renderValue(feature.valueFor(plan))}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
-      <ComparisonTable groups={comparisonGroups} />
-    </>
-  );
-}
+    ))}
+  </section>
+);
+
+export const PlansSection = () => (
+  <>
+    <div className="mt-4">
+      <PlanCards />
+    </div>
+    <ComparisonTable />
+  </>
+);

@@ -35,7 +35,7 @@ export function Code({ children, className }: CodeProps) {
       className={cn(
         "w-full max-w-lg overflow-x-auto border border-white/10 bg-black/40 p-6 font-mono text-sm leading-relaxed backdrop-blur-sm",
         "[&_.sh__line]:leading-relaxed",
-        className,
+        className
       )}
       style={darkSyntaxVars}
     >

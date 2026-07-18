@@ -1,9 +1,9 @@
 "use client";
 
 import { TabsPrimitive as Tabs } from "@usevon/ui";
-import { cn } from "@/lib/utils";
 import { Code } from "@/components/code";
 import { Wallpaper } from "@/components/wallpaper";
+import { cn } from "@/lib/utils";
 
 const workflowSteps = [
   { value: "connect", label: "Connect" },
@@ -17,13 +17,16 @@ const panelClass = "grid h-full w-full place-items-center px-6";
 
 export function WorkflowTabs() {
   return (
-    <Tabs.Root className="flex flex-col border-border border-y" defaultValue="connect">
+    <Tabs.Root
+      className="flex flex-col border-border border-y"
+      defaultValue="connect"
+    >
       <Tabs.List className="relative z-0 flex h-14 border-border border-b sm:grid sm:grid-cols-5">
         {workflowSteps.map((step, index) => (
           <Tabs.Tab
             className={cn(
               "min-w-0 flex-1 cursor-pointer text-center font-medium text-base text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:bg-accent data-active:text-foreground sm:text-sm",
-              index < workflowSteps.length - 1 && "border-r border-r-border",
+              index < workflowSteps.length - 1 && "border-r border-r-border"
             )}
             key={step.value}
             value={step.value}
@@ -32,8 +35,8 @@ export function WorkflowTabs() {
           </Tabs.Tab>
         ))}
         <Tabs.Indicator
-          renderBeforeHydration
           className="absolute top-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) bg-accent transition-[width,translate] duration-200 ease-in-out"
+          renderBeforeHydration
         />
       </Tabs.List>
 

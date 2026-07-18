@@ -1,7 +1,7 @@
 import { Button } from "@usevon/ui";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { docsUrl, urls } from "@/lib/urls";
+import { cn } from "@/lib/utils";
 
 const gridCells = [
   [0, 0, 0, 35],
@@ -25,19 +25,19 @@ function HeroGrid() {
                 "aspect-square border-border",
                 ci === 0 && "border-l",
                 !isLastCol && "border-r",
-                !isLastRow && "border-b",
+                !isLastRow && "border-b"
               )}
               key={`${ri}-${ci}`}
               style={
                 fill
                   ? {
-                    backgroundColor: `color-mix(in srgb, var(--wallpaper-4) ${fill}%, transparent)`,
+                      backgroundColor: `color-mix(in srgb, var(--wallpaper-4) ${fill}%, transparent)`,
                     }
                   : undefined
               }
             />
           );
-        }),
+        })
       )}
     </div>
   );
@@ -53,15 +53,11 @@ export function Hero() {
           <span className="block">that just works.</span>
         </h1>
         <p className="max-w-[56ch] text-[1.0625rem]/[2rem] text-muted-foreground">
-          Reliable webhook delivery with automatic retries, circuit
-          breakers, and real-time monitoring so you can focus on building
-          your product.
+          Reliable webhook delivery with automatic retries, circuit breakers,
+          and real-time monitoring so you can focus on building your product.
         </p>
         <div className="flex flex-wrap gap-4">
-          <Button
-            render={<Link href={urls.signup} />}
-            size="xl"
-          >
+          <Button render={<Link href={urls.signup} />} size="xl">
             Get Started
           </Button>
           <Button

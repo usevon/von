@@ -13,12 +13,22 @@ type PlanLimits = {
   hasOverage: boolean;
 };
 
-// TODO: metered plan limits will come from the org's subscription record
+const STARTER_LIMITS: PlanLimits = {
+  monthlyDeliveries: 250_000,
+  hasOverage: true,
+};
+
+const PLAN_LIMITS: Record<string, PlanLimits> = {
+  free: { monthlyDeliveries: 50_000, hasOverage: false },
+  hobby: { monthlyDeliveries: 50_000, hasOverage: false },
+  starter: STARTER_LIMITS,
+  growth: { monthlyDeliveries: 1_000_000, hasOverage: true },
+  scale: { monthlyDeliveries: 10_000_000, hasOverage: true },
+};
+
+// TODO: plan limits will come from the org's subscription record
 export function getPlanLimits(plan: string): PlanLimits {
-  if (plan === "hobby") {
-    return { monthlyDeliveries: 25_000, hasOverage: false };
-  }
-  return { monthlyDeliveries: 25_000, hasOverage: true };
+  return PLAN_LIMITS[plan] ?? STARTER_LIMITS;
 }
 
 export const DELIVERY_TTL = 45 * 86_400; // 45 days
@@ -180,7 +190,7 @@ export async function reserveMonthlyQuota(
   const allowed = result[0] === 1;
   const currentUsage = result[1];
 
-  // Quota warnings are only relevant for Hobby (Metered bills overage)
+  // Quota warnings only matter on capped plans because paid plans bill overage
   if (!limits.hasOverage) {
     checkQuotaThresholds(orgId, currentUsage, limits.monthlyDeliveries);
   }

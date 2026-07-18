@@ -36,30 +36,31 @@ export type Plan = {
   highlighted: boolean;
 };
 
-function FeatureTooltip({
-  tooltip,
-  children,
-}: {
+type FeatureTooltipProps = {
   tooltip: string;
   children: ReactNode;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger
-        className="inline-flex cursor-help items-center gap-1.5 outline-none"
-        delay={200}
-        openOnHover
-      >
-        {children}
-      </PopoverTrigger>
-      <PopoverPopup className="max-w-56" sideOffset={8} tooltipStyle>
-        {tooltip}
-      </PopoverPopup>
-    </Popover>
-  );
-}
+};
 
-function FeatureItem({ feature }: { feature: Feature }) {
+const FeatureTooltip = (props: FeatureTooltipProps) => (
+  <Popover>
+    <PopoverTrigger
+      className="inline-flex cursor-help items-center gap-1.5 outline-none"
+      delay={200}
+      openOnHover
+    >
+      {props.children}
+    </PopoverTrigger>
+    <PopoverPopup className="max-w-56" sideOffset={8} tooltipStyle>
+      {props.tooltip}
+    </PopoverPopup>
+  </Popover>
+);
+
+type FeatureItemProps = {
+  feature: Feature;
+};
+
+const FeatureItem = ({ feature }: FeatureItemProps) => {
   const icon = feature.excluded ? (
     <XCircleIcon
       className="size-4 shrink-0 text-muted-foreground/40"
@@ -107,45 +108,43 @@ function FeatureItem({ feature }: { feature: Feature }) {
       </span>
     </li>
   );
-}
+};
 
-export function PlanCard({
-  plan,
-  children,
-  className,
-}: {
+type PlanCardProps = {
   plan: Plan;
   children?: ReactNode;
   className?: string;
-}) {
-  return (
-    <Card className={cn("gap-4 p-8 sm:p-10", className)}>
-      <div>
-        <div className="mb-4">
-          <h3 className="font-medium text-xl">{plan.name}</h3>
-          <p className="mt-2 text-muted-foreground text-sm">
-            {plan.description}
-          </p>
-          <p className="mt-2 flex items-baseline">
-            <span className="font-semibold text-3xl">{plan.price}</span>
-            <span className="text-muted-foreground">{plan.period}</span>
-          </p>
-        </div>
-        <Separator className="mb-4" />
-        <ul className="space-y-2 text-sm/6">
-          {plan.features.map((feature, index) => (
-            <FeatureItem feature={feature} key={index} />
-          ))}
-        </ul>
+};
+
+export const PlanCard = (props: PlanCardProps) => (
+  <Card className={cn("justify-between gap-6 p-6 sm:p-8", props.className)}>
+    <div>
+      <div className="mb-4">
+        <h3 className="font-medium text-xl">{props.plan.name}</h3>
+        <p className="mt-2 text-muted-foreground text-sm">
+          {props.plan.description}
+        </p>
+        <p className="mt-2 flex items-baseline">
+          <span className="font-semibold text-3xl">{props.plan.price}</span>
+          <span className="text-muted-foreground text-sm">
+            {props.plan.period}
+          </span>
+        </p>
       </div>
-      <Button
-        render={<Link href={plan.href} />}
-        size="xl"
-        variant={plan.highlighted ? "default" : "outline"}
-      >
-        {plan.cta}
-      </Button>
-      {children}
-    </Card>
-  );
-}
+      <Separator className="mb-4" />
+      <ul className="space-y-2 text-sm/6">
+        {props.plan.features.map((feature) => (
+          <FeatureItem feature={feature} key={feature.label} />
+        ))}
+      </ul>
+    </div>
+    <Button
+      render={<Link href={props.plan.href} />}
+      size="xl"
+      variant={props.plan.highlighted ? "default" : "outline"}
+    >
+      {props.plan.cta}
+    </Button>
+    {props.children}
+  </Card>
+);

@@ -40,14 +40,14 @@ function isDarkMode() {
 export const Wallpaper = (props: WallpaperProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stopsRef = useRef<GradientStop[]>(
-    typeof document !== "undefined" && isDarkMode() ? DARK_STOPS : LIGHT_STOPS,
+    typeof document !== "undefined" && isDarkMode() ? DARK_STOPS : LIGHT_STOPS
   );
 
   const hueShift = useMotionValue(0);
 
   // Animated lightness values for smooth theme transitions
   const animatedLightness = useRef(
-    stopsRef.current.map((s) => ({ value: s.l })),
+    stopsRef.current.map((s) => ({ value: s.l }))
   );
 
   const refreshStops = useCallback(() => {
@@ -79,10 +79,14 @@ export const Wallpaper = (props: WallpaperProps) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) { return; }
+    if (!canvas) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) { return; }
+    if (!ctx) {
+      return;
+    }
 
     // Sync initial state
     refreshStops();
@@ -112,7 +116,9 @@ export const Wallpaper = (props: WallpaperProps) => {
     let isVisible = true;
 
     const render = () => {
-      if (!isVisible) { return; }
+      if (!isVisible) {
+        return;
+      }
 
       const stops = stopsRef.current;
       const shift = hueShift.get();
@@ -123,7 +129,7 @@ export const Wallpaper = (props: WallpaperProps) => {
         const l = animatedLightness.current[i].value;
         gradient.addColorStop(
           stop.offset,
-          `hsl(${stop.h + shift * stop.hueShiftScale}, ${stop.s}%, ${l}%)`,
+          `hsl(${stop.h + shift * stop.hueShiftScale}, ${stop.s}%, ${l}%)`
         );
       }
 
@@ -156,7 +162,7 @@ export const Wallpaper = (props: WallpaperProps) => {
           cancelAnimationFrame(animationFrame);
         }
       },
-      { threshold: 0 },
+      { threshold: 0 }
     );
     visibilityObserver.observe(canvas);
 

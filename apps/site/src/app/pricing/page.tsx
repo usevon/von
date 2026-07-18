@@ -5,22 +5,28 @@ import { Cta } from "@/components/cta";
 import { urls } from "@/lib/urls";
 
 import { PlansSection } from "./_components/plans-section";
+import { VolumeTable } from "./_components/volume-table";
 
 const pricingFaqs = [
   {
     question: "How is usage calculated?",
     answer:
-      "One event delivered to one endpoint, including inbound forwards, and retries are always free.",
+      "One message delivered to one endpoint, including inbound forwards. Retries are free and never counted.",
   },
   {
-    question: "What happens when I hit my Hobby limit?",
+    question: "How are large payloads counted?",
     answer:
-      "Deliveries pause until the next billing cycle, or you can upgrade to Pay-as-you-go for automatic overage billing.",
+      "Payloads over 64 KB count as one additional message per 64 KB. A 200 KB payload counts as four messages.",
   },
   {
-    question: "How does overage work on Pay-as-you-go?",
+    question: "What happens when I hit my Free limit?",
     answer:
-      "Beyond your included usage, additional webhooks are billed automatically at graduated rates starting at $1 per 10,000 with no caps.",
+      "Free is a hard cap, so deliveries pause until the next billing cycle. Upgrading to a paid plan resumes them immediately.",
+  },
+  {
+    question: "How does overage work?",
+    answer:
+      "Beyond your included messages, paid plans bill overage automatically at your plan rate with no caps.",
   },
   {
     question: "Can I change plans anytime?",
@@ -28,9 +34,9 @@ const pricingFaqs = [
       "Yes, upgrades take effect immediately with prorated billing, and downgrades apply at the end of your billing period.",
   },
   {
-    question: "Is there a free trial?",
+    question: "Do you charge per seat?",
     answer:
-      "The Hobby plan is free forever with 25,000 webhooks per month, no credit card required.",
+      "No. Every paid plan includes unlimited team members at no extra cost.",
   },
   {
     question: "Are there any contracts?",
@@ -40,7 +46,7 @@ const pricingFaqs = [
   {
     question: "What support is included?",
     answer:
-      "Hobby includes Discord community support. Pay-as-you-go adds priority email support with faster response times.",
+      "Free includes Discord community support. Paid plans add email support, and Growth and above get priority response times.",
   },
   {
     question: "Can I self-host instead?",
@@ -62,11 +68,13 @@ export default function PricingPage() {
           Pick your plan
         </h1>
         <p className="mt-4 text-muted-foreground">
-          Free to start. Pay only for what you use.
+          Free to start. Retries are always free and never counted.
         </p>
       </div>
 
       <PlansSection />
+
+      <VolumeTable />
 
       <div className="px-8 pt-24 pb-24 sm:px-12">
         <div className="mb-12 flex flex-col gap-4">
