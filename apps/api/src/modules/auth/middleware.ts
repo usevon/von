@@ -1,6 +1,6 @@
 import { hasScope } from "@usevon/auth";
 import { Elysia } from "elysia";
-import { rateLimit } from "@/lib/rate-limit";
+import { createRateLimitGuard } from "@/lib/rate-limit";
 import type { AuthApi, RedisTracking } from "@/modules/auth/model";
 import { resolveAuth } from "@/modules/auth/service";
 
@@ -25,9 +25,11 @@ export const createVonAuth = (
   } = options;
 
   return (scope: string) => {
+    // The guard attaches to this instance directly, a nested .use would leave the scoped hook one level too deep to ever run on routes.
     const plugin = useRateLimit
-      ? new Elysia({ name: `auth:${scope}` }).use(
-          rateLimit({
+      ? new Elysia({ name: `auth:${scope}` }).onBeforeHandle(
+          { as: "scoped" },
+          createRateLimitGuard({
             windowMs: rateLimitWindowMs,
             max: rateLimitMax,
             keyPrefix: rateLimitKeyPrefix,

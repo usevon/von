@@ -56,7 +56,8 @@ const ensureRateLimitScript = () => {
   }
 };
 
-const createRateLimiter = (options: RateLimitOptions) => {
+// Exported as a bare handler so callers can attach it directly to their own plugin instance, a nested Elysia scoped hook only propagates one level and silently never runs on routes two levels up.
+export const createRateLimitGuard = (options: RateLimitOptions) => {
   const {
     windowMs,
     max,
@@ -66,9 +67,7 @@ const createRateLimiter = (options: RateLimitOptions) => {
   } = options;
   const windowSeconds = Math.ceil(windowMs / 1000);
 
-  return new Elysia().onBeforeHandle(
-    { as: "scoped" },
-    async (ctx: RateLimitContext) => {
+  return async (ctx: RateLimitContext) => {
       const identifier = getKey(ctx);
       if (!identifier) {
         return;
@@ -112,9 +111,8 @@ const createRateLimiter = (options: RateLimitOptions) => {
         ctx.set.headers["Retry-After"] = String(windowSeconds);
         throw new TooManyRequestsError();
       }
-    }
-  );
+    };
 };
 
 export const rateLimit = (options: Omit<RateLimitOptions, "getKey">) =>
-  createRateLimiter(options);
+  new Elysia().onBeforeHandle({ as: "scoped" }, createRateLimitGuard(options));

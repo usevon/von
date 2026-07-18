@@ -98,11 +98,16 @@ async function run() {
     "content-type": "application/json",
   };
 
+  // Rotate simulated client IPs so the per-IP rate limit measures real work instead of returning 429s.
+  let requestSeq = 0;
   const request = (method: string, path: string, body?: unknown) =>
     app.handle(
       new Request(`${API_URL}${path}`, {
         method,
-        headers,
+        headers: {
+          ...headers,
+          "x-forwarded-for": `10.99.${(requestSeq >> 8) & 0xff}.${requestSeq++ & 0xff}`,
+        },
         body: body ? JSON.stringify(body) : undefined,
       })
     );
