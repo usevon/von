@@ -21,6 +21,17 @@ All out of the box, without reinventing webhook infrastructure.
 
 ## Getting Started
 
+Sending your first event takes four lines.
+
+```typescript
+import { Von } from "@usevon/sdk";
+
+const von = new Von({ apiKey: "von_dev_xxx" });
+await von.send("order.created", { orderId: 123 });
+```
+
+Events are durable and exactly-once by default. See [Delivery Semantics](#delivery-semantics) for the faster buffered mode.
+
 ### Cloud
 
 Get started at [usevon.com](https://usevon.com) with no setup required.

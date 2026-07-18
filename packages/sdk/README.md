@@ -18,10 +18,10 @@ const von = new Von({
   apiKey: 'von_prod_xxx',
 })
 
-// Send a webhook
-const { data, error } = await von.webhooks.post({
-  eventType: 'order.created',
-  payload: { orderId: '123', amount: 99.99 },
+// Send an event, durable and exactly-once by default
+const { data, error } = await von.send('order.created', {
+  orderId: '123',
+  amount: 99.99,
 })
 
 if (error) {
@@ -31,6 +31,8 @@ if (error) {
 
 console.log(data.id) // evt_xxx
 ```
+
+`send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw type-safe surface (`von.webhooks.post`, `von.endpoints`, and friends) stays available for everything else.
 
 ## Webhooks
 
