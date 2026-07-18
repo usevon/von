@@ -102,6 +102,10 @@ pm2 save && pm2 startup
 
 For zero-downtime reloads after updates, run `pm2 reload all`.
 
+## Delivery Semantics
+
+Events sent without an `idempotencyKey` take a buffered fast path. The API acknowledges them after an atomic Redis quota check and stream write, and a background flusher persists them to Postgres within milliseconds. A Redis loss in that window can drop acknowledged events. Include an `idempotencyKey` when you need durable, exactly-once ingestion, which routes the event through a synchronous database transaction with unique-key deduplication.
+
 ## Testing
 
 ```bash
@@ -115,6 +119,15 @@ bun test --cwd apps/worker
 # Integration tests (requires env vars)
 cd apps/api && bun test tests/integration
 ```
+
+## Benchmarks
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+cd apps/api && bun run bench
+```
+
+Runs an in-process benchmark against every hot endpoint with warmup plus 50 measured iterations per case and prints throughput with p50 and p95 latency. Webhook ingest numbers reflect the buffered fast path with the flusher active, so they include the rate limiter and quota reservation but not outbound delivery.
 
 ## SDKs
 
