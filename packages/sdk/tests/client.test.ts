@@ -58,6 +58,82 @@ describe("Von Client", () => {
     expect(body.idempotencyKey).toBeUndefined();
   });
 
+  test("send retries a 500 with the same idempotency key", async () => {
+    const bodies: unknown[] = [];
+    let calls = 0;
+    globalThis.fetch = ((_input: unknown, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      calls += 1;
+      const status = calls === 1 ? 500 : 201;
+      return Promise.resolve(
+        new Response(JSON.stringify({ success: calls > 1 }), { status })
+      );
+    }) as typeof fetch;
+
+    const von = new Von({ apiKey: "von_test", retryDelayMs: 1 });
+    const result = await von.send("order.created", { orderId: 1 });
+
+    expect(calls).toBe(2);
+    expect(result.status).toBe(201);
+    const [first, second] = bodies as Record<string, unknown>[];
+    expect(first?.idempotencyKey).toBe(second?.idempotencyKey);
+  });
+
+  test("send does not retry a 400", async () => {
+    let calls = 0;
+    globalThis.fetch = (() => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "bad" }), { status: 400 })
+      );
+    }) as typeof fetch;
+
+    const von = new Von({ apiKey: "von_test", retryDelayMs: 1 });
+    const result = await von.send("order.created", { orderId: 1 });
+
+    expect(calls).toBe(1);
+    expect(result.status).toBe(400);
+  });
+
+  test("send does not retry without an idempotency key", async () => {
+    let calls = 0;
+    globalThis.fetch = (() => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "boom" }), { status: 500 })
+      );
+    }) as typeof fetch;
+
+    const von = new Von({
+      apiKey: "von_test",
+      autoIdempotency: false,
+      retryDelayMs: 1,
+    });
+    const result = await von.send("order.created", { orderId: 1 });
+
+    expect(calls).toBe(1);
+    expect(result.status).toBe(500);
+  });
+
+  test("send retries a network error", async () => {
+    let calls = 0;
+    globalThis.fetch = (() => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.reject(new Error("connection refused"));
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ success: true }), { status: 201 })
+      );
+    }) as typeof fetch;
+
+    const von = new Von({ apiKey: "von_test", retryDelayMs: 1 });
+    const result = await von.send("order.created", { orderId: 1 });
+
+    expect(calls).toBe(2);
+    expect(result.status).toBe(201);
+  });
+
   test("sendBatch generates a key per event", async () => {
     const bodies = captureFetch();
     const von = new Von({ apiKey: "von_test" });
