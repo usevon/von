@@ -16,6 +16,32 @@ export type SendOptions = {
   endpointIds?: string[];
 };
 
+/**
+ * Why a 429 happened. Rate limits clear within a second, quota needs a plan change,
+ * so callers should back off for one and upgrade for the other.
+ */
+export type LimitKind = "rate" | "quota" | "unknown";
+
+export const limitKindOf = (error: unknown): LimitKind => {
+  const message =
+    typeof error === "object" && error !== null
+      ? String(
+          (error as { value?: { error?: { message?: string } } }).value?.error
+            ?.message ??
+            (error as { message?: string }).message ??
+            ""
+        )
+      : String(error ?? "");
+
+  if (message.includes("rate limit")) {
+    return "rate";
+  }
+  if (message.includes("quota")) {
+    return "quota";
+  }
+  return "unknown";
+};
+
 export type BatchEvent = {
   eventType: string;
   payload: unknown;
@@ -25,7 +51,35 @@ export type BatchEvent = {
 
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
+/** Largest payload the API accepts for a single event. */
+export const MAX_PAYLOAD_BYTES = 1024 * 1024;
+
+/** Payloads are billed in chunks of this size, so a large event costs more than a small one. */
+export const BILLABLE_CHUNK_BYTES = 64 * 1024;
+
+/** Number of messages an event of this size is billed as, minimum one. */
+export const billableMessages = (payloadBytes: number): number =>
+  Math.max(1, Math.ceil(payloadBytes / BILLABLE_CHUNK_BYTES));
+
+export class PayloadTooLargeError extends Error {
+  readonly bytes: number;
+  readonly limit = MAX_PAYLOAD_BYTES;
+
+  constructor(bytes: number) {
+    super(`Payload is ${bytes} bytes, over the ${MAX_PAYLOAD_BYTES} byte limit`);
+    this.name = "PayloadTooLargeError";
+    this.bytes = bytes;
+  }
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const assertWithinLimit = (payload: unknown) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload) ?? "").length;
+  if (bytes > MAX_PAYLOAD_BYTES) {
+    throw new PayloadTooLargeError(bytes);
+  }
+};
 
 type ApiResult = { error: unknown; status: number };
 
@@ -82,7 +136,8 @@ export class Von {
   }
 
   // A generated key routes the event through the durable exactly-once path, pass autoIdempotency false to opt into the faster buffered path.
-  send(eventType: string, payload: unknown, options?: SendOptions) {
+  async send(eventType: string, payload: unknown, options?: SendOptions) {
+    assertWithinLimit(payload);
     const idempotencyKey =
       options?.idempotencyKey ??
       (this.autoIdempotency ? crypto.randomUUID() : undefined);
@@ -98,7 +153,10 @@ export class Von {
     );
   }
 
-  sendBatch(events: BatchEvent[]) {
+  async sendBatch(events: BatchEvent[]) {
+    for (const e of events) {
+      assertWithinLimit(e.payload);
+    }
     const prepared = events.map((e) => {
       const idempotencyKey =
         e.idempotencyKey ??

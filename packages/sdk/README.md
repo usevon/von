@@ -34,6 +34,42 @@ console.log(data.id) // evt_xxx
 
 `send` generates an idempotency key per event, so retries never create duplicates and every acknowledged event is already persisted. Pass your own key with `von.send(type, payload, { idempotencyKey })` to deduplicate across process restarts, or construct the client with `autoIdempotency: false` to use the faster buffered ingest path. `sendBatch(events)` works the same way per event. The raw type-safe surface (`von.webhooks.post`, `von.endpoints`, and friends) stays available for everything else.
 
+## Limits and billing
+
+Payloads are capped at 1 MiB and rejected client-side before a request is made.
+
+```typescript
+import { PayloadTooLargeError, billableMessages } from '@usevon/sdk'
+
+try {
+  await von.send('report.generated', hugeReport)
+} catch (error) {
+  if (error instanceof PayloadTooLargeError) {
+    console.error(`${error.bytes} bytes, limit is ${error.limit}`)
+  }
+}
+```
+
+Events are billed as messages, and every 64 KiB of payload counts as one more. A 200 KB event is one API call billed as four messages, which `billableMessages(bytes)` will tell you ahead of time. Retries are never billed.
+
+## Handling limits
+
+A 429 means one of two different things, so `limitKindOf` tells them apart.
+
+```typescript
+import { limitKindOf } from '@usevon/sdk'
+
+const { error } = await von.send('order.created', order)
+
+if (error) {
+  const kind = limitKindOf(error)
+  // "rate" clears within a second, so back off and retry
+  // "quota" needs a bigger plan, so surface it to the user
+}
+```
+
+`send` already retries rate limits for you when an idempotency key is present, so this matters most when you have disabled `autoIdempotency`.
+
 ## Webhooks
 
 ```typescript

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Von } from "../src";
+import {
+  billableMessages,
+  limitKindOf,
+  MAX_PAYLOAD_BYTES,
+  PayloadTooLargeError,
+  Von,
+} from "../src";
 
 const realFetch = globalThis.fetch;
 const UUID_RE =
@@ -132,6 +138,35 @@ describe("Von Client", () => {
 
     expect(calls).toBe(2);
     expect(result.status).toBe(201);
+  });
+
+  test("send rejects a payload over the size limit", async () => {
+    const von = new Von({ apiKey: "von_test" });
+    const huge = { data: "x".repeat(MAX_PAYLOAD_BYTES + 1) };
+
+    expect(von.send("order.created", huge)).rejects.toThrow(
+      PayloadTooLargeError
+    );
+  });
+
+  test("billableMessages counts one per 64 KiB chunk", () => {
+    expect(billableMessages(0)).toBe(1);
+    expect(billableMessages(1)).toBe(1);
+    expect(billableMessages(64 * 1024)).toBe(1);
+    expect(billableMessages(64 * 1024 + 1)).toBe(2);
+    expect(billableMessages(200 * 1024)).toBe(4);
+  });
+
+  test("limitKindOf separates rate limits from quota", () => {
+    expect(
+      limitKindOf({ value: { error: { message: "rate limit exceeded for org" } } })
+    ).toBe("rate");
+    expect(
+      limitKindOf({ value: { error: { message: "monthly delivery quota exceeded" } } })
+    ).toBe("quota");
+    expect(limitKindOf({ value: { error: { message: "boom" } } })).toBe(
+      "unknown"
+    );
   });
 
   test("sendBatch generates a key per event", async () => {
