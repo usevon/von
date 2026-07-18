@@ -19,6 +19,39 @@ Von is open-source webhooks infrastructure that handles delivery at scale. With 
 
 All out of the box, without reinventing webhook infrastructure.
 
+## Performance
+
+Ingest throughput on a single node, measured with the stress harness against Redis and Postgres.
+
+| Payload | Requests/sec | p50 | Sustained |
+| --- | --- | --- | --- |
+| Tiny | **30,000+** | 1.1 ms | — |
+| 1 KB | 9,400 | 8.0 ms | 9 MB/s |
+| 16 KB | 2,350 | 30.8 ms | 37 MB/s |
+| 64 KB | 640 | 77.0 ms | 40 MB/s |
+
+Concurrent requests from one tenant are coalesced into a single Redis operation, so cost per event falls as traffic rises. At 200 concurrent clients, 1,000 requests cost 22 round trips instead of 1,000.
+
+See [Benchmarks](#benchmarks) to reproduce.
+
+## Pricing
+
+Von charges for the two things that actually cost money to run, and nothing else.
+
+**Messages.** Every event you send counts as one message, and payloads over 64 KB count as one additional message per 64 KB. Retries are always free, because a partner's broken endpoint is the problem Von exists to absorb, not something to bill you for.
+
+**Throughput.** Each plan has a sustained events-per-second ceiling. It is a property of the plan, never a metered add-on.
+
+| Plan | Price | Messages | Overage | Throughput | Retention |
+| --- | --- | --- | --- | --- | --- |
+| Free | $0 | 50,000 | none, hard cap | 100/s | 3 days |
+| Starter | $29 | 250,000 | $0.60 per 10k | 500/s | 7 days |
+| Growth | $99 | 1,000,000 | $0.35 per 10k | 2,000/s | 14 days |
+| Scale | $499 | 10,000,000 | $0.15 per 10k | 10,000/s | 30 days |
+| Enterprise | Custom | Custom | Custom | Custom | Custom |
+
+Every paid plan includes unlimited team members, transformations, replay, and all integrations. Self-hosting is free and unlimited under AGPL-3.0.
+
 ## Getting Started
 
 Sending your first event takes four lines.
@@ -139,6 +172,14 @@ cd apps/api && bun run bench
 ```
 
 Runs an in-process benchmark against every hot endpoint with warmup plus 50 measured iterations per case and prints throughput with p50 and p95 latency. Webhook ingest numbers reflect the buffered fast path with the flusher active, so they include the rate limiter and quota reservation but not outbound delivery.
+
+The stress harness drives the ingest service over HTTP and sweeps both payload size and concurrency, reporting throughput, latency percentiles, and how many requests each Redis round trip absorbed.
+
+```bash
+stress http://localhost:8090/webhooks <api-key> 20000
+```
+
+Numbers move with the machine, so treat any run under ten seconds as noise and take medians across at least three runs.
 
 ## SDKs
 
