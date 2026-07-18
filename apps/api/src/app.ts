@@ -7,7 +7,6 @@ import { getCorsOrigins } from "@/lib/origins";
 import { log } from "@/lib/logger";
 import { requestGuards } from "@/lib/request-guards";
 import { analyticsRead } from "@/modules/analytics";
-import { auditLogRead } from "@/modules/audit-log";
 import { auth } from "@/modules/auth";
 import { endpointsRead, endpointsWrite } from "@/modules/endpoints";
 import { inboundPublic, inboundRead, inboundWrite } from "@/modules/inbound";
@@ -69,7 +68,6 @@ export const app = new Elysia({
   .use(versionsRead)
   .use(versionsWrite)
   .use(analyticsRead)
-  .use(auditLogRead)
   .group("/t", (group) => group.use(tunnelProxy));
 
 export type App = typeof app;

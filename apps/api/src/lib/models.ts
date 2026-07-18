@@ -12,8 +12,11 @@ export const IdParam = t.Object({
 });
 
 export const ErrorResponse = t.Object({
-  error: t.String(),
-  code: t.Optional(t.String()),
+  error: t.Object({
+    message: t.String(),
+    retryable: t.Boolean(),
+    code: t.Optional(t.String()),
+  }),
 });
 
 export const SuccessResponse = t.Object({

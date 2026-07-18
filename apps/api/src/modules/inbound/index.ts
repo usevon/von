@@ -124,11 +124,11 @@ export const inboundPublic = new Elysia({ prefix: "/in" })
       const endpoint = await InboundService.getByPublicId(params.id);
 
       if (!endpoint) {
-        return status(404, { error: "Endpoint not found" });
+        return status(404, { error: { message: "Endpoint not found", retryable: false } });
       }
 
       if (endpoint.status !== "active") {
-        return status(403, { error: "Endpoint is not active" });
+        return status(403, { error: { message: "Endpoint is not active", retryable: false } });
       }
 
       const plan = await getOrgPlan(endpoint.organizationId);

@@ -110,7 +110,7 @@ export const tunnelRegisterWrite = new Elysia()
         existing.organizationId !== organizationId ||
         existing.userId !== userId
       ) {
-        return status(404, { error: "Tunnel not found" });
+        return status(404, { error: { message: "Tunnel not found", retryable: false } });
       }
 
       // Generate new secret
@@ -146,12 +146,12 @@ export const tunnelWs = new Elysia().ws("/ws/:tunnelId", {
   async beforeHandle({ headers, status }) {
     const authHeader = headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      return status(401, { error: "Unauthorized" });
+      return status(401, { error: { message: "Unauthorized", retryable: false } });
     }
 
     const session = await validateSessionWithUser(toStringHeaders(headers));
     if (!session) {
-      return status(401, { error: "Unauthorized" });
+      return status(401, { error: { message: "Unauthorized", retryable: false } });
     }
   },
   async open(ws) {
@@ -277,7 +277,7 @@ export const tunnelProxy = new Elysia()
     "/:tunnelId/*",
     ({ params, request, set, status }) => {
       if (!TunnelService.hasTunnel(params.tunnelId)) {
-        return status(404, { error: "Tunnel not found" });
+        return status(404, { error: { message: "Tunnel not found", retryable: false } });
       }
       const path =
         new URL(request.url).pathname.replace(`/${params.tunnelId}`, "") || "/";
@@ -289,7 +289,7 @@ export const tunnelProxy = new Elysia()
     "/:tunnelId",
     ({ params, request, set, status }) => {
       if (!TunnelService.hasTunnel(params.tunnelId)) {
-        return status(404, { error: "Tunnel not found" });
+        return status(404, { error: { message: "Tunnel not found", retryable: false } });
       }
       return TunnelService.handleProxy(params.tunnelId, request, set, "/");
     },

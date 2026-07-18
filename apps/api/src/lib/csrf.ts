@@ -47,11 +47,11 @@ export const csrfProtection = () =>
 
       const origin = getRequestOrigin(request);
       if (!origin) {
-        return status(403, { error: "Missing Origin/Referer header" });
+        return status(403, { error: { message: "Missing Origin/Referer header", retryable: false } });
       }
 
       if (!allowedOrigins.has(origin)) {
-        return status(403, { error: "Origin not allowed" });
+        return status(403, { error: { message: "Origin not allowed", retryable: false } });
       }
     }
   );

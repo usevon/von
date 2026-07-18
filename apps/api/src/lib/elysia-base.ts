@@ -11,6 +11,12 @@ import {
 import { Elysia } from "elysia";
 import type { Logger } from "pino";
 
+const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
+const errorBody = (message: string, status: number) => ({
+  error: { message, retryable: RETRYABLE_STATUSES.has(status) },
+});
+
 export const baseElysiaOptions = {
   aot: true,
   normalize: true,
@@ -34,26 +40,17 @@ export const apiBase = (opts: ApiBaseOptions) =>
       InternalServerError,
     })
     .onError({ as: "global" }, ({ code, error, set }) => {
+      // Shape matches the rust service so a client cannot tell which one answered.
       if (code === "VALIDATION") {
         set.status = 400;
-        return {
-          error: "message" in error ? error.message : "Validation error",
-        };
+        return errorBody(
+          "message" in error ? error.message : "Validation error",
+          400
+        );
       }
       if (code === "NOT_FOUND") {
         set.status = 404;
-        return { error: "Not found" };
-      }
-
-      if ("toResponse" in error && "status" in error) {
-        const status = error.status as number;
-        if (status >= 500 && opts.logger) {
-          opts.logger.error({ error }, error.message);
-        }
-        set.status = status;
-        return status === 500 && opts.isProd
-          ? { error: "Internal server error" }
-          : (error as { toResponse: () => { error: string } }).toResponse();
+        return errorBody("Not found", 404);
       }
 
       const status = "status" in error ? (error.status as number) : 500;
@@ -64,10 +61,10 @@ export const apiBase = (opts: ApiBaseOptions) =>
       }
 
       set.status = status;
-      return {
-        error:
-          status === 500 && opts.isProd ? "Internal server error" : message,
-      };
+      return errorBody(
+        status === 500 && opts.isProd ? "Internal server error" : message,
+        status
+      );
     })
     .get("/", () => ({ name: opts.name, status: "ok" }))
     .get("/live", () => ({ status: "ok", uptime: process.uptime() }))

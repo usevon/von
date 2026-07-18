@@ -42,12 +42,12 @@ export const createVonAuth = (
       const result = await resolveAuth(deps.auth, deps.redis, headers);
       if (!result) {
         return status(401, {
-          error: "Please sign in or provide a valid API key.",
+          error: { message: "Please sign in or provide a valid API key.", retryable: false },
         });
       }
 
       if (!hasScope(result.scopes, scope)) {
-        return status(403, { error: "API key lacks required scope" });
+        return status(403, { error: { message: "API key lacks required scope", retryable: false } });
       }
 
       return result;
