@@ -14,7 +14,8 @@ export type WebhookDeliveryJob = {
   eventId: string;
   payload: string;
   eventType: string;
-  endpoint: DeliveryEndpoint;
+  endpointId: string;
+  maxAttempts: number;
   organizationId: string;
   plan: string;
 };

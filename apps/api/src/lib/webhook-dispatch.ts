@@ -35,7 +35,7 @@ export const enqueueWebhookDispatchJobs = async (
         jobs.map((job) => ({
           ...job,
           opts: {
-            attempts: job.data.endpoint.maxAttempts,
+            attempts: job.data.maxAttempts,
           },
         }))
       ),

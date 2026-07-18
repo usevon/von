@@ -5,16 +5,26 @@ import {
   endpoint,
   webhookVersion,
 } from "@usevon/db/schema";
-import { cacheGet, cacheSet, type WebhookDeliveryJob } from "@usevon/queue";
+import {
+  cacheGet,
+  cacheSet,
+  type DeliveryEndpoint,
+  type WebhookDeliveryJob,
+} from "@usevon/queue";
 import {
   applyTransforms,
   buildSignatureHeader,
+  MemoCache,
   type Transforms,
+  withDecryptedSecretFields,
 } from "@usevon/utils";
+import type { Job } from "bullmq";
 import { and, eq, sql } from "drizzle-orm";
 import { createWorker } from "@/lib/create-worker";
 import { log } from "@/lib/logger";
 import { type DeliveryConfig, processDelivery } from "@/lib/process-delivery";
+
+type HydratedWebhookJob = WebhookDeliveryJob & { endpoint: DeliveryEndpoint };
 
 const getDeliveryStmt = db
   .select()
@@ -34,6 +44,40 @@ const getEndpointStateStmt = db
   .where(eq(endpoint.id, sql.placeholder("id")))
   .limit(1)
   .prepare("worker_get_endpoint_state");
+
+const getDeliveryEndpointStmt = db
+  .select({
+    id: endpoint.id,
+    url: endpoint.url,
+    secret: endpoint.secret,
+    previousSecret: endpoint.previousSecret,
+    timeoutMs: endpoint.timeoutMs,
+    maxAttempts: endpoint.maxAttempts,
+    version: endpoint.version,
+    events: endpoint.events,
+  })
+  .from(endpoint)
+  .where(eq(endpoint.id, sql.placeholder("id")))
+  .limit(1)
+  .prepare("worker_get_delivery_endpoint");
+
+const endpointCache = new MemoCache<DeliveryEndpoint>(10_000);
+
+const loadDeliveryEndpoint = async (
+  id: string
+): Promise<DeliveryEndpoint | null> => {
+  const cached = endpointCache.get(id);
+  if (cached) {
+    return cached;
+  }
+  const [row] = await getDeliveryEndpointStmt.execute({ id });
+  if (!row) {
+    return null;
+  }
+  const decrypted = withDecryptedSecretFields(row);
+  endpointCache.set(id, decrypted);
+  return decrypted;
+};
 
 const getVersionStmt = db
   .select({ transforms: webhookVersion.transforms })
@@ -70,7 +114,7 @@ const getVersionTransforms = async (
   return transforms;
 };
 
-const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
+const webhookConfig: DeliveryConfig<HydratedWebhookJob> = {
   label: "Webhook",
   deliveryTable: delivery,
   endpointTable: endpoint,
@@ -198,6 +242,20 @@ const webhookConfig: DeliveryConfig<WebhookDeliveryJob> = {
 };
 
 export const createWebhookWorker = () =>
-  createWorker<WebhookDeliveryJob>("webhook-delivery", (job) =>
-    processDelivery(webhookConfig, job)
-  );
+  createWorker<WebhookDeliveryJob>("webhook-delivery", async (job) => {
+    const deliveryEndpoint = await loadDeliveryEndpoint(job.data.endpointId);
+    if (!deliveryEndpoint) {
+      log.error(
+        { deliveryId: job.data.deliveryId, endpointId: job.data.endpointId },
+        "Webhook endpoint not found for delivery"
+      );
+      await db
+        .update(delivery)
+        .set({ status: "failed" })
+        .where(eq(delivery.id, job.data.deliveryId));
+      return;
+    }
+    const hydrated = job as Job<HydratedWebhookJob>;
+    hydrated.data = { ...job.data, endpoint: deliveryEndpoint };
+    await processDelivery(webhookConfig, hydrated);
+  });

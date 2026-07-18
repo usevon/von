@@ -29,10 +29,19 @@ import {
 } from "@/lib/secret-cipher";
 import { assertSafeWebhookUrl } from "@/lib/url-safety";
 import { enqueueWebhookDispatchJobs } from "@/lib/webhook-dispatch";
+import { MemoCache } from "@/lib/memo-cache";
 import type { EndpointModel } from "@/modules/endpoints/model";
 
 const CACHE_TTL = 300;
 const ENDPOINT_CURSOR_SORT = "desc" as const;
+
+// Stores decrypted rows so a local hit also skips the per-request AES work.
+const localEndpointsCache = new MemoCache<DeliveryEndpoint[]>(10_000);
+
+function invalidateEndpointsCache(organizationId: string): Promise<void> {
+  localEndpointsCache.delete(organizationId);
+  return cacheDel(`endpoints:${organizationId}`);
+}
 
 type CreateEndpointParams = CreateEndpoint & { organizationId: string };
 type UpdateEndpointParams = UpdateEndpoint & {
@@ -118,7 +127,7 @@ export abstract class EndpointService {
       throw new InternalServerError();
     }
     if (params.status !== "disabled") {
-      await cacheDel(`endpoints:${params.organizationId}`);
+      await invalidateEndpointsCache(params.organizationId);
     }
     return toResponseWithSecret(result[0]);
   }
@@ -209,7 +218,7 @@ export abstract class EndpointService {
       throw new InternalServerError();
     }
     if (existing[0].status === "active" || params.status !== undefined) {
-      await cacheDel(`endpoints:${params.organizationId}`);
+      await invalidateEndpointsCache(params.organizationId);
     }
     return toResponse(result[0]);
   }
@@ -229,7 +238,7 @@ export abstract class EndpointService {
       .returning({ id: endpoint.id });
 
     if (result.length > 0) {
-      await cacheDel(`endpoints:${organizationId}`);
+      await invalidateEndpointsCache(organizationId);
     }
     return result.length > 0;
   }
@@ -239,9 +248,15 @@ export abstract class EndpointService {
     filterIds?: string[]
   ): Promise<DeliveryEndpoint[]> {
     if (!filterIds?.length) {
+      const local = localEndpointsCache.get(organizationId);
+      if (local) {
+        return local;
+      }
       const cached = await cacheGet<DeliveryEndpoint[]>(`endpoints:${organizationId}`);
       if (cached) {
-        return cached.map((row) => withDecryptedSecretFields(row));
+        const decrypted = cached.map((row) => withDecryptedSecretFields(row));
+        localEndpointsCache.set(organizationId, decrypted);
+        return decrypted;
       }
     }
 
@@ -267,11 +282,13 @@ export abstract class EndpointService {
       .from(endpoint)
       .where(and(...conditions));
 
+    const decrypted = result.map((row) => withDecryptedSecretFields(row));
     if (!filterIds?.length) {
+      localEndpointsCache.set(organizationId, decrypted);
       await cacheSet(`endpoints:${organizationId}`, result, CACHE_TTL);
     }
 
-    return result.map((row) => withDecryptedSecretFields(row));
+    return decrypted;
   }
 
   static async testEndpoint(
@@ -335,8 +352,6 @@ export abstract class EndpointService {
           createdAt: now,
         });
 
-        const deliveryEndpoint = withDecryptedSecretFields(endpointRow);
-
         await enqueueWebhookDispatchJobs([
           {
             name: "webhook-delivery",
@@ -345,7 +360,8 @@ export abstract class EndpointService {
               eventId,
               payload: payloadStr,
               eventType: type,
-              endpoint: deliveryEndpoint,
+              endpointId: params.endpointId,
+              maxAttempts: endpointRow.maxAttempts,
               organizationId: params.organizationId,
               plan: params.plan,
             } satisfies WebhookDeliveryJob,
@@ -388,7 +404,7 @@ export abstract class EndpointService {
       })
       .where(eq(endpoint.id, endpointId));
 
-    await cacheDel(`endpoints:${organizationId}`);
+    await invalidateEndpointsCache(organizationId);
 
     return { secret: newSecret, previousSecret };
   }
@@ -415,7 +431,7 @@ export abstract class EndpointService {
       throw new NotFoundError();
     }
 
-    await cacheDel(`endpoints:${organizationId}`);
+    await invalidateEndpointsCache(organizationId);
     return true;
   }
 }
