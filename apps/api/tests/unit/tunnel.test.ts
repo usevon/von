@@ -23,7 +23,7 @@ function createMockConnection(
     },
     pending: new Map(),
     headers: {},
-    organizationId: "org-1",
+    organizationId: "00000000-0000-0000-0000-000000000001",
     userId: "user-1",
     ...overrides,
   };
@@ -49,8 +49,8 @@ describe("TunnelService", () => {
     });
 
     test("returns undefined for unknown tunnel", () => {
-      expect(TunnelService.getTunnel("nonexistent")).toBeUndefined();
-      expect(TunnelService.hasTunnel("nonexistent")).toBe(false);
+      expect(TunnelService.getTunnel("00000000-0000-0000-0000-0000000000ff")).toBeUndefined();
+      expect(TunnelService.hasTunnel("00000000-0000-0000-0000-0000000000ff")).toBe(false);
     });
   });
 
@@ -65,7 +65,7 @@ describe("TunnelService", () => {
     });
 
     test("does not throw when deleting nonexistent tunnel", async () => {
-      await TunnelService.deleteTunnel("nonexistent");
+      await TunnelService.deleteTunnel("00000000-0000-0000-0000-0000000000ff");
     });
   });
 
@@ -73,18 +73,18 @@ describe("TunnelService", () => {
     test("returns tunnel IDs for the given org", async () => {
       await TunnelService.setTunnel(
         "t-1",
-        createMockConnection({ organizationId: "org-1" })
+        createMockConnection({ organizationId: "00000000-0000-0000-0000-000000000001" })
       );
       await TunnelService.setTunnel(
         "t-2",
-        createMockConnection({ organizationId: "org-1" })
+        createMockConnection({ organizationId: "00000000-0000-0000-0000-000000000001" })
       );
       await TunnelService.setTunnel(
         "t-other",
         createMockConnection({ organizationId: "org-2" })
       );
 
-      const active = TunnelService.getActiveTunnels("org-1");
+      const active = TunnelService.getActiveTunnels("00000000-0000-0000-0000-000000000001");
       expect(active).toContain("t-1");
       expect(active).toContain("t-2");
       expect(active).not.toContain("t-other");
@@ -176,7 +176,7 @@ describe("TunnelService", () => {
 
     test("rejects when tunnel not connected anywhere", async () => {
       await expect(
-        TunnelService.forwardRequest("nonexistent", {
+        TunnelService.forwardRequest("00000000-0000-0000-0000-0000000000ff", {
           id: "req-nowhere",
           method: "GET",
           path: "/",
@@ -311,7 +311,7 @@ describe("TunnelService", () => {
     });
 
     test("returns 0 for org with no tunnels", async () => {
-      const count = await TunnelService.getOrgTunnelCount("org-empty");
+      const count = await TunnelService.getOrgTunnelCount("00000000-0000-0000-0000-000000000002");
       expect(count).toBe(0);
     });
 
@@ -340,7 +340,7 @@ describe("TunnelService", () => {
     });
 
     test("does not throw for nonexistent tunnel", async () => {
-      await TunnelService.refreshTunnel("nonexistent");
+      await TunnelService.refreshTunnel("00000000-0000-0000-0000-0000000000ff");
     });
   });
 });

@@ -105,13 +105,13 @@ describe("reserveMonthlyQuota", () => {
   });
 
   test("returns early for zero count without calling redis", async () => {
-    const result = await reserveMonthlyQuota("org-1", "hobby", 0);
+    const result = await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", 0);
     expect(result).toEqual({ allowed: true, currentUsage: 0 });
     expect(mockRedis.eval).not.toHaveBeenCalled();
   });
 
   test("returns early for negative count without calling redis", async () => {
-    const result = await reserveMonthlyQuota("org-1", "hobby", -1);
+    const result = await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", -1);
     expect(result).toEqual({ allowed: true, currentUsage: 0 });
     expect(mockRedis.eval).not.toHaveBeenCalled();
   });
@@ -119,11 +119,11 @@ describe("reserveMonthlyQuota", () => {
   test("calls redis.eval with correct args for hobby plan", async () => {
     mockRedis.eval.mockResolvedValue([1, 500]);
 
-    await reserveMonthlyQuota("org-1", "hobby", 5);
+    await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", 5);
 
     const now = new Date();
     const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-    const expectedKey = `{org-1}:deliveries:${expectedMonth}`;
+    const expectedKey = `{00000000-0000-0000-0000-000000000001}:deliveries:${expectedMonth}`;
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
@@ -139,7 +139,7 @@ describe("reserveMonthlyQuota", () => {
   test("calls redis.eval with hasOverage=1 for starter plan", async () => {
     mockRedis.eval.mockResolvedValue([1, 500]);
 
-    await reserveMonthlyQuota("org-1", "starter", 10);
+    await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "starter", 10);
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
@@ -155,17 +155,17 @@ describe("reserveMonthlyQuota", () => {
   test("returns allowed=true when Lua script returns [1, usage]", async () => {
     mockRedis.eval.mockResolvedValue([1, 250]);
 
-    const result = await reserveMonthlyQuota("org-1", "hobby", 5);
+    const result = await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", 5);
     expect(result).toEqual({ allowed: true, currentUsage: 250 });
   });
 
   test("throws TooManyRequestsError with correct message when quota exceeded", async () => {
     mockRedis.eval.mockResolvedValue([0, 50_000]);
 
-    await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
+    await expect(reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", 1)).rejects.toThrow(
       TooManyRequestsError
     );
-    await expect(reserveMonthlyQuota("org-1", "hobby", 1)).rejects.toThrow(
+    await expect(reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "hobby", 1)).rejects.toThrow(
       "Too many requests"
     );
   });
@@ -173,7 +173,7 @@ describe("reserveMonthlyQuota", () => {
   test("growth and scale get their own included volume", async () => {
     mockRedis.eval.mockResolvedValue([1, 100]);
 
-    await reserveMonthlyQuota("org-1", "growth", 1);
+    await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "growth", 1);
     expect(mockRedis.eval).toHaveBeenLastCalledWith(
       expect.any(String),
       1,
@@ -184,7 +184,7 @@ describe("reserveMonthlyQuota", () => {
       "1"
     );
 
-    await reserveMonthlyQuota("org-1", "scale", 1);
+    await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "scale", 1);
     expect(mockRedis.eval).toHaveBeenLastCalledWith(
       expect.any(String),
       1,
@@ -199,7 +199,7 @@ describe("reserveMonthlyQuota", () => {
   test("unknown plan falls through to starter defaults", async () => {
     mockRedis.eval.mockResolvedValue([1, 100]);
 
-    await reserveMonthlyQuota("org-1", "unknown-plan", 1);
+    await reserveMonthlyQuota("00000000-0000-0000-0000-000000000001", "unknown-plan", 1);
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
@@ -221,7 +221,7 @@ describe("releaseMonthlyQuota", () => {
   });
 
   test("returns early for zero count without calling redis", async () => {
-    const result = await releaseMonthlyQuota("org-1", 0);
+    const result = await releaseMonthlyQuota("00000000-0000-0000-0000-000000000001", 0);
     expect(result).toEqual({ currentUsage: 0 });
     expect(mockRedis.eval).not.toHaveBeenCalled();
   });
@@ -229,11 +229,11 @@ describe("releaseMonthlyQuota", () => {
   test("calls redis.eval with release script args", async () => {
     mockRedis.eval.mockResolvedValue(90 as unknown);
 
-    await releaseMonthlyQuota("org-1", 10);
+    await releaseMonthlyQuota("00000000-0000-0000-0000-000000000001", 10);
 
     const now = new Date();
     const expectedMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-    const expectedKey = `{org-1}:deliveries:${expectedMonth}`;
+    const expectedKey = `{00000000-0000-0000-0000-000000000001}:deliveries:${expectedMonth}`;
 
     expect(mockRedis.eval).toHaveBeenCalledWith(
       expect.any(String),
@@ -247,7 +247,7 @@ describe("releaseMonthlyQuota", () => {
   test("returns current usage from redis eval", async () => {
     mockRedis.eval.mockResolvedValue(42 as unknown);
 
-    const result = await releaseMonthlyQuota("org-1", 8);
+    const result = await releaseMonthlyQuota("00000000-0000-0000-0000-000000000001", 8);
 
     expect(result).toEqual({ currentUsage: 42 });
   });

@@ -7,7 +7,7 @@ describe("WebhookService", () => {
       const largePayload = { data: "x".repeat(1_100_000) };
       await expect(
         WebhookService.createEvent({
-          organizationId: "org-1",
+          organizationId: "00000000-0000-0000-0000-000000000001",
           plan: "hobby",
           eventType: "test.event",
           payload: largePayload,
@@ -21,7 +21,7 @@ describe("WebhookService", () => {
       const largePayload = { data: "x".repeat(1_100_000) };
       await expect(
         WebhookService.createBatch({
-          organizationId: "org-1",
+          organizationId: "00000000-0000-0000-0000-000000000001",
           plan: "hobby",
           events: [
             { eventType: "test.event", payload: largePayload },
@@ -32,7 +32,7 @@ describe("WebhookService", () => {
 
     test("returns empty batch when no events provided", async () => {
       const result = await WebhookService.createBatch({
-        organizationId: "org-1",
+        organizationId: "00000000-0000-0000-0000-000000000001",
         plan: "hobby",
         events: [],
       });
@@ -44,8 +44,8 @@ describe("WebhookService", () => {
   describe("getEvent", () => {
     test("returns null for nonexistent event", async () => {
       const result = await WebhookService.getEvent(
-        "org-1",
-        "nonexistent-event-id"
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-0000000000cc"
       );
       expect(result).toBeNull();
     });
@@ -53,14 +53,14 @@ describe("WebhookService", () => {
 
   describe("getEvents", () => {
     test("returns empty list for org with no events", async () => {
-      const result = await WebhookService.getEvents("org-1");
+      const result = await WebhookService.getEvents("00000000-0000-0000-0000-000000000001");
       expect(result.events).toEqual([]);
       expect(result.nextCursor).toBeNull();
     });
 
     test("rejects invalid date range", async () => {
       await expect(
-        WebhookService.getEvents("org-1", {
+        WebhookService.getEvents("00000000-0000-0000-0000-000000000001", {
           from: "2026-02-01",
           to: "2026-01-01",
         })
@@ -69,7 +69,7 @@ describe("WebhookService", () => {
 
     test("rejects invalid from date", async () => {
       await expect(
-        WebhookService.getEvents("org-1", { from: "not-a-date" })
+        WebhookService.getEvents("00000000-0000-0000-0000-000000000001", { from: "not-a-date" })
       ).rejects.toThrow("Invalid from date");
     });
   });
@@ -77,7 +77,7 @@ describe("WebhookService", () => {
   describe("getDeliveries", () => {
     test("rejects invalid date range", async () => {
       await expect(
-        WebhookService.getDeliveries("org-1", "event-1", {
+        WebhookService.getDeliveries("00000000-0000-0000-0000-000000000001", "event-1", {
           from: "2026-12-01",
           to: "2026-01-01",
         })
