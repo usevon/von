@@ -1,6 +1,7 @@
 # Von
 
 <p align="center">
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.97+-orange.svg" alt="Rust"></a>
   <a href="https://bun.sh/"><img src="https://img.shields.io/badge/Bun-1.3+-black.svg" alt="Bun"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.7+-blue.svg" alt="TypeScript"></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/Postgres-18-blue.svg" alt="Postgres"></a>
@@ -52,6 +53,28 @@ Von charges for the two things that actually cost money to run, and nothing else
 
 Every paid plan includes unlimited team members, transformations, replay, and all integrations. Self-hosting is free and unlimited under AGPL-3.0.
 
+## Architecture
+
+The data plane is Rust and the control plane is TypeScript.
+
+| Service | Language | Responsibility |
+| --- | --- | --- |
+| `von-ingest` | Rust | Event ingest, per tenant coalescing, quota and throughput enforcement, endpoint CRUD |
+| `apps/api` | Bun | Remaining control plane routes, being ported to Rust module by module |
+| `apps/worker` | Bun | Outbound delivery, retries, circuit breaking |
+| `apps/dashboard` | Next.js | Authentication, organizations, API key management, UI |
+
+Both API services read the same Postgres and Redis, so a reverse proxy can route each path to whichever one owns it. Secrets and pagination cursors are byte compatible across the two, which is what makes moving a route a routing change rather than a migration.
+
+```
+Caddyfile
+localhost:8000 {
+  handle /webhooks* { reverse_proxy localhost:8090 }
+  handle /endpoints* { reverse_proxy localhost:8090 }
+  handle { reverse_proxy localhost:8080 }
+}
+```
+
 ## Getting Started
 
 Sending your first event takes four lines.
@@ -73,9 +96,9 @@ Get started at [usevon.com](https://usevon.com) with no setup required.
 
 Self-hosting Von gives you full control over your data with no usage limits, and the backend services compile to standalone binaries that you can run with PM2 for zero-downtime reloads.
 
-The backend (api, worker) requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
+The backend requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
 
-You'll need PostgreSQL, Redis, and Bun installed for building.
+You'll need PostgreSQL, Redis, Bun, and Rust installed for building.
 
 #### Development
 
@@ -125,6 +148,7 @@ Deploy the dashboard and site to [Vercel](https://vercel.com) by importing your 
 The backend services require a Linux VPS with PostgreSQL and Redis, and PM2 for process management (`npm install -g pm2`). Build the binaries locally and deploy them to your server:
 
 ```bash
+cargo build --release --manifest-path ../von-rust/Cargo.toml
 bun run --cwd apps/api build:prod
 bun run --cwd apps/worker build:prod
 ```
@@ -132,6 +156,7 @@ bun run --cwd apps/worker build:prod
 Copy the binaries to your server (replace `user@server` with your SSH details):
 
 ```bash
+scp ../von-rust/target/release/von-ingest user@server:/app/
 scp apps/api/dist/api user@server:/app/
 scp apps/worker/dist/worker user@server:/app/
 ```
@@ -139,16 +164,21 @@ scp apps/worker/dist/worker user@server:/app/
 Then start them with PM2 and configure automatic startup:
 
 ```bash
+pm2 start /app/von-ingest --name ingest
 pm2 start /app/api --name api
 pm2 start /app/worker --name worker
 pm2 save && pm2 startup
 ```
 
+The ingest service needs `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, and `API_KEY_SIGNING_SECRET` to match the values the API uses, since both read the same encrypted rows.
+
 For zero-downtime reloads after updates, run `pm2 reload all`.
 
 ## Delivery Semantics
 
-Events sent without an `idempotencyKey` take a buffered fast path. The API acknowledges them after an atomic Redis quota check and stream write, and a background flusher persists them to Postgres within milliseconds. A Redis loss in that window can drop acknowledged events. Include an `idempotencyKey` when you need durable, exactly-once ingestion, which routes the event through a synchronous database transaction with unique-key deduplication.
+Every event is acknowledged after an atomic Redis quota check and stream write, then a background flusher persists it to Postgres within milliseconds. A Redis loss in that window can drop an acknowledged event.
+
+Send an `idempotencyKey` to make that safe. Duplicate keys collapse to a single event on insert, so a retry after a timeout or a network failure can never create a second delivery. The SDK generates one per event by default, which is why `send` retries transient failures on your behalf.
 
 ## Testing
 
