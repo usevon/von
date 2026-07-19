@@ -1,0 +1,17 @@
+[package]
+name = "von-migrate"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "von-migrate"
+path = "src/main.rs"
+
+[dependencies]
+von-log = { workspace = true }
+
+dotenvy = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

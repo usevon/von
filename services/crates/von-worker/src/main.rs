@@ -1,5 +1,6 @@
 use std::time::Duration;
 use tokio::signal;
+use tracing::{error, info};
 use von_worker::{delivery, flusher, inbound};
 
 const IDLE_SLEEP: Duration = Duration::from_millis(10);
@@ -7,11 +8,14 @@ const IDLE_SLEEP: Duration = Duration::from_millis(10);
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
+    von_log::init();
 
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(20)
         .connect(&std::env::var("DATABASE_URL")?)
         .await?;
+    von_migrate::run(&pool).await?;
+
     let client = redis::Client::open(std::env::var("REDIS_URL")?)?;
     let conn = redis::aio::ConnectionManager::new(client).await?;
 
@@ -19,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let worker = delivery::Worker::new(pool.clone(), conn.clone()).await?;
     let inbound = inbound::Inbound::new(pool, conn).await;
 
-    println!("worker running");
+    info!("worker running");
 
     let loops = vec![
         tokio::spawn(async move { pump(|| flusher.tick()).await }),
@@ -31,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for task in loops {
         task.abort();
     }
-    println!("worker stopped");
+    info!("worker stopped");
     Ok(())
 }
 
@@ -46,7 +50,7 @@ where
             Ok(0) => tokio::time::sleep(IDLE_SLEEP).await,
             Ok(_) => {}
             Err(err) => {
-                eprintln!("tick failed: {err}");
+                error!(error = %err, "tick failed");
                 tokio::time::sleep(Duration::from_millis(250)).await;
             }
         }

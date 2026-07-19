@@ -5,6 +5,7 @@ use axum::{
 use redis::aio::ConnectionManager;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use tracing::info;
 
 mod coalesce;
 mod ingest;
@@ -49,6 +50,7 @@ async fn shutdown_signal() {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = dotenvy::dotenv();
+    von_log::init();
 
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
@@ -64,11 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&database_url)
         .await?;
 
+    von_migrate::run(&pool).await?;
+
     // Billing stays optional so self hosted deployments run without an Autumn account.
     let meter = std::env::var("AUTUMN_SECRET_KEY").ok().map(|key| {
         let feature = std::env::var("AUTUMN_FEATURE_ID")
             .unwrap_or_else(|_| von_billing::DEFAULT_FEATURE.to_owned());
-        println!("billing enabled, metering feature {feature}");
+        info!(feature, "billing enabled");
         Meter::new(key, feature)
     });
 
@@ -98,15 +102,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(von_api::router().with_state(api_state));
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
-    println!("von-ingest listening on :{port}");
+    info!(port, "von-ingest listening");
 
     let coalescer = state.coalescer.clone();
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             shutdown_signal().await;
-            println!("draining buffered events before exit");
+            info!("draining buffered events before exit");
             coalescer.drain().await;
-            println!("drained");
+            info!("drained");
         })
         .await?;
 

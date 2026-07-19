@@ -77,10 +77,6 @@ jobs:
       - name: Build packages
         run: bun run build
 
-      - name: Run database migrations
-        working-directory: packages/db
-        run: bun run db:migrate
-
       - name: Run unit tests
         run: bun run test:unit
 
