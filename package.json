@@ -13,16 +13,16 @@
   "scripts": {
     "setup": "bun run scripts/setup.ts",
     "dev": "bun --env-file=.env turbo dev",
-    "build": "bun --env-file=.env turbo run build --filter=@usevon/site... --filter=@usevon/dashboard... --filter=@usevon/api... --filter=@usevon/worker...",
+    "build": "bun --env-file=.env turbo run build --filter=@usevon/site... --filter=@usevon/dashboard...",
     "start": "bun --env-file=.env turbo run start --filter=!@usevon/cli --filter=!@usevon/sdk",
-    "db:migrate": "bun run --cwd apps/api db:migrate",
-    "db:generate": "bun run --cwd apps/api db:generate",
-    "db:push": "bun run --cwd apps/api db:push",
+    "db:migrate": "bun run --cwd packages/db db:migrate",
+    "db:generate": "bun run --cwd packages/db db:generate",
+    "db:push": "bun run --cwd packages/db db:push",
     "lint": "bunx biome lint .",
     "lint:fix": "bunx biome lint --write --unsafe .",
-    "test:unit": "bun test packages/ apps/worker/ && bun run --cwd apps/api test tests/unit/",
+    "test:unit": "bun test packages/",
     "test": "bun run test:unit",
-    "test:integration": "bun run --cwd apps/api test:integration:auto"
+    "test:rust": "cargo test --manifest-path services/Cargo.toml"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
