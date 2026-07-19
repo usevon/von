@@ -4,7 +4,7 @@ services:
     container_name: von-postgres
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '55432:5432'
     environment:
       POSTGRES_USER: von
       POSTGRES_PASSWORD: von_dev_password
@@ -22,7 +22,7 @@ services:
     container_name: von-redis
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      - '56379:6379'
     command: redis-server --appendonly yes --appendfsync everysec --maxmemory 2gb --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
