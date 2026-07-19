@@ -6,6 +6,7 @@ members = [
     "crates/von-billing",
     "crates/von-api",
     "crates/von-ingest",
+    "crates/von-worker",
 ]
 
 [workspace.package]
