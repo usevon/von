@@ -2,6 +2,8 @@ import { Button } from "@usevon/ui";
 import Link from "next/link";
 
 import { Cta } from "@/components/cta";
+import { PlanCards } from "@/components/plan-cards";
+import { PLANS } from "@/lib/calculator";
 import { urls } from "@/lib/urls";
 
 import { PlansSection } from "./_components/plans-section";
@@ -72,7 +74,11 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <PlansSection />
+      <div className="mt-4">
+        <PlanCards />
+      </div>
+
+      <PlansSection plans={PLANS} />
 
       <VolumeTable />
 

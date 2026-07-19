@@ -3,8 +3,10 @@
 import { CheckIcon, MinusIcon, QuestionMarkIcon } from "@phosphor-icons/react";
 import { Popover, PopoverPopup, PopoverTrigger } from "@usevon/ui";
 
-import { PlanCards } from "@/components/plan-cards";
-import { PLANS, type PricingPlan } from "@/lib/calculator";
+// Type only, and the plans arrive as a prop, because calculator reads
+// autumn.config which pulls in atmn, and atmn is node only so anything reaching
+// it cannot be bundled into a client component.
+import type { PricingPlan } from "@/lib/calculator";
 
 type ComparisonValue = boolean | string;
 
@@ -109,13 +111,13 @@ const ComparisonTooltip = (props: ComparisonTooltipProps) => (
 
 const GRID = "grid grid-cols-[1.4fr_repeat(5,1fr)]";
 
-const ComparisonTable = () => (
+const ComparisonTable = (props: { plans: PricingPlan[] }) => (
   <section className="mt-16 border-border border-b max-lg:hidden">
     <div
       className={`${GRID} sticky top-16 z-10 -mb-px h-[53px] border-border border-y bg-background/80 backdrop-blur-lg`}
     >
       <div />
-      {PLANS.map((plan) => (
+      {props.plans.map((plan) => (
         <div
           className="flex items-center border-border border-l px-6"
           key={plan.id}
@@ -140,7 +142,7 @@ const ComparisonTable = () => (
                 name={feature.name}
               />
             </div>
-            {PLANS.map((plan) => (
+            {props.plans.map((plan) => (
               <div
                 className="flex items-center justify-center border-border/50 border-l px-4 py-4 text-center text-muted-foreground"
                 key={plan.id}
@@ -155,11 +157,6 @@ const ComparisonTable = () => (
   </section>
 );
 
-export const PlansSection = () => (
-  <>
-    <div className="mt-4">
-      <PlanCards />
-    </div>
-    <ComparisonTable />
-  </>
+export const PlansSection = (props: { plans: PricingPlan[] }) => (
+  <ComparisonTable plans={props.plans} />
 );
