@@ -4,11 +4,12 @@ use super::model::{
 };
 use super::service;
 use crate::error::{ApiError, SuccessResponse};
+use crate::extract::Query;
 use crate::pagination::PaginationQuery;
 use crate::state::Shared;
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::{HeaderMap, StatusCode},
     routing::{delete, get, post},
 };

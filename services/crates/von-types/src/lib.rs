@@ -71,3 +71,38 @@ pub fn quota_key(org_id: &str, month: &str) -> String {
 pub fn rate_key(org_id: &str, window: i64) -> String {
     format!("{{{org_id}}}:rate:{window}")
 }
+
+pub const DELIVERY_STREAM: &str = "von:delivery";
+pub const DELIVERY_GROUP: &str = "workers";
+pub const DELIVERY_DELAYED: &str = "von:delivery:delayed";
+
+/// What the worker needs to deliver without reading the event back from Postgres.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DeliveryJob {
+    #[serde(rename = "deliveryId")]
+    pub delivery_id: String,
+    #[serde(rename = "eventId")]
+    pub event_id: String,
+    #[serde(rename = "endpointId")]
+    pub endpoint_id: String,
+    #[serde(rename = "organizationId")]
+    pub organization_id: String,
+    #[serde(rename = "eventType")]
+    pub event_type: String,
+    pub payload: String,
+    pub plan: String,
+}
+
+pub const INBOUND_STREAM: &str = "von:inbound";
+pub const INBOUND_GROUP: &str = "inbound-workers";
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct InboundJob {
+    #[serde(rename = "deliveryId")]
+    pub delivery_id: String,
+    #[serde(rename = "endpointId")]
+    pub endpoint_id: String,
+    #[serde(rename = "organizationId")]
+    pub organization_id: String,
+    pub payload: String,
+}

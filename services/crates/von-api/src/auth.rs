@@ -17,12 +17,44 @@ pub struct Endpoint {
 
 pub struct Tenant {
     pub organization_id: String,
+    pub user_id: String,
     pub plan: String,
     pub endpoints: Vec<Endpoint>,
     pub monthly_limit: i64,
     pub has_overage: bool,
     pub events_per_second: i64,
     pub scopes: Vec<String>,
+}
+
+/// What a request proved about itself, from either an API key or a dashboard
+/// session. Routes that only need the caller's identity take this rather than
+/// the full tenant, so a session can reach them without a plan or endpoints.
+pub struct Principal {
+    pub organization_id: String,
+    pub user_id: String,
+    pub scopes: Vec<String>,
+}
+
+impl Principal {
+    pub fn has_scope(&self, required: &str) -> bool {
+        if self.scopes.iter().any(|s| s == "*" || s == required) {
+            return true;
+        }
+        match required.split_once(':') {
+            Some((action, _)) => {
+                let wildcard = format!("{action}:*");
+                self.scopes.iter().any(|s| *s == wildcard)
+            }
+            None => false,
+        }
+    }
+
+    pub fn require_scope(&self, required: &str) -> Result<()> {
+        if self.has_scope(required) {
+            return Ok(());
+        }
+        Err(Error::InsufficientScope(required.to_owned()))
+    }
 }
 
 impl Tenant {
@@ -52,6 +84,19 @@ struct Entry {
     tenant: Arc<Tenant>,
     key_id: String,
     expires_at: Instant,
+}
+
+#[derive(serde::Deserialize)]
+struct SessionRecord {
+    session: StoredSession,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredSession {
+    user_id: String,
+    active_organization_id: Option<String>,
+    expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub struct Auth {
@@ -179,6 +224,63 @@ impl Auth {
         Ok(())
     }
 
+    /// better-auth keys the session record in secondary storage by the bearer
+    /// token verbatim. A session missing from redis is treated as invalid rather
+    /// than falling back to the session table, because better-auth does not read
+    /// that table either once secondary storage is configured.
+    async fn resolve_session(&self, token: &str) -> Result<Option<Principal>> {
+        let Some(mut conn) = self.redis.clone() else {
+            return Ok(None);
+        };
+
+        let stored: Option<String> = redis::cmd("GET")
+            .arg(token)
+            .query_async(&mut conn)
+            .await
+            .unwrap_or(None);
+        let Some(stored) = stored else {
+            return Ok(None);
+        };
+
+        let Ok(record) = serde_json::from_str::<SessionRecord>(&stored) else {
+            return Ok(None);
+        };
+        // A session without an active organization cannot be scoped to one, the
+        // same condition the typescript resolver treats as unauthenticated.
+        let Some(organization_id) = record.session.active_organization_id else {
+            return Ok(None);
+        };
+        if record.session.expires_at <= chrono::Utc::now() {
+            return Ok(None);
+        }
+
+        Ok(Some(Principal {
+            organization_id,
+            user_id: record.session.user_id,
+            scopes: vec!["*".to_owned()],
+        }))
+    }
+
+    /// Tries the API key first and falls back to a dashboard session, matching
+    /// the order the typescript resolver uses so a bearer resolves the same way.
+    pub async fn resolve_principal(&self, raw: &str) -> Result<Principal> {
+        if let Ok(tenant) = self.resolve(raw).await {
+            return Ok(Principal {
+                organization_id: tenant.organization_id.clone(),
+                user_id: tenant.user_id.clone(),
+                scopes: tenant.scopes.clone(),
+            });
+        }
+
+        self.resolve_session(raw).await?.ok_or(Error::InvalidApiKey)
+    }
+
+    pub async fn resolve_principal_scoped(&self, raw: &str, scope: &str) -> Result<Principal> {
+        let principal = self.resolve_principal(raw).await?;
+        principal.require_scope(scope)?;
+        Ok(principal)
+    }
+
     /// Resolving and authorizing together so a handler cannot forget the scope check.
     pub async fn resolve_scoped(&self, raw_key: &str, scope: &str) -> Result<Arc<Tenant>> {
         let tenant = self.resolve(raw_key).await?;
@@ -203,7 +305,8 @@ impl Auth {
         }
 
         let row = sqlx::query(
-            "SELECT k.id::text AS key_id, k.scopes AS scopes, o.id::text AS org_id, o.plan AS plan \
+            "SELECT k.id::text AS key_id, k.scopes AS scopes, k.user_id::text AS user_id, \
+             o.id::text AS org_id, o.plan AS plan \
              FROM apikey k \
              JOIN organization o ON o.id = k.organization_id \
              WHERE k.key = $1 AND k.enabled = true \
@@ -217,6 +320,7 @@ impl Auth {
 
         let key_id: String = row.try_get("key_id")?;
         let org_id: String = row.try_get("org_id")?;
+        let user_id: String = row.try_get("user_id").unwrap_or_default();
         let plan: String = row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned());
         let scopes: Vec<String> = row
             .try_get::<Option<serde_json::Value>, _>("scopes")
@@ -248,6 +352,7 @@ impl Auth {
         let limits = plan_limits(&plan);
         let tenant = Arc::new(Tenant {
             organization_id: org_id,
+            user_id,
             plan,
             endpoints,
             monthly_limit: limits.monthly,

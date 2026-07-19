@@ -1,4 +1,6 @@
-use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion};
+use super::model::{
+    CreateInboundEndpoint, InboundEndpoint, InboundEndpointList, UpdateInboundEndpoint,
+};
 use super::service;
 use crate::error::{ApiError, SuccessResponse};
 use crate::extract::Query;
@@ -14,11 +16,9 @@ use von_error::Error;
 
 pub fn router() -> Router<Shared> {
     Router::new()
-        .route("/versions", get(list).post(create))
-        .route(
-            "/versions/{version}",
-            get(get_one).patch(update).delete(remove),
-        )
+        .route("/inbound", get(list).post(create))
+        .route("/inbound/{id}", get(get_one).patch(update).delete(remove))
+        .route("/in/{id}", axum::routing::post(super::receive::handler))
 }
 
 fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
@@ -30,17 +30,17 @@ fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
 }
 
 fn not_found() -> Error {
-    Error::NotFound("Version".to_owned())
+    Error::NotFound("Endpoint".to_owned())
 }
 
 #[utoipa::path(
     get,
-    path = "/versions",
-    tag = "versions",
+    path = "/inbound",
+    tag = "inbound",
     params(PaginationQuery),
     security(("bearerAuth" = [])),
     responses(
-        (status = 200, description = "A page of webhook versions", body = VersionList),
+        (status = 200, description = "A page of inbound endpoints", body = InboundEndpointList),
         (status = 401, description = "Missing or invalid API key", body = crate::error::ErrorResponse),
     )
 )]
@@ -48,10 +48,10 @@ pub async fn list(
     State(state): State<Shared>,
     headers: HeaderMap,
     Query(pagination): Query<PaginationQuery>,
-) -> Result<Json<VersionList>, ApiError> {
+) -> Result<Json<InboundEndpointList>, ApiError> {
     let tenant = state
         .auth
-        .resolve_scoped(bearer(&headers)?, "read:versions")
+        .resolve_scoped(bearer(&headers)?, "read:inbound")
         .await?;
     Ok(Json(
         service::get_all(&state, &tenant.organization_id, &pagination).await?,
@@ -60,25 +60,25 @@ pub async fn list(
 
 #[utoipa::path(
     get,
-    path = "/versions/{version}",
-    tag = "versions",
-    params(("version" = String, Path, description = "Version name")),
+    path = "/inbound/{id}",
+    tag = "inbound",
+    params(("id" = String, Path, description = "Inbound endpoint id")),
     security(("bearerAuth" = [])),
     responses(
-        (status = 200, description = "The webhook version", body = WebhookVersion),
-        (status = 404, description = "Version not found", body = crate::error::ErrorResponse),
+        (status = 200, description = "The inbound endpoint", body = InboundEndpoint),
+        (status = 404, description = "Endpoint not found", body = crate::error::ErrorResponse),
     )
 )]
 pub async fn get_one(
     State(state): State<Shared>,
     headers: HeaderMap,
-    Path(version): Path<String>,
-) -> Result<Json<WebhookVersion>, ApiError> {
+    Path(id): Path<String>,
+) -> Result<Json<InboundEndpoint>, ApiError> {
     let tenant = state
         .auth
-        .resolve_scoped(bearer(&headers)?, "read:versions")
+        .resolve_scoped(bearer(&headers)?, "read:inbound")
         .await?;
-    service::get_by_version(&state, &tenant.organization_id, &version)
+    service::get_by_id(&state, &tenant.organization_id, &id)
         .await?
         .map(Json)
         .ok_or_else(|| not_found().into())
@@ -86,23 +86,23 @@ pub async fn get_one(
 
 #[utoipa::path(
     post,
-    path = "/versions",
-    tag = "versions",
-    request_body = CreateVersion,
+    path = "/inbound",
+    tag = "inbound",
+    request_body = CreateInboundEndpoint,
     security(("bearerAuth" = [])),
     responses(
-        (status = 201, description = "The created webhook version", body = WebhookVersion),
+        (status = 201, description = "The created inbound endpoint", body = InboundEndpoint),
         (status = 400, description = "Validation failure", body = crate::error::ErrorResponse),
     )
 )]
 pub async fn create(
     State(state): State<Shared>,
     headers: HeaderMap,
-    Json(body): Json<CreateVersion>,
-) -> Result<(StatusCode, Json<WebhookVersion>), ApiError> {
+    Json(body): Json<CreateInboundEndpoint>,
+) -> Result<(StatusCode, Json<InboundEndpoint>), ApiError> {
     let tenant = state
         .auth
-        .resolve_scoped(bearer(&headers)?, "write:versions")
+        .resolve_scoped(bearer(&headers)?, "write:inbound")
         .await?;
     let created = service::create(&state, &tenant.organization_id, body).await?;
     Ok((StatusCode::CREATED, Json(created)))
@@ -110,27 +110,27 @@ pub async fn create(
 
 #[utoipa::path(
     patch,
-    path = "/versions/{version}",
-    tag = "versions",
-    params(("version" = String, Path, description = "Version name")),
-    request_body = UpdateVersion,
+    path = "/inbound/{id}",
+    tag = "inbound",
+    params(("id" = String, Path, description = "Inbound endpoint id")),
+    request_body = UpdateInboundEndpoint,
     security(("bearerAuth" = [])),
     responses(
-        (status = 200, description = "The updated webhook version", body = WebhookVersion),
-        (status = 404, description = "Version not found", body = crate::error::ErrorResponse),
+        (status = 200, description = "The updated inbound endpoint", body = InboundEndpoint),
+        (status = 404, description = "Endpoint not found", body = crate::error::ErrorResponse),
     )
 )]
 pub async fn update(
     State(state): State<Shared>,
     headers: HeaderMap,
-    Path(version): Path<String>,
-    Json(body): Json<UpdateVersion>,
-) -> Result<Json<WebhookVersion>, ApiError> {
+    Path(id): Path<String>,
+    Json(body): Json<UpdateInboundEndpoint>,
+) -> Result<Json<InboundEndpoint>, ApiError> {
     let tenant = state
         .auth
-        .resolve_scoped(bearer(&headers)?, "write:versions")
+        .resolve_scoped(bearer(&headers)?, "write:inbound")
         .await?;
-    service::update(&state, &tenant.organization_id, &version, body)
+    service::update(&state, &tenant.organization_id, &id, body)
         .await?
         .map(Json)
         .ok_or_else(|| not_found().into())
@@ -138,21 +138,21 @@ pub async fn update(
 
 #[utoipa::path(
     delete,
-    path = "/versions/{version}",
-    tag = "versions",
-    params(("version" = String, Path, description = "Version name")),
+    path = "/inbound/{id}",
+    tag = "inbound",
+    params(("id" = String, Path, description = "Inbound endpoint id")),
     security(("bearerAuth" = [])),
-    responses((status = 200, description = "The version was deleted", body = SuccessResponse))
+    responses((status = 200, description = "The endpoint was deleted", body = SuccessResponse))
 )]
 pub async fn remove(
     State(state): State<Shared>,
     headers: HeaderMap,
-    Path(version): Path<String>,
+    Path(id): Path<String>,
 ) -> Result<Json<SuccessResponse>, ApiError> {
     let tenant = state
         .auth
-        .resolve_scoped(bearer(&headers)?, "write:versions")
+        .resolve_scoped(bearer(&headers)?, "write:inbound")
         .await?;
-    service::delete(&state, &tenant.organization_id, &version).await?;
+    service::delete(&state, &tenant.organization_id, &id).await?;
     Ok(Json(SuccessResponse { success: true }))
 }

@@ -46,6 +46,46 @@ pub struct CursorPosition {
     pub id: String,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorSort {
+    Asc,
+    #[default]
+    Desc,
+}
+
+impl CursorSort {
+    fn direction(self) -> &'static str {
+        match self {
+            Self::Asc => "a",
+            Self::Desc => "d",
+        }
+    }
+
+    /// The comparison the keyset predicate needs, so a caller can build the
+    /// tuple condition without matching on the variant itself.
+    pub fn compare(self) -> &'static str {
+        match self {
+            Self::Asc => ">",
+            Self::Desc => "<",
+        }
+    }
+
+    pub fn order(self) -> &'static str {
+        match self {
+            Self::Asc => "ASC",
+            Self::Desc => "DESC",
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Asc => "asc",
+            Self::Desc => "desc",
+        }
+    }
+}
+
 fn to_base36(mut value: u64) -> String {
     const ALPHABET: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
     if value == 0 {
@@ -103,23 +143,34 @@ fn is_uuid(value: &str) -> bool {
     uuid::Uuid::parse_str(value).is_ok() && value.len() == 36
 }
 
-pub fn encode_cursor(position: &CursorPosition, scope: &str) -> Result<String> {
+pub fn encode_cursor_sorted(
+    position: &CursorPosition,
+    scope: &str,
+    sort: CursorSort,
+) -> Result<String> {
     let millis = position.created_at.timestamp_millis();
     if millis < 0 {
         return Err(Error::BadRequest("Invalid cursor".to_owned()));
     }
     let unsigned = format!(
-        "{CURSOR_VERSION}.{}.{}.d.{scope}",
+        "{CURSOR_VERSION}.{}.{}.{}.{scope}",
         to_base36(millis as u64),
-        position.id
+        position.id,
+        sort.direction()
     );
     let signature = sign(&unsigned)?;
     Ok(format!("{unsigned}.{signature}"))
 }
 
-/// Only the descending direction is used by the ported list routes, so the
-/// direction segment is validated against it rather than being a parameter.
-pub fn decode_cursor(cursor: Option<&str>, scope: &str) -> Result<Option<CursorPosition>> {
+pub fn encode_cursor(position: &CursorPosition, scope: &str) -> Result<String> {
+    encode_cursor_sorted(position, scope, CursorSort::Desc)
+}
+
+pub fn decode_cursor_sorted(
+    cursor: Option<&str>,
+    scope: &str,
+    sort: CursorSort,
+) -> Result<Option<CursorPosition>> {
     let Some(cursor) = cursor.filter(|c| !c.is_empty()) else {
         return Ok(None);
     };
@@ -135,7 +186,7 @@ pub fn decode_cursor(cursor: Option<&str>, scope: &str) -> Result<Option<CursorP
         return Err(invalid());
     };
 
-    if version != CURSOR_VERSION || !is_uuid(id) || direction != "d" {
+    if version != CURSOR_VERSION || !is_uuid(id) || direction != sort.direction() {
         return Err(invalid());
     }
     if cursor_scope.len() != SCOPE_HASH_LENGTH
@@ -170,6 +221,27 @@ pub fn decode_cursor(cursor: Option<&str>, scope: &str) -> Result<Option<CursorP
     }))
 }
 
+pub fn decode_cursor(cursor: Option<&str>, scope: &str) -> Result<Option<CursorPosition>> {
+    decode_cursor_sorted(cursor, scope, CursorSort::Desc)
+}
+
+/// JSON.stringify emits keys in insertion order, so the hash only matches the
+/// TypeScript one when the pairs are pushed in the same order the caller wrote
+/// them. Values go through serde_json so escaping matches too.
+pub fn scope_hash_fields(fields: &[(&str, serde_json::Value)]) -> String {
+    let mut json = String::from("{");
+    for (index, (key, value)) in fields.iter().enumerate() {
+        if index > 0 {
+            json.push(',');
+        }
+        json.push_str(&serde_json::Value::String((*key).to_owned()).to_string());
+        json.push(':');
+        json.push_str(&value.to_string());
+    }
+    json.push('}');
+    scope_hash_json(&json)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,6 +268,72 @@ mod tests {
             .expect("some");
         assert_eq!(decoded.id, position.id);
         assert_eq!(decoded.created_at, position.created_at);
+    }
+
+    /// The expected values come from running JSON.stringify plus sha256 in bun,
+    /// so a change to the field order here fails rather than silently rejecting
+    /// every cursor the other service issued.
+    #[test]
+    fn scope_hash_matches_javascript() {
+        use serde_json::json;
+
+        assert_eq!(
+            scope_hash_fields(&[
+                ("resource", json!("webhook-events")),
+                ("organizationId", json!("org-1")),
+                ("eventTypes", json!(None::<Vec<String>>)),
+                ("from", json!(null)),
+                ("to", json!(null)),
+                ("sort", json!("desc")),
+            ]),
+            "fdabbf55c0fc9325"
+        );
+        assert_eq!(
+            scope_hash_fields(&[
+                ("resource", json!("webhook-events")),
+                ("organizationId", json!("org-1")),
+                ("eventTypes", json!(["a.b", "c.d"])),
+                ("from", json!("2024-01-01T00:00:00.000Z")),
+                ("to", json!(null)),
+                ("sort", json!("asc")),
+            ]),
+            "aa8035901c10ed52"
+        );
+        assert_eq!(
+            scope_hash_fields(&[
+                ("resource", json!("webhook-deliveries")),
+                ("organizationId", json!("org-1")),
+                ("eventId", json!("e-1")),
+                ("status", json!(null)),
+                ("endpointId", json!(null)),
+                ("from", json!(null)),
+                ("to", json!(null)),
+                ("sort", json!("desc")),
+            ]),
+            "bf7e755f828eebb7"
+        );
+        assert_eq!(
+            scope_hash_fields(&[
+                ("resource", json!("webhook-delivery-attempts")),
+                ("organizationId", json!("org-1")),
+                ("deliveryId", json!("d-1")),
+                ("sort", json!("asc")),
+            ]),
+            "51d23ebdff40792f"
+        );
+    }
+
+    #[test]
+    fn ascending_and_descending_cursors_do_not_interchange() {
+        unsafe { std::env::set_var("BETTER_AUTH_SECRET", "test-secret") };
+        let scope = scope_hash("webhook-events", "org-1");
+        let position = CursorPosition {
+            created_at: Utc.timestamp_millis_opt(1_700_000_000_000).unwrap(),
+            id: "3f7c1a2e-5b6d-4e8f-9a0b-1c2d3e4f5a6b".to_owned(),
+        };
+        let ascending = encode_cursor_sorted(&position, &scope, CursorSort::Asc).expect("encode");
+        assert!(decode_cursor_sorted(Some(&ascending), &scope, CursorSort::Asc).is_ok());
+        assert!(decode_cursor_sorted(Some(&ascending), &scope, CursorSort::Desc).is_err());
     }
 
     #[test]

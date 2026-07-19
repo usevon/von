@@ -85,6 +85,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pool,
         redis: conn,
         auth,
+        tunnels: Default::default(),
+        instance_id: uuid::Uuid::new_v4().to_string(),
     });
 
     let app = Router::new()

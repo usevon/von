@@ -1,13 +1,9 @@
 use super::model::{AnalyticsQuery, Overview, Retries, Timeseries, TimeseriesQuery};
 use super::service;
 use crate::error::ApiError;
+use crate::extract::Query;
 use crate::state::Shared;
-use axum::{
-    Json, Router,
-    extract::{Query, State},
-    http::HeaderMap,
-    routing::get,
-};
+use axum::{Json, Router, extract::State, http::HeaderMap, routing::get};
 use von_error::Error;
 
 pub fn router() -> Router<Shared> {

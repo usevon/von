@@ -13,11 +13,13 @@ axum = { workspace = true }
 base64 = { workspace = true }
 chrono = { workspace = true }
 dashmap = { workspace = true }
+futures-util = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }
 rand = { workspace = true }
 redis = { workspace = true }
 serde = { workspace = true }
+serde_html_form = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true }
