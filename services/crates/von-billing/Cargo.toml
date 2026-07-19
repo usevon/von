@@ -1,0 +1,13 @@
+[package]
+name = "von-billing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+von-error = { workspace = true }
+
+dashmap = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }

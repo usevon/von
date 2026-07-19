@@ -1,0 +1,54 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/von-error",
+    "crates/von-types",
+    "crates/von-billing",
+    "crates/von-api",
+    "crates/von-ingest",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+von-api = { path = "crates/von-api" }
+von-billing = { path = "crates/von-billing" }
+von-error = { path = "crates/von-error" }
+von-types = { path = "crates/von-types" }
+
+aes-gcm = "0.10"
+axum = "0.8"
+base64 = "0.22"
+chrono = "0.4"
+dashmap = "6"
+dotenvy = "0.15"
+hex = "0.4"
+hmac = "0.12"
+rand = "0.8"
+redis = { version = "0.32", features = ["tokio-comp", "connection-manager", "script"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+serde = { version = "1", features = ["derive"] }
+# Object key order is preserved so jsonb columns serialize in the same order the TypeScript service emits.
+serde_json = { version = "1", features = ["raw_value", "preserve_order"] }
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "uuid",
+    "chrono",
+    "json",
+] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
