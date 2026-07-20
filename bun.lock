@@ -159,7 +159,6 @@
       "devDependencies": {
         "@types/node": "^20",
         "@usevon/typescript-config": "workspace:*",
-        "drizzle-kit": "^0.31.1",
       },
     },
     "packages/email": {
