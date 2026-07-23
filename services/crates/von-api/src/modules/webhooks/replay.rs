@@ -61,6 +61,23 @@ async fn create_deliveries(
         return Ok(Vec::new());
     }
 
+    let mut ids = Vec::with_capacity(targets.len());
+    let mut event_ids = Vec::with_capacity(targets.len());
+    let mut endpoint_ids = Vec::with_capacity(targets.len());
+    for target in &targets {
+        // A dropped element would leave a shorter array that UNNEST NULL pads,
+        // cross wiring every row after it, so any parse failure aborts.
+        event_ids.push(
+            uuid::Uuid::parse_str(&target.event_id)
+                .map_err(|_| Error::BadRequest("Invalid event id".to_owned()))?,
+        );
+        endpoint_ids.push(
+            uuid::Uuid::parse_str(&target.endpoint_id)
+                .map_err(|_| Error::BadRequest("Invalid endpoint id".to_owned()))?,
+        );
+        ids.push(uuid::Uuid::new_v4());
+    }
+
     reserve_quota(
         state,
         &tenant.organization_id,
@@ -69,16 +86,6 @@ async fn create_deliveries(
         targets.len() as i64,
     )
     .await?;
-
-    let ids: Vec<uuid::Uuid> = targets.iter().map(|_| uuid::Uuid::new_v4()).collect();
-    let event_ids: Vec<uuid::Uuid> = targets
-        .iter()
-        .filter_map(|t| uuid::Uuid::parse_str(&t.event_id).ok())
-        .collect();
-    let endpoint_ids: Vec<uuid::Uuid> = targets
-        .iter()
-        .filter_map(|t| uuid::Uuid::parse_str(&t.endpoint_id).ok())
-        .collect();
 
     // The pending row with next_attempt_at defaulting to now() is the enqueue, the worker polls it.
     sqlx::query(

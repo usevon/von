@@ -153,9 +153,14 @@ impl RedisOps {
                 deliveries,
                 plan: job.tenant.plan.clone(),
             };
+            // An unencodable entry must fail loudly instead of buffering an empty payload
+            // that the flusher would skip while the caller sees a 200.
             let payload = match serde_json::to_string(&entry) {
                 Ok(p) => p,
-                Err(_) => String::new(),
+                Err(err) => {
+                    let err = Arc::new(Error::Configuration(format!("entry encode failed, {err}")));
+                    return jobs.iter().map(|_| Err(err.clone())).collect();
+                }
             };
 
             pipe.cmd("EVALSHA")
