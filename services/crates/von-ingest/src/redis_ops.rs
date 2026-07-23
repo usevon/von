@@ -177,8 +177,20 @@ impl RedisOps {
         }
 
         let mut conn = self.conn.clone();
-        let replies: redis::RedisResult<Vec<(i64, i64, String)>> =
+        let mut replies: redis::RedisResult<Vec<(i64, i64, String)>> =
             pipe.query_async(&mut conn).await;
+
+        // A restarted Redis loses the cached script, so reload once instead of failing every flush until the process restarts.
+        if matches!(&replies, Err(err) if err.kind() == redis::ErrorKind::NoScriptError) {
+            let reloaded: redis::RedisResult<String> = redis::cmd("SCRIPT")
+                .arg("LOAD")
+                .arg(RESERVE_AND_BUFFER)
+                .query_async(&mut conn)
+                .await;
+            if reloaded.is_ok() {
+                replies = pipe.query_async(&mut conn).await;
+            }
+        }
 
         match replies {
             // A short reply vector would silently drop the tail, leaving those tenants
