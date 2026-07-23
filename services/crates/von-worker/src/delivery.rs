@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
-use crate::common::{concurrency, lease_secs, sign};
+use crate::common::{concurrency, http_client, lease_secs, sign};
 
 const CIRCUIT_THRESHOLD: i32 = 5;
 const CIRCUIT_RESET_SECS: i64 = 300;
@@ -95,11 +95,7 @@ impl Worker {
         Ok(Self {
             pool,
             redis,
-            // unwrap_or_default would silently re-enable redirect following and reopen the SSRF hole.
-            http: reqwest::Client::builder()
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .expect("reqwest client build"),
+            http: http_client(),
             concurrency: concurrency(),
             lease_secs: lease_secs(),
         })
@@ -148,16 +144,18 @@ impl Worker {
 
         Ok(rows
             .into_iter()
-            .map(|row| Claimed {
-                delivery_id: row.try_get("delivery_id").unwrap_or_default(),
-                event_id: row.try_get("event_id").unwrap_or_default(),
-                endpoint_id: row.try_get("endpoint_id").unwrap_or_default(),
-                organization_id: row.try_get("organization_id").unwrap_or_default(),
-                event_type: row.try_get("event_type").unwrap_or_default(),
-                payload: row.try_get("payload").unwrap_or_default(),
-                plan: row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned()),
-                attempts: row.try_get("attempts").unwrap_or_default(),
-                queue_ms: row.try_get("queue_ms").unwrap_or_default(),
+            .filter_map(|row| {
+                Some(Claimed {
+                    delivery_id: row.try_get("delivery_id").ok()?,
+                    event_id: row.try_get("event_id").ok()?,
+                    endpoint_id: row.try_get("endpoint_id").ok()?,
+                    organization_id: row.try_get("organization_id").ok()?,
+                    event_type: row.try_get("event_type").ok()?,
+                    payload: row.try_get("payload").ok()?,
+                    plan: row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned()),
+                    attempts: row.try_get("attempts").ok()?,
+                    queue_ms: row.try_get("queue_ms").ok()?,
+                })
             })
             .collect())
     }
@@ -199,67 +197,61 @@ impl Worker {
         let outcome = self.send(job, &endpoint).await;
         let is_final = attempt_number >= endpoint.max_attempts;
 
-        match outcome {
-            Outcome::Success { status, meta } => {
-                self.record_attempt(
-                    job,
-                    attempt_number,
-                    "success",
-                    true,
-                    Some(status),
-                    None,
-                    &meta,
-                )
-                .await?;
-                sqlx::query(
-                    "UPDATE delivery SET status = 'delivered', attempts = $1, last_attempt_at = now(), \
-                     response = $2 WHERE id = $3::uuid",
-                )
-                .bind(attempt_number)
-                .bind(serde_json::json!({ "status": status, "durationMs": meta.duration_ms }))
-                .bind(&job.delivery_id)
-                .execute(&self.pool)
-                .await?;
-                self.close_circuit(&job.endpoint_id).await?;
-            }
+        let (row_status, http_status, error, meta) = match outcome {
+            Outcome::Success { status, meta } => ("delivered", Some(status), None, meta),
             Outcome::Failure {
                 status,
                 error,
                 meta,
-            } => {
-                self.record_attempt(
-                    job,
-                    attempt_number,
-                    "failure",
-                    is_final,
-                    status,
-                    Some(&error),
-                    &meta,
-                )
-                .await?;
-                let duration_ms = meta.duration_ms;
-                // Exponential backoff from one second decides when the poll may pick the row up again.
-                let backoff_secs = if is_final {
-                    0.0
-                } else {
-                    2i64.pow((attempt_number - 1).clamp(0, 10) as u32) as f64
-                };
-                sqlx::query(
-                    "UPDATE delivery SET status = $1, attempts = $2, last_attempt_at = now(), \
-                     response = $3, next_attempt_at = now() + make_interval(secs => $4) WHERE id = $5::uuid",
-                )
-                .bind(if is_final { "failed" } else { "pending" })
-                .bind(attempt_number)
-                .bind(serde_json::json!({
-                    "status": status, "durationMs": duration_ms, "error": error
-                }))
-                .bind(backoff_secs)
-                .bind(&job.delivery_id)
-                .execute(&self.pool)
-                .await?;
+            } => (
+                if is_final { "failed" } else { "pending" },
+                status,
+                Some(error),
+                meta,
+            ),
+        };
+        let delivered = row_status == "delivered";
 
-                self.record_failure(&job.endpoint_id).await?;
-            }
+        self.record_attempt(
+            job,
+            attempt_number,
+            if delivered { "success" } else { "failure" },
+            delivered || is_final,
+            http_status,
+            error.as_deref(),
+            &meta,
+        )
+        .await?;
+
+        // Exponential backoff from one second decides when the poll may pick the row up again.
+        // A delivered row leaves the partial poll index, so its next_attempt_at is inert.
+        let backoff_secs = if delivered || is_final {
+            0.0
+        } else {
+            2i64.pow((attempt_number - 1).clamp(0, 10) as u32) as f64
+        };
+        let response = match &error {
+            None => serde_json::json!({ "status": http_status, "durationMs": meta.duration_ms }),
+            Some(error) => serde_json::json!({
+                "status": http_status, "durationMs": meta.duration_ms, "error": error
+            }),
+        };
+        sqlx::query(
+            "UPDATE delivery SET status = $1, attempts = $2, last_attempt_at = now(), \
+             response = $3, next_attempt_at = now() + make_interval(secs => $4) WHERE id = $5::uuid",
+        )
+        .bind(row_status)
+        .bind(attempt_number)
+        .bind(&response)
+        .bind(backoff_secs)
+        .bind(&job.delivery_id)
+        .execute(&self.pool)
+        .await?;
+
+        if delivered {
+            self.close_circuit(&job.endpoint_id).await?;
+        } else {
+            self.record_failure(&job.endpoint_id).await?;
         }
 
         Ok(())

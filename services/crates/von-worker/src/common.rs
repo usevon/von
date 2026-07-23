@@ -20,6 +20,14 @@ pub fn lease_secs() -> f64 {
         .unwrap_or(60.0)
 }
 
+/// Redirect following would let a target url bounce to an internal address.
+pub fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("reqwest client build")
+}
+
 pub fn sign(payload: &str, secret: &str) -> String {
     let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(secret.as_bytes()) else {
         return String::new();

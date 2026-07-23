@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
-use crate::common::{concurrency, lease_secs, sign};
+use crate::common::{concurrency, http_client, lease_secs, sign};
 
 const BATCH_SIZE: i64 = 64;
 
@@ -31,11 +31,7 @@ impl Inbound {
     pub async fn new(pool: PgPool) -> Self {
         Self {
             pool,
-            // Redirect following would let a forward_url bounce to an internal address.
-            http: reqwest::Client::builder()
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .expect("reqwest client build"),
+            http: http_client(),
             concurrency: concurrency(),
             lease_secs: lease_secs(),
         }
