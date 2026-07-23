@@ -16,6 +16,10 @@ path = "src/bin/loadgen.rs"
 name = "stress"
 path = "src/bin/stress.rs"
 
+[[bin]]
+name = "e2e"
+path = "src/bin/e2e.rs"
+
 [dependencies]
 von-api = { workspace = true }
 von-billing = { workspace = true }
