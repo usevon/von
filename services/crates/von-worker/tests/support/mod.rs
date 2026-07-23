@@ -291,7 +291,6 @@ impl Fixture {
                 created_at: now,
             }],
             deliveries,
-            plan: "scale".to_owned(),
         };
 
         let mut conn = self.redis.clone();

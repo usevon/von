@@ -378,7 +378,6 @@ pub async fn test_endpoint(
             attempts: 0,
             created_at: now_iso,
         }],
-        plan: tenant.plan.clone(),
     };
 
     let mut conn = state.redis.clone();

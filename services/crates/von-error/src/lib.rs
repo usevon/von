@@ -9,9 +9,6 @@ pub enum Error {
     #[error("API key lacks required scope {0}")]
     InsufficientScope(String),
 
-    #[error("organization {0} has no active endpoints")]
-    NoEndpoints(String),
-
     #[error("monthly delivery quota exceeded (used {used} of {limit})")]
     QuotaExceeded { used: i64, limit: i64 },
 
@@ -52,7 +49,6 @@ impl Error {
         match self {
             Self::MissingCredentials | Self::InvalidApiKey => 401,
             Self::InsufficientScope(_) => 403,
-            Self::NoEndpoints(_) => 422,
             Self::QuotaExceeded { .. } | Self::RateLimited(_) => 429,
             Self::PayloadTooLarge { .. } => 413,
             Self::BadRequest(_) => 400,

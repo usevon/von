@@ -1,5 +1,5 @@
 use crate::error::ApiError;
-use axum::extract::{FromRequestParts, OptionalFromRequestParts};
+use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use serde::de::DeserializeOwned;
 use von_error::Error;
@@ -21,22 +21,5 @@ where
         serde_html_form::from_str(query)
             .map(Self)
             .map_err(|err| Error::BadRequest(err.to_string()).into())
-    }
-}
-
-impl<T, S> OptionalFromRequestParts<S> for Query<T>
-where
-    T: DeserializeOwned,
-    S: Send + Sync,
-{
-    type Rejection = ApiError;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &S,
-    ) -> Result<Option<Self>, Self::Rejection> {
-        <Self as FromRequestParts<S>>::from_request_parts(parts, state)
-            .await
-            .map(Some)
     }
 }

@@ -148,11 +148,7 @@ impl RedisOps {
             let requested = deliveries.len().max(1) as i64;
             // Throughput is measured in events, not requests, so a batch counts fully.
             let rate_cost = events.len().max(1) as i64;
-            let entry = BufferedEntry {
-                events,
-                deliveries,
-                plan: job.tenant.plan.clone(),
-            };
+            let entry = BufferedEntry { events, deliveries };
             // An unencodable entry must fail loudly instead of buffering an empty payload
             // that the flusher would skip while the caller sees a 200.
             let payload = match serde_json::to_string(&entry) {
