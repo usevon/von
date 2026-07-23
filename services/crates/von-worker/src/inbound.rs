@@ -1,32 +1,20 @@
 use futures_util::stream::{self, StreamExt};
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
+use crate::common::{concurrency, lease_secs, sign};
+
 const BATCH_SIZE: i64 = 64;
-
-fn concurrency() -> usize {
-    std::env::var("WORKER_CONCURRENCY")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .unwrap_or(50)
-        .clamp(1, 500)
-}
-
-fn lease_secs() -> f64 {
-    std::env::var("WORKER_LEASE_SECS")
-        .ok()
-        .and_then(|v| v.parse::<f64>().ok())
-        .unwrap_or(60.0)
-}
 
 struct Claimed {
     delivery_id: String,
     endpoint_id: String,
     payload: String,
+}
+
+struct Endpoint {
     forward_url: String,
     secret: String,
     timeout_ms: i32,
@@ -69,7 +57,7 @@ impl Inbound {
         Ok(count)
     }
 
-    /// Claims due inbound deliveries for active endpoints, pushing next_attempt_at out by the lease.
+    /// Claims due inbound deliveries with SKIP LOCKED, pushing next_attempt_at out by the lease.
     async fn claim(&self) -> Result<Vec<Claimed>> {
         let rows = sqlx::query(
             "WITH claimed AS ( \
@@ -81,10 +69,10 @@ impl Inbound {
              ) \
              UPDATE inbound_delivery d \
              SET next_attempt_at = now() + make_interval(secs => $1) \
-             FROM claimed c, inbound_endpoint e \
-             WHERE d.id = c.id AND e.id = d.inbound_endpoint_id AND e.status = 'active' \
-             RETURNING d.id::text AS delivery_id, e.id::text AS endpoint_id, \
-               d.payload::text AS payload, e.forward_url, e.secret, e.timeout_ms",
+             FROM claimed c \
+             WHERE d.id = c.id \
+             RETURNING d.id::text AS delivery_id, \
+               d.inbound_endpoint_id::text AS endpoint_id, d.payload::text AS payload",
         )
         .bind(self.lease_secs)
         .bind(BATCH_SIZE)
@@ -94,36 +82,61 @@ impl Inbound {
         Ok(rows
             .into_iter()
             .filter_map(|row| {
-                let secret = von_api::cipher::decrypt_secret(row.try_get("secret").ok()?).ok()?;
                 Some(Claimed {
                     delivery_id: row.try_get("delivery_id").ok()?,
                     endpoint_id: row.try_get("endpoint_id").ok()?,
                     payload: row.try_get("payload").ok()?,
-                    forward_url: row.try_get("forward_url").ok()?,
-                    secret,
-                    timeout_ms: row.try_get("timeout_ms").ok()?,
                 })
             })
             .collect())
     }
 
-    async fn forward(&self, job: &Claimed) -> Result<()> {
-        let timestamp = chrono::Utc::now().timestamp();
-        let signature = {
-            let mut mac = Hmac::<Sha256>::new_from_slice(job.secret.as_bytes())
-                .map_err(|_| von_error::Error::Configuration("bad secret".to_owned()))?;
-            mac.update(format!("{timestamp}.{}", job.payload).as_bytes());
-            hex::encode(mac.finalize().into_bytes())
+    async fn load_endpoint(&self, endpoint_id: &str) -> Result<Option<Endpoint>> {
+        let row = sqlx::query(
+            "SELECT forward_url, secret, timeout_ms FROM inbound_endpoint \
+             WHERE id = $1::uuid AND status = 'active' LIMIT 1",
+        )
+        .bind(endpoint_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
         };
+        Ok(Some(Endpoint {
+            forward_url: row.try_get("forward_url")?,
+            secret: von_api::cipher::decrypt_secret(row.try_get("secret")?)?,
+            timeout_ms: row.try_get("timeout_ms")?,
+        }))
+    }
+
+    async fn set_status(&self, delivery_id: &str, status: &str) -> Result<()> {
+        sqlx::query("UPDATE inbound_delivery SET status = $1 WHERE id = $2::uuid")
+            .bind(status)
+            .bind(delivery_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn forward(&self, job: &Claimed) -> Result<()> {
+        let Some(endpoint) = self.load_endpoint(&job.endpoint_id).await? else {
+            // The endpoint is gone or no longer active, so stop polling this row.
+            self.set_status(&job.delivery_id, "skipped").await?;
+            return Ok(());
+        };
+
+        let timestamp = chrono::Utc::now().timestamp();
+        let signature = sign(&format!("{timestamp}.{}", job.payload), &endpoint.secret);
 
         let start = Instant::now();
         let result = self
             .http
-            .post(&job.forward_url)
+            .post(&endpoint.forward_url)
             .header("content-type", "application/json")
             .header("x-von-signature", format!("t={timestamp},v1={signature}"))
             .header("x-von-inbound-delivery-id", &job.delivery_id)
-            .timeout(Duration::from_millis(job.timeout_ms.max(1) as u64))
+            .timeout(Duration::from_millis(endpoint.timeout_ms.max(1) as u64))
             .body(job.payload.clone())
             .send()
             .await;

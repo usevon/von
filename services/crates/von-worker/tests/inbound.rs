@@ -39,6 +39,37 @@ async fn inbound_forwards_a_pending_delivery_and_signs_it() {
     );
 }
 
+/// A delivery whose endpoint went inactive lands on skipped instead of clogging the poll window,
+/// and a live delivery behind it still forwards.
+#[tokio::test]
+async fn inbound_skips_deliveries_for_inactive_endpoints() {
+    let fixture = fixture_or_skip!();
+    let probe = Probe::start(0).await;
+    let dead_endpoint = fixture.create_inbound_endpoint(&probe.url).await;
+    let dead_delivery = fixture
+        .enqueue_inbound(&dead_endpoint, r#"{"scenario":"inbound-dead"}"#)
+        .await;
+    sqlx::query("UPDATE inbound_endpoint SET status = 'paused' WHERE id = $1::uuid")
+        .bind(&dead_endpoint)
+        .execute(&fixture.pool)
+        .await
+        .expect("pause endpoint");
+
+    let live_endpoint = fixture.create_inbound_endpoint(&probe.url).await;
+    let live_delivery = fixture
+        .enqueue_inbound(&live_endpoint, r#"{"scenario":"inbound-live"}"#)
+        .await;
+
+    let settled = fixture
+        .settle_inbound_until(async || {
+            fixture.inbound_status(&dead_delivery).await.as_deref() == Some("skipped")
+                && fixture.inbound_status(&live_delivery).await.as_deref() == Some("forwarded")
+        })
+        .await;
+    assert!(settled, "a paused endpoint blocked the inbound queue");
+    assert_eq!(probe.hits().len(), 1);
+}
+
 /// A pending inbound delivery whose lease has not expired must not be forwarded early, then must
 /// forward once it is due.
 #[tokio::test]

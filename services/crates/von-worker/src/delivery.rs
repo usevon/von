@@ -1,33 +1,16 @@
 use futures_util::stream::{self, StreamExt};
-use hmac::{Hmac, Mac};
 use redis::aio::ConnectionManager;
-use sha2::Sha256;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
+use crate::common::{concurrency, lease_secs, sign};
+
 const CIRCUIT_THRESHOLD: i32 = 5;
 const CIRCUIT_RESET_SECS: i64 = 300;
 const THROUGHPUT_RETRY_MS: i64 = 1000;
 const BATCH_SIZE: i64 = 64;
-
-fn worker_concurrency() -> usize {
-    std::env::var("WORKER_CONCURRENCY")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .unwrap_or(50)
-        .clamp(1, 500)
-}
-
-/// A claimed row's next_attempt_at is pushed out by this much, so a worker that dies mid-delivery
-/// leaves the row pollable again once the lease expires.
-fn lease_secs() -> f64 {
-    std::env::var("WORKER_LEASE_SECS")
-        .ok()
-        .and_then(|v| v.parse::<f64>().ok())
-        .unwrap_or(60.0)
-}
 
 /// A delivery claimed from the pending queue, carrying the event data the send needs.
 struct Claimed {
@@ -115,7 +98,7 @@ impl Worker {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .expect("reqwest client build"),
-            concurrency: worker_concurrency(),
+            concurrency: concurrency(),
             lease_secs: lease_secs(),
         })
     }
@@ -473,12 +456,4 @@ impl Worker {
         .await?;
         Ok(())
     }
-}
-
-fn sign(payload: &str, secret: &str) -> String {
-    let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(secret.as_bytes()) else {
-        return String::new();
-    };
-    mac.update(payload.as_bytes());
-    hex::encode(mac.finalize().into_bytes())
 }
