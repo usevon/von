@@ -30,11 +30,11 @@ function TabsList({
   return (
     <TabsPrimitive.List
       className={cn(
-        "relative z-0 flex w-fit items-center justify-center gap-x-0.5 text-muted-foreground",
+        "relative z-0 flex items-center gap-x-0.5 text-muted-foreground",
         "data-[orientation=vertical]:flex-col",
         variant === "default"
-          ? "rounded-none bg-muted p-0.5 text-muted-foreground/72"
-          : "data-[orientation=vertical]:px-1 data-[orientation=horizontal]:pt-1 *:data-[slot=tabs-trigger]:hover:bg-accent",
+          ? "w-fit justify-center rounded-none bg-muted p-0.5 text-muted-foreground/72"
+          : "w-full border-border border-b data-[orientation=vertical]:w-fit data-[orientation=vertical]:border-r data-[orientation=vertical]:border-b-0 data-[orientation=vertical]:px-1 data-[orientation=horizontal]:pt-1 *:data-[slot=tabs-trigger]:grow-0 *:data-[slot=tabs-trigger]:hover:bg-accent",
         className
       )}
       data-slot="tabs-list"
@@ -58,7 +58,7 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       className={cn(
-        "flex shrink-0 grow cursor-pointer items-center justify-center whitespace-nowrap rounded-none border border-transparent font-medium text-base outline-none transition-[color,background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-64 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-mx-0.5 [&_svg]:shrink-0",
+        "flex shrink-0 grow cursor-pointer items-center justify-center whitespace-nowrap rounded-none border border-transparent font-medium text-base outline-none ring-ring/24 transition-[color,background-color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] data-disabled:pointer-events-none data-disabled:opacity-64 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-mx-0.5 [&_svg]:shrink-0",
         "hover:text-muted-foreground data-active:text-foreground",
         "h-9 gap-1.5 px-[calc(--spacing(2.5)-1px)] sm:h-8",
         "data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start",
