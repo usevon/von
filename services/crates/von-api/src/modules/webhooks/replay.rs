@@ -155,14 +155,15 @@ pub async fn replay_bulk(
         .ok_or_else(|| Error::BadRequest("Invalid since date".to_owned()))?;
 
     let mut sql = String::from(
-        "SELECT d.event_id::text AS event_id, d.endpoint_id::text AS endpoint_id \
+        "SELECT d.id, d.event_id::text AS event_id, d.endpoint_id::text AS endpoint_id \
          FROM delivery d \
-         WHERE d.organization_id = $1::uuid AND d.created_at >= $2 AND d.status = $3",
+         WHERE d.organization_id = $1::uuid AND d.created_at >= $2 AND d.status = $3 \
+         AND d.replayed_at IS NULL",
     );
     if body.endpoint_id.is_some() {
         sql.push_str(" AND d.endpoint_id = $5::uuid");
     }
-    sql.push_str(" LIMIT $4");
+    sql.push_str(" ORDER BY d.created_at, d.id LIMIT $4");
 
     let mut query = sqlx::query(&sql)
         .bind(&tenant.organization_id)
@@ -177,7 +178,9 @@ pub async fn replay_bulk(
         tenant.endpoints.iter().map(|e| e.id.as_str()).collect();
 
     let mut targets = Vec::new();
+    let mut originals: Vec<uuid::Uuid> = Vec::new();
     for row in query.fetch_all(&state.pool).await? {
+        originals.push(row.try_get("id")?);
         let endpoint_id: String = row.try_get("endpoint_id")?;
         // An endpoint disabled since the failure is skipped rather than revived.
         if !active.contains(endpoint_id.as_str()) {
@@ -190,6 +193,16 @@ pub async fn replay_bulk(
     }
 
     let delivery_ids = create_deliveries(state, tenant, targets).await?;
+
+    // Marking after the insert means a crash between the two can duplicate one batch,
+    // which beats marking first and losing it.
+    if !originals.is_empty() {
+        sqlx::query("UPDATE delivery SET replayed_at = now() WHERE id = ANY($1)")
+            .bind(&originals)
+            .execute(&state.pool)
+            .await?;
+    }
+
     Ok(BulkReplayResult {
         replayed: delivery_ids.len(),
     })
