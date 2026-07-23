@@ -1,11 +1,7 @@
+use crate::ENDPOINT_STATUSES;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use von_error::{Error, Result};
-
-pub const DEFAULT_MAX_ATTEMPTS: i32 = 4;
-pub const DEFAULT_TIMEOUT_MS: i32 = 30_000;
-
-const STATUSES: [&str; 3] = ["active", "paused", "disabled"];
 
 fn invalid(message: &str) -> Error {
     Error::BadRequest(message.to_owned())
@@ -13,7 +9,7 @@ fn invalid(message: &str) -> Error {
 
 fn check_status(value: &Option<String>) -> Result<()> {
     match value {
-        Some(status) if !STATUSES.contains(&status.as_str()) => {
+        Some(status) if !ENDPOINT_STATUSES.contains(&status.as_str()) => {
             Err(invalid("status must be active, paused or disabled"))
         }
         _ => Ok(()),

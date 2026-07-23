@@ -57,7 +57,6 @@ impl Inbound {
         Ok(count)
     }
 
-    /// Claims due inbound deliveries with SKIP LOCKED, pushing next_attempt_at out by the lease.
     async fn claim(&self) -> Result<Vec<Claimed>> {
         let rows = sqlx::query(
             "WITH claimed AS ( \

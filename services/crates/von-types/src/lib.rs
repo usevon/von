@@ -10,7 +10,6 @@ pub const MAX_PAYLOAD_BYTES: usize = 1024 * 1024;
 /// Payloads are billed in chunks of this size, so a large event costs more than a small one.
 pub const BILLABLE_CHUNK_BYTES: usize = 64 * 1024;
 
-/// Number of billable units an event of this size consumes, minimum one.
 pub fn billable_units(payload_bytes: usize) -> u32 {
     (payload_bytes.div_ceil(BILLABLE_CHUNK_BYTES)).max(1) as u32
 }
@@ -50,7 +49,6 @@ pub struct BufferedDelivery {
     pub created_at: String,
 }
 
-/// Event as returned to the API caller.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CreatedEvent {
     pub id: String,
@@ -62,6 +60,9 @@ pub struct CreatedEvent {
     #[serde(rename = "createdAt")]
     pub created_at: String,
 }
+
+/// The monthly quota counter outlives the month by a wide margin, then expires on its own.
+pub const QUOTA_TTL: i64 = 3_888_000;
 
 pub fn quota_key(org_id: &str, month: &str) -> String {
     format!("{{{org_id}}}:deliveries:{month}")

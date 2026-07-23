@@ -255,7 +255,7 @@ impl Fixture {
             .await
     }
 
-    /// One event fanned out to several endpoints, each getting its own delivery.
+    /// One event fanned out to multiple endpoints, each getting its own delivery.
     pub async fn enqueue_fanout(&self, payload: &str, endpoint_ids: &[String]) -> String {
         self.enqueue_inner(payload, None, endpoint_ids).await
     }

@@ -26,9 +26,7 @@ pub struct Tenant {
     pub scopes: Vec<String>,
 }
 
-/// What a request proved about itself, from either an API key or a dashboard
-/// session. Routes that only need the caller's identity take this rather than
-/// the full tenant, so a session can reach them without a plan or endpoints.
+/// Identity a request proved from an API key or dashboard session, without needing a plan or endpoints.
 pub struct Principal {
     pub organization_id: String,
     pub user_id: String,
@@ -200,10 +198,8 @@ impl Auth {
         Ok(())
     }
 
-    /// better-auth keys the session record in secondary storage by the bearer
-    /// token verbatim. A session missing from redis is treated as invalid rather
-    /// than falling back to the session table, because better-auth does not read
-    /// that table either once secondary storage is configured.
+    /// better-auth keys the session in redis by the bearer token verbatim and never
+    /// reads the session table once secondary storage is configured.
     async fn resolve_session(&self, token: &str) -> Result<Option<Principal>> {
         let Some(mut conn) = self.redis.clone() else {
             return Ok(None);

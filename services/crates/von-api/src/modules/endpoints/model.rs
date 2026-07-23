@@ -1,20 +1,8 @@
+use crate::ENDPOINT_STATUSES;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use utoipa::ToSchema;
 use von_error::{Error, Result};
-
-pub const DEFAULT_MAX_ATTEMPTS: i32 = 4;
-pub const DEFAULT_TIMEOUT_MS: i32 = 30_000;
-
-const MAX_DESCRIPTION_LEN: usize = 500;
-const MAX_VERSION_LEN: usize = 50;
-const MAX_EVENT_LEN: usize = 100;
-const MIN_MAX_ATTEMPTS: i32 = 1;
-const MAX_MAX_ATTEMPTS: i32 = 10;
-const MIN_TIMEOUT_MS: i32 = 1000;
-const MAX_TIMEOUT_MS: i32 = 60_000;
-
-const STATUSES: [&str; 3] = ["active", "paused", "disabled"];
 
 /// Only describes the schema, since the wire fields stay strings so an unknown
 /// status is answered with a validation message instead of a deserialize error.
@@ -32,7 +20,7 @@ fn invalid(message: &str) -> Error {
 
 fn check_description(value: Option<&String>) -> Result<()> {
     match value {
-        Some(v) if v.chars().count() > MAX_DESCRIPTION_LEN => {
+        Some(v) if v.chars().count() > 500 => {
             Err(invalid("description must be at most 500 characters"))
         }
         _ => Ok(()),
@@ -41,16 +29,14 @@ fn check_description(value: Option<&String>) -> Result<()> {
 
 fn check_version(value: Option<&String>) -> Result<()> {
     match value {
-        Some(v) if v.chars().count() > MAX_VERSION_LEN => {
-            Err(invalid("version must be at most 50 characters"))
-        }
+        Some(v) if v.chars().count() > 50 => Err(invalid("version must be at most 50 characters")),
         _ => Ok(()),
     }
 }
 
 fn check_status(value: Option<&String>) -> Result<()> {
     match value {
-        Some(v) if !STATUSES.contains(&v.as_str()) => {
+        Some(v) if !ENDPOINT_STATUSES.contains(&v.as_str()) => {
             Err(invalid("status must be one of active, paused, disabled"))
         }
         _ => Ok(()),
@@ -59,16 +45,14 @@ fn check_status(value: Option<&String>) -> Result<()> {
 
 fn check_max_attempts(value: Option<i32>) -> Result<()> {
     match value {
-        Some(v) if !(MIN_MAX_ATTEMPTS..=MAX_MAX_ATTEMPTS).contains(&v) => {
-            Err(invalid("maxAttempts must be between 1 and 10"))
-        }
+        Some(v) if !(1..=10).contains(&v) => Err(invalid("maxAttempts must be between 1 and 10")),
         _ => Ok(()),
     }
 }
 
 fn check_timeout_ms(value: Option<i32>) -> Result<()> {
     match value {
-        Some(v) if !(MIN_TIMEOUT_MS..=MAX_TIMEOUT_MS).contains(&v) => {
+        Some(v) if !(1000..=60_000).contains(&v) => {
             Err(invalid("timeoutMs must be between 1000 and 60000"))
         }
         _ => Ok(()),
@@ -77,7 +61,7 @@ fn check_timeout_ms(value: Option<i32>) -> Result<()> {
 
 fn check_events(value: Option<&Vec<String>>) -> Result<()> {
     match value {
-        Some(list) if list.iter().any(|e| e.chars().count() > MAX_EVENT_LEN) => {
+        Some(list) if list.iter().any(|e| e.chars().count() > 100) => {
             Err(invalid("each event must be at most 100 characters"))
         }
         _ => Ok(()),

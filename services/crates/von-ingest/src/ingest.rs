@@ -117,9 +117,7 @@ pub async fn live() -> &'static str {
     "ok"
 }
 
-/// Load balancers poll this to stop sending traffic before the process exits.
-/// It verifies the dependencies a request actually needs, so a node that cannot
-/// serve is pulled out rather than accepting traffic it will fail.
+/// Verifies the dependencies a request needs so the load balancer pulls a node that cannot serve.
 pub async fn ready(State(state): State<Shared>) -> Result<&'static str, ApiError> {
     if state.coalescer.is_draining() || !state.coalescer.is_healthy() {
         return Err(Error::Shutdown.into());

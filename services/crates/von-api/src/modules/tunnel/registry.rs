@@ -36,7 +36,7 @@ impl Connection {
     }
 }
 
-/// Live sockets held by this process. Redis records which instance owns each id.
+/// Live sockets held by this process, redis records which instance owns each id.
 #[derive(Default)]
 pub struct Registry {
     connections: DashMap<String, Arc<Connection>>,

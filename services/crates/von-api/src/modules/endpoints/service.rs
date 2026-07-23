@@ -1,22 +1,21 @@
 use super::model::{
-    CreateEndpoint, DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, Endpoint, EndpointList,
-    EndpointWithSecret, RotateResponse, TestResponse, UpdateEndpoint,
+    CreateEndpoint, Endpoint, EndpointList, EndpointWithSecret, RotateResponse, TestResponse,
+    UpdateEndpoint,
 };
 use crate::auth::Tenant;
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
 use crate::pagination::{PaginationQuery, fetch_org_page};
 use crate::state::ApiState;
-use crate::to_iso;
 use crate::url_safety::assert_safe_webhook_url;
+use crate::{DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, to_iso};
 use chrono::{NaiveDateTime, Utc};
 use serde_json::value::RawValue;
 use sqlx::Row;
 use sqlx::postgres::PgRow;
 use von_error::{Error, Result};
-use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY, quota_key};
+use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, QUOTA_TTL, STREAM_KEY, quota_key};
 
 const RESOURCE: &str = "endpoints";
-const QUOTA_TTL: i64 = 3_888_000;
 
 // Signing secrets stay out of this list so ordinary reads never pull ciphertext,
 // rotate_secret selects the secret itself.

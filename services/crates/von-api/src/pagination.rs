@@ -58,8 +58,6 @@ impl CursorSort {
         }
     }
 
-    /// The comparison the keyset predicate needs, so a caller can build the
-    /// tuple condition without matching on the variant itself.
     pub fn compare(self) -> &'static str {
         match self {
             Self::Asc => ">",
@@ -129,7 +127,7 @@ pub fn scope_hash_json(json: &str) -> String {
     hex
 }
 
-pub fn scope_hash(resource: &str, organization_id: &str) -> String {
+fn scope_hash(resource: &str, organization_id: &str) -> String {
     scope_hash_json(&format!(
         "{{\"resource\":\"{resource}\",\"organizationId\":\"{organization_id}\"}}"
     ))
@@ -213,8 +211,6 @@ pub fn decode_cursor_sorted(
     }))
 }
 
-/// Fetches one keyset page of an org scoped table ordered by created_at DESC, id DESC,
-/// returning the rows plus the cursor for the next page.
 pub async fn fetch_org_page(
     pool: &PgPool,
     table: &str,
@@ -261,9 +257,7 @@ pub async fn fetch_org_page(
     Ok((rows, next_cursor))
 }
 
-/// JSON.stringify emits keys in insertion order, so the hash only matches the
-/// TypeScript one when the pairs are pushed in the same order the caller wrote
-/// them. Values go through serde_json so escaping matches too.
+/// Pairs must stay in the order the TypeScript caller wrote them or the hash will not match JSON.stringify.
 pub fn scope_hash_fields(fields: &[(&str, serde_json::Value)]) -> String {
     let mut json = String::from("{");
     for (index, (key, value)) in fields.iter().enumerate() {

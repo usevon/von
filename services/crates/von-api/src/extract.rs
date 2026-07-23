@@ -19,9 +19,7 @@ pub fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
     Ok(token)
 }
 
-/// Axum's own Query rejects repeated keys and answers with a bare string body.
-/// This one reads them into a sequence the way Elysia does and fails with the
-/// shared error envelope.
+/// Reads repeated query keys into a sequence the way Elysia does, which axum's own Query rejects.
 pub struct Query<T>(pub T);
 
 impl<T, S> FromRequestParts<S> for Query<T>

@@ -3,7 +3,8 @@ use redis::aio::ConnectionManager;
 use std::sync::Arc;
 use von_error::{Error, Result};
 use von_types::{
-    BufferedDelivery, BufferedEntry, BufferedEvent, CreatedEvent, STREAM_KEY, quota_key, rate_key,
+    BufferedDelivery, BufferedEntry, BufferedEvent, CreatedEvent, QUOTA_TTL, STREAM_KEY, quota_key,
+    rate_key,
 };
 
 const RESERVE_AND_BUFFER: &str = r#"
@@ -45,8 +46,6 @@ local stream_id = redis.call('XADD', stream_key, 'MAXLEN', '~', '100000', '*', '
 
 return {1, new_val, stream_id}
 "#;
-
-const DELIVERY_TTL: i64 = 3_888_000;
 
 /// Throughput is a per second ceiling, so the counter window matches.
 const RATE_WINDOW_SECS: i64 = 1;
@@ -166,7 +165,7 @@ impl RedisOps {
                 .arg(rate_key(org, window))
                 .arg(job.tenant.monthly_limit)
                 .arg(requested)
-                .arg(DELIVERY_TTL)
+                .arg(QUOTA_TTL)
                 .arg(i64::from(job.tenant.has_overage))
                 .arg(STREAM_KEY)
                 .arg(payload)

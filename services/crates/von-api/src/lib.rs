@@ -15,6 +15,12 @@ use utoipa::OpenApi;
 pub use error::ApiError;
 pub use state::{ApiState, Shared};
 
+// The retry defaults mirror the column defaults the schema migrations declare.
+pub const DEFAULT_MAX_ATTEMPTS: i32 = 4;
+pub const DEFAULT_TIMEOUT_MS: i32 = 30_000;
+
+pub const ENDPOINT_STATUSES: [&str; 3] = ["active", "paused", "disabled"];
+
 /// Matches the ISO string the TypeScript service returns so both services render
 /// the same timestamp for a row.
 pub fn to_iso(value: chrono::NaiveDateTime) -> String {

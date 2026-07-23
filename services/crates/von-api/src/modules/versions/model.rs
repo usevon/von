@@ -3,8 +3,6 @@ use serde_json::{Map, Value};
 use utoipa::ToSchema;
 use von_error::{Error, Result};
 
-const MAX_VERSION_LEN: usize = 50;
-
 fn invalid(message: &str) -> Error {
     Error::BadRequest(message.to_owned())
 }
@@ -71,7 +69,7 @@ pub fn clean_transforms(transforms: &Value) -> Result<Value> {
 }
 
 fn check_version(value: &str) -> Result<()> {
-    if value.chars().count() > MAX_VERSION_LEN {
+    if value.chars().count() > 50 {
         return Err(invalid("version must be at most 50 characters"));
     }
     Ok(())

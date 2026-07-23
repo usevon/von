@@ -12,7 +12,6 @@ const CIRCUIT_RESET_SECS: i64 = 300;
 const THROUGHPUT_RETRY_MS: i64 = 1000;
 const BATCH_SIZE: i64 = 64;
 
-/// A delivery claimed from the pending queue, carrying the event data the send needs.
 struct Claimed {
     delivery_id: String,
     event_id: String,
@@ -163,7 +162,6 @@ impl Worker {
             .collect())
     }
 
-    /// Pushes next_attempt_at out without touching status or the attempt count.
     async fn reschedule(&self, delivery_id: &str, delay_ms: i64) -> Result<()> {
         sqlx::query(
             "UPDATE delivery SET next_attempt_at = now() + make_interval(secs => $1) WHERE id = $2::uuid",

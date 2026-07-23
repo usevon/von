@@ -1,8 +1,7 @@
 use sqlx::postgres::PgPoolOptions;
 
 /// Marks every embedded migration as applied without running it, for a database
-/// whose schema was created out of band and already matches. Verify that first,
-/// because anything actually missing will stay missing.
+/// created out of band whose schema already matches.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();

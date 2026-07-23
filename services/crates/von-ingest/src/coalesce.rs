@@ -48,9 +48,8 @@ impl TenantState {
         }
     }
 
-    /// Takes as many whole requests as fit under the caps so one oversized tenant
-    /// cannot grow a batch without bound. Byte cost is multiplied by fanout because
-    /// each event produces one delivery record per matching endpoint in the entry.
+    /// Takes whole requests up to the caps, costing bytes by fanout because each
+    /// event produces one delivery record per matching endpoint.
     fn drain_capped(&mut self, fanout: usize) -> Vec<PendingRequest> {
         let mut taken = 0usize;
         let mut events = 0usize;
@@ -116,12 +115,10 @@ impl Coalescer {
         coalescer
     }
 
-    /// True once shutdown has begun, so the HTTP layer can stop accepting work.
     pub fn is_draining(&self) -> bool {
         self.draining.load(Ordering::SeqCst)
     }
 
-    /// False if the flush loop died, which means nothing can be persisted.
     pub fn is_healthy(&self) -> bool {
         self.alive.load(Ordering::SeqCst)
     }
@@ -220,8 +217,7 @@ async fn flush_loop(
     redis: RedisOps,
     mut rx: mpsc::UnboundedReceiver<FlushJob>,
 ) {
-    // The connection multiplexes, so multiple pipelines can be in flight at once.
-    // Per tenant ordering still holds because in_flight allows one job per tenant.
+    // Pipelines overlap in flight while in_flight keeps per tenant ordering.
     let slots = Arc::new(tokio::sync::Semaphore::new(MAX_INFLIGHT_PIPELINES));
 
     while let Some(first) = rx.recv().await {

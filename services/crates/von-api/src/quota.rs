@@ -1,9 +1,6 @@
 use crate::state::ApiState;
 use von_error::{Error, Result};
-use von_types::quota_key;
-
-/// The monthly quota counter outlives the month by a wide margin, then expires on its own.
-const QUOTA_TTL: i64 = 3_888_000;
+use von_types::{QUOTA_TTL, quota_key};
 
 /// Reserves monthly quota before any rows are written, so a rejected batch never
 /// leaves half created deliveries behind.

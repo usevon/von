@@ -44,7 +44,6 @@ pub enum Error {
 }
 
 impl Error {
-    /// HTTP status this error maps to, so handlers do not each reinvent it.
     pub fn status_code(&self) -> u16 {
         match self {
             Self::MissingCredentials | Self::InvalidApiKey => 401,
@@ -58,7 +57,6 @@ impl Error {
         }
     }
 
-    /// Whether the caller can retry the same request unchanged.
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,

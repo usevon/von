@@ -15,7 +15,6 @@ pub struct Meter {
     client: AutumnClient,
     feature_id: String,
     pending: DashMap<String, AtomicU64>,
-    /// Organizations whose entitlement check came back over limit.
     blocked: DashSet<String>,
     customers: DashSet<String>,
 }
