@@ -1,5 +1,5 @@
 use crate::client::AutumnClient;
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -15,8 +15,9 @@ pub struct Meter {
     client: AutumnClient,
     feature_id: String,
     pending: DashMap<String, AtomicU64>,
-    blocked: DashMap<String, bool>,
-    customers: DashMap<String, ()>,
+    /// Organizations whose entitlement check came back over limit.
+    blocked: DashSet<String>,
+    customers: DashSet<String>,
 }
 
 impl Meter {
@@ -25,8 +26,8 @@ impl Meter {
             client: AutumnClient::new(secret_key),
             feature_id,
             pending: DashMap::new(),
-            blocked: DashMap::new(),
-            customers: DashMap::new(),
+            blocked: DashSet::new(),
+            customers: DashSet::new(),
         });
 
         let flusher = meter.clone();
@@ -64,20 +65,17 @@ impl Meter {
 
     /// Reads the cached entitlement, never the network, so ingest cannot stall on billing.
     pub fn is_over_limit(&self, organization_id: &str) -> bool {
-        self.blocked
-            .get(organization_id)
-            .map(|b| *b)
-            .unwrap_or(false)
+        self.blocked.contains(organization_id)
     }
 
     async fn ensure_customer(&self, organization_id: &str) {
-        if self.customers.contains_key(organization_id) {
+        if self.customers.contains(organization_id) {
             return;
         }
         let body = json!({ "id": organization_id });
         match self.client.post("customers", body).await {
             Ok(_) => {
-                self.customers.insert(organization_id.to_owned(), ());
+                self.customers.insert(organization_id.to_owned());
             }
             Err(err) => eprintln!("autumn customer creation failed, {err}"),
         }
@@ -86,33 +84,35 @@ impl Meter {
     /// Drains counters and reports totals rather than individual events, which is
     /// what keeps a 30k per second ingest inside Autumn's rate limits.
     pub async fn flush(&self) {
-        let mut items: Vec<Value> = Vec::new();
         let mut drained: Vec<(String, u64)> = Vec::new();
-
         for entry in self.pending.iter() {
             let value = entry.value().swap(0, Ordering::Relaxed);
-            if value == 0 {
-                continue;
+            if value > 0 {
+                drained.push((entry.key().clone(), value));
             }
-            drained.push((entry.key().clone(), value));
         }
 
-        for (organization_id, value) in &drained {
-            self.ensure_customer(organization_id).await;
-            items.push(json!({
-                "customer_id": organization_id,
-                "feature_id": self.feature_id,
-                "value": value,
-            }));
-        }
-
-        for chunk in items.chunks(BATCH_LIMIT) {
-            let body = Value::Array(chunk.to_vec());
+        for (index, chunk) in drained.chunks(BATCH_LIMIT).enumerate() {
+            for (organization_id, _) in chunk {
+                self.ensure_customer(organization_id).await;
+            }
+            let body = Value::Array(
+                chunk
+                    .iter()
+                    .map(|(organization_id, value)| {
+                        json!({
+                            "customer_id": organization_id,
+                            "feature_id": self.feature_id,
+                            "value": value,
+                        })
+                    })
+                    .collect(),
+            );
             if let Err(err) = self.client.post("balances.batch_track", body).await {
-                // Autumn says not to retry a partial batch, so the counts go back and
-                // the next flush reports them again rather than risking double billing.
-                eprintln!("autumn batch_track failed, restoring counts, {err}");
-                for (organization_id, value) in &drained {
+                // Autumn says not to retry a partial batch, so only the unsent counts go
+                // back and the next flush reports them again without double billing.
+                eprintln!("autumn batch_track failed, restoring unsent counts, {err}");
+                for (organization_id, value) in &drained[index * BATCH_LIMIT..] {
                     self.record(organization_id, *value);
                 }
                 return;
@@ -135,8 +135,11 @@ impl Meter {
                     // exhausted one, and blocking on that would reject new tenants.
                     let has_balance = !out["balance"].is_null();
                     let allowed = out["allowed"].as_bool().unwrap_or(true);
-                    self.blocked
-                        .insert(organization_id, has_balance && !allowed);
+                    if has_balance && !allowed {
+                        self.blocked.insert(organization_id);
+                    } else {
+                        self.blocked.remove(&organization_id);
+                    }
                 }
                 // A billing outage must never stop ingest, so the tenant stays allowed.
                 Err(err) => eprintln!("autumn check failed, leaving access open, {err}"),

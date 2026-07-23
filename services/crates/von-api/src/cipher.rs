@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
 use von_error::{Error, Result};
 
-const CIPHER_PREFIX: &str = "enc:v1";
+const CIPHER_PREFIX: &str = "enc:v1:";
 const IV_BYTES: usize = 12;
 const TAG_BYTES: usize = 16;
 
@@ -34,7 +34,7 @@ fn cipher_key() -> Result<&'static [u8; 32]> {
 /// Node's GCM cipher emits the tag separately while the aead crate appends it to
 /// the ciphertext, so the two halves are spliced apart to match the stored format.
 pub fn encrypt_secret(value: &str) -> Result<String> {
-    if value.starts_with(&format!("{CIPHER_PREFIX}:")) {
+    if value.starts_with(CIPHER_PREFIX) {
         return Ok(value.to_owned());
     }
 
@@ -61,7 +61,7 @@ pub fn encrypt_secret(value: &str) -> Result<String> {
     let tag = sealed.split_off(sealed.len() - TAG_BYTES);
 
     Ok(format!(
-        "{CIPHER_PREFIX}:{}:{}:{}",
+        "{CIPHER_PREFIX}{}:{}:{}",
         B64.encode(iv),
         B64.encode(tag),
         B64.encode(sealed)
@@ -69,7 +69,7 @@ pub fn encrypt_secret(value: &str) -> Result<String> {
 }
 
 pub fn decrypt_secret(value: &str) -> Result<String> {
-    if !value.starts_with(&format!("{CIPHER_PREFIX}:")) {
+    if !value.starts_with(CIPHER_PREFIX) {
         return Ok(value.to_owned());
     }
 

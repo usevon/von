@@ -5,7 +5,7 @@ pub mod extract;
 pub mod modules;
 pub mod openapi;
 pub mod pagination;
-pub mod queue;
+pub mod quota;
 pub mod state;
 pub mod url_safety;
 

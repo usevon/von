@@ -1,5 +1,5 @@
 use crate::error::ApiError;
-use crate::queue::reserve_quota;
+use crate::quota::reserve_quota;
 use crate::state::{ApiState, Shared};
 use axum::{
     Json,

@@ -1,4 +1,4 @@
-use super::registry::{Connection, Registry, TunnelResponse};
+use super::registry::{Connection, TunnelResponse};
 use crate::state::Shared;
 use axum::{
     extract::{
@@ -86,7 +86,7 @@ async fn serve(
 
     if let Some(previous) = state.tunnels.insert(tunnel_id.clone(), connection.clone()) {
         let _ = previous.outbound.send(r#"{"type":"takeover"}"#.to_owned());
-        Registry::fail_pending(&previous);
+        previous.fail_pending();
     }
 
     register_in_redis(&state, &tunnel_id, &organization_id).await;
@@ -147,7 +147,7 @@ async fn serve(
     keepalive.abort();
     writer.abort();
     state.tunnels.remove(&tunnel_id);
-    Registry::fail_pending(&connection);
+    connection.fail_pending();
     unregister_in_redis(&state, &tunnel_id, &organization_id).await;
 }
 

@@ -127,14 +127,15 @@ pub async fn get_overview(
         range.where_clause("event")
     );
 
-    let delivery_row = range
-        .bind(sqlx::query(&delivery_sql).bind(organization_id))
-        .fetch_one(&state.pool)
-        .await?;
-    let event_row = range
-        .bind(sqlx::query(&event_sql).bind(organization_id))
-        .fetch_one(&state.pool)
-        .await?;
+    // The two aggregates hit different tables, so they run concurrently.
+    let (delivery_row, event_row) = tokio::try_join!(
+        range
+            .bind(sqlx::query(&delivery_sql).bind(organization_id))
+            .fetch_one(&state.pool),
+        range
+            .bind(sqlx::query(&event_sql).bind(organization_id))
+            .fetch_one(&state.pool),
+    )?;
 
     let deliveries = count(&delivery_row, "deliveries")?;
     let delivered = sum(&delivery_row, "delivered")?;
@@ -242,14 +243,15 @@ pub async fn get_retries(
         range.where_clause("delivery_attempt")
     );
 
-    let totals_row = range
-        .bind(sqlx::query(&totals_sql).bind(organization_id))
-        .fetch_one(&state.pool)
-        .await?;
-    let attempt_rows = range
-        .bind(sqlx::query(&attempts_sql).bind(organization_id))
-        .fetch_all(&state.pool)
-        .await?;
+    // The two aggregates hit different tables, so they run concurrently.
+    let (totals_row, attempt_rows) = tokio::try_join!(
+        range
+            .bind(sqlx::query(&totals_sql).bind(organization_id))
+            .fetch_one(&state.pool),
+        range
+            .bind(sqlx::query(&attempts_sql).bind(organization_id))
+            .fetch_all(&state.pool),
+    )?;
 
     let deliveries = count(&totals_row, "deliveries")?;
     let deliveries_with_retry = sum(&totals_row, "deliveries_with_retry")?;

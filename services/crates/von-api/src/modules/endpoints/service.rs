@@ -16,9 +16,11 @@ use von_error::{Error, Result};
 use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY, quota_key};
 
 const RESOURCE: &str = "endpoints";
-const DELIVERY_TTL: i64 = 3_888_000;
+const QUOTA_TTL: i64 = 3_888_000;
 
-const SELECT_COLUMNS: &str = "id::text AS id, url, description, secret, previous_secret, status, \
+// Signing secrets stay out of this list so ordinary reads never pull ciphertext,
+// rotate_secret selects the secret itself.
+const SELECT_COLUMNS: &str = "id::text AS id, url, description, status, \
      version, max_attempts, timeout_ms, events, last_success_at, created_at, updated_at";
 
 fn to_endpoint(row: &PgRow) -> Result<Endpoint> {
@@ -224,12 +226,18 @@ pub async fn rotate_secret(
     organization_id: &str,
     id: &str,
 ) -> Result<RotateResponse> {
-    let existing = find_row(state, organization_id, id)
-        .await?
-        .ok_or_else(|| Error::NotFound("Endpoint".to_owned()))?;
+    let uuid = uuid::Uuid::parse_str(id).map_err(|_| Error::NotFound("Endpoint".to_owned()))?;
+    let encrypted: Option<String> = sqlx::query_scalar(
+        "SELECT secret FROM endpoint WHERE id = $1 AND organization_id = $2::uuid LIMIT 1",
+    )
+    .bind(uuid)
+    .bind(organization_id)
+    .fetch_optional(&state.pool)
+    .await?;
+    let encrypted = encrypted.ok_or_else(|| Error::NotFound("Endpoint".to_owned()))?;
 
     let new_secret = generate_secret();
-    let previous_secret = decrypt_secret(&existing.try_get::<String, _>("secret")?)?;
+    let previous_secret = decrypt_secret(&encrypted)?;
 
     sqlx::query(
         "UPDATE endpoint SET secret = $1, previous_secret = $2, updated_at = $3 WHERE id = $4",
@@ -237,12 +245,7 @@ pub async fn rotate_secret(
     .bind(encrypt_secret(&new_secret)?)
     .bind(encrypt_secret(&previous_secret)?)
     .bind(Utc::now().naive_utc())
-    .bind(
-        existing
-            .try_get::<String, _>("id")?
-            .parse::<uuid::Uuid>()
-            .ok(),
-    )
+    .bind(uuid)
     .execute(&state.pool)
     .await?;
 
@@ -354,7 +357,7 @@ pub async fn test_endpoint(
         .arg(1)
         .arg(quota_key(organization_id, &now.format("%Y-%m").to_string()))
         .arg(tenant.monthly_limit)
-        .arg(DELIVERY_TTL)
+        .arg(QUOTA_TTL)
         .arg(i64::from(tenant.has_overage))
         .arg(STREAM_KEY)
         .arg(serde_json::to_string(&entry)?)

@@ -2,7 +2,8 @@ use crate::state::ApiState;
 use von_error::{Error, Result};
 use von_types::quota_key;
 
-const DELIVERY_TTL: i64 = 3_888_000;
+/// The monthly quota counter outlives the month by a wide margin, then expires on its own.
+const QUOTA_TTL: i64 = 3_888_000;
 
 /// Reserves monthly quota before any rows are written, so a rejected batch never
 /// leaves half created deliveries behind.
@@ -36,7 +37,7 @@ pub async fn reserve_quota(
         .arg(quota_key(organization_id, &month))
         .arg(limit)
         .arg(requested)
-        .arg(DELIVERY_TTL)
+        .arg(QUOTA_TTL)
         .arg(i64::from(has_overage))
         .query_async(&mut conn)
         .await?;

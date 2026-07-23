@@ -29,6 +29,13 @@ pub struct Connection {
     pub user_id: String,
 }
 
+impl Connection {
+    /// Dropping the senders wakes every waiter instead of leaving them to time out.
+    pub fn fail_pending(&self) {
+        self.pending.retain(|_, _| false);
+    }
+}
+
 /// Live sockets held by this process. Redis records which instance owns each id.
 #[derive(Default)]
 pub struct Registry {
@@ -50,10 +57,5 @@ impl Registry {
 
     pub fn remove(&self, tunnel_id: &str) -> Option<Arc<Connection>> {
         self.connections.remove(tunnel_id).map(|(_, c)| c)
-    }
-
-    /// Dropping the senders wakes every waiter instead of leaving them to time out.
-    pub fn fail_pending(connection: &Connection) {
-        connection.pending.retain(|_, _| false);
     }
 }

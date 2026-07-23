@@ -1,5 +1,5 @@
 use crate::auth::Tenant;
-use crate::queue::reserve_quota;
+use crate::quota::reserve_quota;
 use crate::state::ApiState;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
