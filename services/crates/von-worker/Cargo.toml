@@ -16,6 +16,7 @@ von-types = { workspace = true }
 
 chrono = { workspace = true }
 dotenvy = { workspace = true }
+futures-util = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }
 redis = { workspace = true }

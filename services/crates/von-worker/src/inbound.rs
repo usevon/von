@@ -1,96 +1,116 @@
+use futures_util::stream::{self, StreamExt};
 use hmac::{Hmac, Mac};
-use redis::aio::ConnectionManager;
 use sha2::Sha256;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
+use tracing::error;
 use von_error::Result;
-use von_types::{INBOUND_GROUP, INBOUND_STREAM, InboundJob};
+
+const BATCH_SIZE: i64 = 64;
+
+fn concurrency() -> usize {
+    std::env::var("WORKER_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(50)
+        .clamp(1, 500)
+}
+
+fn lease_secs() -> f64 {
+    std::env::var("WORKER_LEASE_SECS")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(60.0)
+}
+
+struct Claimed {
+    delivery_id: String,
+    endpoint_id: String,
+    payload: String,
+    forward_url: String,
+    secret: String,
+    timeout_ms: i32,
+}
 
 pub struct Inbound {
     pool: PgPool,
-    redis: ConnectionManager,
     http: reqwest::Client,
-    consumer: String,
+    concurrency: usize,
+    lease_secs: f64,
 }
 
 impl Inbound {
-    pub async fn new(pool: PgPool, mut redis: ConnectionManager) -> Self {
-        let _: redis::RedisResult<()> = redis::cmd("XGROUP")
-            .arg("CREATE")
-            .arg(INBOUND_STREAM)
-            .arg(INBOUND_GROUP)
-            .arg("0")
-            .arg("MKSTREAM")
-            .query_async(&mut redis)
-            .await;
-
+    pub async fn new(pool: PgPool) -> Self {
         Self {
             pool,
-            redis,
-            http: reqwest::Client::new(),
-            consumer: format!("rust-inbound-{}", &uuid::Uuid::new_v4().to_string()[..8]),
+            // Redirect following would let a forward_url bounce to an internal address.
+            http: reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .expect("reqwest client build"),
+            concurrency: concurrency(),
+            lease_secs: lease_secs(),
         }
     }
 
     pub async fn tick(&self) -> Result<usize> {
-        let mut conn = self.redis.clone();
-        let read: Option<redis::streams::StreamReadReply> = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(INBOUND_GROUP)
-            .arg(&self.consumer)
-            .arg("COUNT")
-            .arg(64)
-            .arg("STREAMS")
-            .arg(INBOUND_STREAM)
-            .arg(">")
-            .query_async(&mut conn)
-            .await?;
+        let claimed = self.claim().await?;
+        let count = claimed.len();
 
-        let entries = read.map(crate::flusher::entries_of).unwrap_or_default();
-        let count = entries.len();
-
-        for (stream_id, payload) in entries {
-            if let Ok(job) = serde_json::from_str::<InboundJob>(&payload)
-                && let Err(err) = self.forward(&job).await
-            {
-                eprintln!("inbound {} failed: {err}", job.delivery_id);
-            }
-            let _: redis::RedisResult<()> = redis::pipe()
-                .cmd("XACK")
-                .arg(INBOUND_STREAM)
-                .arg(INBOUND_GROUP)
-                .arg(&stream_id)
-                .ignore()
-                .cmd("XDEL")
-                .arg(INBOUND_STREAM)
-                .arg(&stream_id)
-                .ignore()
-                .query_async(&mut conn)
-                .await;
-        }
+        stream::iter(claimed)
+            .for_each_concurrent(self.concurrency, |job| async move {
+                if let Err(err) = self.forward(&job).await {
+                    // The lease re-exposes the row once it expires, so nothing is dropped.
+                    error!(delivery_id = %job.delivery_id, error = %err, "inbound forward failed");
+                }
+            })
+            .await;
 
         Ok(count)
     }
 
-    async fn forward(&self, job: &InboundJob) -> Result<()> {
-        let row = sqlx::query(
-            "SELECT forward_url, secret, timeout_ms FROM inbound_endpoint \
-             WHERE id = $1::uuid AND status = 'active' LIMIT 1",
+    /// Claims due inbound deliveries for active endpoints, pushing next_attempt_at out by the lease.
+    async fn claim(&self) -> Result<Vec<Claimed>> {
+        let rows = sqlx::query(
+            "WITH claimed AS ( \
+               SELECT id FROM inbound_delivery \
+               WHERE status = 'pending' AND next_attempt_at <= now() \
+               ORDER BY next_attempt_at \
+               FOR UPDATE SKIP LOCKED \
+               LIMIT $2 \
+             ) \
+             UPDATE inbound_delivery d \
+             SET next_attempt_at = now() + make_interval(secs => $1) \
+             FROM claimed c, inbound_endpoint e \
+             WHERE d.id = c.id AND e.id = d.inbound_endpoint_id AND e.status = 'active' \
+             RETURNING d.id::text AS delivery_id, e.id::text AS endpoint_id, \
+               d.payload::text AS payload, e.forward_url, e.secret, e.timeout_ms",
         )
-        .bind(&job.endpoint_id)
-        .fetch_optional(&self.pool)
+        .bind(self.lease_secs)
+        .bind(BATCH_SIZE)
+        .fetch_all(&self.pool)
         .await?;
 
-        let Some(row) = row else {
-            return Ok(());
-        };
-        let url: String = row.try_get("forward_url")?;
-        let secret = von_api::cipher::decrypt_secret(row.try_get("secret")?)?;
-        let timeout_ms: i32 = row.try_get("timeout_ms")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|row| {
+                let secret = von_api::cipher::decrypt_secret(row.try_get("secret").ok()?).ok()?;
+                Some(Claimed {
+                    delivery_id: row.try_get("delivery_id").ok()?,
+                    endpoint_id: row.try_get("endpoint_id").ok()?,
+                    payload: row.try_get("payload").ok()?,
+                    forward_url: row.try_get("forward_url").ok()?,
+                    secret,
+                    timeout_ms: row.try_get("timeout_ms").ok()?,
+                })
+            })
+            .collect())
+    }
 
+    async fn forward(&self, job: &Claimed) -> Result<()> {
         let timestamp = chrono::Utc::now().timestamp();
         let signature = {
-            let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
+            let mut mac = Hmac::<Sha256>::new_from_slice(job.secret.as_bytes())
                 .map_err(|_| von_error::Error::Configuration("bad secret".to_owned()))?;
             mac.update(format!("{timestamp}.{}", job.payload).as_bytes());
             hex::encode(mac.finalize().into_bytes())
@@ -99,11 +119,11 @@ impl Inbound {
         let start = Instant::now();
         let result = self
             .http
-            .post(&url)
+            .post(&job.forward_url)
             .header("content-type", "application/json")
             .header("x-von-signature", format!("t={timestamp},v1={signature}"))
             .header("x-von-inbound-delivery-id", &job.delivery_id)
-            .timeout(Duration::from_millis(timeout_ms.max(1) as u64))
+            .timeout(Duration::from_millis(job.timeout_ms.max(1) as u64))
             .body(job.payload.clone())
             .send()
             .await;

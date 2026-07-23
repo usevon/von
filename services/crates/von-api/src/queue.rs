@@ -1,6 +1,6 @@
 use crate::state::ApiState;
 use von_error::{Error, Result};
-use von_types::{DELIVERY_STREAM, DeliveryJob, quota_key};
+use von_types::quota_key;
 
 const DELIVERY_TTL: i64 = 3_888_000;
 
@@ -45,25 +45,4 @@ pub async fn reserve_quota(
         return Ok(());
     }
     Err(Error::QuotaExceeded { used, limit })
-}
-
-pub async fn enqueue_deliveries(state: &ApiState, jobs: &[DeliveryJob]) -> Result<()> {
-    if jobs.is_empty() {
-        return Ok(());
-    }
-    let mut pipe = redis::pipe();
-    for job in jobs {
-        let Ok(encoded) = serde_json::to_string(job) else {
-            continue;
-        };
-        pipe.cmd("XADD")
-            .arg(DELIVERY_STREAM)
-            .arg("*")
-            .arg("data")
-            .arg(encoded)
-            .ignore();
-    }
-    let mut conn = state.redis.clone();
-    pipe.query_async::<()>(&mut conn).await?;
-    Ok(())
 }

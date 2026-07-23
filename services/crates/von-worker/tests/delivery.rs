@@ -26,7 +26,7 @@ async fn delivers_signs_and_records_one_attempt() {
 
     let settled = fixture
         .settle_until(async || {
-            fixture.delivery_status(&event_id).await.as_deref() == Some("success")
+            fixture.delivery_status(&event_id).await.as_deref() == Some("delivered")
         })
         .await;
     assert!(settled, "delivery never reached success");
@@ -62,7 +62,7 @@ async fn retries_then_succeeds_without_gaps_in_attempt_numbers() {
 
     let settled = fixture
         .settle_until(async || {
-            fixture.delivery_status(&event_id).await.as_deref() == Some("success")
+            fixture.delivery_status(&event_id).await.as_deref() == Some("delivered")
         })
         .await;
     assert!(settled, "delivery never recovered after two failures");

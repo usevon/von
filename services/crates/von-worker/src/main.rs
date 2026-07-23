@@ -20,8 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = redis::aio::ConnectionManager::new(client).await?;
 
     let flusher = flusher::Flusher::new(pool.clone(), conn.clone()).await;
-    let worker = delivery::Worker::new(pool.clone(), conn.clone()).await?;
-    let inbound = inbound::Inbound::new(pool, conn).await;
+    let worker = delivery::Worker::new(pool.clone(), conn).await?;
+    let inbound = inbound::Inbound::new(pool).await;
 
     info!("worker running");
 

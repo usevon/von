@@ -1,17 +1,47 @@
+use futures_util::stream::{self, StreamExt};
 use hmac::{Hmac, Mac};
 use redis::aio::ConnectionManager;
 use sha2::Sha256;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
+use tracing::error;
 use von_error::Result;
-use von_types::{DELIVERY_DELAYED, DELIVERY_GROUP, DELIVERY_STREAM, DeliveryJob};
 
 const CIRCUIT_THRESHOLD: i32 = 5;
 const CIRCUIT_RESET_SECS: i64 = 300;
 const THROUGHPUT_RETRY_MS: i64 = 1000;
+const BATCH_SIZE: i64 = 64;
 
-/// Token bucket shared with the typescript worker so both throttle one tenant
-/// against the same counter during the migration.
+fn worker_concurrency() -> usize {
+    std::env::var("WORKER_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(50)
+        .clamp(1, 500)
+}
+
+/// A claimed row's next_attempt_at is pushed out by this much, so a worker that dies mid-delivery
+/// leaves the row pollable again once the lease expires.
+fn lease_secs() -> f64 {
+    std::env::var("WORKER_LEASE_SECS")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(60.0)
+}
+
+/// A delivery claimed from the pending queue, carrying the event data the send needs.
+struct Claimed {
+    delivery_id: String,
+    event_id: String,
+    endpoint_id: String,
+    organization_id: String,
+    event_type: String,
+    payload: String,
+    plan: String,
+    attempts: i32,
+}
+
+/// Token bucket capping one tenant's outbound delivery rate.
 const THROUGHPUT_SCRIPT: &str = r#"
 local key = KEYS[1]
 local rate = tonumber(ARGV[1])
@@ -43,8 +73,8 @@ pub struct Worker {
     pool: PgPool,
     redis: ConnectionManager,
     http: reqwest::Client,
-    consumer: String,
-    throughput_sha: String,
+    concurrency: usize,
+    lease_secs: f64,
 }
 
 struct Endpoint {
@@ -70,127 +100,91 @@ enum Outcome {
 }
 
 impl Worker {
-    pub async fn new(pool: PgPool, mut redis: ConnectionManager) -> Result<Self> {
-        let _: redis::RedisResult<()> = redis::cmd("XGROUP")
-            .arg("CREATE")
-            .arg(DELIVERY_STREAM)
-            .arg(DELIVERY_GROUP)
-            .arg("0")
-            .arg("MKSTREAM")
-            .query_async(&mut redis)
-            .await;
-
-        let throughput_sha: String = redis::cmd("SCRIPT")
-            .arg("LOAD")
-            .arg(THROUGHPUT_SCRIPT)
-            .query_async(&mut redis)
-            .await?;
-
+    pub async fn new(pool: PgPool, redis: ConnectionManager) -> Result<Self> {
         Ok(Self {
             pool,
             redis,
+            // unwrap_or_default would silently re-enable redirect following and reopen the SSRF hole.
             http: reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
-                .unwrap_or_default(),
-            consumer: format!("rust-worker-{}", &uuid::Uuid::new_v4().to_string()[..8]),
-            throughput_sha,
+                .expect("reqwest client build"),
+            concurrency: worker_concurrency(),
+            lease_secs: lease_secs(),
         })
     }
 
     pub async fn tick(&self) -> Result<usize> {
-        self.promote_due().await?;
+        let claimed = self.claim().await?;
+        let count = claimed.len();
 
-        let mut conn = self.redis.clone();
-        let read: Option<redis::streams::StreamReadReply> = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(DELIVERY_GROUP)
-            .arg(&self.consumer)
-            .arg("COUNT")
-            .arg(64)
-            .arg("STREAMS")
-            .arg(DELIVERY_STREAM)
-            .arg(">")
-            .query_async(&mut conn)
-            .await?;
-
-        let entries = read.map(crate::flusher::entries_of).unwrap_or_default();
-        let count = entries.len();
-
-        for (stream_id, payload) in entries {
-            if let Ok(job) = serde_json::from_str::<DeliveryJob>(&payload) {
+        stream::iter(claimed)
+            .for_each_concurrent(self.concurrency, |job| async move {
                 if let Err(err) = self.process(&job).await {
-                    eprintln!("delivery {} failed: {err}", job.delivery_id);
+                    // The lease re-exposes the row once it expires, so nothing is dropped.
+                    error!(delivery_id = %job.delivery_id, error = %err, "delivery failed");
                 }
-            }
-            let _: redis::RedisResult<()> = redis::pipe()
-                .cmd("XACK")
-                .arg(DELIVERY_STREAM)
-                .arg(DELIVERY_GROUP)
-                .arg(&stream_id)
-                .ignore()
-                .cmd("XDEL")
-                .arg(DELIVERY_STREAM)
-                .arg(&stream_id)
-                .ignore()
-                .query_async(&mut conn)
-                .await;
-        }
+            })
+            .await;
 
         Ok(count)
     }
 
-    /// Retries live in a sorted set keyed by due time, which the stream itself
-    /// cannot express.
-    async fn promote_due(&self) -> Result<()> {
-        let mut conn = self.redis.clone();
-        let now = chrono::Utc::now().timestamp_millis();
-        let due: Vec<String> = redis::cmd("ZRANGEBYSCORE")
-            .arg(DELIVERY_DELAYED)
-            .arg(0)
-            .arg(now)
-            .arg("LIMIT")
-            .arg(0)
-            .arg(100)
-            .query_async(&mut conn)
-            .await?;
+    /// Claims a batch of due deliveries with SKIP LOCKED, pushing their next_attempt_at out by the
+    /// lease so no other worker takes them and a crash re-exposes them later.
+    async fn claim(&self) -> Result<Vec<Claimed>> {
+        let rows = sqlx::query(
+            "WITH claimed AS ( \
+               SELECT id FROM delivery \
+               WHERE status = 'pending' AND next_attempt_at <= now() \
+               ORDER BY next_attempt_at \
+               FOR UPDATE SKIP LOCKED \
+               LIMIT $2 \
+             ) \
+             UPDATE delivery d \
+             SET next_attempt_at = now() + make_interval(secs => $1) \
+             FROM claimed c, event e, organization o \
+             WHERE d.id = c.id AND e.id = d.event_id AND o.id = d.organization_id \
+             RETURNING d.id::text AS delivery_id, d.event_id::text AS event_id, \
+               d.endpoint_id::text AS endpoint_id, d.organization_id::text AS organization_id, \
+               d.attempts, e.event_type, e.payload::text AS payload, o.plan",
+        )
+        .bind(self.lease_secs)
+        .bind(BATCH_SIZE)
+        .fetch_all(&self.pool)
+        .await?;
 
-        for payload in due {
-            let removed: i64 = redis::cmd("ZREM")
-                .arg(DELIVERY_DELAYED)
-                .arg(&payload)
-                .query_async(&mut conn)
-                .await?;
-            // Another worker may have promoted the same entry first.
-            if removed == 0 {
-                continue;
-            }
-            let _: redis::RedisResult<()> = redis::cmd("XADD")
-                .arg(DELIVERY_STREAM)
-                .arg("*")
-                .arg("data")
-                .arg(&payload)
-                .query_async(&mut conn)
-                .await;
-        }
+        Ok(rows
+            .into_iter()
+            .map(|row| Claimed {
+                delivery_id: row.try_get("delivery_id").unwrap_or_default(),
+                event_id: row.try_get("event_id").unwrap_or_default(),
+                endpoint_id: row.try_get("endpoint_id").unwrap_or_default(),
+                organization_id: row.try_get("organization_id").unwrap_or_default(),
+                event_type: row.try_get("event_type").unwrap_or_default(),
+                payload: row.try_get("payload").unwrap_or_default(),
+                plan: row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned()),
+                attempts: row.try_get("attempts").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Pushes next_attempt_at out without touching status or the attempt count.
+    async fn reschedule(&self, delivery_id: &str, delay_ms: i64) -> Result<()> {
+        sqlx::query(
+            "UPDATE delivery SET next_attempt_at = now() + make_interval(secs => $1) WHERE id = $2::uuid",
+        )
+        .bind(delay_ms as f64 / 1000.0)
+        .bind(delivery_id)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
-    async fn delay(&self, job: &DeliveryJob, delay_ms: i64) -> Result<()> {
-        let mut conn = self.redis.clone();
-        let payload = serde_json::to_string(job).unwrap_or_default();
-        let due = chrono::Utc::now().timestamp_millis() + delay_ms;
-        let _: redis::RedisResult<()> = redis::cmd("ZADD")
-            .arg(DELIVERY_DELAYED)
-            .arg(due)
-            .arg(payload)
-            .query_async(&mut conn)
-            .await;
-        Ok(())
-    }
-
-    async fn process(&self, job: &DeliveryJob) -> Result<()> {
+    async fn process(&self, job: &Claimed) -> Result<()> {
         let Some(endpoint) = self.load_endpoint(&job.endpoint_id).await? else {
+            // The endpoint is gone or inactive, so stop polling this row.
+            self.set_status(&job.delivery_id, "skipped").await?;
             return Ok(());
         };
 
@@ -205,17 +199,10 @@ impl Worker {
             .allow_throughput(&job.organization_id, &job.plan)
             .await?
         {
-            return self.delay(job, THROUGHPUT_RETRY_MS).await;
+            return self.reschedule(&job.delivery_id, THROUGHPUT_RETRY_MS).await;
         }
 
-        // The attempt number comes from the row rather than the queue so a
-        // requeue cannot reset the count.
-        let attempts: i32 = sqlx::query_scalar("SELECT attempts FROM delivery WHERE id = $1::uuid")
-            .bind(&job.delivery_id)
-            .fetch_optional(&self.pool)
-            .await?
-            .unwrap_or(0);
-        let attempt_number = attempts + 1;
+        let attempt_number = job.attempts + 1;
 
         let outcome = self.send(job, &endpoint).await;
         let is_final = attempt_number >= endpoint.max_attempts;
@@ -236,7 +223,7 @@ impl Worker {
                 )
                 .await?;
                 sqlx::query(
-                    "UPDATE delivery SET status = 'success', attempts = $1, last_attempt_at = now(), \
+                    "UPDATE delivery SET status = 'delivered', attempts = $1, last_attempt_at = now(), \
                      response = $2 WHERE id = $3::uuid",
                 )
                 .bind(attempt_number)
@@ -261,34 +248,34 @@ impl Worker {
                     duration_ms,
                 )
                 .await?;
+                // Exponential backoff from one second decides when the poll may pick the row up again.
+                let backoff_secs = if is_final {
+                    0.0
+                } else {
+                    2i64.pow((attempt_number - 1).clamp(0, 10) as u32) as f64
+                };
                 sqlx::query(
                     "UPDATE delivery SET status = $1, attempts = $2, last_attempt_at = now(), \
-                     response = $3 WHERE id = $4::uuid",
+                     response = $3, next_attempt_at = now() + make_interval(secs => $4) WHERE id = $5::uuid",
                 )
                 .bind(if is_final { "failed" } else { "pending" })
                 .bind(attempt_number)
                 .bind(serde_json::json!({
                     "status": status, "durationMs": duration_ms, "error": error
                 }))
+                .bind(backoff_secs)
                 .bind(&job.delivery_id)
                 .execute(&self.pool)
                 .await?;
 
                 self.record_failure(&job.endpoint_id).await?;
-
-                if !is_final {
-                    // Exponential backoff from one second, matching the queue's
-                    // previous retry curve.
-                    let backoff = 1000i64 * 2i64.pow((attempt_number - 1).clamp(0, 10) as u32);
-                    self.delay(job, backoff).await?;
-                }
             }
         }
 
         Ok(())
     }
 
-    async fn send(&self, job: &DeliveryJob, endpoint: &Endpoint) -> Outcome {
+    async fn send(&self, job: &Claimed, endpoint: &Endpoint) -> Outcome {
         let timestamp = chrono::Utc::now().timestamp();
         let signed = format!("{timestamp}.{}", job.payload);
         let signature = sign(&signed, &endpoint.secret);
@@ -379,15 +366,13 @@ impl Worker {
             (100, 140)
         };
         let mut conn = self.redis.clone();
-        let allowed: i64 = redis::cmd("EVALSHA")
-            .arg(&self.throughput_sha)
-            .arg(1)
-            .arg(format!("org:throughput:{organization_id}"))
+        let allowed: i64 = redis::Script::new(THROUGHPUT_SCRIPT)
+            .key(format!("org:throughput:{organization_id}"))
             .arg(rate)
             .arg(burst)
             .arg(chrono::Utc::now().timestamp_millis() as f64 / 1000.0)
             .arg(1)
-            .query_async(&mut conn)
+            .invoke_async(&mut conn)
             .await?;
         Ok(allowed == 1)
     }
@@ -395,7 +380,7 @@ impl Worker {
     #[allow(clippy::too_many_arguments)]
     async fn record_attempt(
         &self,
-        job: &DeliveryJob,
+        job: &Claimed,
         attempt_number: i32,
         outcome: &str,
         is_final: bool,

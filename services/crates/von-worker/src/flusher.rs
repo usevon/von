@@ -1,13 +1,10 @@
 use redis::aio::ConnectionManager;
 use sqlx::PgPool;
-use std::collections::HashMap;
 use von_error::Result;
-use von_types::{
-    BufferedDelivery, BufferedEntry, BufferedEvent, DELIVERY_STREAM, DeliveryJob, FLUSHER_GROUP,
-    STREAM_KEY,
-};
+use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, FLUSHER_GROUP, STREAM_KEY};
 
 const BATCH_SIZE: usize = 500;
+const RECLAIM_IDLE_MS: usize = 30_000;
 
 pub struct Flusher {
     pool: PgPool,
@@ -33,9 +30,12 @@ impl Flusher {
         }
     }
 
-    /// Returns how many events were persisted so the caller can back off when idle.
+    /// Drains one batch of buffered events into Postgres, the returned count lets an idle caller back off.
     pub async fn tick(&self) -> Result<usize> {
         let mut conn = self.redis.clone();
+
+        // A batch whose persist failed stays pending, so reclaim it before reading new entries.
+        let mut entries = self.reclaim(&mut conn).await;
 
         let read: Option<redis::streams::StreamReadReply> = redis::cmd("XREADGROUP")
             .arg("GROUP")
@@ -49,7 +49,9 @@ impl Flusher {
             .query_async(&mut conn)
             .await?;
 
-        let entries = read.map(entries_of).unwrap_or_default();
+        if let Some(read) = read {
+            entries.extend(entries_of(read));
+        }
         if entries.is_empty() {
             return Ok(0);
         }
@@ -57,29 +59,22 @@ impl Flusher {
         let mut stream_ids = Vec::with_capacity(entries.len());
         let mut events: Vec<BufferedEvent> = Vec::new();
         let mut deliveries: Vec<BufferedDelivery> = Vec::new();
-        let mut plan_by_delivery: HashMap<String, String> = HashMap::new();
 
         for (id, payload) in entries {
             stream_ids.push(id);
             let Ok(entry) = serde_json::from_str::<BufferedEntry>(&payload) else {
                 continue;
             };
-            for delivery in &entry.deliveries {
-                plan_by_delivery.insert(delivery.id.clone(), entry.plan.clone());
-            }
             events.extend(entry.events);
             deliveries.extend(entry.deliveries);
         }
 
+        // Persisting the pending delivery rows is the enqueue, the worker polls them from Postgres.
         let persisted = if events.is_empty() {
             true
         } else {
             match self.persist(&events, &deliveries).await {
-                Ok(inserted) => {
-                    self.enqueue(&events, &deliveries, &inserted, &plan_by_delivery)
-                        .await?;
-                    true
-                }
+                Ok(_) => true,
                 Err(err) => {
                     eprintln!(
                         "flush failed, leaving {} entries pending: {err}",
@@ -108,8 +103,30 @@ impl Flusher {
         Ok(events.len())
     }
 
-    /// Returns the ids that actually landed, which is a subset when an idempotency
-    /// key collides with an event that was already stored.
+    /// Claims entries a crashed flusher left pending so a Postgres blip does not strand events.
+    async fn reclaim(&self, conn: &mut ConnectionManager) -> Vec<(String, String)> {
+        let reply: redis::RedisResult<redis::streams::StreamAutoClaimReply> = redis::cmd("XAUTOCLAIM")
+            .arg(STREAM_KEY)
+            .arg(FLUSHER_GROUP)
+            .arg(&self.consumer)
+            .arg(RECLAIM_IDLE_MS)
+            .arg("0")
+            .arg("COUNT")
+            .arg(BATCH_SIZE)
+            .query_async(conn)
+            .await;
+
+        match reply {
+            Ok(reply) => reply
+                .claimed
+                .into_iter()
+                .filter_map(|entry| Some((entry.id.clone(), entry.get::<String>("data")?)))
+                .collect(),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// Persists events and their deliveries in one transaction, dropping deliveries whose event was deduped by an idempotency key.
     async fn persist(
         &self,
         events: &[BufferedEvent],
@@ -120,22 +137,28 @@ impl Flusher {
             .execute(&mut *tx)
             .await?;
 
-        let ids: Vec<uuid::Uuid> = events
-            .iter()
-            .filter_map(|e| uuid::Uuid::parse_str(&e.id).ok())
-            .collect();
-        let org_ids: Vec<uuid::Uuid> = events
-            .iter()
-            .filter_map(|e| uuid::Uuid::parse_str(&e.organization_id).ok())
-            .collect();
-        let types: Vec<String> = events.iter().map(|e| e.event_type.clone()).collect();
-        let payloads: Vec<serde_json::Value> = events
-            .iter()
-            .map(|e| serde_json::from_str(e.payload.get()).unwrap_or(serde_json::Value::Null))
-            .collect();
-        let keys: Vec<Option<String>> = events.iter().map(|e| e.idempotency_key.clone()).collect();
-        let created: Vec<chrono::NaiveDateTime> =
-            events.iter().map(|e| parse_iso(&e.created_at)).collect();
+        // One pass so every column array stays index aligned, a single bad id would otherwise
+        // shift the rest onto the wrong org and payload.
+        let mut ids = Vec::with_capacity(events.len());
+        let mut org_ids = Vec::with_capacity(events.len());
+        let mut types = Vec::with_capacity(events.len());
+        let mut payloads = Vec::with_capacity(events.len());
+        let mut keys = Vec::with_capacity(events.len());
+        let mut created = Vec::with_capacity(events.len());
+        for e in events {
+            let (Ok(id), Ok(org)) = (
+                uuid::Uuid::parse_str(&e.id),
+                uuid::Uuid::parse_str(&e.organization_id),
+            ) else {
+                continue;
+            };
+            ids.push(id);
+            org_ids.push(org);
+            types.push(e.event_type.clone());
+            payloads.push(serde_json::from_str(e.payload.get()).unwrap_or(serde_json::Value::Null));
+            keys.push(e.idempotency_key.clone());
+            created.push(parse_iso(&e.created_at));
+        }
 
         let inserted: Vec<String> = sqlx::query_scalar(
             "INSERT INTO event (id, organization_id, event_type, payload, idempotency_key, created_at) \
@@ -153,36 +176,41 @@ impl Flusher {
         .await?;
 
         let landed: std::collections::HashSet<&str> = inserted.iter().map(String::as_str).collect();
-        let to_insert: Vec<&BufferedDelivery> = deliveries
-            .iter()
-            .filter(|d| landed.contains(d.event_id.as_str()))
-            .collect();
 
-        if !to_insert.is_empty() {
-            let d_ids: Vec<uuid::Uuid> = to_insert
-                .iter()
-                .filter_map(|d| uuid::Uuid::parse_str(&d.id).ok())
-                .collect();
-            let d_orgs: Vec<uuid::Uuid> = to_insert
-                .iter()
-                .filter_map(|d| uuid::Uuid::parse_str(&d.organization_id).ok())
-                .collect();
-            let d_events: Vec<uuid::Uuid> = to_insert
-                .iter()
-                .filter_map(|d| uuid::Uuid::parse_str(&d.event_id).ok())
-                .collect();
-            let d_endpoints: Vec<uuid::Uuid> = to_insert
-                .iter()
-                .filter_map(|d| uuid::Uuid::parse_str(&d.endpoint_id).ok())
-                .collect();
-            let d_status: Vec<String> = to_insert.iter().map(|d| d.status.clone()).collect();
-            let d_attempts: Vec<i32> = to_insert.iter().map(|d| d.attempts as i32).collect();
-            let d_created: Vec<chrono::NaiveDateTime> =
-                to_insert.iter().map(|d| parse_iso(&d.created_at)).collect();
+        let mut d_ids = Vec::new();
+        let mut d_orgs = Vec::new();
+        let mut d_events = Vec::new();
+        let mut d_endpoints = Vec::new();
+        let mut d_status = Vec::new();
+        let mut d_attempts = Vec::new();
+        let mut d_created = Vec::new();
+        for d in deliveries {
+            if !landed.contains(d.event_id.as_str()) {
+                continue;
+            }
+            let (Ok(id), Ok(org), Ok(event_id), Ok(endpoint_id)) = (
+                uuid::Uuid::parse_str(&d.id),
+                uuid::Uuid::parse_str(&d.organization_id),
+                uuid::Uuid::parse_str(&d.event_id),
+                uuid::Uuid::parse_str(&d.endpoint_id),
+            ) else {
+                continue;
+            };
+            d_ids.push(id);
+            d_orgs.push(org);
+            d_events.push(event_id);
+            d_endpoints.push(endpoint_id);
+            d_status.push(d.status.clone());
+            d_attempts.push(d.attempts as i32);
+            d_created.push(parse_iso(&d.created_at));
+        }
 
+        if !d_ids.is_empty() {
+            // ON CONFLICT keeps a reclaimed batch idempotent when its event rows already committed.
             sqlx::query(
                 "INSERT INTO delivery (id, organization_id, event_id, endpoint_id, status, attempts, created_at) \
-                 SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::int[], $7::timestamp[])",
+                 SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::int[], $7::timestamp[]) \
+                 ON CONFLICT (id) DO NOTHING",
             )
             .bind(&d_ids)
             .bind(&d_orgs)
@@ -197,60 +225,6 @@ impl Flusher {
 
         tx.commit().await?;
         Ok(inserted)
-    }
-
-    /// Enqueued only after the rows exist so a worker cannot pick up a delivery
-    /// whose event has not been committed.
-    async fn enqueue(
-        &self,
-        events: &[BufferedEvent],
-        deliveries: &[BufferedDelivery],
-        inserted: &[String],
-        plans: &HashMap<String, String>,
-    ) -> Result<()> {
-        let landed: std::collections::HashSet<&str> = inserted.iter().map(String::as_str).collect();
-        let by_id: HashMap<&str, &BufferedEvent> =
-            events.iter().map(|e| (e.id.as_str(), e)).collect();
-
-        let mut pipe = redis::pipe();
-        let mut queued = 0;
-        for delivery in deliveries {
-            if !landed.contains(delivery.event_id.as_str()) {
-                continue;
-            }
-            let Some(event) = by_id.get(delivery.event_id.as_str()) else {
-                continue;
-            };
-
-            let job = DeliveryJob {
-                delivery_id: delivery.id.clone(),
-                event_id: delivery.event_id.clone(),
-                endpoint_id: delivery.endpoint_id.clone(),
-                organization_id: delivery.organization_id.clone(),
-                event_type: event.event_type.clone(),
-                payload: event.payload.get().to_owned(),
-                plan: plans
-                    .get(&delivery.id)
-                    .cloned()
-                    .unwrap_or_else(|| "hobby".to_owned()),
-            };
-            let Ok(encoded) = serde_json::to_string(&job) else {
-                continue;
-            };
-            pipe.cmd("XADD")
-                .arg(DELIVERY_STREAM)
-                .arg("*")
-                .arg("data")
-                .arg(encoded)
-                .ignore();
-            queued += 1;
-        }
-
-        if queued > 0 {
-            let mut conn = self.redis.clone();
-            pipe.query_async::<()>(&mut conn).await?;
-        }
-        Ok(())
     }
 }
 

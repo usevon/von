@@ -12,7 +12,7 @@ use sqlx::Row;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 use von_error::{Error, Result};
-use von_types::{INBOUND_STREAM, InboundJob, MAX_PAYLOAD_BYTES};
+use von_types::MAX_PAYLOAD_BYTES;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -106,6 +106,7 @@ pub async fn handler(
     )
     .await?;
 
+    // The pending row with next_attempt_at defaulting to now() is the enqueue, the forwarder polls it.
     let delivery_id = uuid::Uuid::new_v4();
     let row = sqlx::query(
         "INSERT INTO inbound_delivery (id, inbound_endpoint_id, payload, headers, status, created_at) \
@@ -118,23 +119,6 @@ pub async fn handler(
     .fetch_one(&state.pool)
     .await
     .map_err(Error::from)?;
-
-    // Enqueued after the row exists so the forwarder cannot read a delivery that
-    // has not been committed.
-    let job = InboundJob {
-        delivery_id: delivery_id.to_string(),
-        endpoint_id: id,
-        organization_id: target.organization_id,
-        payload: String::from_utf8_lossy(&body).into_owned(),
-    };
-    let mut conn = state.redis.clone();
-    let _: redis::RedisResult<String> = redis::cmd("XADD")
-        .arg(INBOUND_STREAM)
-        .arg("*")
-        .arg("data")
-        .arg(serde_json::to_string(&job).unwrap_or_default())
-        .query_async(&mut conn)
-        .await;
 
     let created_at: chrono::NaiveDateTime = row.try_get("created_at").map_err(Error::from)?;
     Ok((

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use sqlx::{PgPool, Row};
@@ -5,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY};
-use von_worker::{delivery::Worker, flusher::Flusher};
+use von_worker::{delivery::Worker, flusher::Flusher, inbound::Inbound};
 
 pub struct Hit {
     pub body: String,
@@ -111,6 +113,7 @@ pub struct Fixture {
     pub redis: redis::aio::ConnectionManager,
     pub flusher: Flusher,
     pub worker: Worker,
+    pub inbound: Inbound,
     pub organization_id: String,
     pub endpoint_id: String,
     pub secret: String,
@@ -134,16 +137,76 @@ impl Fixture {
 
         let flusher = Flusher::new(pool.clone(), redis.clone()).await;
         let worker = Worker::new(pool.clone(), redis.clone()).await.ok()?;
+        let inbound = Inbound::new(pool.clone()).await;
 
         Some(Self {
             pool,
             redis,
             flusher,
             worker,
+            inbound,
             organization_id,
             endpoint_id: uuid::Uuid::new_v4().to_string(),
             secret: format!("whsec_{}", uuid::Uuid::new_v4()),
         })
+    }
+
+    /// Creates an active inbound endpoint that forwards to url, returning its id.
+    pub async fn create_inbound_endpoint(&self, url: &str) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO inbound_endpoint (id, organization_id, forward_url, secret, status, \
+             timeout_ms, created_at, updated_at) \
+             VALUES ($1::uuid, $2::uuid, $3, $4, 'active', 5000, now(), now())",
+        )
+        .bind(&id)
+        .bind(&self.organization_id)
+        .bind(url)
+        .bind(von_api::cipher::encrypt_secret(&self.secret).expect("encrypt"))
+        .execute(&self.pool)
+        .await
+        .expect("create inbound endpoint");
+        id
+    }
+
+    /// Inserts a pending inbound delivery, which is exactly what the receive handler writes.
+    pub async fn enqueue_inbound(&self, endpoint_id: &str, payload: &str) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO inbound_delivery (id, inbound_endpoint_id, payload, status, created_at) \
+             VALUES ($1::uuid, $2::uuid, $3::jsonb, 'pending', now())",
+        )
+        .bind(&id)
+        .bind(endpoint_id)
+        .bind(payload)
+        .execute(&self.pool)
+        .await
+        .expect("enqueue inbound");
+        id
+    }
+
+    pub async fn inbound_status(&self, delivery_id: &str) -> Option<String> {
+        sqlx::query_scalar("SELECT status FROM inbound_delivery WHERE id = $1::uuid")
+            .bind(delivery_id)
+            .fetch_optional(&self.pool)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    /// Pumps the inbound loop until the predicate holds.
+    pub async fn settle_inbound_until<F>(&self, mut done: F) -> bool
+    where
+        F: AsyncFnMut() -> bool,
+    {
+        for _ in 0..200 {
+            let _ = self.inbound.tick().await;
+            if done().await {
+                return true;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        false
     }
 
     pub async fn create_endpoint(&self, url: &str, max_attempts: i32) {
@@ -163,10 +226,60 @@ impl Fixture {
         .expect("create endpoint");
     }
 
+    pub async fn create_endpoint_with(&self, id: &str, url: &str, secret: &str, max_attempts: i32) {
+        sqlx::query(
+            "INSERT INTO endpoint (id, organization_id, url, secret, status, max_attempts, \
+             timeout_ms, events, created_at, updated_at) \
+             VALUES ($1::uuid, $2::uuid, $3, $4, 'active', $5, 5000, $6, now(), now())",
+        )
+        .bind(id)
+        .bind(&self.organization_id)
+        .bind(url)
+        .bind(von_api::cipher::encrypt_secret(secret).expect("encrypt"))
+        .bind(max_attempts)
+        .bind(vec!["worker.probe".to_owned()])
+        .execute(&self.pool)
+        .await
+        .expect("create endpoint");
+    }
+
     /// Writes straight to the buffer stream, which is exactly what ingest emits.
     pub async fn enqueue_event(&self, payload: &str) -> String {
+        self.enqueue_inner(payload, None, &[self.endpoint_id.clone()])
+            .await
+    }
+
+    /// Two events sharing a key collide on insert, so the second one's delivery must be dropped.
+    pub async fn enqueue_event_with_key(&self, payload: &str, key: &str) -> String {
+        self.enqueue_inner(payload, Some(key.to_owned()), &[self.endpoint_id.clone()])
+            .await
+    }
+
+    /// One event fanned out to several endpoints, each getting its own delivery.
+    pub async fn enqueue_fanout(&self, payload: &str, endpoint_ids: &[String]) -> String {
+        self.enqueue_inner(payload, None, endpoint_ids).await
+    }
+
+    async fn enqueue_inner(
+        &self,
+        payload: &str,
+        idempotency_key: Option<String>,
+        endpoint_ids: &[String],
+    ) -> String {
         let event_id = uuid::Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
+        let deliveries = endpoint_ids
+            .iter()
+            .map(|endpoint_id| BufferedDelivery {
+                id: uuid::Uuid::new_v4().to_string(),
+                organization_id: self.organization_id.clone(),
+                event_id: event_id.clone(),
+                endpoint_id: endpoint_id.clone(),
+                status: "pending".to_owned(),
+                attempts: 0,
+                created_at: now.clone(),
+            })
+            .collect();
         let entry = BufferedEntry {
             events: vec![BufferedEvent {
                 id: event_id.clone(),
@@ -174,18 +287,10 @@ impl Fixture {
                 event_type: "worker.probe".to_owned(),
                 payload: serde_json::value::RawValue::from_string(payload.to_owned())
                     .expect("payload"),
-                idempotency_key: None,
-                created_at: now.clone(),
-            }],
-            deliveries: vec![BufferedDelivery {
-                id: uuid::Uuid::new_v4().to_string(),
-                organization_id: self.organization_id.clone(),
-                event_id: event_id.clone(),
-                endpoint_id: self.endpoint_id.clone(),
-                status: "pending".to_owned(),
-                attempts: 0,
+                idempotency_key,
                 created_at: now,
             }],
+            deliveries,
             plan: "scale".to_owned(),
         };
 
@@ -199,6 +304,19 @@ impl Fixture {
             .await;
 
         event_id
+    }
+
+    /// Moves a delivery's next_attempt_at, so a test can simulate a lease held by a dead worker
+    /// or force a row back onto the poll.
+    pub async fn set_next_attempt(&self, event_id: &str, secs_from_now: i64) {
+        sqlx::query(
+            "UPDATE delivery SET next_attempt_at = now() + make_interval(secs => $1) WHERE event_id = $2::uuid",
+        )
+        .bind(secs_from_now as f64)
+        .bind(event_id)
+        .execute(&self.pool)
+        .await
+        .expect("set next_attempt");
     }
 
     /// Pumps both loops until the predicate holds, so a test never sleeps blindly.
