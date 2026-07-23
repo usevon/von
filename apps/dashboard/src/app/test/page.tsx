@@ -72,7 +72,7 @@ export default function TestPage() {
         <Menu>
           <MenuTrigger className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent focus-visible:outline-none">
             <Avatar className="size-6 rounded-md">
-              <AvatarFallback className="rounded-md bg-foreground text-background text-[10px]">
+              <AvatarFallback className="rounded-md bg-foreground text-[10px] text-background">
                 {activeTeam.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -95,14 +95,14 @@ export default function TestPage() {
       </header>
 
       {/* Content area */}
-      <div className="mx-2 flex min-h-0 flex-1 flex-col rounded-t-xl border-t border-l border-r border-border bg-background">
+      <div className="mx-2 flex min-h-0 flex-1 flex-col rounded-t-xl border-border border-t border-r border-l bg-background">
         <div className="px-8 pt-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Webhooks</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Last 24 hours activity</p>
+          <h1 className="font-semibold text-2xl tracking-tight">Webhooks</h1>
+          <p className="mt-1 text-muted-foreground text-sm">Last 24 hours activity</p>
         </div>
 
         <Tabs defaultValue="overview" className="mt-6 flex-1">
-          <div className="mx-8 border-b border-border">
+          <div className="mx-8 border-border border-b">
             <TabsList variant="underline">
               {navTabs.map((tab) => (
                 <TabsTab key={tab} value={tab.toLowerCase()}>
@@ -183,7 +183,7 @@ function OverviewContent() {
     <div>
       <KpiCards />
       <div className="grid grid-cols-1 pt-4 md:grid-cols-[3fr_2fr]">
-        <div className="space-y-4 pb-4 md:border-r md:border-border md:pr-8">
+        <div className="space-y-4 pb-4 md:border-border md:border-r md:pr-8">
           <HourlyActivity />
           <Separator />
           <Latency />
@@ -260,30 +260,30 @@ function StatGridInner({
         const row = Math.floor(idx / cols);
         return (
           <div key={item.label} style={{ gridColumn: col * 2 + 1, gridRow: row * 2 + 1 }}>
-            <span className="text-xs text-muted-foreground">{item.label}</span>
+            <span className="text-muted-foreground text-xs">{item.label}</span>
             <p className={cn("mt-1 font-semibold", valueClassName)}>{item.value}</p>
           </div>
         );
       })}
-      {Array.from({ length: cols - 1 }, (_, ci) =>
-        Array.from({ length: rows }, (_, ri) => (
+      {Array.from({ length: cols - 1 }, (_a, ci) =>
+        Array.from({ length: rows }, (_b, ri) => (
           <div
             key={`v${ci}${ri}`}
             className="flex justify-center"
             style={{ gridColumn: (ci + 1) * 2, gridRow: ri * 2 + 1 }}
           >
-            <div className="h-full border-l border-border" />
+            <div className="h-full border-border border-l" />
           </div>
         ))
       )}
-      {Array.from({ length: rows - 1 }, (_, ri) =>
-        Array.from({ length: cols }, (_, ci) => (
+      {Array.from({ length: rows - 1 }, (_a, ri) =>
+        Array.from({ length: cols }, (_b, ci) => (
           <div
             key={`h${ri}${ci}`}
             className="flex items-center"
             style={{ gridColumn: ci * 2 + 1, gridRow: (ri + 1) * 2 }}
           >
-            <div className="w-full border-t border-border" />
+            <div className="w-full border-border border-t" />
           </div>
         ))
       )}
@@ -296,7 +296,7 @@ function KpiCards() {
     <StatGrid
       items={kpis}
       mobileCols={3}
-      className="pb-4 border-b border-border"
+      className="border-border border-b pb-4"
     />
   );
 }
@@ -304,7 +304,7 @@ function KpiCards() {
 function HourlyActivity() {
   return (
     <div>
-      <h3 className="text-sm font-medium">Hourly Activity</h3>
+      <h3 className="font-medium text-sm">Hourly Activity</h3>
       <div className="mt-2 flex h-48 items-end gap-1">
         {hourlyData.map(([success, failed], i) => {
           const total = success + failed;
@@ -333,7 +333,7 @@ function HourlyActivity() {
 function Latency() {
   return (
     <div>
-      <h3 className="text-sm font-medium">Latency</h3>
+      <h3 className="font-medium text-sm">Latency</h3>
       <StatGrid
         items={latencyData}
         mobileCols={2}
@@ -347,19 +347,19 @@ function Latency() {
 /** ── Recent Queue ── */
 function QueueRow({ item, last }: { item: (typeof recentQueue)[number]; last?: boolean }) {
   return (
-    <div className={`grid grid-cols-[5.5rem_1fr] sm:grid-cols-[5.5rem_1fr_10rem] items-center gap-x-4 py-2.5 ${last ? "" : "border-b border-border"}`}>
+    <div className={`grid grid-cols-[5.5rem_1fr] items-center gap-x-4 py-2.5 sm:grid-cols-[5.5rem_1fr_10rem] ${last ? "" : "border-border border-b"}`}>
       <Badge variant={item.status < 400 ? "success" : "error"} className="w-fit font-mono text-[11px]">
         {item.status}
       </Badge>
       <span className="text-sm">{item.event}</span>
-      <span className="truncate text-right text-xs text-muted-foreground">{item.url}</span>
+      <span className="truncate text-right text-muted-foreground text-xs">{item.url}</span>
     </div>
   );
 }
 
 function QueueHeader() {
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] sm:grid-cols-[5.5rem_1fr_10rem] items-center gap-x-4 border-b border-border py-2 text-xs text-muted-foreground">
+    <div className="grid grid-cols-[5.5rem_1fr] items-center gap-x-4 border-border border-b py-2 text-muted-foreground text-xs sm:grid-cols-[5.5rem_1fr_10rem]">
       <span className="whitespace-nowrap">Response Code</span>
       <span>Event</span>
       <span className="text-right">Target URL</span>
@@ -375,7 +375,7 @@ function RecentQueue() {
 
   return (
     <div>
-      <h3 className="text-sm font-medium">Recent Queue</h3>
+      <h3 className="font-medium text-sm">Recent Queue</h3>
       <div className="mt-2">
         <QueueHeader />
         {recentQueue.slice(0, 5).map((item, i, arr) => (
@@ -388,7 +388,7 @@ function RecentQueue() {
             Show more
           </DialogTrigger>
           <DialogPopup>
-            <div className="space-y-3 border-b border-border px-6 pt-4 pb-4">
+            <div className="space-y-3 border-border border-b px-6 pt-4 pb-4">
               <h2 className="font-heading text-xl leading-none">Recent Queue</h2>
             <InputGroup>
               <InputGroupAddon>
@@ -410,7 +410,7 @@ function RecentQueue() {
                 <QueueRow key={i} item={item} />
               ))
             ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">No results.</p>
+              <p className="py-8 text-center text-muted-foreground text-sm">No results.</p>
             )}
           </ScrollArea>
           <DialogFooter>
@@ -458,10 +458,10 @@ function ShowMoreDialog({
 
   return (
     <DialogPopup>
-      <div className="space-y-3 border-b border-border px-6 pt-4 pb-4">
+      <div className="space-y-3 border-border border-b px-6 pt-4 pb-4">
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-xl leading-none">{title}</h2>
-          <span className="text-xs font-medium uppercase text-muted-foreground">{columnLabels[1]}</span>
+          <span className="font-medium text-muted-foreground text-xs uppercase">{columnLabels[1]}</span>
         </div>
         <InputGroup>
           <InputGroupAddon>
@@ -481,7 +481,7 @@ function ShowMoreDialog({
             <BarItem key={e.name} name={e.name} count={e.count} />
           ))
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">No results.</p>
+          <p className="py-8 text-center text-muted-foreground text-sm">No results.</p>
         )}
         </div>
       </ScrollArea>
@@ -497,8 +497,8 @@ function ShowMoreDialog({
 function TopEvents() {
   return (
     <div>
-      <h3 className="text-sm font-medium">Top Events</h3>
-      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+      <h3 className="font-medium text-sm">Top Events</h3>
+      <div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
         <span>Event</span>
         <span>Count</span>
       </div>
@@ -542,7 +542,7 @@ function TeamDropdown({ activeTeam, onTeamChange }: DropdownProps) {
           >
             <div className="flex items-center gap-2.5">
               <Avatar className="size-6 rounded-md">
-                <AvatarFallback className="rounded-md bg-foreground text-background text-[10px]">
+                <AvatarFallback className="rounded-md bg-foreground text-[10px] text-background">
                   {team.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
@@ -586,8 +586,8 @@ function AccountDropdown() {
   return (
     <MenuPopup align="end" sideOffset={6} className="w-60">
       <div className="px-3 py-2.5">
-        <p className="text-sm font-medium">{user.name}</p>
-        <p className="text-sm text-muted-foreground">{user.email}</p>
+        <p className="font-medium text-sm">{user.name}</p>
+        <p className="text-muted-foreground text-sm">{user.email}</p>
       </div>
       <MenuSeparator />
       <MenuGroup>
