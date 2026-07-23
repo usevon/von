@@ -80,7 +80,10 @@ struct Meta {
 }
 
 enum Outcome {
-    Success { status: u16, meta: Meta },
+    Success {
+        status: u16,
+        meta: Meta,
+    },
     Failure {
         status: Option<u16>,
         error: String,
@@ -200,8 +203,16 @@ impl Worker {
 
         match outcome {
             Outcome::Success { status, meta } => {
-                self.record_attempt(job, attempt_number, "success", true, Some(status), None, &meta)
-                    .await?;
+                self.record_attempt(
+                    job,
+                    attempt_number,
+                    "success",
+                    true,
+                    Some(status),
+                    None,
+                    &meta,
+                )
+                .await?;
                 sqlx::query(
                     "UPDATE delivery SET status = 'delivered', attempts = $1, last_attempt_at = now(), \
                      response = $2 WHERE id = $3::uuid",
@@ -218,8 +229,16 @@ impl Worker {
                 error,
                 meta,
             } => {
-                self.record_attempt(job, attempt_number, "failure", is_final, status, Some(&error), &meta)
-                    .await?;
+                self.record_attempt(
+                    job,
+                    attempt_number,
+                    "failure",
+                    is_final,
+                    status,
+                    Some(&error),
+                    &meta,
+                )
+                .await?;
                 let duration_ms = meta.duration_ms;
                 // Exponential backoff from one second decides when the poll may pick the row up again.
                 let backoff_secs = if is_final {
@@ -305,7 +324,11 @@ impl Worker {
                 } else {
                     Outcome::Failure {
                         status: Some(status.as_u16()),
-                        error: format!("HTTP {}: {}", status.as_u16(), body.chars().take(200).collect::<String>()),
+                        error: format!(
+                            "HTTP {}: {}",
+                            status.as_u16(),
+                            body.chars().take(200).collect::<String>()
+                        ),
                         meta,
                     }
                 }

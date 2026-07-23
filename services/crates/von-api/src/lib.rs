@@ -15,6 +15,12 @@ use utoipa::OpenApi;
 pub use error::ApiError;
 pub use state::{ApiState, Shared};
 
+/// Matches the ISO string the TypeScript service returns so both services render
+/// the same timestamp for a row.
+pub fn to_iso(value: chrono::NaiveDateTime) -> String {
+    value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
 async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
     Json(openapi::ApiDoc::openapi())
 }

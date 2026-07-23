@@ -4,6 +4,7 @@ use super::model::{
     round,
 };
 use crate::state::ApiState;
+use crate::to_iso;
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
@@ -100,10 +101,6 @@ fn ratio(numerator: i64, denominator: i64) -> serde_json::Number {
     } else {
         number(0.0)
     }
-}
-
-fn to_iso(value: NaiveDateTime) -> String {
-    value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
 const DELIVERY_STATUS_SUMS: &str = "sum(case when delivery.status = 'delivered' then 1 else 0 end)::int AS delivered, \

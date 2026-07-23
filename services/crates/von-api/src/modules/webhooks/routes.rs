@@ -5,7 +5,7 @@ use super::model::{
 use super::replay::{BulkReplayBody, BulkReplayResult, ReplayBody, ReplayResult};
 use super::service;
 use crate::error::ApiError;
-use crate::extract::Query;
+use crate::extract::{Query, bearer};
 use crate::state::Shared;
 use axum::{
     Json, Router,
@@ -23,14 +23,6 @@ pub fn router() -> Router<Shared> {
         .route("/webhooks/deliveries/{id}/attempts", get(list_attempts))
         .route("/webhooks/events/replay", post(replay_bulk))
         .route("/webhooks/events/{id}/replay", post(replay_event))
-}
-
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
 }
 
 #[utoipa::path(

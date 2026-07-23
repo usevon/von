@@ -87,7 +87,10 @@ async fn inbound_recovers_a_leased_delivery() {
         .await
         .expect("lease");
     let _ = fixture.inbound.tick().await;
-    assert!(probe.hits().is_empty(), "a leased inbound delivery was forwarded early");
+    assert!(
+        probe.hits().is_empty(),
+        "a leased inbound delivery was forwarded early"
+    );
 
     sqlx::query("UPDATE inbound_delivery SET next_attempt_at = now() - make_interval(secs => 1) WHERE id = $1::uuid")
         .bind(&delivery_id)
@@ -99,6 +102,9 @@ async fn inbound_recovers_a_leased_delivery() {
             fixture.inbound_status(&delivery_id).await.as_deref() == Some("forwarded")
         })
         .await;
-    assert!(settled, "inbound delivery was not recovered after its lease expired");
+    assert!(
+        settled,
+        "inbound delivery was not recovered after its lease expired"
+    );
     assert_eq!(probe.hits().len(), 1);
 }

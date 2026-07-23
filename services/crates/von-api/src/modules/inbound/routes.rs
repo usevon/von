@@ -3,7 +3,7 @@ use super::model::{
 };
 use super::service;
 use crate::error::{ApiError, SuccessResponse};
-use crate::extract::Query;
+use crate::extract::{Query, bearer};
 use crate::pagination::PaginationQuery;
 use crate::state::Shared;
 use axum::{
@@ -19,14 +19,6 @@ pub fn router() -> Router<Shared> {
         .route("/inbound", get(list).post(create))
         .route("/inbound/{id}", get(get_one).patch(update).delete(remove))
         .route("/in/{id}", axum::routing::post(super::receive::handler))
-}
-
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
 }
 
 fn not_found() -> Error {

@@ -2,6 +2,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use sqlx::postgres::PgRow;
+use sqlx::{PgPool, Row};
 use std::sync::OnceLock;
 use von_error::{Error, Result};
 
@@ -33,12 +35,6 @@ pub struct PaginationQuery {
 
 pub fn clamp_limit(limit: Option<i64>) -> i64 {
     limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT)
-}
-
-impl PaginationQuery {
-    pub fn limit(&self) -> i64 {
-        clamp_limit(self.limit)
-    }
 }
 
 pub struct CursorPosition {
@@ -162,10 +158,6 @@ pub fn encode_cursor_sorted(
     Ok(format!("{unsigned}.{signature}"))
 }
 
-pub fn encode_cursor(position: &CursorPosition, scope: &str) -> Result<String> {
-    encode_cursor_sorted(position, scope, CursorSort::Desc)
-}
-
 pub fn decode_cursor_sorted(
     cursor: Option<&str>,
     scope: &str,
@@ -221,8 +213,52 @@ pub fn decode_cursor_sorted(
     }))
 }
 
-pub fn decode_cursor(cursor: Option<&str>, scope: &str) -> Result<Option<CursorPosition>> {
-    decode_cursor_sorted(cursor, scope, CursorSort::Desc)
+/// Fetches one keyset page of an org scoped table ordered by created_at DESC, id DESC,
+/// returning the rows plus the cursor for the next page.
+pub async fn fetch_org_page(
+    pool: &PgPool,
+    table: &str,
+    columns: &str,
+    resource: &str,
+    organization_id: &str,
+    pagination: &PaginationQuery,
+) -> Result<(Vec<PgRow>, Option<String>)> {
+    let scope = scope_hash(resource, organization_id);
+    let cursor = decode_cursor_sorted(pagination.cursor.as_deref(), &scope, CursorSort::Desc)?;
+    let limit = clamp_limit(pagination.limit);
+
+    // One extra row tells us whether another page exists without a second query.
+    let mut sql = format!("SELECT {columns} FROM {table} WHERE organization_id = $1::uuid");
+    if cursor.is_some() {
+        sql.push_str(" AND (created_at < $3 OR (created_at = $3 AND id < $4))");
+    }
+    sql.push_str(" ORDER BY created_at DESC, id DESC LIMIT $2");
+
+    let mut query = sqlx::query(&sql).bind(organization_id).bind(limit + 1);
+    if let Some(position) = &cursor {
+        let id = uuid::Uuid::parse_str(&position.id)
+            .map_err(|_| Error::BadRequest("Invalid cursor".to_owned()))?;
+        query = query.bind(position.created_at.naive_utc()).bind(id);
+    }
+
+    let mut rows = query.fetch_all(pool).await?;
+
+    let has_more = rows.len() > limit as usize;
+    rows.truncate(limit as usize);
+
+    let next_cursor = match rows.last().filter(|_| has_more) {
+        Some(last) => Some(encode_cursor_sorted(
+            &CursorPosition {
+                created_at: DateTime::from_naive_utc_and_offset(last.try_get("created_at")?, Utc),
+                id: last.try_get("id")?,
+            },
+            &scope,
+            CursorSort::Desc,
+        )?),
+        None => None,
+    };
+
+    Ok((rows, next_cursor))
 }
 
 /// JSON.stringify emits keys in insertion order, so the hash only matches the
@@ -262,8 +298,8 @@ mod tests {
             created_at: Utc.timestamp_millis_opt(1_700_000_000_000).unwrap(),
             id: "3f7c1a2e-5b6d-4e8f-9a0b-1c2d3e4f5a6b".to_owned(),
         };
-        let encoded = encode_cursor(&position, &scope).expect("encode");
-        let decoded = decode_cursor(Some(&encoded), &scope)
+        let encoded = encode_cursor_sorted(&position, &scope, CursorSort::Desc).expect("encode");
+        let decoded = decode_cursor_sorted(Some(&encoded), &scope, CursorSort::Desc)
             .expect("decode")
             .expect("some");
         assert_eq!(decoded.id, position.id);
@@ -343,7 +379,19 @@ mod tests {
             created_at: Utc.timestamp_millis_opt(1_700_000_000_000).unwrap(),
             id: "3f7c1a2e-5b6d-4e8f-9a0b-1c2d3e4f5a6b".to_owned(),
         };
-        let encoded = encode_cursor(&position, &scope_hash("endpoints", "org-1")).expect("encode");
-        assert!(decode_cursor(Some(&encoded), &scope_hash("endpoints", "org-2")).is_err());
+        let encoded = encode_cursor_sorted(
+            &position,
+            &scope_hash("endpoints", "org-1"),
+            CursorSort::Desc,
+        )
+        .expect("encode");
+        assert!(
+            decode_cursor_sorted(
+                Some(&encoded),
+                &scope_hash("endpoints", "org-2"),
+                CursorSort::Desc
+            )
+            .is_err()
+        );
     }
 }

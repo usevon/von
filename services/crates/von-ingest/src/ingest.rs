@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::sync::Arc;
 use von_api::ApiError;
+use von_api::extract::bearer;
 use von_error::Error;
 use von_types::{CreatedEvent, MAX_PAYLOAD_BYTES, billable_units};
 
@@ -30,14 +31,6 @@ pub struct BatchResponse {
     events: Vec<CreatedEvent>,
 }
 
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
-}
-
 async fn ingest(
     state: Shared,
     headers: HeaderMap,
@@ -49,14 +42,14 @@ async fn ingest(
     let key = bearer(&headers)?;
     let tenant = state.auth.resolve(key).await?;
 
-    if let Some(meter) = &state.meter {
-        if meter.is_over_limit(&tenant.organization_id) {
-            return Err(Error::QuotaExceeded {
-                used: tenant.monthly_limit,
-                limit: tenant.monthly_limit,
-            }
-            .into());
+    if let Some(meter) = &state.meter
+        && meter.is_over_limit(&tenant.organization_id)
+    {
+        return Err(Error::QuotaExceeded {
+            used: tenant.monthly_limit,
+            limit: tenant.monthly_limit,
         }
+        .into());
     }
 
     // The stream is capped by entry count, not bytes, so an unbounded payload can

@@ -1,7 +1,7 @@
 use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion};
 use super::service;
 use crate::error::{ApiError, SuccessResponse};
-use crate::extract::Query;
+use crate::extract::{Query, bearer};
 use crate::pagination::PaginationQuery;
 use crate::state::Shared;
 use axum::{
@@ -19,14 +19,6 @@ pub fn router() -> Router<Shared> {
             "/versions/{version}",
             get(get_one).patch(update).delete(remove),
         )
-}
-
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
 }
 
 fn not_found() -> Error {

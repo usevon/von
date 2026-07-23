@@ -4,12 +4,11 @@ use super::model::{
 };
 use crate::auth::Tenant;
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
-use crate::pagination::{
-    CursorPosition, PaginationQuery, decode_cursor, encode_cursor, scope_hash,
-};
+use crate::pagination::{PaginationQuery, fetch_org_page};
 use crate::state::ApiState;
+use crate::to_iso;
 use crate::url_safety::assert_safe_webhook_url;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use serde_json::value::RawValue;
 use sqlx::Row;
 use sqlx::postgres::PgRow;
@@ -21,12 +20,6 @@ const DELIVERY_TTL: i64 = 3_888_000;
 
 const SELECT_COLUMNS: &str = "id::text AS id, url, description, secret, previous_secret, status, \
      version, max_attempts, timeout_ms, events, last_success_at, created_at, updated_at";
-
-/// Matches the ISO string the TypeScript service returns so both services render
-/// the same timestamp for a row.
-fn to_iso(value: NaiveDateTime) -> String {
-    value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
-}
 
 fn to_endpoint(row: &PgRow) -> Result<Endpoint> {
     Ok(Endpoint {
@@ -119,43 +112,18 @@ pub async fn get_all(
     organization_id: &str,
     pagination: &PaginationQuery,
 ) -> Result<EndpointList> {
-    let scope = scope_hash(RESOURCE, organization_id);
-    let cursor = decode_cursor(pagination.cursor.as_deref(), &scope)?;
-    let limit = pagination.limit();
+    let (rows, next_cursor) = fetch_org_page(
+        &state.pool,
+        "endpoint",
+        SELECT_COLUMNS,
+        RESOURCE,
+        organization_id,
+        pagination,
+    )
+    .await?;
 
-    // One extra row tells us whether another page exists without a second query.
-    let mut sql = format!("SELECT {SELECT_COLUMNS} FROM endpoint WHERE organization_id = $1::uuid");
-    if cursor.is_some() {
-        sql.push_str(" AND (created_at < $3 OR (created_at = $3 AND id < $4))");
-    }
-    sql.push_str(" ORDER BY created_at DESC, id DESC LIMIT $2");
-
-    let mut query = sqlx::query(&sql).bind(organization_id).bind(limit + 1);
-    if let Some(position) = &cursor {
-        let id = uuid::Uuid::parse_str(&position.id)
-            .map_err(|_| Error::BadRequest("Invalid cursor".to_owned()))?;
-        query = query.bind(position.created_at.naive_utc()).bind(id);
-    }
-
-    let mut rows = query.fetch_all(&state.pool).await?;
-
-    let has_more = rows.len() > limit as usize;
-    rows.truncate(limit as usize);
-
-    let next_cursor = match rows.last().filter(|_| has_more) {
-        Some(last) => Some(encode_cursor(
-            &CursorPosition {
-                created_at: DateTime::from_naive_utc_and_offset(last.try_get("created_at")?, Utc),
-                id: last.try_get("id")?,
-            },
-            &scope,
-        )?),
-        None => None,
-    };
-
-    let endpoints = rows.iter().map(to_endpoint).collect::<Result<Vec<_>>>()?;
     Ok(EndpointList {
-        endpoints,
+        endpoints: rows.iter().map(to_endpoint).collect::<Result<Vec<_>>>()?,
         next_cursor,
     })
 }

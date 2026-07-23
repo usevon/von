@@ -73,9 +73,11 @@ async fn applied_version(pool: &PgPool) -> Option<i64> {
 }
 
 async fn dirty_state(pool: &PgPool) -> Option<(i64, bool)> {
-    sqlx::query_as("SELECT version, NOT success FROM _sqlx_migrations ORDER BY version DESC LIMIT 1")
-        .fetch_optional(pool)
-        .await
-        .ok()
-        .flatten()
+    sqlx::query_as(
+        "SELECT version, NOT success FROM _sqlx_migrations ORDER BY version DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten()
 }

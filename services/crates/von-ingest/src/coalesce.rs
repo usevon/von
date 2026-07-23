@@ -240,7 +240,7 @@ async fn flush_loop(
         tokio::spawn(async move {
             let outcomes = redis.flush_batches(&jobs).await;
 
-            for (job, outcome) in jobs.into_iter().zip(outcomes.into_iter()) {
+            for (job, outcome) in jobs.into_iter().zip(outcomes) {
                 respond(job.requests, outcome);
                 // A bypass job never took the token, so releasing it here would let a
                 // second chain start while the tenant's real batch is still in flight.
@@ -262,7 +262,7 @@ fn respond(
 ) {
     match outcome {
         Ok(per_request) => {
-            for (request, created) in requests.into_iter().zip(per_request.into_iter()) {
+            for (request, created) in requests.into_iter().zip(per_request) {
                 let _ = request.responder.send(Ok(created));
             }
         }

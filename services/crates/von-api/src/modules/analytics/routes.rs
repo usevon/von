@@ -1,24 +1,15 @@
 use super::model::{AnalyticsQuery, Overview, Retries, Timeseries, TimeseriesQuery};
 use super::service;
 use crate::error::ApiError;
-use crate::extract::Query;
+use crate::extract::{Query, bearer};
 use crate::state::Shared;
 use axum::{Json, Router, extract::State, http::HeaderMap, routing::get};
-use von_error::Error;
 
 pub fn router() -> Router<Shared> {
     Router::new()
         .route("/analytics/overview", get(overview))
         .route("/analytics/timeseries", get(timeseries))
         .route("/analytics/retries", get(retries))
-}
-
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
 }
 
 #[utoipa::path(

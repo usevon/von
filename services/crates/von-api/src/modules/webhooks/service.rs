@@ -7,6 +7,7 @@ use crate::pagination::{
     scope_hash_fields,
 };
 use crate::state::ApiState;
+use crate::to_iso;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -21,14 +22,6 @@ const ATTEMPT_COLUMNS: &str = "id::text AS id, delivery_id::text AS delivery_id,
      event_id::text AS event_id, endpoint_id::text AS endpoint_id, attempt_number, \
      outcome, is_final, http_status, error, duration_ms, queue_ms, ttfb_ms, transfer_ms, \
      response_body, request_headers, started_at, finished_at, created_at";
-
-fn to_iso(value: NaiveDateTime) -> String {
-    value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
-}
-
-fn to_iso_opt(value: Option<NaiveDateTime>) -> Option<String> {
-    value.map(to_iso)
-}
 
 /// Mirrors `parseOptionalDate`, which rejects anything `new Date` cannot read.
 fn parse_date(value: Option<&String>, field: &str) -> Result<Option<DateTime<Utc>>> {
@@ -82,7 +75,9 @@ fn to_delivery(row: &PgRow) -> Result<Delivery> {
         endpoint_id: row.try_get("endpoint_id")?,
         status: row.try_get("status")?,
         attempts: row.try_get("attempts")?,
-        last_attempt_at: to_iso_opt(row.try_get("last_attempt_at")?),
+        last_attempt_at: row
+            .try_get::<Option<NaiveDateTime>, _>("last_attempt_at")?
+            .map(to_iso),
         response: row.try_get("response")?,
         created_at: to_iso(row.try_get("created_at")?),
     })

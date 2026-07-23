@@ -1,6 +1,7 @@
 use super::model::{RegisterResponse, RegisterTunnel, RotateResponse, TunnelList};
 use super::service;
 use crate::error::ApiError;
+use crate::extract::bearer;
 use crate::state::Shared;
 use axum::{
     Json, Router,
@@ -19,14 +20,6 @@ pub fn router() -> Router<Shared> {
         .route("/t/{tunnel_id}", any(super::proxy::handler))
         .route("/t/{tunnel_id}/", any(super::proxy::handler))
         .route("/t/{tunnel_id}/{*rest}", any(super::proxy::handler))
-}
-
-fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
-    headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(Error::MissingCredentials)
 }
 
 #[utoipa::path(

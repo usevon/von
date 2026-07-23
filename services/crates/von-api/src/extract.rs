@@ -1,8 +1,23 @@
 use crate::error::ApiError;
 use axum::extract::FromRequestParts;
+use axum::http::HeaderMap;
 use axum::http::request::Parts;
 use serde::de::DeserializeOwned;
 use von_error::Error;
+
+/// Pulls the bearer token out of the authorization header, accepting any case
+/// for the scheme the way the TypeScript service does.
+pub fn bearer(headers: &HeaderMap) -> Result<&str, Error> {
+    let value = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .ok_or(Error::MissingCredentials)?;
+    let (scheme, token) = value.split_once(' ').ok_or(Error::MissingCredentials)?;
+    if !scheme.eq_ignore_ascii_case("bearer") || token.is_empty() {
+        return Err(Error::MissingCredentials);
+    }
+    Ok(token)
+}
 
 /// Axum's own Query rejects repeated keys and answers with a bare string body.
 /// This one reads them into a sequence the way Elysia does and fails with the

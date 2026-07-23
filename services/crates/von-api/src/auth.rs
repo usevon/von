@@ -35,49 +35,25 @@ pub struct Principal {
     pub scopes: Vec<String>,
 }
 
-impl Principal {
-    pub fn has_scope(&self, required: &str) -> bool {
-        if self.scopes.iter().any(|s| s == "*" || s == required) {
-            return true;
-        }
-        match required.split_once(':') {
-            Some((action, _)) => {
-                let wildcard = format!("{action}:*");
-                self.scopes.iter().any(|s| *s == wildcard)
-            }
-            None => false,
-        }
+/// Mirrors the typescript hasScope so a key grants the same access on both services.
+fn has_scope(scopes: &[String], required: &str) -> bool {
+    if scopes.iter().any(|s| s == "*" || s == required) {
+        return true;
     }
-
-    pub fn require_scope(&self, required: &str) -> Result<()> {
-        if self.has_scope(required) {
-            return Ok(());
+    match required.split_once(':') {
+        Some((action, _)) => {
+            let wildcard = format!("{action}:*");
+            scopes.contains(&wildcard)
         }
-        Err(Error::InsufficientScope(required.to_owned()))
+        None => false,
     }
 }
 
-impl Tenant {
-    /// Mirrors the typescript hasScope so a key grants the same access on both services.
-    pub fn has_scope(&self, required: &str) -> bool {
-        if self.scopes.iter().any(|s| s == "*" || s == required) {
-            return true;
-        }
-        match required.split_once(':') {
-            Some((action, _)) => {
-                let wildcard = format!("{action}:*");
-                self.scopes.iter().any(|s| *s == wildcard)
-            }
-            None => false,
-        }
+fn require_scope(scopes: &[String], required: &str) -> Result<()> {
+    if has_scope(scopes, required) {
+        return Ok(());
     }
-
-    pub fn require_scope(&self, required: &str) -> Result<()> {
-        if self.has_scope(required) {
-            return Ok(());
-        }
-        Err(Error::InsufficientScope(required.to_owned()))
-    }
+    Err(Error::InsufficientScope(required.to_owned()))
 }
 
 struct Entry {
@@ -277,31 +253,31 @@ impl Auth {
 
     pub async fn resolve_principal_scoped(&self, raw: &str, scope: &str) -> Result<Principal> {
         let principal = self.resolve_principal(raw).await?;
-        principal.require_scope(scope)?;
+        require_scope(&principal.scopes, scope)?;
         Ok(principal)
     }
 
     /// Resolving and authorizing together so a handler cannot forget the scope check.
     pub async fn resolve_scoped(&self, raw_key: &str, scope: &str) -> Result<Arc<Tenant>> {
         let tenant = self.resolve(raw_key).await?;
-        tenant.require_scope(scope)?;
+        require_scope(&tenant.scopes, scope)?;
         Ok(tenant)
     }
 
     pub async fn resolve(&self, raw_key: &str) -> Result<Arc<Tenant>> {
-        if let Some(secret) = &self.signing_secret {
-            if !signature_is_valid(raw_key, secret) {
-                return Err(Error::InvalidApiKey);
-            }
+        if let Some(secret) = &self.signing_secret
+            && !signature_is_valid(raw_key, secret)
+        {
+            return Err(Error::InvalidApiKey);
         }
 
         let hashed = hash_key(raw_key);
 
-        if let Some(entry) = self.cache.get(&hashed) {
-            if Instant::now() < entry.expires_at {
-                self.mark_used(&entry.key_id);
-                return Ok(entry.tenant.clone());
-            }
+        if let Some(entry) = self.cache.get(&hashed)
+            && Instant::now() < entry.expires_at
+        {
+            self.mark_used(&entry.key_id);
+            return Ok(entry.tenant.clone());
         }
 
         let row = sqlx::query(

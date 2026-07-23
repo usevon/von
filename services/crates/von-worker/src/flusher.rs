@@ -105,16 +105,17 @@ impl Flusher {
 
     /// Claims entries a crashed flusher left pending so a Postgres blip does not strand events.
     async fn reclaim(&self, conn: &mut ConnectionManager) -> Vec<(String, String)> {
-        let reply: redis::RedisResult<redis::streams::StreamAutoClaimReply> = redis::cmd("XAUTOCLAIM")
-            .arg(STREAM_KEY)
-            .arg(FLUSHER_GROUP)
-            .arg(&self.consumer)
-            .arg(RECLAIM_IDLE_MS)
-            .arg("0")
-            .arg("COUNT")
-            .arg(BATCH_SIZE)
-            .query_async(conn)
-            .await;
+        let reply: redis::RedisResult<redis::streams::StreamAutoClaimReply> =
+            redis::cmd("XAUTOCLAIM")
+                .arg(STREAM_KEY)
+                .arg(FLUSHER_GROUP)
+                .arg(&self.consumer)
+                .arg(RECLAIM_IDLE_MS)
+                .arg("0")
+                .arg("COUNT")
+                .arg(BATCH_SIZE)
+                .query_async(conn)
+                .await;
 
         match reply {
             Ok(reply) => reply
@@ -131,7 +132,7 @@ impl Flusher {
         &self,
         events: &[BufferedEvent],
         deliveries: &[BufferedDelivery],
-    ) -> Result<Vec<String>> {
+    ) -> Result<()> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET LOCAL synchronous_commit = off")
             .execute(&mut *tx)
@@ -224,7 +225,7 @@ impl Flusher {
         }
 
         tx.commit().await?;
-        Ok(inserted)
+        Ok(())
     }
 }
 

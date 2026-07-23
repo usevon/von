@@ -32,7 +32,11 @@ async fn deduped_event_is_not_delivered() {
         .await;
     assert!(settled, "the deduped event never delivered");
 
-    assert_eq!(probe.hits().len(), 1, "the duplicate was delivered a second time");
+    assert_eq!(
+        probe.hits().len(),
+        1,
+        "the duplicate was delivered a second time"
+    );
     assert!(
         fixture.event_exists(&first).await ^ fixture.event_exists(&second).await,
         "exactly one of the two events must persist"
@@ -57,7 +61,10 @@ async fn fanout_delivers_to_every_endpoint() {
         .await;
 
     let event_id = fixture
-        .enqueue_fanout(r#"{"scenario":"fanout"}"#, &[fixture.endpoint_id.clone(), second_id])
+        .enqueue_fanout(
+            r#"{"scenario":"fanout"}"#,
+            &[fixture.endpoint_id.clone(), second_id],
+        )
         .await;
 
     let settled = fixture
@@ -87,14 +94,22 @@ async fn a_leased_delivery_recovers_once_its_lease_expires() {
     fixture.set_next_attempt(&event_id, 3600).await;
 
     let _ = fixture.worker.tick().await;
-    assert!(probe.hits().is_empty(), "a leased delivery was taken before its lease expired");
+    assert!(
+        probe.hits().is_empty(),
+        "a leased delivery was taken before its lease expired"
+    );
 
     // Once the lease expires the row is pollable again and delivers.
     fixture.set_next_attempt(&event_id, -1).await;
     let settled = fixture
-        .settle_until(async || fixture.delivery_status(&event_id).await.as_deref() == Some("delivered"))
+        .settle_until(async || {
+            fixture.delivery_status(&event_id).await.as_deref() == Some("delivered")
+        })
         .await;
-    assert!(settled, "the delivery was not recovered after its lease expired");
+    assert!(
+        settled,
+        "the delivery was not recovered after its lease expired"
+    );
     assert_eq!(probe.hits().len(), 1);
 
     fixture.cleanup().await;
