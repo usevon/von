@@ -2530,6 +2530,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "tokio",
+ "tracing",
  "utoipa",
  "uuid",
  "von-error",
@@ -2544,6 +2545,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "tokio",
+ "tracing",
  "von-error",
 ]
 

@@ -76,9 +76,10 @@ impl Flusher {
             match self.persist(&events, &deliveries).await {
                 Ok(_) => true,
                 Err(err) => {
-                    eprintln!(
-                        "flush failed, leaving {} entries pending: {err}",
-                        stream_ids.len()
+                    tracing::error!(
+                        error = %err,
+                        entries = stream_ids.len(),
+                        "flush failed, leaving entries pending"
                     );
                     false
                 }

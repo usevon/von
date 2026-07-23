@@ -109,7 +109,7 @@ impl Coalescer {
         tokio::spawn(async move {
             let outcome = handle.await;
             watched.alive.store(false, Ordering::SeqCst);
-            eprintln!("flush loop exited, service is unhealthy: {outcome:?}");
+            tracing::error!(?outcome, "flush loop exited, service is unhealthy");
         });
 
         coalescer

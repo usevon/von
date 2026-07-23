@@ -76,7 +76,7 @@ impl Meter {
             Ok(_) => {
                 self.customers.insert(organization_id.to_owned());
             }
-            Err(err) => eprintln!("autumn customer creation failed, {err}"),
+            Err(err) => tracing::error!(error = %err, "autumn customer creation failed"),
         }
     }
 
@@ -110,7 +110,7 @@ impl Meter {
             if let Err(err) = self.client.post("balances.batch_track", body).await {
                 // Autumn says not to retry a partial batch, so only the unsent counts go
                 // back and the next flush reports them again without double billing.
-                eprintln!("autumn batch_track failed, restoring unsent counts, {err}");
+                tracing::error!(error = %err, "autumn batch_track failed, restoring unsent counts");
                 for (organization_id, value) in &drained[index * BATCH_LIMIT..] {
                     self.record(organization_id, *value);
                 }
@@ -141,7 +141,9 @@ impl Meter {
                     }
                 }
                 // A billing outage must never stop ingest, so the tenant stays allowed.
-                Err(err) => eprintln!("autumn check failed, leaving access open, {err}"),
+                Err(err) => {
+                    tracing::error!(error = %err, "autumn check failed, leaving access open")
+                }
             }
         }
     }
