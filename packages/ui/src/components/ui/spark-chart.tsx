@@ -5,6 +5,7 @@ import {
   Area,
   AreaChart as RechartsAreaChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -21,10 +22,10 @@ type SparkAreaChartProps = React.HTMLAttributes<HTMLDivElement> & {
   maxValue?: number;
   connectNulls?: boolean;
   fill?: "gradient" | "solid" | "none";
+  tooltipFormatter?: (value: number | string) => string;
 };
 
-const SparkAreaChart = React.forwardRef<HTMLDivElement, SparkAreaChartProps>(
-  (
+const SparkAreaChart = (
     {
       data = [],
       categories = [],
@@ -35,12 +36,15 @@ const SparkAreaChart = React.forwardRef<HTMLDivElement, SparkAreaChartProps>(
       maxValue,
       connectNulls = false,
       fill = "gradient",
+      tooltipFormatter,
       className,
-      ...props
-    },
     ref,
+      ...props
+    }: SparkAreaChartProps & { ref?: React.RefObject<HTMLDivElement | null> }
   ) => {
     const areaId = React.useId();
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
 
     const yDomain: [number | string, number | string] = [
       autoMinValue ? "auto" : (minValue ?? 0),
@@ -60,18 +64,37 @@ const SparkAreaChart = React.forwardRef<HTMLDivElement, SparkAreaChartProps>(
           );
         case "solid":
           return <stop stopColor="currentColor" stopOpacity={0.3} />;
+        default:
+          return null;
       }
     };
 
+    if (!mounted) {
+      return <div ref={ref} className={cn("h-14 w-24", className)} {...props} />;
+    }
+
     return (
-      <div ref={ref} className={cn("h-10 w-24", className)} {...props}>
-        <ResponsiveContainer>
+      <div ref={ref} className={cn("h-14 w-24", className)} {...props}>
+        <ResponsiveContainer width="100%" height="100%">
           <RechartsAreaChart
             data={data}
             margin={{ top: 1, right: 1, bottom: 1, left: 1 }}
           >
             <XAxis hide dataKey={index} />
             <YAxis hide domain={yDomain} />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!(active && payload?.[0])) {
+                  return null;
+                }
+                return (
+                  <div className="rounded-sm border border-border bg-popover px-2 py-1 font-medium text-popover-foreground text-xs shadow-md">
+                    {tooltipFormatter ? tooltipFormatter(payload[0].value as number | string) : payload[0].value}
+                  </div>
+                );
+              }}
+              cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+            />
             {categories.map((category, i) => {
               const categoryId = `${areaId}-${category.replace(/[^a-zA-Z0-9]/g, "")}`;
               const color = colors[i % colors.length];
@@ -91,6 +114,7 @@ const SparkAreaChart = React.forwardRef<HTMLDivElement, SparkAreaChartProps>(
                   </defs>
                   <Area
                     dot={false}
+                    activeDot={false}
                     strokeOpacity={1}
                     name={category}
                     type="linear"
@@ -110,8 +134,7 @@ const SparkAreaChart = React.forwardRef<HTMLDivElement, SparkAreaChartProps>(
         </ResponsiveContainer>
       </div>
     );
-  },
-);
+  };
 
 SparkAreaChart.displayName = "SparkAreaChart";
 
