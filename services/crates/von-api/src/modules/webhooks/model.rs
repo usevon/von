@@ -66,6 +66,12 @@ pub struct DeliveryAttempt {
     pub http_status: Option<i32>,
     pub error: Option<String>,
     pub duration_ms: i32,
+    pub queue_ms: Option<i32>,
+    pub ttfb_ms: Option<i32>,
+    pub transfer_ms: Option<i32>,
+    pub response_body: Option<String>,
+    #[schema(value_type = Object)]
+    pub request_headers: Option<serde_json::Value>,
     #[schema(format = "date-time")]
     pub started_at: String,
     #[schema(format = "date-time")]

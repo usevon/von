@@ -19,7 +19,8 @@ const DELIVERY_COLUMNS: &str = "d.id::text AS id, d.event_id::text AS event_id, 
      d.response, d.created_at";
 const ATTEMPT_COLUMNS: &str = "id::text AS id, delivery_id::text AS delivery_id, \
      event_id::text AS event_id, endpoint_id::text AS endpoint_id, attempt_number, \
-     outcome, is_final, http_status, error, duration_ms, started_at, finished_at, created_at";
+     outcome, is_final, http_status, error, duration_ms, queue_ms, ttfb_ms, transfer_ms, \
+     response_body, request_headers, started_at, finished_at, created_at";
 
 fn to_iso(value: NaiveDateTime) -> String {
     value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
@@ -99,6 +100,11 @@ fn to_attempt(row: &PgRow) -> Result<DeliveryAttempt> {
         http_status: row.try_get("http_status")?,
         error: row.try_get("error")?,
         duration_ms: row.try_get("duration_ms")?,
+        queue_ms: row.try_get("queue_ms")?,
+        ttfb_ms: row.try_get("ttfb_ms")?,
+        transfer_ms: row.try_get("transfer_ms")?,
+        response_body: row.try_get("response_body")?,
+        request_headers: row.try_get("request_headers")?,
         started_at: to_iso(row.try_get("started_at")?),
         finished_at: to_iso(row.try_get("finished_at")?),
         created_at: to_iso(row.try_get("created_at")?),

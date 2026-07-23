@@ -39,6 +39,7 @@ struct Claimed {
     payload: String,
     plan: String,
     attempts: i32,
+    queue_ms: i32,
 }
 
 /// Token bucket capping one tenant's outbound delivery rate.
@@ -87,15 +88,20 @@ struct Endpoint {
     circuit_opened_at: Option<chrono::NaiveDateTime>,
 }
 
+struct Meta {
+    duration_ms: i64,
+    ttfb_ms: i64,
+    transfer_ms: i64,
+    response_body: Option<String>,
+    request_headers: serde_json::Value,
+}
+
 enum Outcome {
-    Success {
-        status: u16,
-        duration_ms: i64,
-    },
+    Success { status: u16, meta: Meta },
     Failure {
         status: Option<u16>,
         error: String,
-        duration_ms: i64,
+        meta: Meta,
     },
 }
 
@@ -135,7 +141,7 @@ impl Worker {
     async fn claim(&self) -> Result<Vec<Claimed>> {
         let rows = sqlx::query(
             "WITH claimed AS ( \
-               SELECT id FROM delivery \
+               SELECT id, next_attempt_at AS due FROM delivery \
                WHERE status = 'pending' AND next_attempt_at <= now() \
                ORDER BY next_attempt_at \
                FOR UPDATE SKIP LOCKED \
@@ -147,7 +153,8 @@ impl Worker {
              WHERE d.id = c.id AND e.id = d.event_id AND o.id = d.organization_id \
              RETURNING d.id::text AS delivery_id, d.event_id::text AS event_id, \
                d.endpoint_id::text AS endpoint_id, d.organization_id::text AS organization_id, \
-               d.attempts, e.event_type, e.payload::text AS payload, o.plan",
+               d.attempts, e.event_type, e.payload::text AS payload, o.plan, \
+               (EXTRACT(EPOCH FROM (now() - c.due)) * 1000)::int AS queue_ms",
         )
         .bind(self.lease_secs)
         .bind(BATCH_SIZE)
@@ -165,6 +172,7 @@ impl Worker {
                 payload: row.try_get("payload").unwrap_or_default(),
                 plan: row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned()),
                 attempts: row.try_get("attempts").unwrap_or_default(),
+                queue_ms: row.try_get("queue_ms").unwrap_or_default(),
             })
             .collect())
     }
@@ -208,26 +216,15 @@ impl Worker {
         let is_final = attempt_number >= endpoint.max_attempts;
 
         match outcome {
-            Outcome::Success {
-                status,
-                duration_ms,
-            } => {
-                self.record_attempt(
-                    job,
-                    attempt_number,
-                    "success",
-                    true,
-                    Some(status),
-                    None,
-                    duration_ms,
-                )
-                .await?;
+            Outcome::Success { status, meta } => {
+                self.record_attempt(job, attempt_number, "success", true, Some(status), None, &meta)
+                    .await?;
                 sqlx::query(
                     "UPDATE delivery SET status = 'delivered', attempts = $1, last_attempt_at = now(), \
                      response = $2 WHERE id = $3::uuid",
                 )
                 .bind(attempt_number)
-                .bind(serde_json::json!({ "status": status, "durationMs": duration_ms }))
+                .bind(serde_json::json!({ "status": status, "durationMs": meta.duration_ms }))
                 .bind(&job.delivery_id)
                 .execute(&self.pool)
                 .await?;
@@ -236,18 +233,11 @@ impl Worker {
             Outcome::Failure {
                 status,
                 error,
-                duration_ms,
+                meta,
             } => {
-                self.record_attempt(
-                    job,
-                    attempt_number,
-                    "failure",
-                    is_final,
-                    status,
-                    Some(&error),
-                    duration_ms,
-                )
-                .await?;
+                self.record_attempt(job, attempt_number, "failure", is_final, status, Some(&error), &meta)
+                    .await?;
+                let duration_ms = meta.duration_ms;
                 // Exponential backoff from one second decides when the poll may pick the row up again.
                 let backoff_secs = if is_final {
                     0.0
@@ -287,6 +277,14 @@ impl Worker {
             _ => format!("t={timestamp},v1={signature}"),
         };
 
+        let request_headers = serde_json::json!({
+            "content-type": "application/json",
+            "x-von-signature": &header,
+            "x-von-event-type": &job.event_type,
+            "x-von-delivery-id": &job.delivery_id,
+            "x-von-event-id": &job.event_id,
+        });
+
         let start = Instant::now();
         let result = self
             .http
@@ -301,21 +299,44 @@ impl Worker {
             .send()
             .await;
 
-        let duration_ms = start.elapsed().as_millis() as i64;
+        // send resolves when the response headers arrive, reading the body is the transfer.
+        let ttfb_ms = start.elapsed().as_millis() as i64;
         match result {
-            Ok(response) if response.status().is_success() => Outcome::Success {
-                status: response.status().as_u16(),
-                duration_ms,
-            },
-            Ok(response) => Outcome::Failure {
-                status: Some(response.status().as_u16()),
-                error: format!("HTTP {}", response.status().as_u16()),
-                duration_ms,
-            },
+            Ok(response) => {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                let duration_ms = start.elapsed().as_millis() as i64;
+                let preview: String = body.chars().take(1024).collect();
+                let meta = Meta {
+                    duration_ms,
+                    ttfb_ms,
+                    transfer_ms: (duration_ms - ttfb_ms).max(0),
+                    response_body: (!preview.is_empty()).then_some(preview),
+                    request_headers,
+                };
+                if status.is_success() {
+                    Outcome::Success {
+                        status: status.as_u16(),
+                        meta,
+                    }
+                } else {
+                    Outcome::Failure {
+                        status: Some(status.as_u16()),
+                        error: format!("HTTP {}: {}", status.as_u16(), body.chars().take(200).collect::<String>()),
+                        meta,
+                    }
+                }
+            }
             Err(err) => Outcome::Failure {
                 status: None,
                 error: err.to_string(),
-                duration_ms,
+                meta: Meta {
+                    duration_ms: start.elapsed().as_millis() as i64,
+                    ttfb_ms: 0,
+                    transfer_ms: 0,
+                    response_body: None,
+                    request_headers,
+                },
             },
         }
     }
@@ -386,12 +407,14 @@ impl Worker {
         is_final: bool,
         http_status: Option<u16>,
         error: Option<&str>,
-        duration_ms: i64,
+        meta: &Meta,
     ) -> Result<()> {
         sqlx::query(
             "INSERT INTO delivery_attempt (id, organization_id, delivery_id, event_id, endpoint_id, \
-             attempt_number, outcome, is_final, http_status, error, duration_ms, started_at, finished_at, created_at) \
-             VALUES ($1, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, $8, $9, $10, $11, now(), now(), now()) \
+             attempt_number, outcome, is_final, http_status, error, duration_ms, queue_ms, ttfb_ms, \
+             transfer_ms, response_body, request_headers, started_at, finished_at, created_at) \
+             VALUES ($1, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, $8, $9, $10, $11, $12, $13, \
+             $14, $15, $16, now(), now(), now()) \
              ON CONFLICT (delivery_id, attempt_number) DO NOTHING",
         )
         .bind(uuid::Uuid::new_v4())
@@ -404,7 +427,12 @@ impl Worker {
         .bind(is_final)
         .bind(http_status.map(i32::from))
         .bind(error)
-        .bind(duration_ms as i32)
+        .bind(meta.duration_ms as i32)
+        .bind(job.queue_ms)
+        .bind(meta.ttfb_ms as i32)
+        .bind(meta.transfer_ms as i32)
+        .bind(meta.response_body.as_deref())
+        .bind(&meta.request_headers)
         .execute(&self.pool)
         .await?;
         Ok(())
