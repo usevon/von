@@ -1,28 +1,16 @@
 use super::model::{RegisterResponse, RotateResponse};
 use crate::cipher::{decrypt_secret, encrypt_secret};
 use crate::state::ApiState;
-use sha2::{Digest, Sha256};
 use sqlx::Row;
 use von_error::{Error, Result};
 
 const DEFAULT_MAX_TUNNELS: i64 = 3;
-const TUNNEL_ID_LENGTH: usize = 12;
 
 fn max_tunnels_per_org() -> i64 {
     std::env::var("MAX_TUNNELS_PER_ORG")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(DEFAULT_MAX_TUNNELS)
-}
-
-/// The id is derived rather than random so reconnecting on the same port returns
-/// the same tunnel instead of leaking a new row each run.
-fn tunnel_id(organization_id: &str, user_id: &str, port: i32) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(format!("{organization_id}:{user_id}:{port}").as_bytes());
-    let mut hex = hex::encode(hasher.finalize());
-    hex.truncate(TUNNEL_ID_LENGTH);
-    hex
 }
 
 fn generate_tunnel_secret() -> String {
@@ -37,17 +25,24 @@ pub async fn register(
     user_id: &str,
     port: i32,
 ) -> Result<RegisterResponse> {
-    let id = tunnel_id(organization_id, user_id, port);
-
-    let existing = sqlx::query("SELECT secret FROM tunnel WHERE id = $1 LIMIT 1")
-        .bind(&id)
-        .fetch_optional(&state.pool)
-        .await?;
+    // Reusing the active row keeps reconnects on the same port stable while the
+    // id itself stays random and unguessable on the public proxy path.
+    let existing = sqlx::query(
+        "SELECT id, secret FROM tunnel \
+         WHERE organization_id = $1::uuid AND user_id = $2::uuid AND port = $3 \
+           AND status = 'active' \
+         LIMIT 1",
+    )
+    .bind(organization_id)
+    .bind(user_id)
+    .bind(port)
+    .fetch_optional(&state.pool)
+    .await?;
 
     if let Some(row) = existing {
         return Ok(RegisterResponse {
             secret: decrypt_secret(row.try_get("secret")?)?,
-            tunnel_id: id,
+            tunnel_id: row.try_get("id")?,
         });
     }
 
@@ -65,6 +60,7 @@ pub async fn register(
         )));
     }
 
+    let id = uuid::Uuid::new_v4().simple().to_string();
     let secret = generate_tunnel_secret();
     sqlx::query(
         "INSERT INTO tunnel (id, secret, organization_id, user_id, port) \
@@ -120,10 +116,15 @@ pub async fn rotate(
 }
 
 /// The connected client holds the previous secret, so it is told to swap over
-/// the same way the typescript service pushes the message down the socket.
+/// while the socket is still live.
 async fn notify_rotated(state: &ApiState, id: &str, secret: &str) {
-    let mut conn = state.redis.clone();
     let payload = serde_json::json!({ "type": "secret_rotated", "secret": secret }).to_string();
+    if let Some(connection) = state.tunnels.get(id) {
+        let _ = connection.outbound.try_send(payload);
+        return;
+    }
+    // Cross instance delivery of this publish arrives with cross instance routing.
+    let mut conn = state.redis.clone();
     let _: redis::RedisResult<()> = redis::cmd("PUBLISH")
         .arg(format!("tunnel:control:{id}"))
         .arg(payload)

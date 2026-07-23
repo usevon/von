@@ -8,7 +8,7 @@ use axum::{
 };
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 
 const FORWARD_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -61,6 +61,20 @@ pub async fn handler(
     }
 
     let Some(connection) = state.tunnels.get(&tunnel_id) else {
+        // Real forwarding is gated on multi instance deploys, so a remote owner gets an honest 503.
+        let mut conn = state.redis.clone();
+        let owner: Option<String> = redis::cmd("GET")
+            .arg(format!("tunnel:conn:{tunnel_id}"))
+            .query_async(&mut conn)
+            .await
+            .unwrap_or(None);
+        if owner.is_some_and(|instance| instance != state.instance_id) {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "tunnel is connected to another instance",
+            )
+                .into_response();
+        }
         return error(StatusCode::NOT_FOUND, "Tunnel not found", false);
     };
 
@@ -98,9 +112,16 @@ pub async fn handler(
         connection.pending.remove(&request_id);
         return error(StatusCode::BAD_GATEWAY, "Tunnel error", true);
     };
-    if connection.outbound.send(encoded).is_err() {
-        connection.pending.remove(&request_id);
-        return error(StatusCode::BAD_GATEWAY, "Tunnel not connected", true);
+    match connection.outbound.try_send(encoded) {
+        Ok(()) => {}
+        Err(mpsc::error::TrySendError::Full(_)) => {
+            connection.pending.remove(&request_id);
+            return (StatusCode::SERVICE_UNAVAILABLE, "tunnel backlog full").into_response();
+        }
+        Err(mpsc::error::TrySendError::Closed(_)) => {
+            connection.pending.remove(&request_id);
+            return error(StatusCode::BAD_GATEWAY, "Tunnel not connected", true);
+        }
     }
 
     match tokio::time::timeout(FORWARD_TIMEOUT, rx).await {

@@ -1,7 +1,7 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, watch};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TunnelRequest {
@@ -23,10 +23,11 @@ pub struct TunnelResponse {
 }
 
 pub struct Connection {
-    pub outbound: mpsc::UnboundedSender<String>,
+    pub outbound: mpsc::Sender<String>,
     pub pending: DashMap<String, oneshot::Sender<TunnelResponse>>,
     pub organization_id: String,
     pub user_id: String,
+    pub shutdown: watch::Sender<bool>,
 }
 
 impl Connection {
@@ -57,5 +58,13 @@ impl Registry {
 
     pub fn remove(&self, tunnel_id: &str) -> Option<Arc<Connection>> {
         self.connections.remove(tunnel_id).map(|(_, c)| c)
+    }
+
+    /// A superseded connection must not tear down its replacement, so removal only
+    /// happens when the map still holds this exact connection.
+    pub fn remove_if_same(&self, tunnel_id: &str, connection: &Arc<Connection>) -> bool {
+        self.connections
+            .remove_if(tunnel_id, |_, existing| Arc::ptr_eq(existing, connection))
+            .is_some()
     }
 }

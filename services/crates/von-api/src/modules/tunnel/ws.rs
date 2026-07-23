@@ -9,12 +9,15 @@ use axum::{
     response::Response,
 };
 use dashmap::DashMap;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use tokio::sync::{mpsc, watch};
 
 const CONN_KEY_TTL: i64 = 60;
 const REVALIDATE_INTERVAL: Duration = Duration::from_secs(30);
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+const IDLE_TIMEOUT: Duration = Duration::from_secs(90);
+const OUTBOUND_BUFFER: usize = 256;
 
 pub async fn handler(
     State(state): State<Shared>,
@@ -75,29 +78,63 @@ async fn serve(
     use futures_util::{SinkExt, StreamExt};
 
     let (mut sink, mut stream) = socket.split();
-    let (outbound, mut outbox) = mpsc::unbounded_channel::<String>();
+    let (outbound, mut outbox) = mpsc::channel::<String>(OUTBOUND_BUFFER);
+    let (shutdown, _) = watch::channel(false);
 
     let connection = Arc::new(Connection {
         outbound,
         pending: DashMap::new(),
         organization_id: organization_id.clone(),
         user_id,
+        shutdown,
     });
 
     if let Some(previous) = state.tunnels.insert(tunnel_id.clone(), connection.clone()) {
-        let _ = previous.outbound.send(r#"{"type":"takeover"}"#.to_owned());
+        let _ = previous
+            .outbound
+            .try_send(r#"{"type":"takeover"}"#.to_owned());
         previous.fail_pending();
+        // Without the signal the superseded tasks linger until the old client notices.
+        previous.shutdown.send_replace(true);
     }
 
     register_in_redis(&state, &tunnel_id, &organization_id).await;
 
-    let writer = tokio::spawn(async move {
-        while let Some(text) = outbox.recv().await {
-            if sink.send(Message::Text(text.into())).await.is_err() {
-                break;
+    let last_seen = Arc::new(Mutex::new(Instant::now()));
+
+    let writer = tokio::spawn({
+        let connection = connection.clone();
+        let last_seen = last_seen.clone();
+        async move {
+            let mut shutdown = connection.shutdown.subscribe();
+            let mut ping = tokio::time::interval(PING_INTERVAL);
+            ping.tick().await;
+            // The signal may have fired before this task subscribed.
+            while !*shutdown.borrow_and_update() {
+                tokio::select! {
+                    queued = outbox.recv() => match queued {
+                        Some(text) => {
+                            if sink.send(Message::Text(text.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                        None => break,
+                    },
+                    _ = ping.tick() => {
+                        // A peer silent past the idle window is a half open socket, not a slow one.
+                        if last_seen.lock().unwrap().elapsed() > IDLE_TIMEOUT {
+                            connection.shutdown.send_replace(true);
+                            break;
+                        }
+                        if sink.send(Message::Ping(Vec::new().into())).await.is_err() {
+                            break;
+                        }
+                    },
+                    _ = shutdown.changed() => break,
+                }
             }
+            let _ = sink.close().await;
         }
-        let _ = sink.close().await;
     });
 
     let keepalive = tokio::spawn({
@@ -117,7 +154,9 @@ async fn serve(
                     _ => {
                         let _ = connection
                             .outbound
-                            .send(r#"{"type":"session_expired"}"#.to_owned());
+                            .try_send(r#"{"type":"session_expired"}"#.to_owned());
+                        // An expired session must not keep proxying while waiting on the client.
+                        connection.shutdown.send_replace(true);
                         break;
                     }
                 }
@@ -125,7 +164,19 @@ async fn serve(
         }
     });
 
-    while let Some(Ok(message)) = stream.next().await {
+    let mut shutdown = connection.shutdown.subscribe();
+    // The signal may have fired before this loop subscribed.
+    while !*shutdown.borrow_and_update() {
+        let message = tokio::select! {
+            inbound = stream.next() => match inbound {
+                Some(Ok(message)) => message,
+                _ => break,
+            },
+            _ = shutdown.changed() => break,
+        };
+
+        *last_seen.lock().unwrap() = Instant::now();
+
         let text = match message {
             Message::Text(text) => text.to_string(),
             Message::Binary(bytes) => match String::from_utf8(bytes.to_vec()) {
@@ -145,10 +196,13 @@ async fn serve(
     }
 
     keepalive.abort();
+    connection.shutdown.send_replace(true);
     writer.abort();
-    state.tunnels.remove(&tunnel_id);
     connection.fail_pending();
-    unregister_in_redis(&state, &tunnel_id, &organization_id).await;
+    // A superseded connection no longer owns the registry entry or the redis key.
+    if state.tunnels.remove_if_same(&tunnel_id, &connection) {
+        unregister_in_redis(&state, &tunnel_id, &organization_id).await;
+    }
 }
 
 async fn register_in_redis(state: &Shared, tunnel_id: &str, organization_id: &str) {
