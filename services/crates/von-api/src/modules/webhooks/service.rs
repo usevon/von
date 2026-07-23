@@ -255,12 +255,9 @@ pub async fn get_deliveries(
     ]);
     let cursor = decode_cursor_sorted(query.cursor.as_deref(), &scope, sort)?;
 
-    // The organization lives on the event, so the join is what scopes the page
-    // to the tenant rather than a column on delivery.
     let mut sql = format!(
         "SELECT {DELIVERY_COLUMNS} FROM delivery d \
-         INNER JOIN event e ON d.event_id = e.id \
-         WHERE d.event_id = $1::uuid AND e.organization_id = $2::uuid"
+         WHERE d.event_id = $1::uuid AND d.organization_id = $2::uuid"
     );
     let mut next = 4;
     if query.status.is_some() {
