@@ -121,6 +121,22 @@ impl Inbound {
             return Ok(());
         };
 
+        // DNS can change after the create-time vetting, so hostname targets are re-checked
+        // per attempt to close the rebinding window.
+        if von_api::url_safety::assert_safe_delivery_target(&endpoint.forward_url)
+            .await
+            .is_err()
+        {
+            sqlx::query(
+                "UPDATE inbound_delivery SET status = 'failed', response = $1 WHERE id = $2::uuid",
+            )
+            .bind(serde_json::json!({ "error": "forward url resolves to a blocked address" }))
+            .bind(&job.delivery_id)
+            .execute(&self.pool)
+            .await?;
+            return Ok(());
+        }
+
         let timestamp = chrono::Utc::now().timestamp();
         let signature = sign(&format!("{timestamp}.{}", job.payload), &endpoint.secret);
 

@@ -205,11 +205,8 @@ impl Auth {
             return Ok(None);
         };
 
-        let stored: Option<String> = redis::cmd("GET")
-            .arg(token)
-            .query_async(&mut conn)
-            .await
-            .unwrap_or(None);
+        // A Redis outage must surface as an outage, not as an invalid session.
+        let stored: Option<String> = redis::cmd("GET").arg(token).query_async(&mut conn).await?;
         let Some(stored) = stored else {
             return Ok(None);
         };
@@ -236,15 +233,19 @@ impl Auth {
     /// Tries the API key first and falls back to a dashboard session, matching
     /// the order the typescript resolver uses so a bearer resolves the same way.
     pub async fn resolve_principal(&self, raw: &str) -> Result<Principal> {
-        if let Ok(tenant) = self.resolve(raw).await {
-            return Ok(Principal {
+        // Only a rejected key falls through to the session path, an infrastructure
+        // error propagates so an outage is not reported as 401.
+        match self.resolve(raw).await {
+            Ok(tenant) => Ok(Principal {
                 organization_id: tenant.organization_id.clone(),
                 user_id: tenant.user_id.clone(),
                 scopes: tenant.scopes.clone(),
-            });
+            }),
+            Err(Error::InvalidApiKey) => {
+                self.resolve_session(raw).await?.ok_or(Error::InvalidApiKey)
+            }
+            Err(err) => Err(err),
         }
-
-        self.resolve_session(raw).await?.ok_or(Error::InvalidApiKey)
     }
 
     pub async fn resolve_principal_scoped(&self, raw: &str, scope: &str) -> Result<Principal> {

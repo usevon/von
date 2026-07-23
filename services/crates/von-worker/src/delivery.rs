@@ -258,6 +258,25 @@ impl Worker {
     }
 
     async fn send(&self, job: &Claimed, endpoint: &Endpoint) -> Outcome {
+        // DNS can change after the create-time vetting, so hostname targets are re-checked
+        // per attempt to close the rebinding window.
+        if von_api::url_safety::assert_safe_delivery_target(&endpoint.url)
+            .await
+            .is_err()
+        {
+            return Outcome::Failure {
+                status: None,
+                error: "endpoint url resolves to a blocked address".to_owned(),
+                meta: Meta {
+                    duration_ms: 0,
+                    ttfb_ms: 0,
+                    transfer_ms: 0,
+                    response_body: None,
+                    request_headers: serde_json::Value::Null,
+                },
+            };
+        }
+
         let timestamp = chrono::Utc::now().timestamp();
         let signed = format!("{timestamp}.{}", job.payload);
         let signature = sign(&signed, &endpoint.secret);

@@ -26,9 +26,16 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status =
             StatusCode::from_u16(self.0.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        // Raw sqlx and redis error text would leak schema and topology to the caller.
+        let message = if status.is_server_error() {
+            tracing::error!(error = %self.0, "request failed");
+            "internal error".to_owned()
+        } else {
+            self.0.to_string()
+        };
         let body = serde_json::json!({
             "error": {
-                "message": self.0.to_string(),
+                "message": message,
                 "retryable": self.0.is_retryable(),
             }
         });

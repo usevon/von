@@ -52,7 +52,8 @@ impl Error {
             Self::PayloadTooLarge { .. } => 413,
             Self::BadRequest(_) => 400,
             Self::NotFound(_) => 404,
-            Self::Shutdown => 503,
+            // Infrastructure blips are retryable outages, not caller mistakes.
+            Self::Shutdown | Self::Redis(_) | Self::Database(_) => 503,
             _ => 500,
         }
     }

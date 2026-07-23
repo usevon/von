@@ -29,13 +29,24 @@ fn is_private_ipv4(ip: Ipv4Addr) -> bool {
 }
 
 fn is_private_ipv6(ip: Ipv6Addr) -> bool {
-    if let Some(mapped) = ip.to_ipv4_mapped() {
+    // to_ipv4 also maps the deprecated compatible form, a bare ::a.b.c.d.
+    if let Some(mapped) = ip.to_ipv4() {
         return is_private_ipv4(mapped);
+    }
+    let seg = ip.segments();
+    // NAT64 64:ff9b::/96 embeds an IPv4 address in the last 32 bits.
+    if seg[..6] == [0x64, 0xff9b, 0, 0, 0, 0] {
+        return is_private_ipv4(Ipv4Addr::new(
+            (seg[6] >> 8) as u8,
+            seg[6] as u8,
+            (seg[7] >> 8) as u8,
+            seg[7] as u8,
+        ));
     }
     if ip.is_unspecified() || ip.is_loopback() {
         return true;
     }
-    let first = ip.segments()[0];
+    let first = seg[0];
     // Covers unique local fc00::/7, link local fe80::/10, and multicast ff00::/8.
     (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80 || (first & 0xff00) == 0xff00
 }
@@ -136,6 +147,17 @@ pub async fn assert_safe_webhook_url(url: &str) -> Result<()> {
     if any { Ok(()) } else { Err(reject()) }
 }
 
+/// Re-vets a hostname target at send time because DNS can change after create.
+/// An IP literal cannot rebind, so it is skipped and keeps its create-time verdict.
+pub async fn assert_safe_delivery_target(url: &str) -> Result<()> {
+    let is_ip_literal = parse_http_url(url)
+        .is_some_and(|parsed| strip_zone(&parsed.host).parse::<IpAddr>().is_ok());
+    if is_ip_literal {
+        return Ok(());
+    }
+    assert_safe_webhook_url(url).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -148,6 +170,8 @@ mod tests {
             "https://10.0.0.5/hook",
             "https://169.254.169.254/latest",
             "http://[::1]/hook",
+            "http://[::127.0.0.1]/hook",
+            "http://[64:ff9b::7f00:1]/hook",
             "https://metadata.google.internal/x",
             "ftp://example.com/hook",
             "not-a-url",
