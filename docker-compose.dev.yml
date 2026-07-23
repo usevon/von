@@ -22,7 +22,7 @@ services:
     container_name: von-redis
     restart: unless-stopped
     ports:
-      - '56379:6379'
+      - '16379:6379'
     command: redis-server --appendonly yes --appendfsync everysec --maxmemory 2gb --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
