@@ -27,6 +27,48 @@ pub fn to_iso(value: chrono::NaiveDateTime) -> String {
     value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
+/// Accepts what `new Date(value)` accepts for the formats the dashboard sends,
+/// treating a bare datetime as UTC because both services run with TZ=UTC.
+pub fn parse_optional_date(
+    value: Option<&String>,
+    field: &str,
+) -> von_error::Result<Option<chrono::NaiveDateTime>> {
+    use chrono::{DateTime, NaiveDate, NaiveDateTime};
+
+    let Some(value) = value.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+
+    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
+        return Ok(Some(parsed.naive_utc()));
+    }
+    if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f") {
+        return Ok(Some(parsed));
+    }
+    if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M") {
+        return Ok(Some(parsed));
+    }
+    if let Ok(parsed) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
+        return Ok(Some(parsed.and_hms_opt(0, 0, 0).unwrap_or_default()));
+    }
+
+    Err(von_error::Error::BadRequest(format!(
+        "Invalid {field} date"
+    )))
+}
+
+pub fn validate_range(
+    from: Option<chrono::NaiveDateTime>,
+    to: Option<chrono::NaiveDateTime>,
+) -> von_error::Result<()> {
+    match (from, to) {
+        (Some(from), Some(to)) if from > to => Err(von_error::Error::BadRequest(
+            "from must be before or equal to to".to_owned(),
+        )),
+        _ => Ok(()),
+    }
+}
+
 async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
     Json(openapi::ApiDoc::openapi())
 }

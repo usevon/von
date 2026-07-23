@@ -1,4 +1,4 @@
-use crate::ENDPOINT_STATUSES;
+﻿use crate::ENDPOINT_STATUSES;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use utoipa::ToSchema;
@@ -43,20 +43,18 @@ fn check_status(value: Option<&String>) -> Result<()> {
     }
 }
 
-fn check_max_attempts(value: Option<i32>) -> Result<()> {
-    match value {
-        Some(v) if !(1..=10).contains(&v) => Err(invalid("maxAttempts must be between 1 and 10")),
-        _ => Ok(()),
+fn check_bounds(max_attempts: Option<i32>, timeout_ms: Option<i32>) -> Result<()> {
+    if let Some(attempts) = max_attempts
+        && !(1..=10).contains(&attempts)
+    {
+        return Err(invalid("maxAttempts must be between 1 and 10"));
     }
-}
-
-fn check_timeout_ms(value: Option<i32>) -> Result<()> {
-    match value {
-        Some(v) if !(1000..=60_000).contains(&v) => {
-            Err(invalid("timeoutMs must be between 1000 and 60000"))
-        }
-        _ => Ok(()),
+    if let Some(timeout) = timeout_ms
+        && !(1000..=60_000).contains(&timeout)
+    {
+        return Err(invalid("timeoutMs must be between 1000 and 60000"));
     }
+    Ok(())
 }
 
 fn check_events(value: Option<&Vec<String>>) -> Result<()> {
@@ -91,8 +89,7 @@ impl CreateEndpoint {
         check_description(self.description.as_ref())?;
         check_status(self.status.as_ref())?;
         check_version(self.version.as_ref())?;
-        check_max_attempts(self.max_attempts)?;
-        check_timeout_ms(self.timeout_ms)?;
+        check_bounds(self.max_attempts, self.timeout_ms)?;
         check_events(self.events.as_ref())
     }
 }
@@ -125,8 +122,7 @@ impl UpdateEndpoint {
         check_description(self.description.as_ref())?;
         check_status(self.status.as_ref())?;
         check_version(self.version.as_ref().and_then(|v| v.as_ref()))?;
-        check_max_attempts(self.max_attempts)?;
-        check_timeout_ms(self.timeout_ms)?;
+        check_bounds(self.max_attempts, self.timeout_ms)?;
         check_events(self.events.as_ref().and_then(|v| v.as_ref()))
     }
 }

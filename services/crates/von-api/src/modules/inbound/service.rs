@@ -2,7 +2,7 @@ use super::model::{
     CreateInboundEndpoint, InboundEndpoint, InboundEndpointList, UpdateInboundEndpoint,
 };
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
-use crate::pagination::{PaginationQuery, fetch_org_page};
+use crate::pagination::{PaginationQuery, fetch_org_page, find_org_row};
 use crate::state::ApiState;
 use crate::url_safety::assert_safe_webhook_url;
 use crate::{DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, to_iso};
@@ -46,21 +46,6 @@ async fn invalidate_cache(state: &ApiState, endpoint_id: &str) -> Result<()> {
         .query_async::<()>(&mut conn)
         .await?;
     Ok(())
-}
-
-async fn find_row(state: &ApiState, organization_id: &str, id: &str) -> Result<Option<PgRow>> {
-    let Ok(uuid) = uuid::Uuid::parse_str(id) else {
-        return Ok(None);
-    };
-    let row = sqlx::query(&format!(
-        "SELECT {SELECT_COLUMNS} FROM inbound_endpoint \
-         WHERE id = $1 AND organization_id = $2::uuid LIMIT 1"
-    ))
-    .bind(uuid)
-    .bind(organization_id)
-    .fetch_optional(&state.pool)
-    .await?;
-    Ok(row)
 }
 
 pub async fn create(
@@ -126,7 +111,15 @@ pub async fn get_by_id(
     organization_id: &str,
     id: &str,
 ) -> Result<Option<InboundEndpoint>> {
-    match find_row(state, organization_id, id).await? {
+    match find_org_row(
+        &state.pool,
+        "inbound_endpoint",
+        SELECT_COLUMNS,
+        organization_id,
+        id,
+    )
+    .await?
+    {
         Some(row) => Ok(Some(to_endpoint(&row)?)),
         None => Ok(None),
     }
@@ -145,11 +138,12 @@ pub async fn update(
         assert_safe_webhook_url_with(url).await?;
     }
 
-    if find_row(state, organization_id, id).await?.is_none() {
+    let Ok(uuid) = uuid::Uuid::parse_str(id) else {
         return Ok(None);
-    }
+    };
 
-    let row = sqlx::query(&format!(
+    // The UPDATE already filters by id and org, so a missing row is the 404.
+    let Some(row) = sqlx::query(&format!(
         "UPDATE inbound_endpoint SET \
          name = COALESCE($1, name), \
          provider = COALESCE($2, provider), \
@@ -158,7 +152,7 @@ pub async fn update(
          timeout_ms = COALESCE($5, timeout_ms), \
          status = COALESCE($6, status), \
          updated_at = $7 \
-         WHERE id = $8::uuid AND organization_id = $9::uuid RETURNING {SELECT_COLUMNS}"
+         WHERE id = $8 AND organization_id = $9::uuid RETURNING {SELECT_COLUMNS}"
     ))
     .bind(&params.name)
     .bind(&params.provider)
@@ -167,10 +161,13 @@ pub async fn update(
     .bind(params.timeout_ms)
     .bind(&params.status)
     .bind(Utc::now().naive_utc())
-    .bind(id)
+    .bind(uuid)
     .bind(organization_id)
-    .fetch_one(&state.pool)
-    .await?;
+    .fetch_optional(&state.pool)
+    .await?
+    else {
+        return Ok(None);
+    };
 
     invalidate_cache(state, id).await?;
     Ok(Some(to_endpoint(&row)?))

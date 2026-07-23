@@ -1,4 +1,4 @@
-use super::model::{
+﻿use super::model::{
     Delivery, DeliveryAttempt, DeliveryAttemptList, DeliveryAttemptQuery, DeliveryList,
     DeliveryQuery, EventList, EventQuery, WebhookEvent,
 };
@@ -7,7 +7,7 @@ use crate::pagination::{
     scope_hash_fields,
 };
 use crate::state::ApiState;
-use crate::to_iso;
+use crate::{parse_optional_date, to_iso, validate_range};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -23,37 +23,11 @@ const ATTEMPT_COLUMNS: &str = "id::text AS id, delivery_id::text AS delivery_id,
      outcome, is_final, http_status, error, duration_ms, queue_ms, ttfb_ms, transfer_ms, \
      response_body, request_headers, started_at, finished_at, created_at";
 
-/// Mirrors `parseOptionalDate`, which rejects anything `new Date` cannot read.
-fn parse_date(value: Option<&String>, field: &str) -> Result<Option<DateTime<Utc>>> {
-    let Some(raw) = value.filter(|v| !v.is_empty()) else {
-        return Ok(None);
-    };
-    let parsed = DateTime::parse_from_rfc3339(raw)
-        .map(|d| d.with_timezone(&Utc))
-        .or_else(|_| {
-            raw.parse::<chrono::NaiveDate>()
-                .map(|d| DateTime::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc))
-        })
-        .map_err(|_| Error::BadRequest(format!("Invalid {field} date")))?;
-    Ok(Some(parsed))
-}
-
-fn check_range(from: Option<DateTime<Utc>>, to: Option<DateTime<Utc>>) -> Result<()> {
-    if let (Some(from), Some(to)) = (from, to)
-        && from > to
-    {
-        return Err(Error::BadRequest(
-            "from must be before or equal to to".to_owned(),
-        ));
-    }
-    Ok(())
-}
-
 /// The scope hash hashes the ISO strings the TypeScript service produced, so the
 /// milliseconds have to be rendered the same way.
-fn scope_date(value: Option<DateTime<Utc>>) -> Value {
+fn scope_date(value: Option<NaiveDateTime>) -> Value {
     match value {
-        Some(date) => json!(to_iso(date.naive_utc())),
+        Some(date) => json!(to_iso(date)),
         None => Value::Null,
     }
 }
@@ -142,9 +116,9 @@ pub async fn get_events(
     query: &EventQuery,
 ) -> Result<EventList> {
     let sort = query.sort.unwrap_or(CursorSort::Desc);
-    let from = parse_date(query.from.as_ref(), "from")?;
-    let to = parse_date(query.to.as_ref(), "to")?;
-    check_range(from, to)?;
+    let from = parse_optional_date(query.from.as_ref(), "from")?;
+    let to = parse_optional_date(query.to.as_ref(), "to")?;
+    validate_range(from, to)?;
     let limit = clamp_limit(query.limit);
 
     let event_types = if query.event_types.is_empty() {
@@ -196,10 +170,10 @@ pub async fn get_events(
         db_query = db_query.bind(&query.event_types);
     }
     if let Some(from) = from {
-        db_query = db_query.bind(from.naive_utc());
+        db_query = db_query.bind(from);
     }
     if let Some(to) = to {
-        db_query = db_query.bind(to.naive_utc());
+        db_query = db_query.bind(to);
     }
     if let Some(position) = &cursor {
         db_query = db_query
@@ -238,9 +212,9 @@ pub async fn get_deliveries(
     event_id: &str,
     query: &DeliveryQuery,
 ) -> Result<DeliveryList> {
-    let from = parse_date(query.from.as_ref(), "from")?;
-    let to = parse_date(query.to.as_ref(), "to")?;
-    check_range(from, to)?;
+    let from = parse_optional_date(query.from.as_ref(), "from")?;
+    let to = parse_optional_date(query.to.as_ref(), "to")?;
+    validate_range(from, to)?;
     let limit = clamp_limit(query.limit);
     let sort = CursorSort::Desc;
 
@@ -296,10 +270,10 @@ pub async fn get_deliveries(
         db_query = db_query.bind(endpoint_id);
     }
     if let Some(from) = from {
-        db_query = db_query.bind(from.naive_utc());
+        db_query = db_query.bind(from);
     }
     if let Some(to) = to {
-        db_query = db_query.bind(to.naive_utc());
+        db_query = db_query.bind(to);
     }
     if let Some(position) = &cursor {
         db_query = db_query

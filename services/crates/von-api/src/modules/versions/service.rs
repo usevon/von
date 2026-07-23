@@ -113,11 +113,8 @@ pub async fn update(
 ) -> Result<Option<WebhookVersion>> {
     let transforms = params.validate()?;
 
-    if find_row(state, organization_id, version).await?.is_none() {
-        return Ok(None);
-    }
-
-    let row = sqlx::query(&format!(
+    // The UPDATE already filters by version and org, so a missing row is the 404.
+    let Some(row) = sqlx::query(&format!(
         "UPDATE webhook_version SET transforms = $1, updated_at = $2 \
          WHERE version = $3 AND organization_id = $4::uuid RETURNING {SELECT_COLUMNS}"
     ))
@@ -125,8 +122,11 @@ pub async fn update(
     .bind(Utc::now().naive_utc())
     .bind(version)
     .bind(organization_id)
-    .fetch_one(&state.pool)
-    .await?;
+    .fetch_optional(&state.pool)
+    .await?
+    else {
+        return Ok(None);
+    };
 
     invalidate_version_cache(state, organization_id, version).await?;
     Ok(Some(to_version(&row)?))

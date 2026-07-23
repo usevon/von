@@ -4,7 +4,8 @@ use super::model::{
 };
 use crate::auth::Tenant;
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
-use crate::pagination::{PaginationQuery, fetch_org_page};
+use crate::pagination::{PaginationQuery, fetch_org_page, find_org_row};
+use crate::quota::reserve_quota;
 use crate::state::ApiState;
 use crate::url_safety::assert_safe_webhook_url;
 use crate::{DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, to_iso};
@@ -13,7 +14,7 @@ use serde_json::value::RawValue;
 use sqlx::Row;
 use sqlx::postgres::PgRow;
 use von_error::{Error, Result};
-use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, QUOTA_TTL, STREAM_KEY, quota_key};
+use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY};
 
 const RESOURCE: &str = "endpoints";
 
@@ -50,20 +51,6 @@ async fn invalidate_endpoints_cache(state: &ApiState, organization_id: &str) -> 
         .query_async::<()>(&mut conn)
         .await?;
     Ok(())
-}
-
-async fn find_row(state: &ApiState, organization_id: &str, id: &str) -> Result<Option<PgRow>> {
-    let Ok(uuid) = uuid::Uuid::parse_str(id) else {
-        return Ok(None);
-    };
-    let row = sqlx::query(&format!(
-        "SELECT {SELECT_COLUMNS} FROM endpoint WHERE id = $1 AND organization_id = $2::uuid LIMIT 1"
-    ))
-    .bind(uuid)
-    .bind(organization_id)
-    .fetch_optional(&state.pool)
-    .await?;
-    Ok(row)
 }
 
 pub async fn create(
@@ -134,7 +121,7 @@ pub async fn get_by_id(
     organization_id: &str,
     id: &str,
 ) -> Result<Option<Endpoint>> {
-    match find_row(state, organization_id, id).await? {
+    match find_org_row(&state.pool, "endpoint", SELECT_COLUMNS, organization_id, id).await? {
         Some(row) => Ok(Some(to_endpoint(&row)?)),
         None => Ok(None),
     }
@@ -151,7 +138,9 @@ pub async fn update(
         assert_safe_webhook_url(url).await?;
     }
 
-    let Some(existing) = find_row(state, organization_id, id).await? else {
+    let Some(existing) =
+        find_org_row(&state.pool, "endpoint", SELECT_COLUMNS, organization_id, id).await?
+    else {
         return Ok(None);
     };
 
@@ -282,26 +271,6 @@ pub async fn clear_previous_secret(
     Ok(true)
 }
 
-const RESERVE_AND_BUFFER_ONE: &str = r#"
-local quota_key = KEYS[1]
-local limit = tonumber(ARGV[1])
-local ttl = tonumber(ARGV[2])
-local has_overage = tonumber(ARGV[3])
-local stream_key = ARGV[4]
-local payload = ARGV[5]
-
-local current = tonumber(redis.call('GET', quota_key) or '0')
-if has_overage == 0 and current + 1 > limit then
-  return {0, current}
-end
-
-local new_val = redis.call('INCRBY', quota_key, 1)
-redis.call('EXPIRE', quota_key, ttl)
-redis.call('XADD', stream_key, 'MAXLEN', '~', '100000', '*', 'data', payload)
-
-return {1, new_val}
-"#;
-
 /// The test event rides the same buffer the ingest path uses, so the flusher
 /// writes its event and delivery rows and dispatches it like any other webhook.
 pub async fn test_endpoint(
@@ -312,7 +281,10 @@ pub async fn test_endpoint(
     event_type: Option<String>,
 ) -> Result<TestResponse> {
     let organization_id = &tenant.organization_id;
-    if find_row(state, organization_id, id).await?.is_none() {
+    if find_org_row(&state.pool, "endpoint", SELECT_COLUMNS, organization_id, id)
+        .await?
+        .is_none()
+    {
         return Err(Error::NotFound("Endpoint".to_owned()));
     }
 
@@ -350,25 +322,26 @@ pub async fn test_endpoint(
         }],
     };
 
-    let mut conn = state.redis.clone();
-    let (allowed, usage): (i64, i64) = redis::cmd("EVAL")
-        .arg(RESERVE_AND_BUFFER_ONE)
-        .arg(1)
-        .arg(quota_key(organization_id, &now.format("%Y-%m").to_string()))
-        .arg(tenant.monthly_limit)
-        .arg(QUOTA_TTL)
-        .arg(i64::from(tenant.has_overage))
-        .arg(STREAM_KEY)
-        .arg(serde_json::to_string(&entry)?)
-        .query_async(&mut conn)
-        .await?;
+    reserve_quota(
+        state,
+        organization_id,
+        tenant.monthly_limit,
+        tenant.has_overage,
+        1,
+    )
+    .await?;
 
-    if allowed != 1 {
-        return Err(Error::QuotaExceeded {
-            used: usage,
-            limit: tenant.monthly_limit,
-        });
-    }
+    let mut conn = state.redis.clone();
+    redis::cmd("XADD")
+        .arg(STREAM_KEY)
+        .arg("MAXLEN")
+        .arg("~")
+        .arg("100000")
+        .arg("*")
+        .arg("data")
+        .arg(serde_json::to_string(&entry)?)
+        .query_async::<()>(&mut conn)
+        .await?;
 
     Ok(TestResponse {
         event_id,

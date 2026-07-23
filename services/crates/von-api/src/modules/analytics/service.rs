@@ -4,43 +4,11 @@ use super::model::{
     round,
 };
 use crate::state::ApiState;
-use crate::to_iso;
-use chrono::{DateTime, NaiveDate, NaiveDateTime};
+use crate::{parse_optional_date, to_iso, validate_range};
+use chrono::NaiveDateTime;
 use sqlx::Row;
 use sqlx::postgres::PgRow;
-use von_error::{Error, Result};
-
-/// Accepts what `new Date(value)` accepts for the formats the dashboard sends,
-/// treating a bare datetime as UTC because both services run with TZ=UTC.
-fn parse_optional_date(value: Option<&String>, field: &str) -> Result<Option<NaiveDateTime>> {
-    let Some(value) = value.filter(|v| !v.is_empty()) else {
-        return Ok(None);
-    };
-
-    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
-        return Ok(Some(parsed.naive_utc()));
-    }
-    if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f") {
-        return Ok(Some(parsed));
-    }
-    if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M") {
-        return Ok(Some(parsed));
-    }
-    if let Ok(parsed) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        return Ok(Some(parsed.and_hms_opt(0, 0, 0).unwrap_or_default()));
-    }
-
-    Err(Error::BadRequest(format!("Invalid {field} date")))
-}
-
-fn validate_range(from: Option<NaiveDateTime>, to: Option<NaiveDateTime>) -> Result<()> {
-    match (from, to) {
-        (Some(from), Some(to)) if from > to => Err(Error::BadRequest(
-            "from must be before or equal to to".to_owned(),
-        )),
-        _ => Ok(()),
-    }
-}
+use von_error::Result;
 
 struct Range {
     from: Option<NaiveDateTime>,

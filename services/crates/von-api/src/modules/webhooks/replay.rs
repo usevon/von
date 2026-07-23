@@ -1,4 +1,5 @@
 use crate::auth::Tenant;
+use crate::parse_optional_date;
 use crate::quota::reserve_quota;
 use crate::state::ApiState;
 use serde::{Deserialize, Serialize};
@@ -150,9 +151,8 @@ pub async fn replay_bulk(
     tenant: &Tenant,
     body: BulkReplayBody,
 ) -> Result<BulkReplayResult> {
-    let since = chrono::DateTime::parse_from_rfc3339(&body.since)
-        .map_err(|_| Error::BadRequest("Invalid since date".to_owned()))?
-        .naive_utc();
+    let since = parse_optional_date(Some(&body.since), "since")?
+        .ok_or_else(|| Error::BadRequest("Invalid since date".to_owned()))?;
 
     let mut sql = String::from(
         "SELECT d.event_id::text AS event_id, d.endpoint_id::text AS endpoint_id \

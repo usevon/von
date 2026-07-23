@@ -211,6 +211,26 @@ pub fn decode_cursor_sorted(
     }))
 }
 
+pub async fn find_org_row(
+    pool: &PgPool,
+    table: &str,
+    columns: &str,
+    organization_id: &str,
+    id: &str,
+) -> Result<Option<PgRow>> {
+    let Ok(uuid) = uuid::Uuid::parse_str(id) else {
+        return Ok(None);
+    };
+    let row = sqlx::query(&format!(
+        "SELECT {columns} FROM {table} WHERE id = $1 AND organization_id = $2::uuid LIMIT 1"
+    ))
+    .bind(uuid)
+    .bind(organization_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
 pub async fn fetch_org_page(
     pool: &PgPool,
     table: &str,
