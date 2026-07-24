@@ -41,7 +41,7 @@ export class WebhooksResource {
     this.http = http;
   }
 
-  send(body: SendEventBody): Promise<VonResult<WebhookEvent>> {
+  send(body: SendEventBody): Promise<VonResult<BatchResult>> {
     return this.http.request({ method: "POST", path: "/webhooks", body });
   }
 

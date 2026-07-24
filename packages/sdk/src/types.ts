@@ -88,9 +88,17 @@ export type WebhookEvent = {
   createdAt: string;
 };
 
+// The send response omits the payload since the caller already holds it.
+export type CreatedEvent = {
+  id: string;
+  eventType: string;
+  idempotencyKey: string | null;
+  createdAt: string;
+};
+
 export type BatchResult = {
   created: number;
-  events: WebhookEvent[];
+  events: CreatedEvent[];
 };
 
 export type WebhookEventList = {
