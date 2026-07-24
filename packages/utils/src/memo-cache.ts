@@ -2,21 +2,23 @@ type Entry<T> = { value: T; expiresAt: number };
 
 // Per-process TTL cache so hot-path reads skip Redis, cross-instance invalidation stays bounded by the TTL.
 export class MemoCache<T> {
-  private entries = new Map<string, Entry<T>>();
+  private readonly entries = new Map<string, Entry<T>>();
+  private readonly ttlMs: number;
+  private readonly maxEntries: number;
 
-  constructor(
-    private readonly ttlMs: number,
-    private readonly maxEntries = 10_000
-  ) {}
+  constructor(ttlMs: number, maxEntries = 10_000) {
+    this.ttlMs = ttlMs;
+    this.maxEntries = maxEntries;
+  }
 
   get(key: string): T | undefined {
     const entry = this.entries.get(key);
     if (!entry) {
-      return undefined;
+      return;
     }
     if (Date.now() > entry.expiresAt) {
       this.entries.delete(key);
-      return undefined;
+      return;
     }
     return entry.value;
   }
