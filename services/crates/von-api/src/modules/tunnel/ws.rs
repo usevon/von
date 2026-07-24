@@ -112,6 +112,8 @@ async fn serve(
             // The signal may have fired before this task subscribed.
             while !*shutdown.borrow_and_update() {
                 tokio::select! {
+                    // Biased so a queued takeover frame drains before shutdown closes the sink.
+                    biased;
                     queued = outbox.recv() => match queued {
                         Some(text) => {
                             if sink.send(Message::Text(text.into())).await.is_err() {

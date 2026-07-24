@@ -7,6 +7,7 @@ license.workspace = true
 [dev-dependencies]
 dotenvy = { workspace = true }
 reqwest = { workspace = true }
+tokio-tungstenite = "0.29"
 
 [dependencies]
 von-error = { workspace = true }

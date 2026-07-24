@@ -2532,6 +2532,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "tokio",
+ "tokio-tungstenite",
  "tracing",
  "utoipa",
  "uuid",
