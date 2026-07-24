@@ -34,8 +34,8 @@ const plans: Plan[] = PLANS.map((tier) => ({
     { label: "Free retries, never counted" },
     { label: `${tier.supportLabel} support` },
   ],
-  cta: tier.id === "enterprise" ? "Contact us" : "Get started",
-  href: tier.id === "enterprise" ? "/contact" : urls.signup,
+  cta: "Get started",
+  href: urls.signup,
   highlighted: tier.id === "growth",
 }));
 
@@ -45,7 +45,7 @@ type Props = {
 
 export const PlanCards = (props: Props) => (
   <div className="px-8 sm:px-12">
-    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 xl:gap-0">
+    <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-0">
       {plans.map((plan) => (
         <PlanCard
           className={

@@ -92,17 +92,17 @@ pub fn plan_limits(plan: &str) -> PlanLimits {
         "free" | "hobby" => PlanLimits {
             monthly: 50_000,
             overage: false,
-            per_second: 100,
+            per_second: 200,
         },
         "growth" => PlanLimits {
             monthly: 1_000_000,
             overage: true,
-            per_second: 2_000,
+            per_second: 1_000,
         },
         "scale" => PlanLimits {
             monthly: 10_000_000,
             overage: true,
-            per_second: 10_000,
+            per_second: 2_500,
         },
         "enterprise" => PlanLimits {
             monthly: i64::MAX,

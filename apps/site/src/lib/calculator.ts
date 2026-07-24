@@ -8,7 +8,7 @@ import {
   starter as autumnStarter,
 } from "../../autumn.config";
 
-export type PlanId = "free" | "starter" | "growth" | "scale" | "enterprise";
+export type PlanId = "free" | "starter" | "growth" | "scale";
 
 const amountOf = (plan: Plan): number => plan.price?.amount ?? 0;
 
@@ -63,8 +63,8 @@ export const PLANS: PricingPlan[] = [
     messagesLabel: count.format(includedOf(autumnFree)),
     overageRate: overageOf(autumnFree),
     overageLabel: overageLabel(overageOf(autumnFree)),
-    throughputLabel: "100/sec",
-    retentionLabel: "3 days",
+    throughputLabel: "200/sec",
+    retentionLabel: "30 days",
     supportLabel: "Discord",
   },
   {
@@ -79,7 +79,7 @@ export const PLANS: PricingPlan[] = [
     overageRate: overageOf(autumnStarter),
     overageLabel: overageLabel(overageOf(autumnStarter)),
     throughputLabel: "500/sec",
-    retentionLabel: "7 days",
+    retentionLabel: "30 days",
     supportLabel: "Email",
   },
   {
@@ -93,8 +93,8 @@ export const PLANS: PricingPlan[] = [
     messagesLabel: count.format(includedOf(autumnGrowth)),
     overageRate: overageOf(autumnGrowth),
     overageLabel: overageLabel(overageOf(autumnGrowth)),
-    throughputLabel: "2,000/sec",
-    retentionLabel: "14 days",
+    throughputLabel: "1,000/sec",
+    retentionLabel: "30 days",
     supportLabel: "Priority email",
   },
   {
@@ -108,24 +108,9 @@ export const PLANS: PricingPlan[] = [
     messagesLabel: count.format(includedOf(autumnScale)),
     overageRate: overageOf(autumnScale),
     overageLabel: overageLabel(overageOf(autumnScale)),
-    throughputLabel: "10,000/sec",
+    throughputLabel: "2,500/sec",
     retentionLabel: "30 days",
     supportLabel: "Priority email",
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    description: "Custom limits, terms, and deployment.",
-    price: null,
-    priceLabel: "Custom",
-    periodLabel: "",
-    messages: null,
-    messagesLabel: "Custom",
-    overageRate: null,
-    overageLabel: "Custom",
-    throughputLabel: "Custom",
-    retentionLabel: "Custom",
-    supportLabel: "Dedicated",
   },
 ];
 
@@ -166,7 +151,7 @@ export type PlanEstimate = {
   overage: number;
 };
 
-// Ties resolve to the later plan because higher tiers also raise throughput and retention.
+// Ties resolve to the later plan because higher tiers also raise throughput.
 export function getCheapestPlan(messages: number): PlanEstimate {
   let best: PlanEstimate | null = null;
 
