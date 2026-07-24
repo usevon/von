@@ -66,16 +66,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             durations.push(t0.elapsed().as_secs_f64() * 1000.0);
         }
     } else {
-        let rounds = iterations / concurrency;
-        for r in 0..rounds {
-            let mut handles = Vec::with_capacity(concurrency);
-            for c in 0..concurrency {
-                let client = client.clone();
-                let url = url.clone();
-                let key = key.clone();
-                let body = body.clone();
-                let idx = r * concurrency + c;
-                handles.push(tokio::spawn(async move {
+        // A worker pool keeps exactly `concurrency` in flight, a per-round barrier
+        // would bind throughput to the slowest request of every round.
+        let counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut handles = Vec::with_capacity(concurrency);
+        for _ in 0..concurrency {
+            let client = client.clone();
+            let url = url.clone();
+            let key = key.clone();
+            let body = body.clone();
+            let counter = counter.clone();
+            handles.push(tokio::spawn(async move {
+                let mut results = Vec::new();
+                loop {
+                    let idx = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if idx >= iterations {
+                        break;
+                    }
                     let t0 = Instant::now();
                     let res = client
                         .post(&url)
@@ -92,11 +99,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         code = res.status().as_u16();
                         let _ = res.bytes().await;
                     }
-                    (t0.elapsed().as_secs_f64() * 1000.0, code)
-                }));
-            }
-            for h in handles {
-                let (ms, code) = h.await?;
+                    results.push((t0.elapsed().as_secs_f64() * 1000.0, code));
+                }
+                results
+            }));
+        }
+        for h in handles {
+            for (ms, code) in h.await? {
                 durations.push(ms);
                 if (200..300).contains(&code) {
                     ok_count += 1;

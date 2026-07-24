@@ -5,6 +5,7 @@
 *.so
 *.dylib
 bin/
+!services/probes/src/bin/
 
 # Environment
 .env
@@ -47,3 +48,4 @@ next-env.d.ts
 
 # Rust
 services/target/
+services/probes/target/

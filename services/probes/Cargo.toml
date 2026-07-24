@@ -1,0 +1,22 @@
+[package]
+name = "von-probes"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Detached from the services workspace on purpose so probe-only deps stay out of the production lockfile.
+[workspace]
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+redis = { version = "0.32", features = ["tokio-comp", "connection-manager"] }
+uuid = { version = "1", features = ["v4"] }
+zstd = "0.13"
+lz4_flex = "0.11"
+von-types = { path = "../crates/von-types" }
+
+[profile.release]
+debug = true
