@@ -9,6 +9,10 @@ use tokio::net::TcpListener;
 use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY};
 use von_worker::{delivery::Worker, flusher::Flusher, inbound::Inbound};
 
+pub fn infra_optional() -> bool {
+    std::env::var("VON_TEST_INFRA").is_ok_and(|v| v == "0")
+}
+
 pub struct Hit {
     pub body: String,
     pub signature: String,
@@ -121,28 +125,39 @@ pub struct Fixture {
 
 impl Fixture {
     pub async fn new() -> Option<Self> {
-        dotenvy::from_path("../../.env").ok();
+        dotenvy::dotenv().ok();
         // A fast backoff keeps the retry tests from sleeping through real second-scale waits.
         unsafe { std::env::set_var("WORKER_BACKOFF_BASE_SECS", "0.05") };
+        // Probes bind to loopback, which delivery would otherwise reject as private.
+        unsafe { std::env::set_var("VON_ALLOW_PRIVATE_TARGETS", "1") };
         let (Ok(database_url), Ok(redis_url)) =
             (std::env::var("DATABASE_URL"), std::env::var("REDIS_URL"))
         else {
-            eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-            return None;
+            if infra_optional() {
+                return None;
+            }
+            panic!("DATABASE_URL and REDIS_URL are required, set VON_TEST_INFRA=0 to skip");
         };
 
-        let pool = PgPool::connect(&database_url).await.ok()?;
-        let client = redis::Client::open(redis_url).ok()?;
-        let redis = redis::aio::ConnectionManager::new(client).await.ok()?;
+        let pool = PgPool::connect(&database_url)
+            .await
+            .expect("connect to postgres");
+        let client = redis::Client::open(redis_url).expect("open redis");
+        let redis = redis::aio::ConnectionManager::new(client)
+            .await
+            .expect("connect to redis");
 
         let organization_id: String =
             sqlx::query_scalar("SELECT id::text FROM organization LIMIT 1")
                 .fetch_optional(&pool)
                 .await
-                .ok()??;
+                .expect("query organization")
+                .expect("seed at least one organization before running worker tests");
 
         let flusher = Flusher::new(pool.clone(), redis.clone()).await;
-        let worker = Worker::new(pool.clone(), redis.clone()).await.ok()?;
+        let worker = Worker::new(pool.clone(), redis.clone())
+            .await
+            .expect("build worker");
         let inbound = Inbound::new(pool.clone()).await;
 
         Some(Self {

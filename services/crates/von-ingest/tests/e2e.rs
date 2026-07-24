@@ -43,14 +43,13 @@ impl Env {
     }
 }
 
+// These need a manually started ingest server, so they stay opt-in via VON_E2E_URL
+// rather than failing a normal cargo test run.
 macro_rules! skip_without_env {
     () => {
         match env() {
             Some(e) => e,
-            None => {
-                eprintln!("skipping, set VON_E2E_URL and VON_E2E_KEY to run");
-                return;
-            }
+            None => return,
         }
     };
 }

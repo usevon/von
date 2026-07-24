@@ -11,6 +11,10 @@ use von_api::state::ApiState;
 /// A public IP literal so url safety passes without a DNS lookup.
 pub const SAFE_URL: &str = "https://93.184.216.34/hook";
 
+pub fn infra_optional() -> bool {
+    std::env::var("VON_TEST_INFRA").is_ok_and(|v| v == "0")
+}
+
 pub struct Fixture {
     pub pool: PgPool,
     pub redis: ConnectionManager,
@@ -24,19 +28,27 @@ pub struct Fixture {
 impl Fixture {
     /// Seeds an isolated organization and user, then serves the real router on a local port.
     pub async fn new() -> Option<Self> {
-        dotenvy::from_path("../../.env").ok();
+        dotenvy::dotenv().ok();
         let (Ok(database_url), Ok(redis_url), Ok(signing_secret)) = (
             std::env::var("DATABASE_URL"),
             std::env::var("REDIS_URL"),
             std::env::var("API_KEY_SIGNING_SECRET"),
         ) else {
-            eprintln!("skipping, DATABASE_URL, REDIS_URL, and API_KEY_SIGNING_SECRET are required");
-            return None;
+            if infra_optional() {
+                return None;
+            }
+            panic!(
+                "DATABASE_URL, REDIS_URL, and API_KEY_SIGNING_SECRET are required, set VON_TEST_INFRA=0 to skip"
+            );
         };
 
-        let pool = PgPool::connect(&database_url).await.ok()?;
-        let client = redis::Client::open(redis_url).ok()?;
-        let redis = ConnectionManager::new(client.clone()).await.ok()?;
+        let pool = PgPool::connect(&database_url)
+            .await
+            .expect("connect to postgres");
+        let client = redis::Client::open(redis_url).expect("open redis");
+        let redis = ConnectionManager::new(client.clone())
+            .await
+            .expect("connect to redis");
 
         let organization_id = uuid::Uuid::new_v4().to_string();
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -74,8 +86,10 @@ impl Fixture {
             instance_id: format!("test-{organization_id}"),
         });
         let app = von_api::router().with_state(state);
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.ok()?;
-        let port = listener.local_addr().ok()?.port();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test listener");
+        let port = listener.local_addr().expect("listener addr").port();
         tokio::spawn(async move {
             let _ = axum::serve(listener, app).await;
         });

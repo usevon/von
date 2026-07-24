@@ -128,7 +128,17 @@ mod tests {
         patterns.iter().map(|p| (*p).to_owned()).collect()
     }
 
-    /// This is the live fanout routing, both ingest and replay must keep these semantics.
+    // Shared with the typescript billableMessages test so billing cannot disagree.
+    #[test]
+    fn billable_units_match_the_cross_language_boundaries() {
+        assert_eq!(MAX_PAYLOAD_BYTES, 1024 * 1024);
+        assert_eq!(billable_units(0), 1);
+        assert_eq!(billable_units(1), 1);
+        assert_eq!(billable_units(64 * 1024), 1);
+        assert_eq!(billable_units(64 * 1024 + 1), 2);
+        assert_eq!(billable_units(200 * 1024), 4);
+    }
+
     #[test]
     fn event_type_matching_pins_routing_semantics() {
         assert!(matches_event_type("order.created", None));
