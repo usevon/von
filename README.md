@@ -20,49 +20,6 @@ Von is open-source webhooks infrastructure that handles delivery at scale. With 
 
 All out of the box, without reinventing webhook infrastructure.
 
-## Performance
-
-Ingest throughput on a single node, measured with the stress harness against Redis and Postgres.
-
-| Payload | Requests/sec | p50 |
-| --- | --- | --- |
-| Tiny | **30,000+** | 1.1 ms |
-| 1 KB | 9,400 | 8.0 ms |
-| 16 KB | 2,350 | 30.8 ms |
-| 64 KB | 640 | 77.0 ms |
-
-Concurrent requests from one tenant are coalesced into a single Redis operation, so cost per event falls as traffic rises. At 200 concurrent clients, 1,000 requests cost 22 round trips instead of 1,000, and larger payloads sustain 9 to 40 MB per second of ingested data.
-
-End to end delivery, accept through the flusher and worker to the receiving endpoint, runs at roughly 50 ms p50 on the same hardware, and each plan's throughput ceiling is enforced on the outbound side as well, so a capped tier queues instead of bursting past what it bought.
-
-See [Benchmarks](#benchmarks) to reproduce.
-
-## Pricing
-
-Von charges for messages and throughput, nothing else. An event counts as one message, payloads over 64 KB add one message per extra 64 KB, and retries are always free. Throughput is the sustained events-per-second ceiling on each plan.
-
-| Plan | Price | Messages | Overage | Throughput | Retention |
-| --- | --- | --- | --- | --- | --- |
-| Free | $0 | 50,000 | none, hard cap | 100/s | 3 days |
-| Starter | $29 | 250,000 | $1.00 per 10k | 500/s | 7 days |
-| Growth | $99 | 1,000,000 | $0.50 per 10k | 2,000/s | 14 days |
-| Scale | $499 | 10,000,000 | $0.25 per 10k | 10,000/s | 30 days |
-| Enterprise | Custom | Custom | Custom | Custom | Custom |
-
-Every paid plan includes unlimited team members, transformations, replay, and all integrations, and self-hosting under AGPL-3.0 is free with no limits.
-
-## Architecture
-
-The delivery pipeline is Rust and the product surface is TypeScript.
-
-| Service | Language | Responsibility |
-| --- | --- | --- |
-| `von-ingest` | Rust | Event ingest and the full HTTP API, per tenant coalescing, quota and throughput enforcement |
-| `von-worker` | Rust | Persisting buffered events, outbound delivery with retries and circuit breaking, inbound forwarding |
-| `apps/dashboard` | Next.js | Authentication, organizations, API key management, UI |
-
-The dashboard issues API keys through better-auth and the Rust services verify them straight from Postgres and Redis, so the two sides share storage instead of code. Everything the SDK talks to is one Rust binary on one port, and schema migrations are embedded in the services and run on startup.
-
 ## Getting Started
 
 Sending your first event takes four lines.
@@ -74,19 +31,58 @@ const von = new Von({ apiKey: "von_dev_xxx" });
 await von.send("order.created", { orderId: 123 });
 ```
 
-Events are acknowledged in about a millisecond and deduplicated by idempotency key, which the SDK generates per event, so a retried send can never create a second delivery.
+Messages are acknowledged in a few milliseconds and deduplicated by an idempotency key the SDK generates per event, so a retried send can never create a second delivery. Get started at [usevon.com](https://usevon.com) with no setup required, or [self-host](#self-hosted) with your own infrastructure.
 
-### Cloud
+## Performance
 
-Get started at [usevon.com](https://usevon.com) with no setup required.
+Single node ingest measured at 100 concurrent clients, taking medians of repeated runs. Payloads under 1 KB perform the same as 1 KB because per message overhead dominates below that.
 
-### Self-hosted
+| Payload | Billed as | Messages/sec | MB/s | p50 (ms) | p99 (ms) |
+| --- | --- | --- | --- | --- | --- |
+| 1 KB | 1 message | **26,600** | 26 | 3.7 | 5.7 |
+| 16 KB | 1 message | 15,200 | 238 | 6.4 | 10.4 |
+| 64 KB | 1 message | 3,200 | 200 | 26.7 | 85 |
+| 256 KB | 4 messages | 9,800 | 612 | 35.7 | 108 |
+| 1 MB | 16 messages | 12,240 | **765** | 98 | 296 |
 
-Self-hosting gives you the same product with your data on your own machines and no usage limits. The backend is two Rust binaries that run anywhere Linux runs, and the dashboard and site are Next.js apps that deploy to [Vercel](https://vercel.com) or any Node.js host.
+Peak throughput on one node is 37,200 messages per second at 500 concurrent clients. Concurrent messages coalesce into shared Redis round trips while large payloads are stored zstd compressed, and those two mechanisms together are what hold throughput up as payload size grows. The numbers are the same whether the load comes from one tenant or ten.
 
-You'll need Postgres and Redis to run it, Rust to build the binaries, and Bun for the JS apps. The backend wants a VPS rather than a serverless platform because the tunnel WebSockets are stateful.
+End to end, a message reaches its receiving endpoint in roughly 50 ms. Plan ceilings are enforced on the outbound side as well, so a capped tier queues instead of bursting past its limit.
 
-#### Development
+See [Benchmarks](#benchmarks) to reproduce.
+
+## Pricing
+
+Von charges for messages and throughput, the sustained messages-per-second ceiling of each plan, and nothing else. An event counts as one message, each extra 64 KB of payload adds another, and retries are always free.
+
+| Plan | Price | Messages | Overage | Throughput | Retention |
+| --- | --- | --- | --- | --- | --- |
+| Free | $0 | 50,000 | none, hard cap | 100/s | 3 days |
+| Starter | $29 | 250,000 | $1.00 per 10k | 500/s | 7 days |
+| Growth | $99 | 1,000,000 | $0.50 per 10k | 2,000/s | 14 days |
+| Scale | $499 | 10,000,000 | $0.25 per 10k | 10,000/s | 30 days |
+| Enterprise | Custom | Custom | Custom | Custom | Custom |
+
+Every paid plan includes unlimited team members, transformations, replay, and all integrations. Self-hosting under AGPL-3.0 is free with no limits.
+
+## Architecture
+
+The delivery pipeline is Rust and the product surface is TypeScript.
+
+| Service | Language | Responsibility |
+| --- | --- | --- |
+| `von-ingest` | Rust | Event ingest and the full HTTP API, per tenant coalescing, quota and throughput enforcement |
+| `von-worker` | Rust | Persisting buffered events, outbound delivery with retries and circuit breaking, inbound forwarding |
+| `apps/dashboard` | Next.js | Authentication, organizations, API key management, UI |
+
+The dashboard issues API keys through better-auth and the Rust services verify them straight from Postgres and Redis, so the two sides share storage instead of code. Everything the SDK talks to is one Rust binary on one port. Schema migrations are embedded in the services and run on startup.
+
+## Self-hosted
+
+Self-hosting runs the same product on your own machines with your own data. The backend is two Rust binaries that run anywhere Linux runs, and the dashboard and site are Next.js apps that deploy to [Vercel](https://vercel.com) or any Node.js host. You'll need Postgres and Redis at runtime, plus Rust and Bun to build. The tunnel WebSockets are stateful, so the backend wants a VPS rather than a serverless platform.
+
+<details>
+<summary>Development setup</summary>
 
 ```bash
 git clone https://github.com/usevon/von.git
@@ -125,7 +121,10 @@ cargo run -p von-worker
 
 </details>
 
-#### Production
+</details>
+
+<details>
+<summary>Production deployment</summary>
 
 **Frontend**
 
@@ -151,7 +150,11 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-Both binaries read `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `API_KEY_SIGNING_SECRET`, and `SECRET_ENCRYPTION_KEY` from that file, and the values must match the dashboard's since both sides read the same encrypted rows. Migrations run on startup, and restarts are safe at any moment because claimed work is leased and re-polled rather than lost.
+Both binaries read `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `API_KEY_SIGNING_SECRET`, and `SECRET_ENCRYPTION_KEY` from that file, and the values must match the dashboard's because both sides read the same encrypted rows. Restarts are safe at any moment since claimed work is leased and re-polled rather than lost.
+
+Give Redis enough `maxmemory` to buffer messages for as long as a worker outage might last, and compression makes that cheap, 2 GB holds roughly 14 GB of raw payload backlog. A full buffer returns retryable 503s and fails the readiness probe, nothing acknowledged is ever dropped, and the node recovers on its own once the worker drains. When upgrading, deploy `von-worker` before `von-ingest`.
+
+</details>
 
 ## Testing
 
@@ -167,17 +170,15 @@ bun run test
 
 ## Benchmarks
 
-Three harnesses drive the compiled services over real HTTP. `loadgen` is a quick fixed-load check, `stress` sweeps payload size and concurrency and reports how many requests each Redis round trip absorbed, and `e2e` measures delivery latency all the way through the flusher and worker to a local sink, with `--json` output for CI.
+Start the dev stack, then one command runs three full passes and prints the medians the table above quotes.
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
 cd services
-cargo run --release -p von-ingest --bin loadgen -- http://localhost:8090/webhooks <api-key> 2000 8
 cargo run --release -p von-ingest --bin stress -- http://localhost:8090/webhooks <api-key> 20000
-cargo run --release -p von-ingest --bin e2e -- http://localhost:8090/webhooks <api-key> 500
 ```
 
-Numbers move with the machine, so treat any run under ten seconds as noise and take medians across at least three runs.
+Numbers move with the machine, so treat them as relative rather than absolute.
 
 ## SDKs
 
@@ -193,16 +194,6 @@ Install the CLI globally to test webhooks locally with tunnels:
 ```bash
 npm install -g @usevon/cli
 ```
-
-## Contributing
-
-Von is open source and welcomes contributions, issues, and feedback.
-
-See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development setup and guidelines.
-
-## Security
-
-For security concerns, see our [Security Policy](.github/SECURITY.md).
 
 ## License
 
