@@ -122,8 +122,6 @@ pub async fn replay_event(
 
     let event_type: String = row.try_get("event_type")?;
 
-    // Only endpoints subscribed to this event type receive the replay, matching
-    // what the original delivery would have fanned out to.
     let targets: Vec<Target> = tenant
         .endpoints
         .iter()

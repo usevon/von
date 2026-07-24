@@ -1,4 +1,4 @@
-﻿use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion, clean_transforms};
+use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion, clean_transforms};
 use crate::pagination::{PaginationQuery, fetch_org_page};
 use crate::state::ApiState;
 use crate::to_iso;
@@ -113,7 +113,6 @@ pub async fn update(
 ) -> Result<Option<WebhookVersion>> {
     let transforms = params.validate()?;
 
-    // The UPDATE already filters by version and org, so a missing row is the 404.
     let Some(row) = sqlx::query(&format!(
         "UPDATE webhook_version SET transforms = $1, updated_at = $2 \
          WHERE version = $3 AND organization_id = $4::uuid RETURNING {SELECT_COLUMNS}"

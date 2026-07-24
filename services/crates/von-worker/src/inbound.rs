@@ -1,4 +1,4 @@
-﻿use futures_util::stream::{self, StreamExt};
+use futures_util::stream::{self, StreamExt};
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
 use tracing::error;
@@ -44,7 +44,6 @@ impl Inbound {
         stream::iter(claimed)
             .for_each_concurrent(self.concurrency, |job| async move {
                 if let Err(err) = self.forward(&job).await {
-                    // The lease re-exposes the row once it expires, so nothing is dropped.
                     error!(delivery_id = %job.delivery_id, error = %err, "inbound forward failed");
                 }
             })
@@ -120,8 +119,6 @@ impl Inbound {
             return Ok(());
         };
 
-        // DNS can change after the create-time vetting, so hostname targets are re-checked
-        // per attempt to close the rebinding window.
         if von_api::url_safety::assert_safe_delivery_target(&endpoint.forward_url)
             .await
             .is_err()

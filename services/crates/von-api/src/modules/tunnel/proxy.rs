@@ -12,8 +12,6 @@ use tokio::sync::{mpsc, oneshot};
 
 const FORWARD_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Hop by hop headers describe the tunnel's own transfer, so passing them back
-/// would describe a body the client is not receiving.
 const STRIPPED: [&str; 2] = ["content-encoding", "transfer-encoding"];
 
 fn max_body_bytes() -> usize {
@@ -33,8 +31,6 @@ fn error(status: StatusCode, message: &str, retryable: bool) -> Response {
         .into_response()
 }
 
-/// The wildcard route supplies a second segment, so both shapes deserialize into
-/// one struct rather than needing a handler each.
 #[derive(serde::Deserialize)]
 pub struct ProxyPath {
     tunnel_id: String,
@@ -60,10 +56,8 @@ pub async fn handler(
         );
     }
 
-    // Cloning the Arc releases the map shard lock before the awaits below.
     let connection = state.tunnels.get(&tunnel_id).map(|entry| entry.clone());
     let Some(connection) = connection else {
-        // Real forwarding is gated on multi instance deploys, so a remote owner gets an honest 503.
         let mut conn = state.redis.clone();
         let owner: Option<String> = redis::cmd("GET")
             .arg(format!("tunnel:conn:{tunnel_id}"))

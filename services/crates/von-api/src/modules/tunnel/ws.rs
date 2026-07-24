@@ -38,8 +38,6 @@ pub async fn handler(
         .await
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-    // Checked before the upgrade so a rejected client gets a status, not a socket
-    // that closes on open.
     let owned = sqlx::query(
         "SELECT 1 FROM tunnel WHERE id = $1 AND organization_id = $2::uuid AND user_id = $3::uuid",
     )
@@ -94,7 +92,6 @@ async fn serve(
             .outbound
             .try_send(r#"{"type":"takeover"}"#.to_owned());
         previous.fail_pending();
-        // Without the signal the superseded tasks linger until the old client notices.
         previous.shutdown.send_replace(true);
     }
 
@@ -109,10 +106,8 @@ async fn serve(
             let mut shutdown = connection.shutdown.subscribe();
             let mut ping = tokio::time::interval(PING_INTERVAL);
             ping.tick().await;
-            // The signal may have fired before this task subscribed.
             while !*shutdown.borrow_and_update() {
                 tokio::select! {
-                    // Biased so a queued takeover frame drains before shutdown closes the sink.
                     biased;
                     queued = outbox.recv() => match queued {
                         Some(text) => {
@@ -123,7 +118,6 @@ async fn serve(
                         None => break,
                     },
                     _ = ping.tick() => {
-                        // A peer silent past the idle window is a half open socket, not a slow one.
                         if last_seen.lock().unwrap().elapsed() > IDLE_TIMEOUT {
                             connection.shutdown.send_replace(true);
                             break;
@@ -148,7 +142,6 @@ async fn serve(
             ticker.tick().await;
             loop {
                 ticker.tick().await;
-                // A socket opened with a valid session would otherwise outlive it.
                 match state.auth.resolve_principal(&token).await {
                     Ok(current) if current.organization_id == connection.organization_id => {
                         refresh_ttl(&state, &tunnel_id).await;
@@ -157,7 +150,6 @@ async fn serve(
                         let _ = connection
                             .outbound
                             .try_send(r#"{"type":"session_expired"}"#.to_owned());
-                        // An expired session must not keep proxying while waiting on the client.
                         connection.shutdown.send_replace(true);
                         break;
                     }
@@ -167,7 +159,6 @@ async fn serve(
     });
 
     let mut shutdown = connection.shutdown.subscribe();
-    // The signal may have fired before this loop subscribed.
     while !*shutdown.borrow_and_update() {
         let message = tokio::select! {
             inbound = stream.next() => match inbound {
@@ -201,7 +192,6 @@ async fn serve(
     connection.shutdown.send_replace(true);
     writer.abort();
     connection.fail_pending();
-    // A superseded connection no longer owns the map entry or the redis key.
     let owned = state
         .tunnels
         .remove_if(&tunnel_id, |_, existing| Arc::ptr_eq(existing, &connection))

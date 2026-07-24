@@ -25,8 +25,6 @@ pub async fn register(
     user_id: &str,
     port: i32,
 ) -> Result<RegisterResponse> {
-    // Reusing the active row keeps reconnects on the same port stable while the
-    // id itself stays random and unguessable on the public proxy path.
     let existing = sqlx::query(
         "SELECT id, secret FROM tunnel \
          WHERE organization_id = $1::uuid AND user_id = $2::uuid AND port = $3 \
@@ -94,8 +92,6 @@ pub async fn rotate(
     .fetch_optional(&state.pool)
     .await?;
 
-    // Ownership is checked on both columns because a tunnel belongs to one user
-    // inside the organization, not to the organization at large.
     let owned = existing.as_ref().is_some_and(|row| {
         row.try_get::<String, _>("org_id").ok().as_deref() == Some(organization_id)
             && row.try_get::<String, _>("user_id").ok().as_deref() == Some(user_id)
@@ -115,15 +111,12 @@ pub async fn rotate(
     Ok(Some(RotateResponse { secret }))
 }
 
-/// The connected client holds the previous secret, so it is told to swap over
-/// while the socket is still live.
 async fn notify_rotated(state: &ApiState, id: &str, secret: &str) {
     let payload = serde_json::json!({ "type": "secret_rotated", "secret": secret }).to_string();
     if let Some(connection) = state.tunnels.get(id) {
         let _ = connection.outbound.try_send(payload);
         return;
     }
-    // Cross instance delivery of this publish arrives with cross instance routing.
     let mut conn = state.redis.clone();
     let _: redis::RedisResult<()> = redis::cmd("PUBLISH")
         .arg(format!("tunnel:control:{id}"))
@@ -132,8 +125,6 @@ async fn notify_rotated(state: &ApiState, id: &str, secret: &str) {
         .await;
 }
 
-/// Active tunnels come from the shared redis set rather than a local map so the
-/// answer does not depend on which instance the request landed on.
 pub async fn active_tunnels(state: &ApiState, organization_id: &str) -> Result<Vec<String>> {
     let mut conn = state.redis.clone();
     let members: Vec<String> = redis::cmd("SMEMBERS")
@@ -145,8 +136,6 @@ pub async fn active_tunnels(state: &ApiState, organization_id: &str) -> Result<V
         return Ok(members);
     }
 
-    // A member whose connection key expired is stale, so it is filtered out and
-    // dropped rather than reported as active.
     let mut pipe = redis::pipe();
     for id in &members {
         pipe.cmd("EXISTS").arg(format!("tunnel:conn:{id}"));

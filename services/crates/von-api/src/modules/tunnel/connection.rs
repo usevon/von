@@ -30,7 +30,6 @@ pub struct Connection {
 }
 
 impl Connection {
-    /// Dropping the senders wakes every waiter instead of leaving them to time out.
     pub fn fail_pending(&self) {
         self.pending.retain(|_, _| false);
     }

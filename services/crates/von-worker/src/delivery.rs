@@ -1,4 +1,4 @@
-﻿use futures_util::stream::{self, StreamExt};
+use futures_util::stream::{self, StreamExt};
 use redis::aio::ConnectionManager;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
@@ -110,7 +110,6 @@ impl Worker {
         stream::iter(claimed)
             .for_each_concurrent(self.concurrency, |job| async move {
                 if let Err(err) = self.process(&job).await {
-                    // The lease re-exposes the row once it expires, so nothing is dropped.
                     error!(delivery_id = %job.delivery_id, error = %err, "delivery failed");
                 }
             })
@@ -224,8 +223,6 @@ impl Worker {
         )
         .await?;
 
-        // Exponential backoff decides when the poll may pick the row up again.
-        // A delivered row leaves the partial poll index, so its next_attempt_at is inert.
         let backoff_secs = if delivered || is_final {
             0.0
         } else {
@@ -259,8 +256,6 @@ impl Worker {
     }
 
     async fn send(&self, job: &Claimed, endpoint: &Endpoint) -> Outcome {
-        // DNS can change after the create-time vetting, so hostname targets are re-checked
-        // per attempt to close the rebinding window.
         if von_api::url_safety::assert_safe_delivery_target(&endpoint.url)
             .await
             .is_err()
@@ -386,8 +381,6 @@ impl Worker {
         if endpoint.circuit_state != "open" {
             return false;
         }
-        // An open circuit becomes eligible for a trial request once the reset
-        // window has passed.
         match endpoint.circuit_opened_at {
             Some(opened) => (chrono::Utc::now() - opened).num_seconds() < CIRCUIT_RESET_SECS,
             None => true,

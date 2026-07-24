@@ -213,8 +213,6 @@ impl Auth {
         let Ok(record) = serde_json::from_str::<SessionRecord>(&stored) else {
             return Ok(None);
         };
-        // A session without an active organization cannot be scoped to one, the
-        // same condition the typescript resolver treats as unauthenticated.
         let Some(organization_id) = record.session.active_organization_id else {
             return Ok(None);
         };
@@ -232,8 +230,6 @@ impl Auth {
     /// Tries the API key first and falls back to a dashboard session, matching
     /// the order the typescript resolver uses so a bearer resolves the same way.
     pub async fn resolve_principal(&self, raw: &str) -> Result<Principal> {
-        // Only a rejected key falls through to the session path, an infrastructure
-        // error propagates so an outage is not reported as 401.
         match self.resolve(raw).await {
             Ok(tenant) => Ok(Principal {
                 organization_id: tenant.organization_id.clone(),

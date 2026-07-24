@@ -34,7 +34,6 @@ impl Flusher {
     pub async fn tick(&self) -> Result<usize> {
         let mut conn = self.redis.clone();
 
-        // A batch whose persist failed stays pending, so reclaim it before reading new entries.
         let mut entries = self.reclaim(&mut conn).await;
 
         let read: Option<redis::streams::StreamReadReply> = redis::cmd("XREADGROUP")

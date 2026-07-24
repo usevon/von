@@ -1,4 +1,4 @@
-﻿use super::model::{
+use super::model::{
     CreateInboundEndpoint, InboundEndpoint, InboundEndpointList, UpdateInboundEndpoint,
 };
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
@@ -142,7 +142,6 @@ pub async fn update(
         return Ok(None);
     };
 
-    // The UPDATE already filters by id and org, so a missing row is the 404.
     let Some(row) = sqlx::query(&format!(
         "UPDATE inbound_endpoint SET \
          name = COALESCE($1, name), \
