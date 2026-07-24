@@ -33,6 +33,8 @@ Ingest throughput on a single node, measured with the stress harness against Red
 
 Concurrent requests from one tenant are coalesced into a single Redis operation, so cost per event falls as traffic rises. At 200 concurrent clients, 1,000 requests cost 22 round trips instead of 1,000.
 
+End to end delivery, accept through the flusher and worker to the receiving endpoint, runs at roughly 50 ms p50 on the same hardware, and each plan's throughput ceiling is enforced on the outbound side as well, so a capped tier queues instead of bursting past what it bought.
+
 See [Benchmarks](#benchmarks) to reproduce.
 
 ## Pricing

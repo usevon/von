@@ -9,8 +9,26 @@ use std::time::{Duration, Instant};
 
 const EVENT_TYPE: &str = "bench.e2e";
 
+// Sweep order for --plans, enterprise last so the org is restored to unmetered.
+const PLANS: [(&str, &str); 5] = [
+    ("hobby", "Free"),
+    ("starter", "Starter"),
+    ("growth", "Growth"),
+    ("scale", "Scale"),
+    ("enterprise", "Unmetered"),
+];
+
 struct Sink {
     arrivals: DashMap<String, Instant>,
+}
+
+struct Pass {
+    sent: usize,
+    delivered: usize,
+    rate: f64,
+    p50: f64,
+    p95: f64,
+    p99: f64,
 }
 
 async fn hook(State(sink): State<Arc<Sink>>, headers: HeaderMap) -> &'static str {
@@ -29,6 +47,81 @@ fn pct(sorted: &[f64], p: f64) -> f64 {
     sorted[((sorted.len() as f64 * p) as usize).min(sorted.len() - 1)]
 }
 
+async fn measure(
+    client: &reqwest::Client,
+    url: &str,
+    key: &str,
+    sink: &Sink,
+    total: usize,
+) -> Result<Pass, Box<dyn std::error::Error>> {
+    sink.arrivals.clear();
+
+    let mut sent: Vec<(String, Instant)> = Vec::with_capacity(total);
+    let started = Instant::now();
+    for i in 0..total {
+        let body = serde_json::json!({ "eventType": EVENT_TYPE, "payload": { "i": i } });
+        let sent_at = Instant::now();
+        let res = client.post(url).bearer_auth(key).json(&body).send().await?;
+        let parsed: serde_json::Value = res.json().await?;
+        if let Some(id) = parsed["events"][0]["id"].as_str() {
+            sent.push((id.to_owned(), sent_at));
+        }
+    }
+
+    let deadline = Instant::now() + Duration::from_secs(120);
+    while sink.arrivals.len() < sent.len() && Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let wall = started.elapsed().as_secs_f64();
+
+    let mut latencies: Vec<f64> = sent
+        .iter()
+        .filter_map(|(id, sent_at)| {
+            sink.arrivals
+                .get(id)
+                .map(|arrived| arrived.duration_since(*sent_at).as_secs_f64() * 1000.0)
+        })
+        .collect();
+    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    Ok(Pass {
+        sent: sent.len(),
+        delivered: latencies.len(),
+        rate: latencies.len() as f64 / wall,
+        p50: pct(&latencies, 0.50),
+        p95: pct(&latencies, 0.95),
+        p99: pct(&latencies, 0.99),
+    })
+}
+
+// Flips the org's plan and evicts the ingest tenant cache so it applies immediately.
+async fn set_plan(
+    pool: &sqlx::PgPool,
+    redis: &mut redis::aio::MultiplexedConnection,
+    organization_id: &str,
+    plan: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    sqlx::query("UPDATE organization SET plan = $1 WHERE id = $2::uuid")
+        .bind(plan)
+        .bind(organization_id)
+        .execute(pool)
+        .await?;
+
+    let month = chrono::Utc::now().format("%Y-%m").to_string();
+    let _: () = redis::pipe()
+        .cmd("DEL")
+        .arg(format!("{{{organization_id}}}:deliveries:{month}"))
+        .ignore()
+        .cmd("PUBLISH")
+        .arg("von:auth:invalidate")
+        .arg(organization_id)
+        .ignore()
+        .query_async(redis)
+        .await?;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
@@ -45,10 +138,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .cloned()
         .unwrap_or_else(|| "bench-enterprise".to_owned());
     let json = args.iter().any(|a| a == "--json");
+    let plans = args.iter().any(|a| a == "--plans");
 
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(4)
         .connect(&std::env::var("DATABASE_URL")?)
+        .await?;
+    let mut redis = redis::Client::open(std::env::var("REDIS_URL")?)?
+        .get_multiplexed_async_connection()
         .await?;
 
     let organization_id: String =
@@ -93,7 +190,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = client.post(&url).bearer_auth(&key).json(&body).send().await;
         tokio::time::sleep(Duration::from_millis(500)).await;
         if !sink.arrivals.is_empty() {
-            sink.arrivals.clear();
             break;
         }
         if Instant::now() > warm_deadline {
@@ -105,75 +201,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let mut sent: Vec<(String, Instant)> = Vec::with_capacity(total);
-    let started = Instant::now();
-    for i in 0..total {
-        let body = serde_json::json!({ "eventType": EVENT_TYPE, "payload": { "i": i } });
-        let sent_at = Instant::now();
-        let res = client
-            .post(&url)
-            .bearer_auth(&key)
-            .json(&body)
-            .send()
-            .await?;
-        let parsed: serde_json::Value = res.json().await?;
-        if let Some(id) = parsed["events"][0]["id"].as_str() {
-            sent.push((id.to_owned(), sent_at));
+    if plans {
+        println!(
+            "{:>10}  {:>16}  {:>14}  {:>9}  {:>9}",
+            "plan", "delivered", "deliveries/s", "p50", "p95"
+        );
+        for (plan, label) in PLANS {
+            set_plan(&pool, &mut redis, &organization_id, plan).await?;
+            let pass = measure(&client, &url, &key, &sink, total).await?;
+            println!(
+                "{label:>10}  {:>7}/{:<8}  {:>14.1}  {:>7.0}ms  {:>7.0}ms",
+                pass.delivered, pass.sent, pass.rate, pass.p50, pass.p95
+            );
+        }
+    } else {
+        let pass = measure(&client, &url, &key, &sink, total).await?;
+        if json {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "sent": pass.sent,
+                    "delivered": pass.delivered,
+                    "lost": pass.sent - pass.delivered,
+                    "deliveries_per_sec": (pass.rate * 10.0).round() / 10.0,
+                    "e2e_p50_ms": (pass.p50 * 100.0).round() / 100.0,
+                    "e2e_p95_ms": (pass.p95 * 100.0).round() / 100.0,
+                    "e2e_p99_ms": (pass.p99 * 100.0).round() / 100.0,
+                })
+            );
+        } else {
+            println!(
+                "{}/{} delivered  {:>7.1} deliveries/s  e2e p50 {:>8.2}ms  p95 {:>8.2}ms  p99 {:>8.2}ms",
+                pass.delivered, pass.sent, pass.rate, pass.p50, pass.p95, pass.p99
+            );
+            if pass.delivered < pass.sent {
+                println!(
+                    "!! {} events never reached the sink",
+                    pass.sent - pass.delivered
+                );
+            }
         }
     }
-
-    let deadline = Instant::now() + Duration::from_secs(120);
-    while sink.arrivals.len() < sent.len() && Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    let wall = started.elapsed().as_secs_f64();
-
-    let mut latencies: Vec<f64> = sent
-        .iter()
-        .filter_map(|(id, sent_at)| {
-            sink.arrivals
-                .get(id)
-                .map(|arrived| arrived.duration_since(*sent_at).as_secs_f64() * 1000.0)
-        })
-        .collect();
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     sqlx::query("DELETE FROM endpoint WHERE id = $1")
         .bind(endpoint_id)
         .execute(&pool)
         .await?;
-
-    let delivered = latencies.len();
-    let p50 = pct(&latencies, 0.50);
-    let p95 = pct(&latencies, 0.95);
-    let p99 = pct(&latencies, 0.99);
-    let rate = delivered as f64 / wall;
-
-    if json {
-        println!(
-            "{}",
-            serde_json::json!({
-                "sent": sent.len(),
-                "delivered": delivered,
-                "lost": sent.len() - delivered,
-                "deliveries_per_sec": (rate * 10.0).round() / 10.0,
-                "e2e_p50_ms": (p50 * 100.0).round() / 100.0,
-                "e2e_p95_ms": (p95 * 100.0).round() / 100.0,
-                "e2e_p99_ms": (p99 * 100.0).round() / 100.0,
-            })
-        );
-    } else {
-        println!(
-            "{delivered}/{} delivered  {rate:>7.1} deliveries/s  e2e p50 {p50:>8.2}ms  p95 {p95:>8.2}ms  p99 {p99:>8.2}ms",
-            sent.len()
-        );
-        if delivered < sent.len() {
-            println!(
-                "!! {} events never reached the sink",
-                sent.len() - delivered
-            );
-        }
-    }
 
     Ok(())
 }
