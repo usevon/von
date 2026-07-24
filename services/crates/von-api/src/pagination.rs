@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -7,7 +7,7 @@ use sqlx::{PgPool, Row};
 use std::sync::OnceLock;
 use von_error::{Error, Result};
 
-const CURSOR_VERSION: &str = "v1";
+const CURSOR_VERSION: &str = "v2";
 const SIGNATURE_LENGTH: usize = 24;
 const SCOPE_HASH_LENGTH: usize = 16;
 const MAX_LENGTH: usize = 256;
@@ -142,13 +142,14 @@ pub fn encode_cursor_sorted(
     scope: &str,
     sort: CursorSort,
 ) -> Result<String> {
-    let millis = position.created_at.timestamp_millis();
-    if millis < 0 {
+    // Micros so two rows in the same millisecond cannot straddle a page boundary and skip.
+    let micros = position.created_at.timestamp_micros();
+    if micros < 0 {
         return Err(Error::BadRequest("Invalid cursor".to_owned()));
     }
     let unsigned = format!(
         "{CURSOR_VERSION}.{}.{}.{}.{scope}",
-        to_base36(millis as u64),
+        to_base36(micros as u64),
         position.id,
         sort.direction()
     );
@@ -199,11 +200,8 @@ pub fn decode_cursor_sorted(
         return Err(invalid());
     }
 
-    let millis = from_base36(timestamp).ok_or_else(invalid)?;
-    let created_at = Utc
-        .timestamp_millis_opt(millis)
-        .single()
-        .ok_or_else(invalid)?;
+    let micros = from_base36(timestamp).ok_or_else(invalid)?;
+    let created_at = chrono::DateTime::from_timestamp_micros(micros).ok_or_else(invalid)?;
 
     Ok(Some(CursorPosition {
         created_at,
@@ -295,6 +293,7 @@ pub fn scope_hash_fields(fields: &[(&str, serde_json::Value)]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
 
     #[test]
     fn base36_matches_javascript() {

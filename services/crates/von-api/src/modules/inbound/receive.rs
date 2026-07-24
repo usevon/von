@@ -51,19 +51,13 @@ async fn load_target(state: &ApiState, endpoint_id: &str) -> Result<Option<Targe
         return Ok(None);
     };
     let plan: String = row.try_get("plan").unwrap_or_else(|_| "hobby".to_owned());
-    let (monthly_limit, has_overage) = match plan.as_str() {
-        "free" | "hobby" => (50_000, false),
-        "growth" => (1_000_000, true),
-        "scale" => (10_000_000, true),
-        "enterprise" => (i64::MAX, true),
-        _ => (250_000, true),
-    };
+    let limits = crate::auth::plan_limits(&plan);
 
     Ok(Some(Target {
         organization_id: row.try_get("organization_id")?,
         status: row.try_get("status")?,
-        monthly_limit,
-        has_overage,
+        monthly_limit: limits.monthly,
+        has_overage: limits.overage,
     }))
 }
 

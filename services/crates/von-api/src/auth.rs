@@ -80,13 +80,14 @@ pub struct Auth {
     redis: Option<ConnectionManager>,
 }
 
-struct PlanLimits {
-    monthly: i64,
-    overage: bool,
-    per_second: i64,
+pub struct PlanLimits {
+    pub monthly: i64,
+    pub overage: bool,
+    pub per_second: i64,
 }
 
-fn plan_limits(plan: &str) -> PlanLimits {
+/// The single limits table, unknown plans get the starter tier.
+pub fn plan_limits(plan: &str) -> PlanLimits {
     match plan {
         "free" | "hobby" => PlanLimits {
             monthly: 50_000,

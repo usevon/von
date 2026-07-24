@@ -381,9 +381,10 @@ impl Worker {
         if endpoint.circuit_state != "open" {
             return false;
         }
+        // An open circuit with no timestamp would otherwise stay open forever.
         match endpoint.circuit_opened_at {
             Some(opened) => (chrono::Utc::now() - opened).num_seconds() < CIRCUIT_RESET_SECS,
-            None => true,
+            None => false,
         }
     }
 

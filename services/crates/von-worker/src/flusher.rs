@@ -134,9 +134,6 @@ impl Flusher {
         deliveries: &[BufferedDelivery],
     ) -> Result<()> {
         let mut tx = self.pool.begin().await?;
-        sqlx::query("SET LOCAL synchronous_commit = off")
-            .execute(&mut *tx)
-            .await?;
 
         // One pass so every column array stays index aligned, a single bad id would otherwise
         // shift the rest onto the wrong org and payload.
