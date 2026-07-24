@@ -1,19 +1,9 @@
-//! Checks the inbound forwarder polls pending rows, forwards, signs, and records the result.
+﻿//! Checks the inbound forwarder polls pending rows, forwards, signs, and records the result.
 
 mod support;
 use support::{Fixture, Probe, signature_matches};
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 #[tokio::test]
 async fn inbound_forwards_a_pending_delivery_and_signs_it() {
@@ -31,6 +21,7 @@ async fn inbound_forwards_a_pending_delivery_and_signs_it() {
         .await;
     assert!(settled, "inbound delivery was never forwarded");
     assert_eq!(probe.hits().len(), 1);
+    fixture.delete_inbound_endpoint(&endpoint_id).await;
 
     let (body, signature, _) = probe.last().expect("a recorded hit");
     assert!(
@@ -68,6 +59,8 @@ async fn inbound_skips_deliveries_for_inactive_endpoints() {
         .await;
     assert!(settled, "a paused endpoint blocked the inbound queue");
     assert_eq!(probe.hits().len(), 1);
+    fixture.delete_inbound_endpoint(&dead_endpoint).await;
+    fixture.delete_inbound_endpoint(&live_endpoint).await;
 }
 
 /// A pending inbound delivery whose lease has not expired must not be forwarded early, then must
@@ -107,4 +100,5 @@ async fn inbound_recovers_a_leased_delivery() {
         "inbound delivery was not recovered after its lease expired"
     );
     assert_eq!(probe.hits().len(), 1);
+    fixture.delete_inbound_endpoint(&endpoint_id).await;
 }

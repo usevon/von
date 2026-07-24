@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
-use crate::common::{concurrency, http_client, lease_secs, sign};
+use crate::common::{backoff_base_secs, concurrency, http_client, lease_secs, sign};
 
 const CIRCUIT_THRESHOLD: i32 = 5;
 const CIRCUIT_RESET_SECS: i64 = 300;
@@ -58,6 +58,7 @@ pub struct Worker {
     http: reqwest::Client,
     concurrency: usize,
     lease_secs: f64,
+    backoff_base: f64,
 }
 
 struct Endpoint {
@@ -98,6 +99,7 @@ impl Worker {
             http: http_client(),
             concurrency: concurrency(),
             lease_secs: lease_secs(),
+            backoff_base: backoff_base_secs(),
         })
     }
 
@@ -223,12 +225,12 @@ impl Worker {
         )
         .await?;
 
-        // Exponential backoff from one second decides when the poll may pick the row up again.
+        // Exponential backoff decides when the poll may pick the row up again.
         // A delivered row leaves the partial poll index, so its next_attempt_at is inert.
         let backoff_secs = if delivered || is_final {
             0.0
         } else {
-            2i64.pow((attempt_number - 1).clamp(0, 10) as u32) as f64
+            self.backoff_base * 2i64.pow((attempt_number - 1).clamp(0, 10) as u32) as f64
         };
         let response = match &error {
             None => serde_json::json!({ "status": http_status, "durationMs": meta.duration_ms }),

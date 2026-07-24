@@ -122,6 +122,8 @@ pub struct Fixture {
 impl Fixture {
     pub async fn new() -> Option<Self> {
         dotenvy::from_path("../../.env").ok();
+        // A fast backoff keeps the retry tests from sleeping through real second-scale waits.
+        unsafe { std::env::set_var("WORKER_BACKOFF_BASE_SECS", "0.05") };
         let database_url = std::env::var("DATABASE_URL").ok()?;
         let redis_url = std::env::var("REDIS_URL").ok()?;
 
@@ -185,6 +187,14 @@ impl Fixture {
         id
     }
 
+    /// Deleting the endpoint cascades its inbound deliveries away with it.
+    pub async fn delete_inbound_endpoint(&self, endpoint_id: &str) {
+        let _ = sqlx::query("DELETE FROM inbound_endpoint WHERE id = $1::uuid")
+            .bind(endpoint_id)
+            .execute(&self.pool)
+            .await;
+    }
+
     pub async fn inbound_status(&self, delivery_id: &str) -> Option<String> {
         sqlx::query_scalar("SELECT status FROM inbound_delivery WHERE id = $1::uuid")
             .bind(delivery_id)
@@ -210,20 +220,8 @@ impl Fixture {
     }
 
     pub async fn create_endpoint(&self, url: &str, max_attempts: i32) {
-        sqlx::query(
-            "INSERT INTO endpoint (id, organization_id, url, secret, status, max_attempts, \
-             timeout_ms, events, created_at, updated_at) \
-             VALUES ($1::uuid, $2::uuid, $3, $4, 'active', $5, 5000, $6, now(), now())",
-        )
-        .bind(&self.endpoint_id)
-        .bind(&self.organization_id)
-        .bind(url)
-        .bind(von_api::cipher::encrypt_secret(&self.secret).expect("encrypt"))
-        .bind(max_attempts)
-        .bind(vec!["worker.probe".to_owned()])
-        .execute(&self.pool)
-        .await
-        .expect("create endpoint");
+        self.create_endpoint_with(&self.endpoint_id, url, &self.secret, max_attempts)
+            .await;
     }
 
     pub async fn create_endpoint_with(&self, id: &str, url: &str, secret: &str, max_attempts: i32) {
@@ -402,6 +400,19 @@ impl Fixture {
             .await;
     }
 }
+
+macro_rules! fixture_or_skip {
+    () => {
+        match Fixture::new().await {
+            Some(fixture) => fixture,
+            None => {
+                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
+                return;
+            }
+        }
+    };
+}
+pub(crate) use fixture_or_skip;
 
 pub fn signature_matches(header: &str, body: &str, secret: &str) -> bool {
     let mut timestamp = None;

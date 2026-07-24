@@ -4,17 +4,7 @@
 mod support;
 use support::{Fixture, Probe, signature_matches};
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 #[tokio::test]
 async fn delivers_signs_and_records_one_attempt() {
@@ -102,6 +92,36 @@ async fn stops_at_max_attempts_and_marks_only_the_last_final() {
     let attempts = fixture.attempts(&event_id).await;
     let finals: Vec<bool> = attempts.iter().map(|a| a.is_final).collect();
     assert_eq!(finals, vec![false, false, true]);
+
+    fixture.cleanup().await;
+}
+
+/// A delivery whose endpoint was paused after enqueue lands on skipped instead of retrying.
+#[tokio::test]
+async fn skips_a_delivery_whose_endpoint_went_inactive() {
+    let fixture = fixture_or_skip!();
+    let probe = Probe::start(0).await;
+    fixture.create_endpoint(&probe.url, 3).await;
+
+    let event_id = fixture
+        .enqueue_event(r#"{"scenario":"outbound-skip"}"#)
+        .await;
+    sqlx::query("UPDATE endpoint SET status = 'paused' WHERE id = $1::uuid")
+        .bind(&fixture.endpoint_id)
+        .execute(&fixture.pool)
+        .await
+        .expect("pause endpoint");
+
+    let settled = fixture
+        .settle_until(async || {
+            fixture.delivery_status(&event_id).await.as_deref() == Some("skipped")
+        })
+        .await;
+    assert!(settled, "a paused endpoint did not skip its delivery");
+    assert!(
+        probe.hits().is_empty(),
+        "a paused endpoint was still called"
+    );
 
     fixture.cleanup().await;
 }

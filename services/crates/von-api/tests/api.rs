@@ -1,21 +1,11 @@
-//! Drives the real router over HTTP against a live Postgres and Redis, pinning
+﻿//! Drives the real router over HTTP against a live Postgres and Redis, pinning
 //! the auth boundary, endpoint CRUD shapes, and cursor pagination the dashboard relies on.
 
 mod support;
 use serde_json::json;
 use support::{Fixture, SAFE_URL, is_iso_millis};
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 #[tokio::test]
 async fn signed_key_reaches_a_protected_route() {
@@ -213,7 +203,6 @@ async fn update_version_is_three_state() {
 
     let (status, body) = fixture.patch(&key, &path, json!({ "version": null })).await;
     assert_eq!(status, 200);
-    // Currently failing because plain Option<Option<T>> deserializes an explicit null as absent, so the clear is silently dropped.
     assert!(
         body["version"].is_null(),
         "an explicit null version must clear it"

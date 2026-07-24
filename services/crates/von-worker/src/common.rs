@@ -20,6 +20,15 @@ pub fn lease_secs() -> f64 {
         .unwrap_or(60.0)
 }
 
+/// Base of the exponential retry backoff, overridable so tests and self hosted
+/// deploys can tune how fast the poll re-exposes a failed row.
+pub fn backoff_base_secs() -> f64 {
+    std::env::var("WORKER_BACKOFF_BASE_SECS")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(1.0)
+}
+
 /// Redirect following would let a target url bounce to an internal address.
 pub fn http_client() -> reqwest::Client {
     reqwest::Client::builder()

@@ -339,3 +339,16 @@ pub fn is_iso_millis(value: &str) -> bool {
         && value.ends_with('Z')
         && chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.3fZ").is_ok()
 }
+
+macro_rules! fixture_or_skip {
+    () => {
+        match Fixture::new().await {
+            Some(fixture) => fixture,
+            None => {
+                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
+                return;
+            }
+        }
+    };
+}
+pub(crate) use fixture_or_skip;

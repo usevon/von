@@ -1,4 +1,4 @@
-//! Guards the cross service wire shapes, the redis buffer entry and the
+﻿//! Guards the cross service wire shapes, the redis buffer entry and the
 //! better-auth session record the dashboard writes.
 
 mod support;
@@ -6,17 +6,7 @@ use serde_json::json;
 use support::Fixture;
 use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY};
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 #[tokio::test]
 async fn buffered_entry_round_trips_through_the_stream() {

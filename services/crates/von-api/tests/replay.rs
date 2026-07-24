@@ -1,20 +1,10 @@
-//! Pins the replay endpoints, bulk convergence via replayed_at and single event fanout.
+﻿//! Pins the replay endpoints, bulk convergence via replayed_at and single event fanout.
 
 mod support;
 use serde_json::json;
 use support::Fixture;
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 #[tokio::test]
 async fn bulk_replay_copies_each_failed_delivery_once_and_converges() {

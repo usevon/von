@@ -1,19 +1,9 @@
-//! Locks the delivery guarantees the Postgres-queue migration must preserve, plus the reclaim path.
+﻿//! Locks the delivery guarantees the Postgres-queue migration must preserve, plus the reclaim path.
 
 mod support;
 use support::{Fixture, Probe};
 
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
+use support::fixture_or_skip;
 
 /// Two events sharing an idempotency key collapse to one event, so the duplicate's delivery
 /// must never reach the endpoint.
