@@ -1,4 +1,4 @@
-﻿//! Exercises the websocket tunnel end to end against a live stack, covering
+//! Exercises the websocket tunnel end to end against a live stack, covering
 //! registration, proxy round trips, takeover, and disconnect cleanup.
 
 mod support;
@@ -13,8 +13,6 @@ use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
 type Socket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
-
-use support::fixture_or_skip;
 
 async fn register(fixture: &Fixture, key: &str, port: u16) -> (String, String) {
     let (status, body) = fixture
@@ -101,7 +99,9 @@ fn is_lower_hex(value: &str) -> bool {
 
 #[tokio::test]
 async fn register_issues_a_random_id_and_reuses_the_active_row_per_port() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["write:tunnels"]).await;
 
     let (tunnel_id, secret) = register(&fixture, &key, 3000).await;
@@ -129,7 +129,9 @@ async fn register_issues_a_random_id_and_reuses_the_active_row_per_port() {
 
 #[tokio::test]
 async fn register_requires_the_write_tunnels_scope() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["read:tunnels"]).await;
 
     let (status, body) = fixture
@@ -146,7 +148,9 @@ async fn register_requires_the_write_tunnels_scope() {
 
 #[tokio::test]
 async fn websocket_handshake_rejects_missing_auth_and_unknown_tunnels() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["write:tunnels"]).await;
     let (tunnel_id, _) = register(&fixture, &key, 3100).await;
 
@@ -166,7 +170,9 @@ async fn websocket_handshake_rejects_missing_auth_and_unknown_tunnels() {
 
 #[tokio::test]
 async fn proxy_round_trips_a_request_through_the_client_socket() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["write:tunnels", "read:tunnels"]).await;
     let (tunnel_id, _) = register(&fixture, &key, 3200).await;
 
@@ -216,7 +222,9 @@ async fn proxy_round_trips_a_request_through_the_client_socket() {
 
 #[tokio::test]
 async fn second_socket_takes_over_and_keeps_the_proxy_working() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["write:tunnels", "read:tunnels"]).await;
     let (tunnel_id, _) = register(&fixture, &key, 3300).await;
 
@@ -273,7 +281,9 @@ async fn second_socket_takes_over_and_keeps_the_proxy_working() {
 
 #[tokio::test]
 async fn closed_socket_stops_serving_the_proxy() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["write:tunnels", "read:tunnels"]).await;
     let (tunnel_id, _) = register(&fixture, &key, 3400).await;
 

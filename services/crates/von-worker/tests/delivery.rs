@@ -4,13 +4,15 @@
 mod support;
 use support::{Fixture, Probe, signature_matches};
 
-use support::fixture_or_skip;
-
 #[tokio::test]
 async fn delivers_signs_and_records_one_attempt() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let event_id = fixture.enqueue_event(r#"{"scenario":"happy"}"#).await;
 
@@ -44,9 +46,13 @@ async fn delivers_signs_and_records_one_attempt() {
 
 #[tokio::test]
 async fn retries_then_succeeds_without_gaps_in_attempt_numbers() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(2).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let event_id = fixture.enqueue_event(r#"{"scenario":"retry"}"#).await;
 
@@ -73,9 +79,13 @@ async fn retries_then_succeeds_without_gaps_in_attempt_numbers() {
 
 #[tokio::test]
 async fn stops_at_max_attempts_and_marks_only_the_last_final() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(usize::MAX).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let event_id = fixture.enqueue_event(r#"{"scenario":"exhaust"}"#).await;
 
@@ -99,9 +109,13 @@ async fn stops_at_max_attempts_and_marks_only_the_last_final() {
 /// A delivery whose endpoint was paused after enqueue lands on skipped instead of retrying.
 #[tokio::test]
 async fn skips_a_delivery_whose_endpoint_went_inactive() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let event_id = fixture
         .enqueue_event(r#"{"scenario":"outbound-skip"}"#)

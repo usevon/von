@@ -1,17 +1,19 @@
-﻿//! Locks the delivery guarantees the Postgres-queue migration must preserve, plus the reclaim path.
+//! Locks the delivery guarantees the Postgres-queue migration must preserve, plus the reclaim path.
 
 mod support;
 use support::{Fixture, Probe};
-
-use support::fixture_or_skip;
 
 /// Two events sharing an idempotency key collapse to one event, so the duplicate's delivery
 /// must never reach the endpoint.
 #[tokio::test]
 async fn deduped_event_is_not_delivered() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let key = format!("dedupe-{}", uuid::Uuid::new_v4());
     let first = fixture.enqueue_event_with_key(r#"{"n":1}"#, &key).await;
@@ -39,15 +41,19 @@ async fn deduped_event_is_not_delivered() {
 /// as two delivery rows behind one event.
 #[tokio::test]
 async fn fanout_delivers_to_every_endpoint() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let first = Probe::start(0).await;
     let second = Probe::start(0).await;
 
     let second_id = uuid::Uuid::new_v4().to_string();
     let secret = format!("whsec_{}", uuid::Uuid::new_v4());
-    fixture.create_endpoint(&first.url, 3).await;
     fixture
-        .create_endpoint_with(&second_id, &second.url, &secret, 3)
+        .create_endpoint(&fixture.endpoint_id, &first.url, &fixture.secret, 3)
+        .await;
+    fixture
+        .create_endpoint(&second_id, &second.url, &secret, 3)
         .await;
 
     let event_id = fixture
@@ -72,9 +78,13 @@ async fn fanout_delivers_to_every_endpoint() {
 /// must deliver, so a crash mid-delivery never strands the row.
 #[tokio::test]
 async fn a_leased_delivery_recovers_once_its_lease_expires() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
-    fixture.create_endpoint(&probe.url, 3).await;
+    fixture
+        .create_endpoint(&fixture.endpoint_id, &probe.url, &fixture.secret, 3)
+        .await;
 
     let event_id = fixture.enqueue_event(r#"{"scenario":"lease"}"#).await;
 

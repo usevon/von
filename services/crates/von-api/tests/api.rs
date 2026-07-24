@@ -1,15 +1,15 @@
-﻿//! Drives the real router over HTTP against a live Postgres and Redis, pinning
+//! Drives the real router over HTTP against a live Postgres and Redis, pinning
 //! the auth boundary, endpoint CRUD shapes, and cursor pagination the dashboard relies on.
 
 mod support;
 use serde_json::json;
 use support::{Fixture, SAFE_URL, is_iso_millis};
 
-use support::fixture_or_skip;
-
 #[tokio::test]
 async fn signed_key_reaches_a_protected_route() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (status, body) = fixture.get(&key, "/endpoints").await;
@@ -22,7 +22,9 @@ async fn signed_key_reaches_a_protected_route() {
 
 #[tokio::test]
 async fn badly_signed_key_is_rejected_despite_a_matching_row() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_badly_signed_key().await;
 
     let (status, body) = fixture.get(&key, "/endpoints").await;
@@ -34,7 +36,9 @@ async fn badly_signed_key_is_rejected_despite_a_matching_row() {
 
 #[tokio::test]
 async fn disabled_key_is_rejected() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_disabled_key(&["*"]).await;
 
     let (status, body) = fixture.get(&key, "/endpoints").await;
@@ -46,7 +50,9 @@ async fn disabled_key_is_rejected() {
 
 #[tokio::test]
 async fn read_scope_reads_but_cannot_write() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["read:endpoints"]).await;
 
     let (status, _) = fixture.get(&key, "/endpoints").await;
@@ -66,7 +72,9 @@ async fn read_scope_reads_but_cannot_write() {
 
 #[tokio::test]
 async fn action_wildcard_scopes_grant_both_directions() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
 
     let reader = fixture.create_key(&["read:*"]).await;
     let (status, _) = fixture.get(&reader, "/endpoints").await;
@@ -89,7 +97,9 @@ async fn action_wildcard_scopes_grant_both_directions() {
 
 #[tokio::test]
 async fn star_scope_can_do_everything() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (status, _) = fixture.get(&key, "/endpoints").await;
@@ -113,7 +123,9 @@ async fn star_scope_can_do_everything() {
 
 #[tokio::test]
 async fn bearer_scheme_is_case_insensitive() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["read:endpoints"]).await;
 
     let lower = fixture
@@ -131,7 +143,9 @@ async fn bearer_scheme_is_case_insensitive() {
 
 #[tokio::test]
 async fn create_returns_camel_case_iso_timestamps_and_the_secret_once() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (status, body) = fixture
@@ -179,7 +193,9 @@ async fn create_returns_camel_case_iso_timestamps_and_the_secret_once() {
 
 #[tokio::test]
 async fn update_version_is_three_state() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (_, created) = fixture
@@ -219,7 +235,9 @@ async fn update_version_is_three_state() {
 
 #[tokio::test]
 async fn validation_errors_return_exact_messages() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     for attempts in [0, 11] {
@@ -257,7 +275,9 @@ async fn validation_errors_return_exact_messages() {
 
 #[tokio::test]
 async fn rotate_returns_the_new_and_previous_secret() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (_, created) = fixture
@@ -280,7 +300,9 @@ async fn rotate_returns_the_new_and_previous_secret() {
 
 #[tokio::test]
 async fn delete_succeeds_and_a_later_get_returns_404() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let (_, created) = fixture
@@ -302,7 +324,9 @@ async fn delete_succeeds_and_a_later_get_returns_404() {
 
 #[tokio::test]
 async fn cursor_pagination_walks_without_duplicates_or_gaps() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let mut created = Vec::new();
@@ -355,7 +379,9 @@ async fn cursor_pagination_walks_without_duplicates_or_gaps() {
 
 #[tokio::test]
 async fn cursors_are_scope_bound_and_tamper_proof() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let key = fixture.create_key(&["*"]).await;
 
     let mut created = Vec::new();

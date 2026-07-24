@@ -1,4 +1,4 @@
-use futures_util::stream::{self, StreamExt};
+﻿use futures_util::stream::{self, StreamExt};
 use redis::aio::ConnectionManager;
 use sqlx::{PgPool, Row};
 use std::time::{Duration, Instant};
@@ -175,7 +175,6 @@ impl Worker {
 
     async fn process(&self, job: &Claimed) -> Result<()> {
         let Some(endpoint) = self.load_endpoint(&job.endpoint_id).await? else {
-            // The endpoint is gone or inactive, so stop polling this row.
             self.set_status(&job.delivery_id, "skipped").await?;
             return Ok(());
         };

@@ -1,4 +1,4 @@
-﻿//! Guards the cross service wire shapes, the redis buffer entry and the
+//! Guards the cross service wire shapes, the redis buffer entry and the
 //! better-auth session record the dashboard writes.
 
 mod support;
@@ -6,11 +6,11 @@ use serde_json::json;
 use support::Fixture;
 use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, STREAM_KEY};
 
-use support::fixture_or_skip;
-
 #[tokio::test]
 async fn buffered_entry_round_trips_through_the_stream() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let endpoint_id = fixture.seed_endpoint(None).await;
 
     let event_id = uuid::Uuid::new_v4().to_string();
@@ -99,7 +99,9 @@ async fn buffered_entry_round_trips_through_the_stream() {
 
 #[tokio::test]
 async fn dashboard_session_bearer_resolves_and_expired_one_does_not() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
 
     let live = format!("von-test-session-{}", uuid::Uuid::new_v4().simple());
     fixture

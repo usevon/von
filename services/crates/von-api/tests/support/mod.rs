@@ -6,7 +6,6 @@ use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use von_api::auth::Auth;
-use von_api::modules::tunnel::registry::Registry;
 use von_api::state::ApiState;
 
 /// A public IP literal so url safety passes without a DNS lookup.
@@ -26,9 +25,14 @@ impl Fixture {
     /// Seeds an isolated organization and user, then serves the real router on a local port.
     pub async fn new() -> Option<Self> {
         dotenvy::from_path("../../.env").ok();
-        let database_url = std::env::var("DATABASE_URL").ok()?;
-        let redis_url = std::env::var("REDIS_URL").ok()?;
-        let signing_secret = std::env::var("API_KEY_SIGNING_SECRET").ok()?;
+        let (Ok(database_url), Ok(redis_url), Ok(signing_secret)) = (
+            std::env::var("DATABASE_URL"),
+            std::env::var("REDIS_URL"),
+            std::env::var("API_KEY_SIGNING_SECRET"),
+        ) else {
+            eprintln!("skipping, DATABASE_URL, REDIS_URL, and API_KEY_SIGNING_SECRET are required");
+            return None;
+        };
 
         let pool = PgPool::connect(&database_url).await.ok()?;
         let client = redis::Client::open(redis_url).ok()?;
@@ -64,7 +68,7 @@ impl Fixture {
             pool: pool.clone(),
             redis: redis.clone(),
             auth: Arc::new(Auth::new(pool.clone(), Some(redis.clone()))),
-            tunnels: Registry::default(),
+            tunnels: Default::default(),
             instance_id: format!("test-{organization_id}"),
         });
         let app = von_api::router().with_state(state);
@@ -339,16 +343,3 @@ pub fn is_iso_millis(value: &str) -> bool {
         && value.ends_with('Z')
         && chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.3fZ").is_ok()
 }
-
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
-pub(crate) use fixture_or_skip;

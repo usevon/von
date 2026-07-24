@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+﻿#![allow(dead_code)]
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -124,8 +124,12 @@ impl Fixture {
         dotenvy::from_path("../../.env").ok();
         // A fast backoff keeps the retry tests from sleeping through real second-scale waits.
         unsafe { std::env::set_var("WORKER_BACKOFF_BASE_SECS", "0.05") };
-        let database_url = std::env::var("DATABASE_URL").ok()?;
-        let redis_url = std::env::var("REDIS_URL").ok()?;
+        let (Ok(database_url), Ok(redis_url)) =
+            (std::env::var("DATABASE_URL"), std::env::var("REDIS_URL"))
+        else {
+            eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
+            return None;
+        };
 
         let pool = PgPool::connect(&database_url).await.ok()?;
         let client = redis::Client::open(redis_url).ok()?;
@@ -153,7 +157,6 @@ impl Fixture {
         })
     }
 
-    /// Creates an active inbound endpoint that forwards to url, returning its id.
     pub async fn create_inbound_endpoint(&self, url: &str) -> String {
         let id = uuid::Uuid::new_v4().to_string();
         sqlx::query(
@@ -204,7 +207,6 @@ impl Fixture {
             .flatten()
     }
 
-    /// Pumps the inbound loop until the predicate holds.
     pub async fn settle_inbound_until<F>(&self, mut done: F) -> bool
     where
         F: AsyncFnMut() -> bool,
@@ -219,12 +221,7 @@ impl Fixture {
         false
     }
 
-    pub async fn create_endpoint(&self, url: &str, max_attempts: i32) {
-        self.create_endpoint_with(&self.endpoint_id, url, &self.secret, max_attempts)
-            .await;
-    }
-
-    pub async fn create_endpoint_with(&self, id: &str, url: &str, secret: &str, max_attempts: i32) {
+    pub async fn create_endpoint(&self, id: &str, url: &str, secret: &str, max_attempts: i32) {
         sqlx::query(
             "INSERT INTO endpoint (id, organization_id, url, secret, status, max_attempts, \
              timeout_ms, events, created_at, updated_at) \
@@ -253,7 +250,6 @@ impl Fixture {
             .await
     }
 
-    /// One event fanned out to multiple endpoints, each getting its own delivery.
     pub async fn enqueue_fanout(&self, payload: &str, endpoint_ids: &[String]) -> String {
         self.enqueue_inner(payload, None, endpoint_ids).await
     }
@@ -316,7 +312,6 @@ impl Fixture {
         .expect("set next_attempt");
     }
 
-    /// Pumps both loops until the predicate holds, so a test never sleeps blindly.
     pub async fn settle_until<F>(&self, mut done: F) -> bool
     where
         F: AsyncFnMut() -> bool,
@@ -400,19 +395,6 @@ impl Fixture {
             .await;
     }
 }
-
-macro_rules! fixture_or_skip {
-    () => {
-        match Fixture::new().await {
-            Some(fixture) => fixture,
-            None => {
-                eprintln!("skipping, DATABASE_URL and REDIS_URL are required");
-                return;
-            }
-        }
-    };
-}
-pub(crate) use fixture_or_skip;
 
 pub fn signature_matches(header: &str, body: &str, secret: &str) -> bool {
     let mut timestamp = None;

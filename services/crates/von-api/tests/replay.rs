@@ -1,14 +1,14 @@
-﻿//! Pins the replay endpoints, bulk convergence via replayed_at and single event fanout.
+//! Pins the replay endpoints, bulk convergence via replayed_at and single event fanout.
 
 mod support;
 use serde_json::json;
 use support::Fixture;
 
-use support::fixture_or_skip;
-
 #[tokio::test]
 async fn bulk_replay_copies_each_failed_delivery_once_and_converges() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let endpoint_id = fixture.seed_endpoint(None).await;
 
     let failed_one = fixture.seed_event("order.paid").await;
@@ -69,7 +69,9 @@ async fn bulk_replay_copies_each_failed_delivery_once_and_converges() {
 
 #[tokio::test]
 async fn single_event_replay_targets_only_subscribed_endpoints() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let subscribed = fixture
         .seed_endpoint(Some(vec!["order.*".to_owned()]))
         .await;
@@ -100,7 +102,9 @@ async fn single_event_replay_targets_only_subscribed_endpoints() {
 
 #[tokio::test]
 async fn replaying_an_unknown_event_returns_404() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     fixture.seed_endpoint(None).await;
     let key = fixture.create_key(&["*"]).await;
 

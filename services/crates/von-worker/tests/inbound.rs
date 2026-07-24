@@ -1,13 +1,13 @@
-﻿//! Checks the inbound forwarder polls pending rows, forwards, signs, and records the result.
+//! Checks the inbound forwarder polls pending rows, forwards, signs, and records the result.
 
 mod support;
 use support::{Fixture, Probe, signature_matches};
 
-use support::fixture_or_skip;
-
 #[tokio::test]
 async fn inbound_forwards_a_pending_delivery_and_signs_it() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
     let endpoint_id = fixture.create_inbound_endpoint(&probe.url).await;
     let delivery_id = fixture
@@ -34,7 +34,9 @@ async fn inbound_forwards_a_pending_delivery_and_signs_it() {
 /// and a live delivery behind it still forwards.
 #[tokio::test]
 async fn inbound_skips_deliveries_for_inactive_endpoints() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
     let dead_endpoint = fixture.create_inbound_endpoint(&probe.url).await;
     let dead_delivery = fixture
@@ -67,7 +69,9 @@ async fn inbound_skips_deliveries_for_inactive_endpoints() {
 /// forward once it is due.
 #[tokio::test]
 async fn inbound_recovers_a_leased_delivery() {
-    let fixture = fixture_or_skip!();
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
     let probe = Probe::start(0).await;
     let endpoint_id = fixture.create_inbound_endpoint(&probe.url).await;
     let delivery_id = fixture
