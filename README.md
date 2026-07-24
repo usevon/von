@@ -24,14 +24,14 @@ All out of the box, without reinventing webhook infrastructure.
 
 Ingest throughput on a single node, measured with the stress harness against Redis and Postgres.
 
-| Payload | Requests/sec | p50 | Sustained |
-| --- | --- | --- | --- |
-| Tiny | **30,000+** | 1.1 ms | — |
-| 1 KB | 9,400 | 8.0 ms | 9 MB/s |
-| 16 KB | 2,350 | 30.8 ms | 37 MB/s |
-| 64 KB | 640 | 77.0 ms | 40 MB/s |
+| Payload | Requests/sec | p50 |
+| --- | --- | --- |
+| Tiny | **30,000+** | 1.1 ms |
+| 1 KB | 9,400 | 8.0 ms |
+| 16 KB | 2,350 | 30.8 ms |
+| 64 KB | 640 | 77.0 ms |
 
-Concurrent requests from one tenant are coalesced into a single Redis operation, so cost per event falls as traffic rises. At 200 concurrent clients, 1,000 requests cost 22 round trips instead of 1,000.
+Concurrent requests from one tenant are coalesced into a single Redis operation, so cost per event falls as traffic rises. At 200 concurrent clients, 1,000 requests cost 22 round trips instead of 1,000, and larger payloads sustain 9 to 40 MB per second of ingested data.
 
 End to end delivery, accept through the flusher and worker to the receiving endpoint, runs at roughly 50 ms p50 on the same hardware, and each plan's throughput ceiling is enforced on the outbound side as well, so a capped tier queues instead of bursting past what it bought.
 
@@ -74,7 +74,7 @@ const von = new Von({ apiKey: "von_dev_xxx" });
 await von.send("order.created", { orderId: 123 });
 ```
 
-Events are deduplicated by idempotency key and acknowledged in about a millisecond. See [Delivery Semantics](#delivery-semantics) for the exact guarantees.
+Events are acknowledged in about a millisecond and deduplicated by idempotency key, which the SDK generates per event, so a retried send can never create a second delivery.
 
 ### Cloud
 
@@ -133,29 +133,25 @@ Deploy the dashboard and site to [Vercel](https://vercel.com) by importing your 
 
 **Backend**
 
-The backend is a Linux VPS with Postgres, Redis, and PM2 (`npm install -g pm2`). Build the two binaries and copy them up, replacing `user@server` with your SSH details.
+Any Linux host with Postgres and Redis works. Build the two binaries, copy them up, and run each as a systemd service.
 
 ```bash
 cargo build --release --manifest-path services/Cargo.toml
-scp services/target/release/von-ingest user@server:/app/
-scp services/target/release/von-worker user@server:/app/
+scp services/target/release/von-ingest services/target/release/von-worker user@server:/usr/local/bin/
 ```
 
-Then start them with PM2 and configure automatic startup.
+```ini
+# /etc/systemd/system/von-ingest.service, von-worker.service is identical
+[Service]
+ExecStart=/usr/local/bin/von-ingest
+EnvironmentFile=/etc/von/env
+Restart=always
 
-```bash
-pm2 start /app/von-ingest --name ingest
-pm2 start /app/von-worker --name worker
-pm2 save && pm2 startup
+[Install]
+WantedBy=multi-user.target
 ```
 
-Both binaries read `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `API_KEY_SIGNING_SECRET`, and `SECRET_ENCRYPTION_KEY`, and the values must match the dashboard's since both sides read the same encrypted rows. Migrations run on startup, and `pm2 reload all` gives zero-downtime updates.
-
-## Delivery Semantics
-
-Every event is acknowledged after an atomic Redis quota check and stream write, then a background flusher persists it to Postgres within milliseconds. A Redis loss in that window can drop an acknowledged event.
-
-Send an `idempotencyKey` to make that safe. Duplicate keys collapse to a single event on insert, so a retry after a timeout or a network failure can never create a second delivery. The SDK generates one per event by default, which is why `send` retries transient failures on your behalf.
+Both binaries read `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `API_KEY_SIGNING_SECRET`, and `SECRET_ENCRYPTION_KEY` from that file, and the values must match the dashboard's since both sides read the same encrypted rows. Migrations run on startup, and restarts are safe at any moment because claimed work is leased and re-polled rather than lost.
 
 ## Testing
 
@@ -218,7 +214,7 @@ Von is dual licensed.
 - `packages/auth` - authentication
 - `packages/db` - database schema
 - `packages/email` - transactional emails
-- `packages/queue` - queue definitions
+- `packages/queue` - redis helpers
 - `packages/utils` - shared utilities
 
 **MIT License** ([LICENSE-MIT](LICENSE-MIT))
