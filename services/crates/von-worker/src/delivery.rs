@@ -389,11 +389,12 @@ impl Worker {
     }
 
     async fn allow_throughput(&self, organization_id: &str, plan: &str) -> Result<bool> {
-        let (rate, burst) = if plan == "hobby" {
-            (25, 35)
-        } else {
-            (100, 140)
-        };
+        // The bucket is a fairness ceiling aligned with the tier, zero means unlimited.
+        let rate = von_api::auth::plan_limits(plan).per_second;
+        if rate == 0 {
+            return Ok(true);
+        }
+        let burst = rate * 14 / 10;
         let mut conn = self.redis.clone();
         let allowed: i64 = redis::Script::new(THROUGHPUT_SCRIPT)
             .key(format!("org:throughput:{organization_id}"))
