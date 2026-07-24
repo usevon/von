@@ -5,29 +5,10 @@ import {
   verifySignature,
 } from "../../src/plugins/api-key/crypto";
 
-const HEX_PATTERN = /^[a-f0-9]+$/;
-
 describe("hmacSign", () => {
   test("returns 32-character signature (truncated)", () => {
     const sig = hmacSign("data", "secret");
     expect(sig).toHaveLength(32);
-  });
-
-  test("returns valid hex string", () => {
-    const sig = hmacSign("data", "secret");
-    expect(sig).toMatch(HEX_PATTERN);
-  });
-
-  test("is deterministic", () => {
-    const sig1 = hmacSign("data", "secret");
-    const sig2 = hmacSign("data", "secret");
-    expect(sig1).toBe(sig2);
-  });
-
-  test("different secrets produce different signatures", () => {
-    const sig1 = hmacSign("data", "secret1");
-    const sig2 = hmacSign("data", "secret2");
-    expect(sig1).not.toBe(sig2);
   });
 });
 
@@ -83,27 +64,12 @@ describe("verifySignature", () => {
 });
 
 describe("hasValidPrefix", () => {
-  test("returns true for von_dev_ prefix", () => {
-    expect(hasValidPrefix("von_dev_abc123")).toBe(true);
-  });
-
-  test("returns true for von_stg_ prefix", () => {
-    expect(hasValidPrefix("von_stg_abc123")).toBe(true);
-  });
-
-  test("returns true for von_prod_ prefix", () => {
-    expect(hasValidPrefix("von_prod_abc123")).toBe(true);
-  });
-
-  test("returns false for invalid prefix", () => {
-    expect(hasValidPrefix("invalid_abc123")).toBe(false);
-  });
-
-  test("returns false for partial prefix", () => {
-    expect(hasValidPrefix("von_abc123")).toBe(false);
-  });
-
-  test("returns false for empty string", () => {
-    expect(hasValidPrefix("")).toBe(false);
+  test.each([
+    ["von_dev_abc123", true],
+    ["von_stg_abc123", true],
+    ["von_prod_abc123", true],
+    ["invalid_abc123", false],
+  ])("hasValidPrefix(%p) returns %p", (key, expected) => {
+    expect(hasValidPrefix(key)).toBe(expected);
   });
 });

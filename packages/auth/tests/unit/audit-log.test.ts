@@ -88,28 +88,6 @@ describe("audit log plugin", () => {
       expect(meta?.scopes).toEqual(["read:webhooks"]);
     });
 
-    test("afterUpdate writes apikey.updated entry", async () => {
-      await apiKeyHooks.afterUpdate({ ...BASE_API_KEY, name: "Renamed Key" });
-
-      expect(rows).toHaveLength(1);
-      const row = rows[0];
-      expect(row?.action).toBe("apikey.updated");
-      expect(row?.resourceId).toBe("key_001");
-      expect(row?.resourceName).toBe("Renamed Key");
-      const meta = row?.metadata as Record<string, unknown>;
-      expect(meta?.name).toBe("Renamed Key");
-    });
-
-    test("afterDelete writes apikey.deleted entry", async () => {
-      await apiKeyHooks.afterDelete(BASE_API_KEY);
-
-      expect(rows).toHaveLength(1);
-      const row = rows[0];
-      expect(row?.action).toBe("apikey.deleted");
-      expect(row?.resourceId).toBe("key_001");
-      expect(row?.resourceName).toBe("Test Key");
-    });
-
     test("skips write when key has no organizationId", async () => {
       await apiKeyHooks.afterCreate({ ...BASE_API_KEY, organizationId: null });
       expect(rows).toHaveLength(0);
@@ -151,18 +129,6 @@ describe("audit log plugin", () => {
       const meta = row?.metadata as Record<string, unknown>;
       expect(meta?.role).toBe("member");
       expect(meta?.email).toBe("alice@example.com");
-    });
-
-    test("afterRemoveMember writes member.removed entry", async () => {
-      await organizationHooks.afterRemoveMember({
-        member: BASE_MEMBER,
-        user: BASE_USER,
-        organization: BASE_ORG,
-      });
-
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.action).toBe("member.removed");
-      expect(rows[0]?.resourceId).toBe("mem_001");
     });
 
     test("afterUpdateMemberRole writes member.role_changed with previous and new role", async () => {
@@ -216,17 +182,6 @@ describe("audit log plugin", () => {
       expect(row?.resourceName).toBe("bob@example.com");
     });
 
-    test("afterRejectInvitation writes invitation.rejected entry", async () => {
-      await organizationHooks.afterRejectInvitation({
-        invitation: BASE_INVITATION,
-        user: BASE_USER,
-        organization: BASE_ORG,
-      });
-
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.action).toBe("invitation.rejected");
-    });
-
     test("afterCancelInvitation uses cancelledBy as actorId", async () => {
       await organizationHooks.afterCancelInvitation({
         invitation: BASE_INVITATION,
@@ -239,5 +194,37 @@ describe("audit log plugin", () => {
       expect(row?.action).toBe("invitation.cancelled");
       expect(row?.actorId).toBe("user_002");
     });
+  });
+
+  test("each mutation hook writes a row with its action string", async () => {
+    const cases: [string, () => Promise<void>][] = [
+      ["apikey.updated", () => apiKeyHooks.afterUpdate(BASE_API_KEY)],
+      ["apikey.deleted", () => apiKeyHooks.afterDelete(BASE_API_KEY)],
+      [
+        "member.removed",
+        () =>
+          organizationHooks.afterRemoveMember({
+            member: BASE_MEMBER,
+            user: BASE_USER,
+            organization: BASE_ORG,
+          }),
+      ],
+      [
+        "invitation.rejected",
+        () =>
+          organizationHooks.afterRejectInvitation({
+            invitation: BASE_INVITATION,
+            user: BASE_USER,
+            organization: BASE_ORG,
+          }),
+      ],
+    ];
+
+    for (const [action, run] of cases) {
+      rows.length = 0;
+      await run();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.action).toBe(action);
+    }
   });
 });

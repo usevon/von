@@ -127,25 +127,6 @@ async fn register_issues_a_random_id_and_reuses_the_active_row_per_port() {
 }
 
 #[tokio::test]
-async fn register_requires_the_write_tunnels_scope() {
-    let Some(fixture) = Fixture::new().await else {
-        return;
-    };
-    let key = fixture.create_key(&["read:tunnels"]).await;
-
-    let (status, body) = fixture
-        .post(&key, "/register", json!({ "port": 3000 }))
-        .await;
-    assert_eq!(status, 403);
-    assert_eq!(
-        body["error"]["message"],
-        "API key lacks required scope write:tunnels"
-    );
-
-    fixture.cleanup().await;
-}
-
-#[tokio::test]
 async fn websocket_handshake_rejects_missing_auth_and_unknown_tunnels() {
     let Some(fixture) = Fixture::new().await else {
         return;

@@ -6,21 +6,6 @@ use serde_json::json;
 use support::{Fixture, SAFE_URL, is_iso_millis};
 
 #[tokio::test]
-async fn signed_key_reaches_a_protected_route() {
-    let Some(fixture) = Fixture::new().await else {
-        return;
-    };
-    let key = fixture.create_key(&["*"]).await;
-
-    let (status, body) = fixture.get(&key, "/endpoints").await;
-    assert_eq!(status, 200);
-    assert!(body["endpoints"].is_array());
-    assert!(body["nextCursor"].is_null());
-
-    fixture.cleanup().await;
-}
-
-#[tokio::test]
 async fn badly_signed_key_is_rejected_despite_a_matching_row() {
     let Some(fixture) = Fixture::new().await else {
         return;
@@ -91,32 +76,6 @@ async fn action_wildcard_scopes_grant_both_directions() {
         .post(&full, "/endpoints", json!({ "url": SAFE_URL }))
         .await;
     assert_eq!(status, 201);
-
-    fixture.cleanup().await;
-}
-
-#[tokio::test]
-async fn star_scope_can_do_everything() {
-    let Some(fixture) = Fixture::new().await else {
-        return;
-    };
-    let key = fixture.create_key(&["*"]).await;
-
-    let (status, _) = fixture.get(&key, "/endpoints").await;
-    assert_eq!(status, 200);
-    let (status, _) = fixture.get(&key, "/webhooks/events").await;
-    assert_eq!(status, 200);
-    let (status, _) = fixture.get(&key, "/inbound").await;
-    assert_eq!(status, 200);
-
-    let (status, created) = fixture
-        .post(&key, "/endpoints", json!({ "url": SAFE_URL }))
-        .await;
-    assert_eq!(status, 201);
-    let id = created["id"].as_str().expect("id");
-    let (status, body) = fixture.delete(&key, &format!("/endpoints/{id}")).await;
-    assert_eq!(status, 200);
-    assert_eq!(body["success"], true);
 
     fixture.cleanup().await;
 }

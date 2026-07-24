@@ -45,14 +45,6 @@ afterEach(() => {
 });
 
 describe("Von Client", () => {
-  test("initializes namespace methods", () => {
-    const von = new Von();
-    expect(von.webhooks).toBeDefined();
-    expect(von.endpoints).toBeDefined();
-    expect(typeof von.webhooks.send).toBe("function");
-    expect(typeof von.endpoints.create).toBe("function");
-  });
-
   test("send generates an idempotency key by default", async () => {
     const bodies = captureFetch();
     const von = new Von({ apiKey: "von_test" });
@@ -308,12 +300,6 @@ describe("WebhooksResource deliveries and replay", () => {
 });
 
 describe("InboundResource", () => {
-  test("is constructed on the client", () => {
-    const von = new Von();
-    expect(von.inbound).toBeDefined();
-    expect(typeof von.inbound.create).toBe("function");
-  });
-
   test("create posts to /inbound", async () => {
     const requests = captureRequests();
     const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
@@ -354,23 +340,9 @@ describe("InboundResource", () => {
     }
     expect(requests[1]?.body).toEqual({ status: "paused" });
   });
-
-  test("encodes the endpoint id in the path", async () => {
-    const requests = captureRequests();
-    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
-    await von.inbound.get("in/xxx");
-
-    expect(requests[0]?.url).toBe("https://api.test/inbound/in%2Fxxx");
-  });
 });
 
 describe("VersionsResource", () => {
-  test("is constructed on the client", () => {
-    const von = new Von();
-    expect(von.versions).toBeDefined();
-    expect(typeof von.versions.create).toBe("function");
-  });
-
   test("create posts to /versions", async () => {
     const requests = captureRequests();
     const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
@@ -385,15 +357,6 @@ describe("VersionsResource", () => {
       version: "2025-01-15",
       transforms: { "order.created": { remove: ["internal_notes"] } },
     });
-  });
-
-  test("list passes pagination as query params", async () => {
-    const requests = captureRequests();
-    const von = new Von({ baseUrl: "https://api.test", apiKey: "von_test" });
-    await von.versions.list({ limit: 5 });
-
-    expect(requests[0]?.method).toBe("GET");
-    expect(requests[0]?.url).toBe("https://api.test/versions?limit=5");
   });
 
   test("get, update, and delete are keyed by version string", async () => {

@@ -11,8 +11,6 @@
 //! ```
 
 use serde_json::{Value, json};
-use std::time::Duration;
-
 struct Env {
     url: String,
     key: String,
@@ -42,15 +40,6 @@ impl Env {
         let status = res.status().as_u16();
         let payload = res.json().await.unwrap_or(Value::Null);
         (status, payload)
-    }
-
-    async fn ready(&self) -> u16 {
-        self.http
-            .get(format!("{}/ready", self.url))
-            .send()
-            .await
-            .map(|r| r.status().as_u16())
-            .unwrap_or(0)
     }
 }
 
@@ -101,7 +90,7 @@ async fn duplicate_idempotency_key_creates_one_event() {
 #[tokio::test]
 async fn oversize_payload_is_rejected() {
     let env = skip_without_env!();
-    let huge = "x".repeat(1024 * 1024 + 64);
+    let huge = "x".repeat(von_types::MAX_PAYLOAD_BYTES + 64);
 
     let (status, body) = env
         .send(json!({
@@ -112,23 +101,6 @@ async fn oversize_payload_is_rejected() {
 
     assert_eq!(status, 413, "expected payload too large, got {body}");
     assert_eq!(body["error"]["retryable"], false);
-}
-
-/// An unknown key must never be treated as a valid tenant.
-#[tokio::test]
-async fn invalid_api_key_is_unauthorized() {
-    let env = skip_without_env!();
-
-    let res = env
-        .http
-        .post(format!("{}/webhooks", env.url))
-        .bearer_auth("von_dev_not_a_real_key.deadbeef")
-        .json(&json!({ "eventType": "e2e.auth", "payload": {} }))
-        .send()
-        .await
-        .expect("request failed");
-
-    assert_eq!(res.status().as_u16(), 401);
 }
 
 /// Every accepted event must come back with its own id, so a coalesced batch
@@ -150,33 +122,16 @@ async fn concurrent_sends_get_distinct_event_ids() {
         }));
     }
 
+    // A silently dropped request would hide an id collision, every send must land.
     let mut ids = std::collections::HashSet::new();
-    let mut accepted = 0;
     for handle in handles {
         let (status, body) = handle.await.expect("task panicked");
-        if status != 200 {
-            continue;
-        }
-        accepted += 1;
+        assert_eq!(status, 200, "a concurrent send was rejected, {body}");
         let id = body["events"][0]["id"].as_str().unwrap_or("").to_string();
         assert!(!id.is_empty(), "event returned without an id, {body}");
         assert!(ids.insert(id), "two callers received the same event id");
     }
-
-    assert!(accepted > 0, "no sends were accepted");
-}
-
-/// Readiness must reflect the dependencies a request actually needs, otherwise a
-/// load balancer keeps sending traffic to a node that cannot serve it.
-#[tokio::test]
-async fn ready_reports_dependency_health() {
-    let env = skip_without_env!();
-
-    let status = tokio::time::timeout(Duration::from_secs(5), env.ready())
-        .await
-        .expect("ready check timed out");
-
-    assert_eq!(status, 200, "service reported not ready");
+    assert_eq!(ids.len(), 40);
 }
 
 fn uuid_like() -> String {

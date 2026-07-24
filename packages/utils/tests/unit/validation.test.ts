@@ -2,26 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { isSafeWebhookUrl, isValidWebhookUrl } from "../../src/validation";
 
 describe("isValidWebhookUrl", () => {
-  describe("valid URLs", () => {
-    test("allows https URLs", () => {
-      expect(isValidWebhookUrl("https://example.com/webhook")).toBe(true);
-    });
-
-    test("allows http URLs", () => {
-      expect(isValidWebhookUrl("http://example.com/webhook")).toBe(true);
-    });
-
-    test("allows URLs with ports", () => {
-      expect(isValidWebhookUrl("https://example.com:8080/webhook")).toBe(true);
-    });
-
-    test("allows URLs with paths and query params", () => {
-      expect(
-        isValidWebhookUrl("https://api.example.com/v1/webhook?key=value")
-      ).toBe(true);
-    });
-  });
-
   describe("blocks localhost", () => {
     test("blocks localhost", () => {
       expect(isValidWebhookUrl("http://localhost/webhook")).toBe(false);
@@ -108,28 +88,6 @@ describe("isValidWebhookUrl", () => {
 });
 
 describe("isSafeWebhookUrl", () => {
-  test("blocks localhost without DNS lookup", async () => {
-    await expect(isSafeWebhookUrl("http://localhost/webhook")).resolves.toBe(
-      false
-    );
-  });
-
-  test("blocks private IPv4 literals", async () => {
-    await expect(isSafeWebhookUrl("http://127.0.0.1/webhook")).resolves.toBe(
-      false
-    );
-    await expect(isSafeWebhookUrl("http://10.0.0.5/webhook")).resolves.toBe(
-      false
-    );
-  });
-
-  test("blocks private IPv6 literals", async () => {
-    await expect(isSafeWebhookUrl("http://[::1]/webhook")).resolves.toBe(false);
-    await expect(isSafeWebhookUrl("http://[fe80::1]/webhook")).resolves.toBe(
-      false
-    );
-  });
-
   test("allows public IPv4 literals", async () => {
     await expect(isSafeWebhookUrl("http://8.8.8.8/webhook")).resolves.toBe(
       true

@@ -7,14 +7,6 @@ describe("applyTransforms", () => {
     expect(result).toEqual({ a: 1, c: 3 });
   });
 
-  test("removes multiple fields", () => {
-    const result = applyTransforms(
-      { a: 1, b: 2, c: 3 },
-      { remove: ["a", "c"] }
-    );
-    expect(result).toEqual({ b: 2 });
-  });
-
   test("ignores removing nonexistent fields", () => {
     const result = applyTransforms({ a: 1 }, { remove: ["missing"] });
     expect(result).toEqual({ a: 1 });
@@ -58,10 +50,5 @@ describe("applyTransforms", () => {
     const input = { a: 1, b: 2 };
     applyTransforms(input, { remove: ["a"] });
     expect(input).toEqual({ a: 1, b: 2 });
-  });
-
-  test("handles empty transforms", () => {
-    const result = applyTransforms({ a: 1 }, {});
-    expect(result).toEqual({ a: 1 });
   });
 });

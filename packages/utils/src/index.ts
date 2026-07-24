@@ -28,11 +28,7 @@ export {
   TooManyRequestsError,
   UnauthorizedError,
 } from "@/errors";
-export {
-  generateSecret,
-  generateTunnelId,
-  generateTunnelSecret,
-} from "@/ids";
+export { generateSecret, generateTunnelSecret } from "@/ids";
 export { MemoCache } from "@/memo-cache";
 export {
   decryptOptionalSecret,
@@ -46,4 +42,3 @@ export {
   type Transforms,
 } from "@/transforms";
 export { isSafeWebhookUrl, isValidWebhookUrl } from "@/validation";
-export { matchesEventType } from "@/webhook";

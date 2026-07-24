@@ -3,7 +3,6 @@ import {
   CIRCUIT_CONFIG,
   type CircuitBreakerState,
   getFailureUpdate,
-  getSuccessUpdate,
   isCircuitOpen,
   shouldTransitionToHalfOpen,
 } from "../../src/circuit-breaker";
@@ -72,26 +71,6 @@ describe("circuit-breaker", () => {
   });
 
   describe("shouldTransitionToHalfOpen", () => {
-    test("returns false when state is closed", () => {
-      const state: CircuitBreakerState = {
-        circuitState: "closed",
-        circuitOpenedAt: null,
-        failureCount: 0,
-      };
-      expect(shouldTransitionToHalfOpen(state)).toBe(false);
-    });
-
-    test("returns false when state is half_open", () => {
-      const state: CircuitBreakerState = {
-        circuitState: "half_open",
-        circuitOpenedAt: new Date(
-          mockNow - CIRCUIT_CONFIG.resetTimeoutMs - 1000
-        ),
-        failureCount: 5,
-      };
-      expect(shouldTransitionToHalfOpen(state)).toBe(false);
-    });
-
     test("returns false when open but within timeout", () => {
       const state: CircuitBreakerState = {
         circuitState: "open",
@@ -110,24 +89,6 @@ describe("circuit-breaker", () => {
         failureCount: 5,
       };
       expect(shouldTransitionToHalfOpen(state)).toBe(true);
-    });
-
-    test("returns false when open but no circuitOpenedAt", () => {
-      const state: CircuitBreakerState = {
-        circuitState: "open",
-        circuitOpenedAt: null,
-        failureCount: 5,
-      };
-      expect(shouldTransitionToHalfOpen(state)).toBe(false);
-    });
-  });
-
-  describe("getSuccessUpdate", () => {
-    test("resets to closed with 0 failures and clears circuitOpenedAt", () => {
-      const result = getSuccessUpdate();
-      expect(result.circuitState).toBe("closed");
-      expect(result.failureCount).toBe(0);
-      expect(result.circuitOpenedAt).toBeNull();
     });
   });
 

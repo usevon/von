@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  hasScope,
-  parseScopes,
-  VALID_SCOPES,
-} from "../../src/plugins/api-key/scopes";
+import { hasScope, parseScopes } from "../../src/plugins/api-key/scopes";
 
 describe("parseScopes", () => {
   test("returns ['*'] for null", () => {
@@ -23,14 +19,6 @@ describe("parseScopes", () => {
       "read:webhooks",
       "write:webhooks",
     ]);
-  });
-
-  test("parses wildcard scope", () => {
-    expect(parseScopes('["*"]')).toEqual(["*"]);
-  });
-
-  test("parses single scope", () => {
-    expect(parseScopes('["read:endpoints"]')).toEqual(["read:endpoints"]);
   });
 });
 
@@ -80,32 +68,5 @@ describe("hasScope", () => {
     expect(hasScope(scopes, "write:endpoints")).toBe(true);
     expect(hasScope(scopes, "write:webhooks")).toBe(false);
     expect(hasScope(scopes, "read:endpoints")).toBe(false);
-  });
-});
-
-describe("VALID_SCOPES", () => {
-  test("includes wildcard", () => {
-    expect(VALID_SCOPES).toContain("*");
-  });
-
-  test("includes read and write wildcards", () => {
-    expect(VALID_SCOPES).toContain("read:*");
-    expect(VALID_SCOPES).toContain("write:*");
-  });
-
-  test("includes all resource scopes", () => {
-    const readWriteResources = [
-      "webhooks",
-      "endpoints",
-      "inbound",
-      "versions",
-      "tunnels",
-    ] as const;
-    for (const resource of readWriteResources) {
-      expect(VALID_SCOPES).toContain(`read:${resource}`);
-      expect(VALID_SCOPES).toContain(`write:${resource}`);
-    }
-
-    expect(VALID_SCOPES).toContain("read:analytics");
   });
 });

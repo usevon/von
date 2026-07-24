@@ -24,6 +24,12 @@ async fn deduped_event_is_not_delivered() {
         .await;
     assert!(settled, "the deduped event never delivered");
 
+    // A duplicate still in flight would land on a later tick, so keep the worker
+    // running past the first hit before trusting the count.
+    for _ in 0..5 {
+        let _ = fixture.flusher.tick().await;
+        let _ = fixture.worker.tick().await;
+    }
     assert_eq!(
         probe.hits().len(),
         1,
