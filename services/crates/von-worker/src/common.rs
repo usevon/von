@@ -37,10 +37,36 @@ pub fn http_client() -> reqwest::Client {
         .expect("reqwest client build")
 }
 
+/// A client that resolves one host to exactly the vetted addresses, so the connect
+/// cannot land on an address DNS rebinding swapped in after the safety check.
+pub fn http_client_pinned(
+    host: &str,
+    addrs: &[std::net::SocketAddr],
+) -> reqwest::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .resolve_to_addrs(host, addrs)
+        .build()
+}
+
 pub fn sign(payload: &str, secret: &str) -> String {
     let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(secret.as_bytes()) else {
         return String::new();
     };
     mac.update(payload.as_bytes());
     hex::encode(mac.finalize().into_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sign;
+
+    // Shared with the typescript hmacSign test so the signature scheme cannot drift.
+    #[test]
+    fn sign_matches_the_cross_language_golden_vector() {
+        assert_eq!(
+            sign("data", "secret"),
+            "1b2c16b75bd2a870c114153ccda5bcfca63314bc722fa160d690de133ccbb9db"
+        );
+    }
 }

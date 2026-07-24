@@ -5,7 +5,9 @@ use std::time::{Duration, Instant};
 use tracing::error;
 use von_error::Result;
 
-use crate::common::{backoff_base_secs, concurrency, http_client, lease_secs, sign};
+use crate::common::{
+    backoff_base_secs, concurrency, http_client, http_client_pinned, lease_secs, sign,
+};
 
 const CIRCUIT_THRESHOLD: i32 = 5;
 const CIRCUIT_RESET_SECS: i64 = 300;
@@ -256,22 +258,33 @@ impl Worker {
     }
 
     async fn send(&self, job: &Claimed, endpoint: &Endpoint) -> Outcome {
-        if von_api::url_safety::assert_safe_delivery_target(&endpoint.url)
-            .await
-            .is_err()
-        {
-            return Outcome::Failure {
-                status: None,
-                error: "endpoint url resolves to a blocked address".to_owned(),
-                meta: Meta {
-                    duration_ms: 0,
-                    ttfb_ms: 0,
-                    transfer_ms: 0,
-                    response_body: None,
-                    request_headers: serde_json::Value::Null,
-                },
-            };
-        }
+        let blocked = |error: String| Outcome::Failure {
+            status: None,
+            error,
+            meta: Meta {
+                duration_ms: 0,
+                ttfb_ms: 0,
+                transfer_ms: 0,
+                response_body: None,
+                request_headers: serde_json::Value::Null,
+            },
+        };
+
+        let target = match von_api::url_safety::vet_delivery_target(&endpoint.url).await {
+            Ok(target) => target,
+            Err(_) => return blocked("endpoint url resolves to a blocked address".to_owned()),
+        };
+
+        // Connecting to the exact vetted ips stops DNS from rebinding to an internal
+        // address between the safety check and the request.
+        let client = if target.addrs.is_empty() {
+            self.http.clone()
+        } else {
+            match http_client_pinned(&target.host, &target.addrs) {
+                Ok(client) => client,
+                Err(_) => return blocked("could not pin the endpoint address".to_owned()),
+            }
+        };
 
         let timestamp = chrono::Utc::now().timestamp();
         let signed = format!("{timestamp}.{}", job.payload);
@@ -293,8 +306,7 @@ impl Worker {
         });
 
         let start = Instant::now();
-        let result = self
-            .http
+        let result = client
             .post(&endpoint.url)
             .header("content-type", "application/json")
             .header("x-von-signature", header)

@@ -38,13 +38,10 @@ fn has_scope(scopes: &[String], required: &str) -> bool {
     if scopes.iter().any(|s| s == "*" || s == required) {
         return true;
     }
-    match required.split_once(':') {
-        Some((action, _)) => {
-            let wildcard = format!("{action}:*");
-            scopes.contains(&wildcard)
-        }
-        None => false,
-    }
+    // Matches the typescript split, a colon-less scope uses the whole string as the action.
+    let action = required.split_once(':').map_or(required, |(a, _)| a);
+    let wildcard = format!("{action}:*");
+    scopes.contains(&wildcard)
 }
 
 fn require_scope(scopes: &[String], required: &str) -> Result<()> {
