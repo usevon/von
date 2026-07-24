@@ -18,6 +18,16 @@ fn invalid(message: &str) -> Error {
     Error::BadRequest(message.to_owned())
 }
 
+/// Serde folds an explicit JSON null into a plain missing Option, so the three
+/// state fields need the present-but-null case captured as Some(None).
+fn double_option<'de, T, D>(deserializer: D) -> std::result::Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    serde::Deserialize::deserialize(deserializer).map(Some)
+}
+
 fn check_description(value: Option<&String>) -> Result<()> {
     match value {
         Some(v) if v.chars().count() > 500 => {
@@ -105,14 +115,14 @@ pub struct UpdateEndpoint {
     pub description: Option<String>,
     #[schema(value_type = EndpointStatus)]
     pub status: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, deserialize_with = "double_option")]
     #[schema(max_length = 50, nullable)]
     pub version: Option<Option<String>>,
     #[schema(minimum = 1, maximum = 10)]
     pub max_attempts: Option<i32>,
     #[schema(minimum = 1000, maximum = 60000)]
     pub timeout_ms: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     #[schema(nullable)]
     pub events: Option<Option<Vec<String>>>,
 }

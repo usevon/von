@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[dev-dependencies]
+dotenvy = { workspace = true }
+reqwest = { workspace = true }
+
 [dependencies]
 von-error = { workspace = true }
 von-types = { workspace = true }
