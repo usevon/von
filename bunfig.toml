@@ -3,4 +3,4 @@ minimumReleaseAge = 259200
 minimumReleaseAgeExcludes = ["@types/node", "@types/bun", "typescript"]
 
 [test]
-preload = ["./apps/api/tests/preload.ts"]
+preload = ["./tests/preload.ts"]
