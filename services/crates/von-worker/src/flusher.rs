@@ -162,9 +162,13 @@ impl Flusher {
             created.push(parse_iso(&e.created_at));
         }
 
+        // A parent row deleted mid-flight would poison the whole batch on its FK forever,
+        // so rows whose organization vanished are dropped instead of retried.
         let inserted: Vec<String> = sqlx::query_scalar(
             "INSERT INTO event (id, organization_id, event_type, payload, idempotency_key, created_at) \
-             SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::jsonb[], $5::text[], $6::timestamp[]) \
+             SELECT t.* FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::jsonb[], $5::text[], $6::timestamptz[]) \
+             AS t(id, organization_id, event_type, payload, idempotency_key, created_at) \
+             WHERE EXISTS (SELECT 1 FROM organization o WHERE o.id = t.organization_id) \
              ON CONFLICT (organization_id, idempotency_key) DO NOTHING \
              RETURNING id::text",
         )
@@ -208,10 +212,13 @@ impl Flusher {
         }
 
         if !d_ids.is_empty() {
-            // ON CONFLICT keeps a reclaimed batch idempotent when its event rows already committed.
+            // ON CONFLICT keeps a reclaimed batch idempotent when its event rows already committed,
+            // and the EXISTS drops deliveries whose endpoint was deleted while they sat in the buffer.
             sqlx::query(
                 "INSERT INTO delivery (id, organization_id, event_id, endpoint_id, status, attempts, created_at) \
-                 SELECT * FROM UNNEST($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::int[], $7::timestamp[]) \
+                 SELECT t.* FROM UNNEST($1::uuid[], $2::uuid[], $3::uuid[], $4::uuid[], $5::text[], $6::int[], $7::timestamptz[]) \
+                 AS t(id, organization_id, event_id, endpoint_id, status, attempts, created_at) \
+                 WHERE EXISTS (SELECT 1 FROM endpoint e WHERE e.id = t.endpoint_id) \
                  ON CONFLICT (id) DO NOTHING",
             )
             .bind(&d_ids)
@@ -230,10 +237,10 @@ impl Flusher {
     }
 }
 
-fn parse_iso(value: &str) -> chrono::NaiveDateTime {
+fn parse_iso(value: &str) -> chrono::DateTime<chrono::Utc> {
     chrono::DateTime::parse_from_rfc3339(value)
-        .map(|d| d.naive_utc())
-        .unwrap_or_else(|_| chrono::Utc::now().naive_utc())
+        .map(|d| d.with_timezone(&chrono::Utc))
+        .unwrap_or_else(|_| chrono::Utc::now())
 }
 
 pub fn entries_of(reply: redis::streams::StreamReadReply) -> Vec<(String, String)> {
