@@ -6,8 +6,6 @@ use axum::{
 use std::sync::Arc;
 use von_error::Error;
 
-/// Wrapper so handlers return the shared error type directly and it carries its
-/// own status code and message into the response.
 pub struct ApiError(Arc<Error>);
 
 impl From<Error> for ApiError {

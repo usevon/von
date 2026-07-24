@@ -1,4 +1,4 @@
-use super::registry::{Connection, TunnelResponse};
+use super::connection::{Connection, TunnelResponse};
 use crate::state::Shared;
 use axum::{
     extract::{
@@ -201,8 +201,12 @@ async fn serve(
     connection.shutdown.send_replace(true);
     writer.abort();
     connection.fail_pending();
-    // A superseded connection no longer owns the registry entry or the redis key.
-    if state.tunnels.remove_if_same(&tunnel_id, &connection) {
+    // A superseded connection no longer owns the map entry or the redis key.
+    let owned = state
+        .tunnels
+        .remove_if(&tunnel_id, |_, existing| Arc::ptr_eq(existing, &connection))
+        .is_some();
+    if owned {
         unregister_in_redis(&state, &tunnel_id, &organization_id).await;
     }
 }

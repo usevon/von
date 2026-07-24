@@ -205,7 +205,6 @@ impl Auth {
             return Ok(None);
         };
 
-        // A Redis outage must surface as an outage, not as an invalid session.
         let stored: Option<String> = redis::cmd("GET").arg(token).query_async(&mut conn).await?;
         let Some(stored) = stored else {
             return Ok(None);

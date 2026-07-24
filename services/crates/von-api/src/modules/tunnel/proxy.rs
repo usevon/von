@@ -1,4 +1,4 @@
-use super::registry::{TunnelRequest, TunnelResponse};
+use super::connection::{TunnelRequest, TunnelResponse};
 use crate::state::Shared;
 use axum::{
     body::Bytes,
@@ -60,7 +60,9 @@ pub async fn handler(
         );
     }
 
-    let Some(connection) = state.tunnels.get(&tunnel_id) else {
+    // Cloning the Arc releases the map shard lock before the awaits below.
+    let connection = state.tunnels.get(&tunnel_id).map(|entry| entry.clone());
+    let Some(connection) = connection else {
         // Real forwarding is gated on multi instance deploys, so a remote owner gets an honest 503.
         let mut conn = state.redis.clone();
         let owner: Option<String> = redis::cmd("GET")

@@ -95,7 +95,6 @@ pub async fn get_overview(
         range.where_clause("event")
     );
 
-    // The two aggregates hit different tables, so they run concurrently.
     let (delivery_row, event_row) = tokio::try_join!(
         range
             .bind(sqlx::query(&delivery_sql).bind(organization_id))
@@ -211,7 +210,6 @@ pub async fn get_retries(
         range.where_clause("delivery_attempt")
     );
 
-    // The two aggregates hit different tables, so they run concurrently.
     let (totals_row, attempt_rows) = tokio::try_join!(
         range
             .bind(sqlx::query(&totals_sql).bind(organization_id))
