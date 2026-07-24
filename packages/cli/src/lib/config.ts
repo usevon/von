@@ -10,8 +10,6 @@ import { join } from "node:path";
 import { log } from "@clack/prompts";
 import type { VonConfig } from "@/lib/types";
 
-export type { VonConfig } from "@/lib/types";
-
 const CONFIG_DIR = join(homedir(), ".von");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
@@ -40,7 +38,7 @@ export const loadConfig = (): VonConfig => {
     const raw = readFileSync(CONFIG_FILE, "utf-8");
     const parsed = JSON.parse(raw);
 
-    // Migrate legacy config: dashboardUrl/tunnelUrl -> apiUrl
+    // Migrate legacy dashboardUrl and tunnelUrl configs to apiUrl
     if (parsed.dashboardUrl && !parsed.apiUrl) {
       parsed.apiUrl = parsed.dashboardUrl.replace(":3001", ":8080");
       parsed.dashboardUrl = undefined;

@@ -1,7 +1,8 @@
 import { cancel, isCancel, log, select } from "@clack/prompts";
 import pc from "picocolors";
-import { type Organization, setActiveOrganization } from "@/lib/api";
+import { setActiveOrganization } from "@/lib/api";
 import { saveConfig } from "@/lib/config";
+import type { Organization } from "@/lib/types";
 
 type SelectOrgOptions = {
   orgs: Organization[];

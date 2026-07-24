@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { log } from "@clack/prompts";
 
 export const validatePort = (portStr: string): number | null => {
@@ -10,16 +9,17 @@ export const validatePort = (portStr: string): number | null => {
   return port;
 };
 
-export const formatError = (err: unknown): string =>
-  err instanceof Error ? err.message : "Unknown error";
-
-export function generateTunnelId(
-  orgId: string,
-  userId: string,
-  port: number,
-): string {
-  return createHash("sha256")
-    .update(`${orgId}:${userId}:${port}`)
-    .digest("hex")
-    .slice(0, 12);
-}
+// Turns thrown values into one readable line instead of a stack trace
+export const formatError = (err: unknown): string => {
+  if (!(err instanceof Error)) {
+    return "Unknown error";
+  }
+  if (err.name === "TimeoutError") {
+    return "Request timed out";
+  }
+  // Fetch wraps network failures in a generic error whose cause is clearer
+  if (err.cause instanceof Error && err.cause.message) {
+    return err.cause.message;
+  }
+  return err.message;
+};

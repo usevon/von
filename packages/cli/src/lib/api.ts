@@ -7,7 +7,7 @@ import type {
   UserSession,
 } from "@/lib/types";
 
-export type { Organization, TunnelRegistration } from "@/lib/types";
+const CLIENT_ID = "von-cli";
 
 const authRequest = async <T>(
   path: string,
@@ -38,17 +38,14 @@ const authRequest = async <T>(
   return res.json() as Promise<T>;
 };
 
-export const requestDeviceCode = (
-  clientId = "von-cli"
-): Promise<DeviceCodeResponse> =>
+export const requestDeviceCode = (): Promise<DeviceCodeResponse> =>
   authRequest("/api/auth/device/code", {
     method: "POST",
-    body: { client_id: clientId },
+    body: { client_id: CLIENT_ID },
   });
 
 export const pollDeviceToken = async (
-  deviceCode: string,
-  clientId = "von-cli"
+  deviceCode: string
 ): Promise<DeviceTokenResponse> => {
   const config = loadConfig();
   const res = await fetch(`${config.apiUrl}/api/auth/device/token`, {
@@ -57,7 +54,7 @@ export const pollDeviceToken = async (
     body: JSON.stringify({
       grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       device_code: deviceCode,
-      client_id: clientId,
+      client_id: CLIENT_ID,
     }),
   });
   return res.json() as Promise<DeviceTokenResponse>;

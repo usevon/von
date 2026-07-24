@@ -22,8 +22,9 @@ export const switchOrg = new Command("switch")
       return;
     }
 
-    if (orgs.length === 1) {
-      const org = orgs[0];
+    const [onlyOrg] = orgs;
+    if (orgs.length === 1 && onlyOrg) {
+      const org = onlyOrg;
       const isCurrentOrg = org.id === config.organizationId;
       s.stop(
         isCurrentOrg

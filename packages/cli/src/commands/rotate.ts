@@ -1,15 +1,15 @@
 import { log, note, spinner } from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
-import { getSession, rotateTunnel } from "@/lib/api";
+import { registerTunnel, rotateTunnel } from "@/lib/api";
 import { requireAuth } from "@/lib/config";
-import { formatError, generateTunnelId, validatePort } from "@/lib/helpers";
+import { formatError, validatePort } from "@/lib/helpers";
 
 export const rotate = new Command("rotate")
   .description("Rotate tunnel authentication secret")
   .option("-p, --port <port>", "Port of the tunnel to rotate")
   .action(async (options) => {
-    const { token, config } = requireAuth();
+    const { token } = requireAuth();
 
     if (!options.port) {
       log.error("Port is required. Usage: von rotate -p <port>");
@@ -21,24 +21,12 @@ export const rotate = new Command("rotate")
       return;
     }
 
-    const organizationId = config.organizationId;
-    if (!organizationId) {
-      log.error("No organization selected. Run 'von login' or 'von switch'");
-      return;
-    }
-
     const s = spinner();
     s.start("Rotating tunnel secret...");
 
     try {
-      const session = await getSession(token);
-      if (!session) {
-        s.stop("");
-        log.error("Session expired, run 'von login' to re-authenticate");
-        return;
-      }
-
-      const tunnelId = generateTunnelId(organizationId, session.user.id, port);
+      // Registration reuses the active tunnel row, so it resolves the id for this port
+      const { tunnelId } = await registerTunnel(token, port);
       await rotateTunnel(token, tunnelId);
 
       s.stop("Secret rotated");

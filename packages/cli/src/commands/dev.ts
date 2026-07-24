@@ -5,7 +5,7 @@ import pc from "picocolors";
 import { registerTunnel } from "@/lib/api";
 import { getConfigPath, loadConfig, requireAuth } from "@/lib/config";
 import { formatError, validatePort } from "@/lib/helpers";
-import { TunnelManager } from "@/lib/tunnel";
+import { TunnelManager } from "@/lib/tunnel/manager";
 import type { TunnelInfo } from "@/lib/types";
 
 export const dev = new Command("dev")
@@ -85,6 +85,15 @@ const connectTunnels = (
           console.log();
           console.log(pc.dim("│  all tunnels taken over, exiting..."));
           process.exit(0);
+        }
+      },
+      onSessionExpired: () => {
+        if (manager.activeTunnels === 0) {
+          console.log();
+          console.log(
+            pc.dim("│  session expired, run 'von login' to re-authenticate")
+          );
+          process.exit(1);
         }
       },
       onMaxRetries: (port) => {
