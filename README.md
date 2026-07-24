@@ -37,11 +37,7 @@ See [Benchmarks](#benchmarks) to reproduce.
 
 ## Pricing
 
-Von charges for the two things that actually cost money to run, and nothing else.
-
-**Messages.** Every event you send counts as one message, and payloads over 64 KB count as one additional message per 64 KB. Retries are always free, because a partner's broken endpoint is the problem Von exists to absorb, not something to bill you for.
-
-**Throughput.** Each plan has a sustained events-per-second ceiling. It is a property of the plan, never a metered add-on.
+Von charges for messages and throughput, nothing else. An event counts as one message, payloads over 64 KB add one message per extra 64 KB, and retries are always free. Throughput is the sustained events-per-second ceiling on each plan.
 
 | Plan | Price | Messages | Overage | Throughput | Retention |
 | --- | --- | --- | --- | --- | --- |
@@ -51,29 +47,19 @@ Von charges for the two things that actually cost money to run, and nothing else
 | Scale | $499 | 10,000,000 | $0.25 per 10k | 10,000/s | 30 days |
 | Enterprise | Custom | Custom | Custom | Custom | Custom |
 
-Every paid plan includes unlimited team members, transformations, replay, and all integrations. Self-hosting is free and unlimited under AGPL-3.0.
+Every paid plan includes unlimited team members, transformations, replay, and all integrations, and self-hosting under AGPL-3.0 is free with no limits.
 
 ## Architecture
 
-The data plane is Rust and the control plane is TypeScript.
+The delivery pipeline is Rust and the product surface is TypeScript.
 
 | Service | Language | Responsibility |
 | --- | --- | --- |
-| `von-ingest` | Rust | Event ingest, per tenant coalescing, quota and throughput enforcement, endpoint CRUD |
-| `apps/api` | Bun | Remaining control plane routes, being ported to Rust module by module |
-| `apps/worker` | Bun | Outbound delivery, retries, circuit breaking |
+| `von-ingest` | Rust | Event ingest and the full HTTP API, per tenant coalescing, quota and throughput enforcement |
+| `von-worker` | Rust | Persisting buffered events, outbound delivery with retries and circuit breaking, inbound forwarding |
 | `apps/dashboard` | Next.js | Authentication, organizations, API key management, UI |
 
-Both API services read the same Postgres and Redis, so a reverse proxy can route each path to whichever one owns it. Secrets and pagination cursors are byte compatible across the two, which is what makes moving a route a routing change rather than a migration.
-
-```
-Caddyfile
-localhost:8000 {
-  handle /webhooks* { reverse_proxy localhost:8090 }
-  handle /endpoints* { reverse_proxy localhost:8090 }
-  handle { reverse_proxy localhost:8080 }
-}
-```
+The dashboard issues API keys through better-auth and the Rust services verify them straight from Postgres and Redis, so the two sides share storage instead of code. Everything the SDK talks to is one Rust binary on one port, and schema migrations are embedded in the services and run on startup.
 
 ## Getting Started
 
@@ -86,7 +72,7 @@ const von = new Von({ apiKey: "von_dev_xxx" });
 await von.send("order.created", { orderId: 123 });
 ```
 
-Events are durable and exactly-once by default. See [Delivery Semantics](#delivery-semantics) for the faster buffered mode.
+Events are deduplicated by idempotency key and acknowledged in about a millisecond. See [Delivery Semantics](#delivery-semantics) for the exact guarantees.
 
 ### Cloud
 
@@ -94,11 +80,9 @@ Get started at [usevon.com](https://usevon.com) with no setup required.
 
 ### Self-hosted
 
-Self-hosting Von gives you full control over your data with no usage limits, and the backend services compile to standalone binaries that you can run with PM2 for zero-downtime reloads.
+Self-hosting gives you the same product with your data on your own machines and no usage limits. The backend is two Rust binaries that run anywhere Linux runs, and the dashboard and site are Next.js apps that deploy to [Vercel](https://vercel.com) or any Node.js host.
 
-The backend requires a VPS or dedicated server since stateful WebSocket connections aren't compatible with serverless platforms. The dashboard and site are Next.js apps that can be deployed to [Vercel](https://vercel.com) or self-hosted anywhere that runs Node.js.
-
-You'll need PostgreSQL, Redis, Bun, and Rust installed for building.
+You'll need Postgres and Redis to run it, Rust to build the binaries, and Bun for the JS apps. The backend wants a VPS rather than a serverless platform because the tunnel WebSockets are stateful.
 
 #### Development
 
@@ -118,21 +102,23 @@ bun dev
 docker compose -f docker-compose.dev.yml up -d
 
 # Copy env files
-cp apps/api/.env.example apps/api/.env
+cp .env.example .env
+cp services/.env.example services/.env
 cp apps/dashboard/.env.example apps/dashboard/.env
-cp apps/worker/.env.example apps/worker/.env
 cp apps/docs/.env.example apps/docs/.env
 cp apps/site/.env.example apps/site/.env
 
-# Edit apps/api/.env to set BETTER_AUTH_SECRET
+# Edit services/.env to set BETTER_AUTH_SECRET
 # Optionally set API_KEY_SIGNING_SECRET
 # SECRET_ENCRYPTION_KEY is required in production
 
-# Push database schema
-bun run --cwd apps/api db:push
-
-# Start all services
+# Start the JS apps
 bun dev
+
+# Start the Rust services in another terminal, migrations run on startup
+cd services
+cargo run -p von-ingest
+cargo run -p von-worker
 ```
 
 </details>
@@ -145,34 +131,23 @@ Deploy the dashboard and site to [Vercel](https://vercel.com) by importing your 
 
 **Backend**
 
-The backend services require a Linux VPS with PostgreSQL and Redis, and PM2 for process management (`npm install -g pm2`). Build the binaries locally and deploy them to your server:
+The backend is a Linux VPS with Postgres, Redis, and PM2 (`npm install -g pm2`). Build the two binaries and copy them up, replacing `user@server` with your SSH details.
 
 ```bash
-cargo build --release --manifest-path ../von-rust/Cargo.toml
-bun run --cwd apps/api build:prod
-bun run --cwd apps/worker build:prod
+cargo build --release --manifest-path services/Cargo.toml
+scp services/target/release/von-ingest user@server:/app/
+scp services/target/release/von-worker user@server:/app/
 ```
 
-Copy the binaries to your server (replace `user@server` with your SSH details):
-
-```bash
-scp ../von-rust/target/release/von-ingest user@server:/app/
-scp apps/api/dist/api user@server:/app/
-scp apps/worker/dist/worker user@server:/app/
-```
-
-Then start them with PM2 and configure automatic startup:
+Then start them with PM2 and configure automatic startup.
 
 ```bash
 pm2 start /app/von-ingest --name ingest
-pm2 start /app/api --name api
-pm2 start /app/worker --name worker
+pm2 start /app/von-worker --name worker
 pm2 save && pm2 startup
 ```
 
-The ingest service needs `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, and `API_KEY_SIGNING_SECRET` to match the values the API uses, since both read the same encrypted rows.
-
-For zero-downtime reloads after updates, run `pm2 reload all`.
+Both binaries read `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `API_KEY_SIGNING_SECRET`, and `SECRET_ENCRYPTION_KEY`, and the values must match the dashboard's since both sides read the same encrypted rows. Migrations run on startup, and `pm2 reload all` gives zero-downtime updates.
 
 ## Delivery Semantics
 
@@ -182,31 +157,26 @@ Send an `idempotencyKey` to make that safe. Duplicate keys collapse to a single 
 
 ## Testing
 
+The Rust suites run against a live Postgres and Redis and skip cleanly when `DATABASE_URL` is unset.
+
 ```bash
-# Unit tests (from root)
+# Rust services, unit plus integration
+cd services && cargo test --workspace
+
+# SDK and packages
 bun run test
-
-# Package-specific tests
-bun test --cwd packages/sdk
-bun test --cwd apps/worker
-
-# Integration tests (requires env vars)
-cd apps/api && bun test tests/integration
 ```
 
 ## Benchmarks
 
+Three harnesses drive the compiled services over real HTTP. `loadgen` is a quick fixed-load check, `stress` sweeps payload size and concurrency and reports how many requests each Redis round trip absorbed, and `e2e` measures delivery latency all the way through the flusher and worker to a local sink, with `--json` output for CI.
+
 ```bash
 docker compose -f docker-compose.dev.yml up -d
-cd apps/api && bun run bench
-```
-
-Runs an in-process benchmark against every hot endpoint with warmup plus 50 measured iterations per case and prints throughput with p50 and p95 latency. Webhook ingest numbers reflect the buffered fast path with the flusher active, so they include the rate limiter and quota reservation but not outbound delivery.
-
-The stress harness drives the ingest service over HTTP and sweeps both payload size and concurrency, reporting throughput, latency percentiles, and how many requests each Redis round trip absorbed.
-
-```bash
-stress http://localhost:8090/webhooks <api-key> 20000
+cd services
+cargo run --release -p von-ingest --bin loadgen -- http://localhost:8090/webhooks <api-key> 2000 8
+cargo run --release -p von-ingest --bin stress -- http://localhost:8090/webhooks <api-key> 20000
+cargo run --release -p von-ingest --bin e2e -- http://localhost:8090/webhooks <api-key> 500
 ```
 
 Numbers move with the machine, so treat any run under ten seconds as noise and take medians across at least three runs.
@@ -238,14 +208,15 @@ For security concerns, see our [Security Policy](.github/SECURITY.md).
 
 ## License
 
-Von uses dual licensing:
+Von is dual licensed.
 
 **AGPL-3.0 License** ([LICENSE-AGPL](LICENSE-AGPL))
-- `apps/` - api, dashboard, docs, site, worker
+- `services/` - the Rust backend
+- `apps/` - dashboard, docs, site
 - `packages/auth` - authentication
 - `packages/db` - database schema
 - `packages/email` - transactional emails
-- `packages/queue` - job queue
+- `packages/queue` - queue definitions
 - `packages/utils` - shared utilities
 
 **MIT License** ([LICENSE-MIT](LICENSE-MIT))
