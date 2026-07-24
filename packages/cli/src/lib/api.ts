@@ -106,26 +106,35 @@ export const registerTunnel = async (
     throw new Error(error.message || "Failed to register tunnel");
   }
 
-  const data = (await res.json()) as { tunnelId: string; secret: string };
+  const data = (await res.json()) as {
+    tunnelId: string;
+    secret: string;
+    url?: string;
+    wsUrl?: string;
+  };
 
-  const tunnelUrl = `${config.apiUrl}/t/${data.tunnelId}`;
+  // Older servers omit the urls, so the client derivation stays as fallback.
+  const tunnelUrl = data.url ?? `${config.apiUrl}/t/${data.tunnelId}`;
   const wsUrl =
+    data.wsUrl ??
     config.apiUrl.replace("http://", "ws://").replace("https://", "wss://") +
-    `/ws/${data.tunnelId}`;
+      `/ws/${data.tunnelId}`;
 
   return { tunnelId: data.tunnelId, secret: data.secret, tunnelUrl, wsUrl };
 };
 
 export const rotateTunnel = async (
   token: string,
-  tunnelId: string
+  port: number
 ): Promise<{ secret: string }> => {
   const config = loadConfig();
-  const res = await fetch(`${config.apiUrl}/rotate/${tunnelId}`, {
+  const res = await fetch(`${config.apiUrl}/rotate`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ port }),
     signal: AbortSignal.timeout(30_000),
   });
 

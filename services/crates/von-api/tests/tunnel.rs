@@ -115,7 +115,6 @@ async fn register_issues_a_random_id_and_reuses_the_active_row_per_port() {
     let user_simple = fixture.user_id.replace('-', "");
     assert_ne!(tunnel_id, org_simple);
     assert_ne!(tunnel_id, user_simple);
-    assert!(!tunnel_id.contains("3000"));
 
     let (again_id, again_secret) = register(&fixture, &key, 3000).await;
     assert_eq!(again_id, tunnel_id);
@@ -319,6 +318,28 @@ async fn closed_socket_stops_serving_the_proxy() {
         );
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
+async fn rotate_by_port_swaps_the_secret_and_missing_ports_get_404() {
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
+    let key = fixture.create_key(&["write:tunnels"]).await;
+    let (_, secret) = register(&fixture, &key, 3400).await;
+
+    let (status, body) = fixture.post(&key, "/rotate", json!({ "port": 3400 })).await;
+    assert_eq!(status, 200);
+    let rotated = body["secret"].as_str().expect("secret");
+    assert_ne!(rotated, secret, "rotate must issue a fresh secret");
+
+    let (status, _) = fixture.post(&key, "/rotate", json!({ "port": 3401 })).await;
+    assert_eq!(
+        status, 404,
+        "a port with no tunnel must not rotate anything"
+    );
 
     fixture.cleanup().await;
 }

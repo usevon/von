@@ -19,6 +19,15 @@ fn generate_tunnel_secret() -> String {
     hex::encode(bytes)
 }
 
+fn public_urls(id: &str) -> (String, String) {
+    let base = std::env::var("PUBLIC_URL").unwrap_or_else(|_| "http://localhost:8090".to_owned());
+    let base = base.trim_end_matches('/');
+    let ws_base = base
+        .replacen("https://", "wss://", 1)
+        .replacen("http://", "ws://", 1);
+    (format!("{base}/t/{id}"), format!("{ws_base}/ws/{id}"))
+}
+
 pub async fn register(
     state: &ApiState,
     organization_id: &str,
@@ -38,9 +47,13 @@ pub async fn register(
     .await?;
 
     if let Some(row) = existing {
+        let tunnel_id: String = row.try_get("id")?;
+        let (url, ws_url) = public_urls(&tunnel_id);
         return Ok(RegisterResponse {
             secret: decrypt_secret(row.try_get("secret")?)?,
-            tunnel_id: row.try_get("id")?,
+            tunnel_id,
+            url,
+            ws_url,
         });
     }
 
@@ -72,10 +85,37 @@ pub async fn register(
     .execute(&state.pool)
     .await?;
 
+    let (url, ws_url) = public_urls(&id);
     Ok(RegisterResponse {
         tunnel_id: id,
         secret,
+        url,
+        ws_url,
     })
+}
+
+pub async fn rotate_by_port(
+    state: &ApiState,
+    organization_id: &str,
+    user_id: &str,
+    port: i32,
+) -> Result<Option<RotateResponse>> {
+    let id: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM tunnel \
+         WHERE organization_id = $1::uuid AND user_id = $2::uuid AND port = $3 \
+           AND status = 'active' \
+         LIMIT 1",
+    )
+    .bind(organization_id)
+    .bind(user_id)
+    .bind(port)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let Some(id) = id else {
+        return Ok(None);
+    };
+    rotate(state, organization_id, user_id, &id).await
 }
 
 pub async fn rotate(

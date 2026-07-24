@@ -1,4 +1,4 @@
-use super::model::{RegisterResponse, RegisterTunnel, RotateResponse, TunnelList};
+use super::model::{RegisterResponse, RegisterTunnel, RotateResponse, RotateTunnel, TunnelList};
 use super::service;
 use crate::error::ApiError;
 use crate::extract::bearer;
@@ -14,6 +14,7 @@ use von_error::Error;
 pub fn router() -> Router<Shared> {
     Router::new()
         .route("/register", post(register))
+        .route("/rotate", post(rotate_by_port))
         .route("/rotate/{tunnel_id}", post(rotate))
         .route("/tunnels", get(list))
         .route("/ws/{tunnel_id}", get(super::ws::handler))
@@ -51,6 +52,37 @@ pub async fn register(
         )
         .await?,
     ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/rotate",
+    tag = "tunnels",
+    request_body = RotateTunnel,
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "The replacement secret", body = RotateResponse),
+        (status = 404, description = "No active tunnel on that port", body = crate::error::ErrorResponse),
+    )
+)]
+pub async fn rotate_by_port(
+    State(state): State<Shared>,
+    headers: HeaderMap,
+    Json(body): Json<RotateTunnel>,
+) -> Result<Json<RotateResponse>, ApiError> {
+    let principal = state
+        .auth
+        .resolve_principal_scoped(bearer(&headers)?, "write:tunnels")
+        .await?;
+    service::rotate_by_port(
+        &state,
+        &principal.organization_id,
+        &principal.user_id,
+        body.port,
+    )
+    .await?
+    .map(Json)
+    .ok_or_else(|| Error::NotFound("Tunnel".to_owned()).into())
 }
 
 #[utoipa::path(

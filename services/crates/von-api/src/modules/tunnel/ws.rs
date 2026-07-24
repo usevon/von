@@ -102,10 +102,14 @@ async fn serve(
     let writer = tokio::spawn({
         let connection = connection.clone();
         let last_seen = last_seen.clone();
+        let state = state.clone();
+        let tunnel_id = tunnel_id.clone();
         async move {
             let mut shutdown = connection.shutdown.subscribe();
             let mut ping = tokio::time::interval(PING_INTERVAL);
             ping.tick().await;
+            let mut revalidate = tokio::time::interval(REVALIDATE_INTERVAL);
+            revalidate.tick().await;
             while !*shutdown.borrow_and_update() {
                 tokio::select! {
                     biased;
@@ -126,35 +130,24 @@ async fn serve(
                             break;
                         }
                     },
+                    _ = revalidate.tick() => {
+                        match state.auth.resolve_principal(&token).await {
+                            Ok(current) if current.organization_id == connection.organization_id => {
+                                refresh_ttl(&state, &tunnel_id).await;
+                            }
+                            _ => {
+                                let _ = sink
+                                    .send(Message::Text(r#"{"type":"session_expired"}"#.into()))
+                                    .await;
+                                connection.shutdown.send_replace(true);
+                                break;
+                            }
+                        }
+                    },
                     _ = shutdown.changed() => break,
                 }
             }
             let _ = sink.close().await;
-        }
-    });
-
-    let keepalive = tokio::spawn({
-        let state = state.clone();
-        let tunnel_id = tunnel_id.clone();
-        let connection = connection.clone();
-        async move {
-            let mut ticker = tokio::time::interval(REVALIDATE_INTERVAL);
-            ticker.tick().await;
-            loop {
-                ticker.tick().await;
-                match state.auth.resolve_principal(&token).await {
-                    Ok(current) if current.organization_id == connection.organization_id => {
-                        refresh_ttl(&state, &tunnel_id).await;
-                    }
-                    _ => {
-                        let _ = connection
-                            .outbound
-                            .try_send(r#"{"type":"session_expired"}"#.to_owned());
-                        connection.shutdown.send_replace(true);
-                        break;
-                    }
-                }
-            }
         }
     });
 
@@ -188,7 +181,6 @@ async fn serve(
         }
     }
 
-    keepalive.abort();
     connection.shutdown.send_replace(true);
     writer.abort();
     connection.fail_pending();

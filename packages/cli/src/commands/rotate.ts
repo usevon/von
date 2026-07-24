@@ -1,7 +1,7 @@
 import { log, note, spinner } from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
-import { registerTunnel, rotateTunnel } from "@/lib/api";
+import { rotateTunnel } from "@/lib/api";
 import { requireAuth } from "@/lib/config";
 import { formatError, validatePort } from "@/lib/helpers";
 
@@ -25,14 +25,12 @@ export const rotate = new Command("rotate")
     s.start("Rotating tunnel secret...");
 
     try {
-      // Registration reuses the active tunnel row, so it resolves the id for this port
-      const { tunnelId } = await registerTunnel(token, port);
-      await rotateTunnel(token, tunnelId);
+      await rotateTunnel(token, port);
 
       s.stop("Secret rotated");
 
       note(
-        `${pc.dim("Port:")}   ${pc.magenta(port.toString())}\n${pc.dim("Tunnel:")} ${pc.cyan(tunnelId)}`,
+        `${pc.dim("Port:")} ${pc.magenta(port.toString())}`,
         "Secret Rotated"
       );
       log.success("Tunnel authentication secret has been rotated");
