@@ -1,4 +1,4 @@
-use super::model::{
+﻿use super::model::{
     CreateInboundEndpoint, InboundEndpoint, InboundEndpointList, UpdateInboundEndpoint,
 };
 use crate::cipher::{decrypt_secret, encrypt_secret, generate_secret};
@@ -6,7 +6,7 @@ use crate::pagination::{PaginationQuery, fetch_org_page, find_org_row};
 use crate::state::ApiState;
 use crate::url_safety::assert_safe_webhook_url;
 use crate::{DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, to_iso};
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
 use von_error::Result;
@@ -30,7 +30,7 @@ fn to_endpoint(row: &PgRow) -> Result<InboundEndpoint> {
         max_attempts: row.try_get("max_attempts")?,
         timeout_ms: row.try_get("timeout_ms")?,
         last_success_at: row
-            .try_get::<Option<NaiveDateTime>, _>("last_success_at")?
+            .try_get::<Option<DateTime<Utc>>, _>("last_success_at")?
             .map(to_iso),
         created_at: to_iso(row.try_get("created_at")?),
         updated_at: to_iso(row.try_get("updated_at")?),
@@ -56,7 +56,7 @@ pub async fn create(
     params.validate()?;
     assert_safe_webhook_url_with(&params.forward_url).await?;
 
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let row = sqlx::query(&format!(
         "INSERT INTO inbound_endpoint (id, organization_id, name, provider, secret, forward_url, \
          max_attempts, timeout_ms, status, created_at, updated_at) \
@@ -160,7 +160,7 @@ pub async fn update(
     .bind(params.max_attempts)
     .bind(params.timeout_ms)
     .bind(&params.status)
-    .bind(Utc::now().naive_utc())
+    .bind(Utc::now())
     .bind(uuid)
     .bind(organization_id)
     .fetch_optional(&state.pool)

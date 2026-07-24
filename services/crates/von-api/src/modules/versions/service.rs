@@ -1,4 +1,4 @@
-use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion, clean_transforms};
+﻿use super::model::{CreateVersion, UpdateVersion, VersionList, WebhookVersion, clean_transforms};
 use crate::pagination::{PaginationQuery, fetch_org_page};
 use crate::state::ApiState;
 use crate::to_iso;
@@ -57,7 +57,7 @@ pub async fn create(
 ) -> Result<WebhookVersion> {
     let transforms = params.validate()?;
 
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let row = sqlx::query(&format!(
         "INSERT INTO webhook_version (id, organization_id, version, transforms, created_at, updated_at) \
          VALUES ($1, $2::uuid, $3, $4, $5, $5) RETURNING {SELECT_COLUMNS}"
@@ -119,7 +119,7 @@ pub async fn update(
          WHERE version = $3 AND organization_id = $4::uuid RETURNING {SELECT_COLUMNS}"
     ))
     .bind(&transforms)
-    .bind(Utc::now().naive_utc())
+    .bind(Utc::now())
     .bind(version)
     .bind(organization_id)
     .fetch_optional(&state.pool)

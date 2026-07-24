@@ -8,7 +8,7 @@ use crate::pagination::{
 };
 use crate::state::ApiState;
 use crate::{parse_optional_date, to_iso, validate_range};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
@@ -25,7 +25,7 @@ const ATTEMPT_COLUMNS: &str = "id::text AS id, delivery_id::text AS delivery_id,
 
 /// The scope hash hashes the ISO strings the TypeScript service produced, so the
 /// milliseconds have to be rendered the same way.
-fn scope_date(value: Option<NaiveDateTime>) -> Value {
+fn scope_date(value: Option<DateTime<Utc>>) -> Value {
     match value {
         Some(date) => json!(to_iso(date)),
         None => Value::Null,
@@ -50,7 +50,7 @@ fn to_delivery(row: &PgRow) -> Result<Delivery> {
         status: row.try_get("status")?,
         attempts: row.try_get("attempts")?,
         last_attempt_at: row
-            .try_get::<Option<NaiveDateTime>, _>("last_attempt_at")?
+            .try_get::<Option<DateTime<Utc>>, _>("last_attempt_at")?
             .map(to_iso),
         response: row.try_get("response")?,
         created_at: to_iso(row.try_get("created_at")?),
@@ -97,7 +97,7 @@ fn finish_page(
 
     encode_cursor_sorted(
         &CursorPosition {
-            created_at: DateTime::from_naive_utc_and_offset(last.try_get(created_at_column)?, Utc),
+            created_at: last.try_get(created_at_column)?,
             id: last.try_get("id")?,
         },
         scope,
@@ -177,7 +177,7 @@ pub async fn get_events(
     }
     if let Some(position) = &cursor {
         db_query = db_query
-            .bind(position.created_at.naive_utc())
+            .bind(position.created_at)
             .bind(cursor_uuid(position)?);
     }
 
@@ -277,7 +277,7 @@ pub async fn get_deliveries(
     }
     if let Some(position) = &cursor {
         db_query = db_query
-            .bind(position.created_at.naive_utc())
+            .bind(position.created_at)
             .bind(cursor_uuid(position)?);
     }
 
@@ -328,7 +328,7 @@ pub async fn get_delivery_attempts(
         .bind(limit + 1);
     if let Some(position) = &cursor {
         db_query = db_query
-            .bind(position.created_at.naive_utc())
+            .bind(position.created_at)
             .bind(cursor_uuid(position)?);
     }
 

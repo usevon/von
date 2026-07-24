@@ -1,4 +1,4 @@
-use super::model::{
+﻿use super::model::{
     CreateEndpoint, Endpoint, EndpointList, EndpointWithSecret, RotateResponse, TestResponse,
     UpdateEndpoint,
 };
@@ -9,7 +9,7 @@ use crate::quota::reserve_quota;
 use crate::state::ApiState;
 use crate::url_safety::assert_safe_webhook_url;
 use crate::{DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, to_iso};
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde_json::value::RawValue;
 use sqlx::Row;
 use sqlx::postgres::PgRow;
@@ -34,7 +34,7 @@ fn to_endpoint(row: &PgRow) -> Result<Endpoint> {
         timeout_ms: row.try_get("timeout_ms")?,
         events: row.try_get("events")?,
         last_success_at: row
-            .try_get::<Option<NaiveDateTime>, _>("last_success_at")?
+            .try_get::<Option<DateTime<Utc>>, _>("last_success_at")?
             .map(to_iso),
         created_at: to_iso(row.try_get("created_at")?),
         updated_at: to_iso(row.try_get("updated_at")?),
@@ -63,7 +63,7 @@ pub async fn create(
 
     let secret = generate_secret();
     let status = params.status.unwrap_or_else(|| "active".to_owned());
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
 
     let row = sqlx::query(&format!(
         "INSERT INTO endpoint (id, organization_id, url, description, secret, status, version, \
@@ -175,7 +175,7 @@ pub async fn update(
     .bind(max_attempts)
     .bind(timeout_ms)
     .bind(&events)
-    .bind(Utc::now().naive_utc())
+    .bind(Utc::now())
     .bind(
         existing
             .try_get::<String, _>("id")?
@@ -232,7 +232,7 @@ pub async fn rotate_secret(
     )
     .bind(encrypt_secret(&new_secret)?)
     .bind(encrypt_secret(&previous_secret)?)
-    .bind(Utc::now().naive_utc())
+    .bind(Utc::now())
     .bind(uuid)
     .execute(&state.pool)
     .await?;
@@ -256,7 +256,7 @@ pub async fn clear_previous_secret(
         "UPDATE endpoint SET previous_secret = NULL, updated_at = $1 \
          WHERE id = $2 AND organization_id = $3::uuid",
     )
-    .bind(Utc::now().naive_utc())
+    .bind(Utc::now())
     .bind(uuid)
     .bind(organization_id)
     .execute(&state.pool)

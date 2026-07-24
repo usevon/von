@@ -23,7 +23,7 @@ pub const ENDPOINT_STATUSES: [&str; 3] = ["active", "paused", "disabled"];
 
 /// Matches the ISO string the TypeScript service returns so both services render
 /// the same timestamp for a row.
-pub fn to_iso(value: chrono::NaiveDateTime) -> String {
+pub fn to_iso(value: chrono::DateTime<chrono::Utc>) -> String {
     value.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
@@ -32,24 +32,26 @@ pub fn to_iso(value: chrono::NaiveDateTime) -> String {
 pub fn parse_optional_date(
     value: Option<&String>,
     field: &str,
-) -> von_error::Result<Option<chrono::NaiveDateTime>> {
-    use chrono::{DateTime, NaiveDate, NaiveDateTime};
+) -> von_error::Result<Option<chrono::DateTime<chrono::Utc>>> {
+    use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
     let Some(value) = value.filter(|v| !v.is_empty()) else {
         return Ok(None);
     };
 
     if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
-        return Ok(Some(parsed.naive_utc()));
+        return Ok(Some(parsed.with_timezone(&Utc)));
     }
     if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f") {
-        return Ok(Some(parsed));
+        return Ok(Some(parsed.and_utc()));
     }
     if let Ok(parsed) = NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M") {
-        return Ok(Some(parsed));
+        return Ok(Some(parsed.and_utc()));
     }
     if let Ok(parsed) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        return Ok(Some(parsed.and_hms_opt(0, 0, 0).unwrap_or_default()));
+        return Ok(Some(
+            parsed.and_hms_opt(0, 0, 0).unwrap_or_default().and_utc(),
+        ));
     }
 
     Err(von_error::Error::BadRequest(format!(
@@ -58,8 +60,8 @@ pub fn parse_optional_date(
 }
 
 pub fn validate_range(
-    from: Option<chrono::NaiveDateTime>,
-    to: Option<chrono::NaiveDateTime>,
+    from: Option<chrono::DateTime<chrono::Utc>>,
+    to: Option<chrono::DateTime<chrono::Utc>>,
 ) -> von_error::Result<()> {
     match (from, to) {
         (Some(from), Some(to)) if from > to => Err(von_error::Error::BadRequest(

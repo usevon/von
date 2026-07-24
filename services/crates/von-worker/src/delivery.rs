@@ -67,7 +67,7 @@ struct Endpoint {
     timeout_ms: i32,
     max_attempts: i32,
     circuit_state: String,
-    circuit_opened_at: Option<chrono::NaiveDateTime>,
+    circuit_opened_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 struct Meta {
@@ -388,9 +388,7 @@ impl Worker {
         // An open circuit becomes eligible for a trial request once the reset
         // window has passed.
         match endpoint.circuit_opened_at {
-            Some(opened) => {
-                (chrono::Utc::now().naive_utc() - opened).num_seconds() < CIRCUIT_RESET_SECS
-            }
+            Some(opened) => (chrono::Utc::now() - opened).num_seconds() < CIRCUIT_RESET_SECS,
             None => true,
         }
     }

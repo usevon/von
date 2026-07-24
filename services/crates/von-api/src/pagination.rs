@@ -254,7 +254,7 @@ pub async fn fetch_org_page(
     if let Some(position) = &cursor {
         let id = uuid::Uuid::parse_str(&position.id)
             .map_err(|_| Error::BadRequest("Invalid cursor".to_owned()))?;
-        query = query.bind(position.created_at.naive_utc()).bind(id);
+        query = query.bind(position.created_at).bind(id);
     }
 
     let mut rows = query.fetch_all(pool).await?;
@@ -265,7 +265,7 @@ pub async fn fetch_org_page(
     let next_cursor = match rows.last().filter(|_| has_more) {
         Some(last) => Some(encode_cursor_sorted(
             &CursorPosition {
-                created_at: DateTime::from_naive_utc_and_offset(last.try_get("created_at")?, Utc),
+                created_at: last.try_get("created_at")?,
                 id: last.try_get("id")?,
             },
             &scope,

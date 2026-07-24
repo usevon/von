@@ -1,18 +1,18 @@
-use super::model::{
+﻿use super::model::{
     AnalyticsQuery, Overview, OverviewRates, OverviewTotals, Retries, RetriesByAttempt,
     RetriesRates, RetriesTotals, Timeseries, TimeseriesBucket, TimeseriesQuery, number, rate,
     round,
 };
 use crate::state::ApiState;
 use crate::{parse_optional_date, to_iso, validate_range};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
 use von_error::Result;
 
 struct Range {
-    from: Option<NaiveDateTime>,
-    to: Option<NaiveDateTime>,
+    from: Option<DateTime<Utc>>,
+    to: Option<DateTime<Utc>>,
 }
 
 impl Range {
