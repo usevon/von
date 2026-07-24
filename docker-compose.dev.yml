@@ -23,7 +23,8 @@ services:
     restart: unless-stopped
     ports:
       - '16379:6379'
-    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 2gb --maxmemory-policy noeviction
+    # io-threads parallelize socket I/O for large payloads, and AOF everysec already covers durability so RDB snapshots are off.
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 2gb --maxmemory-policy noeviction --io-threads 4 --save ''
     volumes:
       - redis_data:/data
     healthcheck:

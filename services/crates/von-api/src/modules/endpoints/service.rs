@@ -331,15 +331,14 @@ pub async fn test_endpoint(
     )
     .await?;
 
+    // No MAXLEN trim, matching ingest, a trim here could silently drop acked events.
+    let (field, payload) = von_types::encode_entry(&entry)?;
     let mut conn = state.redis.clone();
     redis::cmd("XADD")
         .arg(STREAM_KEY)
-        .arg("MAXLEN")
-        .arg("~")
-        .arg("100000")
         .arg("*")
-        .arg("data")
-        .arg(serde_json::to_string(&entry)?)
+        .arg(field)
+        .arg(payload)
         .query_async::<()>(&mut conn)
         .await?;
 

@@ -15,7 +15,8 @@ pub const MAX_BATCH_BYTES: usize = 1024 * 1024;
 /// Serialized size of one delivery record in a stream entry, two uuids plus ids and a timestamp.
 const DELIVERY_RECORD_BYTES: usize = 200;
 
-const MAX_INFLIGHT_PIPELINES: usize = 4;
+/// Also sizes the Redis connection pool, one socket per pipeline in flight.
+pub const MAX_INFLIGHT_PIPELINES: usize = 8;
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     // A panic elsewhere must not poison a tenant into permanent failure.
@@ -159,8 +160,11 @@ impl Coalescer {
             responder,
         };
 
-        // A request already large enough to amortize its own round trip skips the queue entirely.
-        if request.events.len() >= LARGE_REQUEST_EVENTS {
+        // A request already large enough to amortize its own round trip skips the
+        // queue entirely, by event count or by carrying 64KB or more of payload.
+        if request.events.len() >= LARGE_REQUEST_EVENTS
+            || request.payload_bytes >= MAX_BATCH_BYTES / 16
+        {
             let _ = self.tx.send(FlushJob {
                 tenant,
                 requests: vec![request],
@@ -234,7 +238,7 @@ async fn flush_loop(
         let coalescer = coalescer.clone();
 
         tokio::spawn(async move {
-            let outcomes = redis.flush_batches(&jobs).await;
+            let outcomes = redis.flush_batches(&mut jobs).await;
 
             for (job, outcome) in jobs.into_iter().zip(outcomes) {
                 respond(job.requests, outcome);

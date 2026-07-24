@@ -240,14 +240,18 @@ impl Fixture {
 
     /// Writes straight to the buffer stream, which is exactly what ingest emits.
     pub async fn enqueue_event(&self, payload: &str) -> String {
-        self.enqueue_inner(payload, None, &[self.endpoint_id.clone()])
+        self.enqueue_inner(payload, None, std::slice::from_ref(&self.endpoint_id))
             .await
     }
 
     /// Two events sharing a key collide on insert, so the second one's delivery must be dropped.
     pub async fn enqueue_event_with_key(&self, payload: &str, key: &str) -> String {
-        self.enqueue_inner(payload, Some(key.to_owned()), &[self.endpoint_id.clone()])
-            .await
+        self.enqueue_inner(
+            payload,
+            Some(key.to_owned()),
+            std::slice::from_ref(&self.endpoint_id),
+        )
+        .await
     }
 
     pub async fn enqueue_fanout(&self, payload: &str, endpoint_ids: &[String]) -> String {
@@ -287,12 +291,13 @@ impl Fixture {
             deliveries,
         };
 
+        let (field, payload) = von_types::encode_entry(&entry).expect("encode");
         let mut conn = self.redis.clone();
         let _: redis::RedisResult<String> = redis::cmd("XADD")
             .arg(STREAM_KEY)
             .arg("*")
-            .arg("data")
-            .arg(serde_json::to_string(&entry).expect("encode"))
+            .arg(field)
+            .arg(payload)
             .query_async(&mut conn)
             .await;
 

@@ -17,18 +17,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     von_migrate::run(&pool).await?;
 
     let client = redis::Client::open(std::env::var("REDIS_URL")?)?;
+    // The flusher's read blocks on its own socket so it can never stall delivery commands.
+    let flusher_conn = redis::aio::ConnectionManager::new(client.clone()).await?;
     let conn = redis::aio::ConnectionManager::new(client).await?;
 
-    let flusher = flusher::Flusher::new(pool.clone(), conn.clone()).await;
+    let flusher = flusher::Flusher::new(pool.clone(), flusher_conn).await;
     let worker = delivery::Worker::new(pool.clone(), conn).await?;
     let inbound = inbound::Inbound::new(pool).await;
 
     info!("worker running");
 
     let loops = vec![
-        tokio::spawn(async move { pump(|| flusher.tick()).await }),
-        tokio::spawn(async move { pump(|| worker.tick()).await }),
-        tokio::spawn(async move { pump(|| inbound.tick()).await }),
+        // The flusher's read already blocks while idle, an extra sleep would only add latency.
+        tokio::spawn(async move { pump(Duration::ZERO, || flusher.tick()).await }),
+        tokio::spawn(async move { pump(IDLE_SLEEP, || worker.tick()).await }),
+        tokio::spawn(async move { pump(IDLE_SLEEP, || inbound.tick()).await }),
     ];
 
     signal::ctrl_c().await?;
@@ -40,14 +43,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Backs off only when a tick found nothing, so a busy queue drains at full speed.
-async fn pump<F, Fut>(mut tick: F)
+async fn pump<F, Fut>(idle: Duration, mut tick: F)
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = von_error::Result<usize>>,
 {
     loop {
         match tick().await {
-            Ok(0) => tokio::time::sleep(IDLE_SLEEP).await,
+            Ok(0) if !idle.is_zero() => tokio::time::sleep(idle).await,
             Ok(_) => {}
             Err(err) => {
                 error!(error = %err, "tick failed");

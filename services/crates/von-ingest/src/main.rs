@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = redis::Client::open(redis_url.as_str())?;
     let conn = ConnectionManager::new(client.clone()).await?;
-    let redis = RedisOps::new(conn.clone()).await?;
+    let redis = RedisOps::new(client.clone()).await?;
 
     let pool = PgPoolOptions::new()
         .max_connections(16)
@@ -69,12 +69,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     von_migrate::run(&pool).await?;
 
     // Billing stays optional so self hosted deployments run without an Autumn account.
-    let meter = std::env::var("AUTUMN_SECRET_KEY").ok().map(|key| {
-        let feature = std::env::var("AUTUMN_FEATURE_ID")
-            .unwrap_or_else(|_| von_billing::DEFAULT_FEATURE.to_owned());
-        info!(feature, "billing enabled");
-        Meter::new(key, feature)
-    });
+    let meter = std::env::var("AUTUMN_SECRET_KEY")
+        .ok()
+        .filter(|key| !key.is_empty())
+        .map(|key| {
+            let feature = std::env::var("AUTUMN_FEATURE_ID")
+                .unwrap_or_else(|_| von_billing::DEFAULT_FEATURE.to_owned());
+            info!(feature, "billing enabled");
+            Meter::new(key, feature)
+        });
 
     let auth = Arc::new(Auth::new(pool.clone(), Some(conn.clone())));
     von_api::auth::spawn_invalidator(auth.clone(), client.clone());

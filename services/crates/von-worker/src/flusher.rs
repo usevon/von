@@ -1,15 +1,27 @@
 use redis::aio::ConnectionManager;
 use sqlx::PgPool;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use von_error::Result;
-use von_types::{BufferedDelivery, BufferedEntry, BufferedEvent, FLUSHER_GROUP, STREAM_KEY};
+use von_types::{
+    BufferedDelivery, BufferedEvent, ENTRY_FIELD_PLAIN, ENTRY_FIELD_ZSTD, FLUSHER_GROUP,
+    STREAM_KEY, decode_entry,
+};
 
 const BATCH_SIZE: usize = 500;
 const RECLAIM_IDLE_MS: usize = 30_000;
+
+/// Reclaiming is a recovery path for crashed consumers, it does not need a round trip per tick.
+const RECLAIM_EVERY: Duration = Duration::from_secs(5);
+
+/// The read blocks briefly so an idle flusher neither polls nor adds latency to new events.
+const READ_BLOCK_MS: usize = 100;
 
 pub struct Flusher {
     pool: PgPool,
     redis: ConnectionManager,
     consumer: String,
+    last_reclaim: Mutex<Instant>,
 }
 
 impl Flusher {
@@ -27,6 +39,7 @@ impl Flusher {
             pool,
             redis,
             consumer: format!("rust-flusher-{}", &uuid::Uuid::new_v4().to_string()[..8]),
+            last_reclaim: Mutex::new(Instant::now() - RECLAIM_EVERY),
         }
     }
 
@@ -34,19 +47,25 @@ impl Flusher {
     pub async fn tick(&self) -> Result<usize> {
         let mut conn = self.redis.clone();
 
-        let mut entries = self.reclaim(&mut conn).await;
+        let mut entries = if self.reclaim_due() {
+            self.reclaim(&mut conn).await
+        } else {
+            Vec::new()
+        };
 
-        let read: Option<redis::streams::StreamReadReply> = redis::cmd("XREADGROUP")
+        // Blocking briefly is only correct when nothing is already waiting to be processed.
+        let mut read_cmd = redis::cmd("XREADGROUP");
+        read_cmd
             .arg("GROUP")
             .arg(FLUSHER_GROUP)
             .arg(&self.consumer)
             .arg("COUNT")
-            .arg(BATCH_SIZE)
-            .arg("STREAMS")
-            .arg(STREAM_KEY)
-            .arg(">")
-            .query_async(&mut conn)
-            .await?;
+            .arg(BATCH_SIZE);
+        if entries.is_empty() {
+            read_cmd.arg("BLOCK").arg(READ_BLOCK_MS);
+        }
+        read_cmd.arg("STREAMS").arg(STREAM_KEY).arg(">");
+        let read: Option<redis::streams::StreamReadReply> = read_cmd.query_async(&mut conn).await?;
 
         if let Some(read) = read {
             entries.extend(entries_of(read));
@@ -59,13 +78,19 @@ impl Flusher {
         let mut events: Vec<BufferedEvent> = Vec::new();
         let mut deliveries: Vec<BufferedDelivery> = Vec::new();
 
-        for (id, payload) in entries {
+        for (id, field, payload) in entries {
+            match decode_entry(field, &payload) {
+                Ok(entry) => {
+                    events.extend(entry.events);
+                    deliveries.extend(entry.deliveries);
+                }
+                // A malformed entry is acked anyway, retrying it can never succeed and
+                // leaving it pending would wedge the reclaim path forever.
+                Err(err) => {
+                    tracing::error!(stream_id = %id, error = %err, "dropping undecodable entry")
+                }
+            }
             stream_ids.push(id);
-            let Ok(entry) = serde_json::from_str::<BufferedEntry>(&payload) else {
-                continue;
-            };
-            events.extend(entry.events);
-            deliveries.extend(entry.deliveries);
         }
 
         // Persisting the pending delivery rows is the enqueue, the worker polls them from Postgres.
@@ -88,23 +113,38 @@ impl Flusher {
         // Entries stay pending when persistence failed so a later read retries them
         // instead of acknowledging events that were never written.
         if persisted && !stream_ids.is_empty() {
-            let mut ack = redis::cmd("XACK");
-            ack.arg(STREAM_KEY).arg(FLUSHER_GROUP);
-            let mut del = redis::cmd("XDEL");
-            del.arg(STREAM_KEY);
-            for id in &stream_ids {
-                ack.arg(id);
-                del.arg(id);
+            let mut pipe = redis::pipe();
+            {
+                let ack = pipe.cmd("XACK").arg(STREAM_KEY).arg(FLUSHER_GROUP);
+                for id in &stream_ids {
+                    ack.arg(id);
+                }
+                ack.ignore();
             }
-            let _: redis::RedisResult<()> = ack.query_async(&mut conn).await;
-            let _: redis::RedisResult<()> = del.query_async(&mut conn).await;
+            {
+                let del = pipe.cmd("XDEL").arg(STREAM_KEY);
+                for id in &stream_ids {
+                    del.arg(id);
+                }
+                del.ignore();
+            }
+            let _: redis::RedisResult<()> = pipe.query_async(&mut conn).await;
         }
 
         Ok(events.len())
     }
 
+    fn reclaim_due(&self) -> bool {
+        let mut last = self.last_reclaim.lock().unwrap_or_else(|e| e.into_inner());
+        if last.elapsed() < RECLAIM_EVERY {
+            return false;
+        }
+        *last = Instant::now();
+        true
+    }
+
     /// Claims entries a crashed flusher left pending so a Postgres blip does not strand events.
-    async fn reclaim(&self, conn: &mut ConnectionManager) -> Vec<(String, String)> {
+    async fn reclaim(&self, conn: &mut ConnectionManager) -> Vec<(String, &'static str, Vec<u8>)> {
         let reply: redis::RedisResult<redis::streams::StreamAutoClaimReply> =
             redis::cmd("XAUTOCLAIM")
                 .arg(STREAM_KEY)
@@ -121,7 +161,10 @@ impl Flusher {
             Ok(reply) => reply
                 .claimed
                 .into_iter()
-                .filter_map(|entry| Some((entry.id.clone(), entry.get::<String>("data")?)))
+                .filter_map(|entry| {
+                    let (field, bytes) = entry_bytes(&entry)?;
+                    Some((entry.id.clone(), field, bytes))
+                })
                 .collect(),
             Err(_) => Vec::new(),
         }
@@ -153,7 +196,9 @@ impl Flusher {
             ids.push(id);
             org_ids.push(org);
             types.push(e.event_type.clone());
-            payloads.push(serde_json::from_str(e.payload.get()).unwrap_or(serde_json::Value::Null));
+            // The payload was validated as JSON at ingest, binding it as text and casting
+            // in SQL skips a full parse and re-serialize per event.
+            payloads.push(e.payload.get().to_owned());
             keys.push(e.idempotency_key.clone());
             created.push(parse_iso(&e.created_at));
         }
@@ -162,7 +207,8 @@ impl Flusher {
         // so rows whose organization vanished are dropped instead of retried.
         let inserted: Vec<String> = sqlx::query_scalar(
             "INSERT INTO event (id, organization_id, event_type, payload, idempotency_key, created_at) \
-             SELECT t.* FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::jsonb[], $5::text[], $6::timestamptz[]) \
+             SELECT t.id, t.organization_id, t.event_type, t.payload::jsonb, t.idempotency_key, t.created_at \
+             FROM UNNEST($1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[], $6::timestamptz[]) \
              AS t(id, organization_id, event_type, payload, idempotency_key, created_at) \
              WHERE EXISTS (SELECT 1 FROM organization o WHERE o.id = t.organization_id) \
              ON CONFLICT (organization_id, idempotency_key) DO NOTHING \
@@ -239,14 +285,23 @@ fn parse_iso(value: &str) -> chrono::DateTime<chrono::Utc> {
         .unwrap_or_else(|_| chrono::Utc::now())
 }
 
-pub fn entries_of(reply: redis::streams::StreamReadReply) -> Vec<(String, String)> {
+fn entry_bytes(entry: &redis::streams::StreamId) -> Option<(&'static str, Vec<u8>)> {
+    if let Some(z) = entry.get::<Vec<u8>>(ENTRY_FIELD_ZSTD) {
+        return Some((ENTRY_FIELD_ZSTD, z));
+    }
+    entry
+        .get::<Vec<u8>>(ENTRY_FIELD_PLAIN)
+        .map(|d| (ENTRY_FIELD_PLAIN, d))
+}
+
+pub fn entries_of(reply: redis::streams::StreamReadReply) -> Vec<(String, &'static str, Vec<u8>)> {
     reply
         .keys
         .into_iter()
         .flat_map(|key| key.ids)
         .filter_map(|entry| {
-            let payload: String = entry.get("data")?;
-            Some((entry.id, payload))
+            let (field, bytes) = entry_bytes(&entry)?;
+            Some((entry.id, field, bytes))
         })
         .collect()
 }

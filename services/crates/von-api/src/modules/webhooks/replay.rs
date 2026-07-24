@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use utoipa::ToSchema;
 use von_error::{Error, Result};
+use von_types::matches_event_type;
 
 const BULK_LIMIT: i64 = 1000;
 
@@ -38,19 +39,6 @@ pub struct BulkReplayResult {
 struct Target {
     endpoint_id: String,
     event_id: String,
-}
-
-fn matches_event_type(event_type: &str, filter: Option<&Vec<String>>) -> bool {
-    match filter {
-        None => true,
-        Some(list) if list.is_empty() => true,
-        Some(list) => list.iter().any(|pattern| {
-            pattern
-                .strip_suffix('*')
-                .map(|prefix| event_type.starts_with(prefix))
-                .unwrap_or(pattern == event_type)
-        }),
-    }
 }
 
 async fn create_deliveries(
@@ -129,7 +117,7 @@ pub async fn replay_event(
             body.endpoint_ids
                 .as_ref()
                 .is_none_or(|wanted| wanted.contains(&endpoint.id))
-                && matches_event_type(&event_type, endpoint.events.as_ref())
+                && matches_event_type(&event_type, endpoint.events.as_deref())
         })
         .map(|endpoint| Target {
             endpoint_id: endpoint.id.clone(),

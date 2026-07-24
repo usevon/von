@@ -52,8 +52,8 @@ async fn ingest(
         .into());
     }
 
-    // The stream is capped by entry count, not bytes, so an unbounded payload can
-    // exhaust Redis memory and stall ingest for every tenant.
+    // An unbounded payload could exhaust Redis memory on its own, so every event
+    // is size checked before anything is buffered.
     let incoming: Vec<IncomingEvent> = events
         .into_iter()
         .map(|e| IncomingEvent {
