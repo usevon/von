@@ -157,7 +157,7 @@ Give Redis enough `maxmemory` to buffer messages for as long as a worker outage 
 
 ## Testing
 
-The Rust suites run against a live Postgres and Redis and skip cleanly when `DATABASE_URL` is unset.
+The Rust suites run against a live Postgres and Redis, and fail rather than skip when neither is reachable so a broken CI cannot pass silently. Set `VON_TEST_INFRA=0` to skip them where that infrastructure is unavailable.
 
 ```bash
 # Rust services, unit plus integration
