@@ -14,6 +14,8 @@ import { APIError } from "better-auth/api";
 import mailchecker from "mailchecker";
 import isEmail from "validator/es/lib/isEmail.js";
 
+import { getRedisClient } from "@usevon/queue";
+
 import { env } from "@/env";
 import type { SecondaryStorageAdapter } from "@/lib/auth/storage";
 import { log } from "@/lib/logger";
@@ -22,6 +24,30 @@ import { resendClient } from "@/lib/resend";
 type SessionInsert = typeof schema.session.$inferInsert;
 
 const { plugin: auditLogPlugin, apiKeyHooks, organizationHooks } = auditLog();
+
+// The Rust api caches resolved keys for 10s, this tells it to evict immediately.
+const publishKeyInvalidation = async (key: { organizationId?: string | null }) => {
+  if (!key.organizationId) {
+    return;
+  }
+  try {
+    await getRedisClient().publish("von:auth:invalidate", key.organizationId);
+  } catch (err) {
+    log.error({ err }, "Failed to publish key invalidation");
+  }
+};
+
+const apiKeyHooksWithInvalidation = {
+  ...apiKeyHooks,
+  afterUpdate: async (key: Parameters<typeof apiKeyHooks.afterUpdate>[0]) => {
+    await apiKeyHooks.afterUpdate(key);
+    await publishKeyInvalidation(key);
+  },
+  afterDelete: async (key: Parameters<typeof apiKeyHooks.afterDelete>[0]) => {
+    await apiKeyHooks.afterDelete(key);
+    await publishKeyInvalidation(key);
+  },
+};
 
 export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
   haveIBeenPwned({
@@ -95,7 +121,7 @@ export const buildAuthPlugins = (secondaryStorage: SecondaryStorageAdapter) => [
           fallbackToDatabase: true,
           signingSecret: env.API_KEY_SIGNING_SECRET,
           secondaryStorage,
-          apiKeyHooks,
+          apiKeyHooks: apiKeyHooksWithInvalidation,
         }),
       ]
     : []),

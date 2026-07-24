@@ -36,7 +36,7 @@ impl Fixture {
 
         let pool = PgPool::connect(&database_url).await.ok()?;
         let client = redis::Client::open(redis_url).ok()?;
-        let redis = ConnectionManager::new(client).await.ok()?;
+        let redis = ConnectionManager::new(client.clone()).await.ok()?;
 
         let organization_id = uuid::Uuid::new_v4().to_string();
         let user_id = uuid::Uuid::new_v4().to_string();
@@ -64,10 +64,12 @@ impl Fixture {
         .await
         .expect("create organization");
 
+        let auth = Arc::new(Auth::new(pool.clone(), Some(redis.clone())));
+        von_api::auth::spawn_invalidator(auth.clone(), client);
         let state = Arc::new(ApiState {
             pool: pool.clone(),
             redis: redis.clone(),
-            auth: Arc::new(Auth::new(pool.clone(), Some(redis.clone()))),
+            auth,
             tunnels: Default::default(),
             instance_id: format!("test-{organization_id}"),
         });

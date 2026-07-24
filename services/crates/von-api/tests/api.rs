@@ -420,3 +420,42 @@ async fn cursors_are_scope_bound_and_tamper_proof() {
 
     fixture.cleanup().await;
 }
+
+/// The revocation channel must evict the cached tenant well inside the 10s TTL.
+#[tokio::test]
+async fn revoked_key_stops_working_once_invalidation_is_published() {
+    let Some(fixture) = Fixture::new().await else {
+        return;
+    };
+    let key = fixture.create_key(&["*"]).await;
+
+    let (status, _) = fixture.get(&key, "/endpoints").await;
+    assert_eq!(status, 200);
+
+    sqlx::query("UPDATE apikey SET enabled = false WHERE organization_id = $1::uuid")
+        .bind(&fixture.organization_id)
+        .execute(&fixture.pool)
+        .await
+        .expect("disable key");
+    let mut conn = fixture.redis.clone();
+    let _: redis::RedisResult<i64> = redis::cmd("PUBLISH")
+        .arg("von:auth:invalidate")
+        .arg(&fixture.organization_id)
+        .query_async(&mut conn)
+        .await;
+
+    let mut revoked = false;
+    for _ in 0..40 {
+        if fixture.get(&key, "/endpoints").await.0 == 401 {
+            revoked = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    assert!(
+        revoked,
+        "the revoked key kept working past the invalidation"
+    );
+
+    fixture.cleanup().await;
+}

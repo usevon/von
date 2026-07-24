@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("PORT").unwrap_or_else(|_| "8090".to_owned());
 
     let client = redis::Client::open(redis_url.as_str())?;
-    let conn = ConnectionManager::new(client).await?;
+    let conn = ConnectionManager::new(client.clone()).await?;
     let redis = RedisOps::new(conn.clone()).await?;
 
     let pool = PgPoolOptions::new()
@@ -77,6 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let auth = Arc::new(Auth::new(pool.clone(), Some(conn.clone())));
+    von_api::auth::spawn_invalidator(auth.clone(), client.clone());
 
     let state = Arc::new(AppState {
         auth: auth.clone(),

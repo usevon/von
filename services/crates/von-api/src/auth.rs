@@ -117,6 +117,28 @@ pub fn plan_limits(plan: &str) -> PlanLimits {
     }
 }
 
+/// Evicts cached tenants when the dashboard announces a key mutation, closing
+/// the revocation window the cache TTL would otherwise leave open.
+pub fn spawn_invalidator(auth: Arc<Auth>, client: redis::Client) {
+    use futures_util::StreamExt;
+
+    tokio::spawn(async move {
+        loop {
+            if let Ok(mut pubsub) = client.get_async_pubsub().await
+                && pubsub.subscribe("von:auth:invalidate").await.is_ok()
+            {
+                let mut messages = pubsub.on_message();
+                while let Some(message) = messages.next().await {
+                    if let Ok(organization_id) = message.get_payload::<String>() {
+                        auth.invalidate_organization(&organization_id);
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
+}
+
 fn hash_key(raw: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(raw.as_bytes());
