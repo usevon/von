@@ -42,6 +42,7 @@ jobs:
       DATABASE_URL: postgres://von:von_ci_password@localhost:5432/von_ci
       REDIS_URL: redis://localhost:6379
       API_KEY_SIGNING_SECRET: ci-test-signing-secret
+      BETTER_AUTH_SECRET: ci-test-secret-that-is-at-least-32-chars!!
 
     steps:
       - uses: actions/checkout@v4
