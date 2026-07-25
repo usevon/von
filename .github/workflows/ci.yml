@@ -61,6 +61,11 @@ jobs:
       - name: Migrate
         run: cargo run --manifest-path services/Cargo.toml -p von-migrate -- run
 
+      - name: Seed worker organization
+        run: >-
+          psql "$DATABASE_URL" -c "INSERT INTO organization (id, name, slug, created_at, plan)
+          VALUES (gen_random_uuid(), 'ci worker org', 'ci-worker-org', now(), 'growth')"
+
       - name: Test
         run: cargo test --manifest-path services/Cargo.toml
 
