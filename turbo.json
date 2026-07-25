@@ -3,6 +3,8 @@
   "globalPassThroughEnv": [
     "API_KEY_SIGNING_SECRET",
     "BETTER_AUTH_SECRET",
+    "DATABASE_URL",
+    "REDIS_URL",
     "VON_API_KEY"
   ],
   "remoteCache": {

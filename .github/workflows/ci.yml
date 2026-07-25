@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: Lint, Build & Test
+  rust:
+    name: Rust
     runs-on: blacksmith-2vcpu-ubuntu-2404
 
     services:
@@ -41,16 +41,32 @@ jobs:
     env:
       DATABASE_URL: postgres://von:von_ci_password@localhost:5432/von_ci
       REDIS_URL: redis://localhost:6379
-      BETTER_AUTH_SECRET: ci-test-secret-that-is-at-least-32-chars!!
-      BETTER_AUTH_URL: http://localhost:8080
       API_KEY_SIGNING_SECRET: ci-test-signing-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services
+
+      - name: Format
+        run: cargo fmt --manifest-path services/Cargo.toml --all --check
+
+      - name: Clippy
+        run: cargo clippy --manifest-path services/Cargo.toml --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --manifest-path services/Cargo.toml
+
+  typescript:
+    name: TypeScript
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+
+    env:
       NODE_ENV: test
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_TELEMETRY_DISABLED: 1
       TURBO_TELEMETRY_DISABLED: 1
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -74,21 +90,5 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Build packages
-        run: bun run build
-
-      - name: Run unit tests
+      - name: Test
         run: bun run test:unit
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: services
-
-      - name: Lint rust
-        run: |
-          cargo fmt --manifest-path services/Cargo.toml --all --check
-          cargo clippy --manifest-path services/Cargo.toml --workspace --all-targets -- -D warnings
-
-      - name: Run rust tests
-        run: cargo test --manifest-path services/Cargo.toml
