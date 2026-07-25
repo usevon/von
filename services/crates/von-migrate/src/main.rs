@@ -1,14 +1,16 @@
 use sqlx::postgres::PgPoolOptions;
 
-/// Marks every embedded migration as applied without running it, for a database
-/// created out of band whose schema already matches.
+/// Applies embedded migrations with run, or marks them applied with baseline
+/// for a database created out of band whose schema already matches.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
     von_log::init();
 
-    if std::env::args().nth(1).as_deref() != Some("baseline") {
-        eprintln!("usage: von-migrate baseline");
+    let command = std::env::args().nth(1);
+    let command = command.as_deref();
+    if command != Some("baseline") && command != Some("run") {
+        eprintln!("usage: von-migrate <run|baseline>");
         std::process::exit(2);
     }
 
@@ -17,7 +19,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&std::env::var("DATABASE_URL")?)
         .await?;
 
-    let marked = von_migrate::baseline(&pool).await?;
-    tracing::info!(marked, "baseline complete");
+    if command == Some("run") {
+        von_migrate::run(&pool).await?;
+        tracing::info!("migrations complete");
+    } else {
+        let marked = von_migrate::baseline(&pool).await?;
+        tracing::info!(marked, "baseline complete");
+    }
     Ok(())
 }
